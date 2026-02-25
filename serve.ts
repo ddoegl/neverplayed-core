@@ -1,4 +1,5 @@
-import { serveDir } from "jsr:@std/http/file-server";
+//import { serveDir } from "jsr:@std/http/file-server";
+import { serveDir, serveFile } from "https://deno.land/std@0.207.0/http/file_server.ts";
 
 Deno.serve(async (req) => {
   const res = await serveDir(req, {
