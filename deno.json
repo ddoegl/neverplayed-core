@@ -1,5 +1,6 @@
 {
   "tasks": {
-    "start": "deno run -A ./serve.ts"
+    "start": "deno run -A ./serve.ts",
+    "pandeno": "deno run -A ./pandeno.ts"
   }
 }
