@@ -11,5 +11,9 @@ Deno.serve(async (req) => {
     res.headers.set("Pragma", "no-cache");
     res.headers.set("Expires", "0");
   }
+  // Relaxing these headers fixes CORS/COEP blocks for external scripts from unpkg.
+  // res.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  // res.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+  res.headers.set("Access-Control-Allow-Origin", "*");
   return res;
 });
