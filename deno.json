@@ -2,6 +2,7 @@
   "tasks": {
     "start": "deno run -A ./serve.ts",
     "start-osgi": "deno run -A ./serve-osgi.ts",
-    "pandeno": "deno run -A ./pandeno.ts"
+    "pandeno": "deno run -A ./pandeno.ts",
+    "kill-osgi": "lsof -ti:8000 | xargs kill -9"
   }
 }
