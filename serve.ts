@@ -1,9 +1,9 @@
 //import { serveDir } from "jsr:@std/http/file-server";
 import { serveDir, serveFile } from "https://deno.land/std@0.207.0/http/file_server.ts";
-
-Deno.serve(async (req) => {
+const port = 8008;  // Port number
+Deno.serve({ port }, async (req) => {
   const res = await serveDir(req, {
-    fsRoot: "client",
+    fsRoot: "public",
   });
   const enableCache = Deno.env.get("ENABLE_CACHE") === "true";
   if (!enableCache) {
