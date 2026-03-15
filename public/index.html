@@ -468,6 +468,8 @@
     </div>
 
     <script type="module">
+      import { checkAccess } from "./auth-shield.js";
+
       import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
       import Pandino from "https://esm.sh/@pandino/pandino@0.8.33";
       import Alpine from "https://esm.sh/alpinejs@3.13.5";
@@ -484,704 +486,720 @@
       } from "shared-types";
       import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
-      const pandino = new Pandino({ ...loaderConfiguration });
+      const initUniverse = async () => {
+        const pandino = new Pandino({ ...loaderConfiguration });
 
-      await pandino.init();
-      await pandino.start();
+        await pandino.init();
+        await pandino.start();
 
-      const context = pandino.getBundleContext();
-      globalThis.Alpine = Alpine;
+        const context = pandino.getBundleContext();
+        globalThis.Alpine = Alpine;
 
-      // Infrastructure: Persistence Manager
-      const pmBundle = await context.installBundle(
-        "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
-      );
-      if (pmBundle.state === 2 || pmBundle.state === 4) {
-        await pmBundle.start();
-      }
+        // Infrastructure: Persistence Manager
+        const pmBundle = await context.installBundle(
+          "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
+        );
+        if (pmBundle.state === 2 || pmBundle.state === 4) {
+          await pmBundle.start();
+        }
 
-      // Infrastructure: Event Admin
-      const eaBundle = await context.installBundle(
-        "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
-      );
-      if (eaBundle.state === 2 || eaBundle.state === 4) {
-        await eaBundle.start();
-      }
+        // Infrastructure: Event Admin
+        const eaBundle = await context.installBundle(
+          "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
+        );
+        if (eaBundle.state === 2 || eaBundle.state === 4) {
+          await eaBundle.start();
+        }
 
-      // Fetch the Persistence Manager
-      const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
-      const pm = context.getService(pmRef);
-      const SESSION_PID = "pandino.session.state";
+        // Fetch the Persistence Manager
+        const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
+        const pm = context.getService(pmRef);
+        const SESSION_PID = "pandino.session.state";
 
-      // Initialize a reactive Session Service
-      const sessionService = Alpine.reactive({
-        ...(pm.load(SESSION_PID) || {
-          environment: "business-channel-web",
-          scopedUsers: {},
-        }),
-        activeFlowId: null,
-        bootstrapCodeModal: { show: false, code: "", phone: "" },
-        get currentUser() {
-          const scope = this.activeFlowId || "global";
+        // Initialize a reactive Session Service
+        const sessionService = Alpine.reactive({
+          ...(pm.load(SESSION_PID) || {
+            environment: "business-channel-web",
+            scopedUsers: {},
+          }),
+          activeFlowId: null,
+          bootstrapCodeModal: { show: false, code: "", phone: "" },
+          get currentUser() {
+            const scope = this.activeFlowId || "global";
 
-          // Environment-based inheritance
-          const isRetail =
-            (this.environment || "").includes("mobile") ||
-            (this.environment || "").includes("retail");
-          const defaultBusinessScope = "business-channel-web";
-          const defaultRetailScope = "user-home-retail";
+            // Environment-based inheritance
+            const isRetail =
+              (this.environment || "").includes("mobile") ||
+              (this.environment || "").includes("retail");
+            const defaultBusinessScope = "business-channel-web";
+            const defaultRetailScope = "user-home-retail";
 
-          // Session Inheritance: Specific flows inherit based on environment
-          const inheritanceScopes = [
-            "cases",
-            "invitation-admin",
-            "company-authorizations",
-            "signing",
-          ];
+            // Session Inheritance: Specific flows inherit based on environment
+            const inheritanceScopes = [
+              "cases",
+              "invitation-admin",
+              "company-authorizations",
+              "signing",
+            ];
 
-          if (
-            !this.scopedUsers[scope] &&
-            inheritanceScopes.includes(scope)
-          ) {
-            if (isRetail) {
-              return this.scopedUsers["retail-channel-app"] ||
-                this.scopedUsers["user-home-retail"] ||
-                this.scopedUsers["global"] || null;
-            } else {
-              return this.scopedUsers["business-channel-web"] ||
-                this.scopedUsers["user-home-business"] ||
-                this.scopedUsers["global"] || null;
+            if (
+              !this.scopedUsers[scope] &&
+              inheritanceScopes.includes(scope)
+            ) {
+              if (isRetail) {
+                return this.scopedUsers["retail-channel-app"] ||
+                  this.scopedUsers["user-home-retail"] ||
+                  this.scopedUsers["global"] || null;
+              } else {
+                return this.scopedUsers["business-channel-web"] ||
+                  this.scopedUsers["user-home-business"] ||
+                  this.scopedUsers["global"] || null;
+              }
             }
-          }
 
-          return this.scopedUsers[scope] ||
-            this.scopedUsers["global"] || null;
-        },
-        set currentUser(val) {
-          const scope = this.activeFlowId || "global";
-          if (!this.scopedUsers) this.scopedUsers = {};
-          this.scopedUsers[scope] = val;
-        },
-      });
-
-      // Ensure environment is set if missing in stored state
-      if (!sessionService.environment) {
-        sessionService.environment = "business-channel-web";
-      }
-      if (!sessionService.scopedUsers) {
-        sessionService.scopedUsers = {};
-      }
-
-      Alpine.effect(() => {
-        // Only persist environment and scopedUsers, not activeFlowId
-        pm.store(SESSION_PID, {
-          environment: sessionService.environment,
-          scopedUsers: sessionService.scopedUsers,
+            return this.scopedUsers[scope] ||
+              this.scopedUsers["global"] || null;
+          },
+          set currentUser(val) {
+            const scope = this.activeFlowId || "global";
+            if (!this.scopedUsers) this.scopedUsers = {};
+            this.scopedUsers[scope] = val;
+          },
         });
-      });
 
-      context.registerService(SESSION_SERVICE, sessionService);
+        // Ensure environment is set if missing in stored state
+        if (!sessionService.environment) {
+          sessionService.environment = "business-channel-web";
+        }
+        if (!sessionService.scopedUsers) {
+          sessionService.scopedUsers = {};
+        }
 
-      Alpine.data("navigationMenu", () => ({
-        flows: [],
-        navServices: [],
-        envServices: [],
-        session: sessionService,
-        activeFlowId: null,
-        sidebarOpen: false,
-        configAdmin: null,
-        _tracker: null,
-        _navTracker: null,
-        _envTracker: null,
+        Alpine.effect(() => {
+          // Only persist environment and scopedUsers, not activeFlowId
+          pm.store(SESSION_PID, {
+            environment: sessionService.environment,
+            scopedUsers: sessionService.scopedUsers,
+          });
+        });
 
-        getManifestChannels(bundle) {
-          if (!bundle) return undefined;
-          let headers;
-          try {
-            headers = bundle.getHeaders();
-          } catch (_e) {
-            return undefined;
-          }
-          if (!headers) return undefined;
+        context.registerService(SESSION_SERVICE, sessionService);
 
-          const configKey = Object.keys(headers || {}).find((k) =>
-            k.toLowerCase() === "configuration"
-          );
-          const configPriming = headers[configKey];
-          if (!configPriming) return undefined;
+        Alpine.data("navigationMenu", () => ({
+          flows: [],
+          navServices: [],
+          envServices: [],
+          session: sessionService,
+          activeFlowId: null,
+          sidebarOpen: false,
+          configAdmin: null,
+          _tracker: null,
+          _navTracker: null,
+          _envTracker: null,
 
-          try {
-            const primingData = typeof configPriming === "string"
-              ? JSON.parse(configPriming)
-              : configPriming;
-            return primingData.channels;
-          } catch (_e) {
-            return undefined;
-          }
-        },
-
-        isFlowEnabled(id) {
-          const flow = this.flows.find((f) => f.id === id);
-          if (!flow) return false;
-
-          const bsn = flow.bsn;
-          if (!bsn) return true;
-
-          const props = this.configAdmin?.getConfiguration(bsn)
-            ?.getProperties();
-          const manifestChannels = this.getManifestChannels(
-            flow.bundle,
-          );
-          const storedChannels = props?.channels;
-
-          // CRITICAL FIX: Empty array means "turned off", so we MUST check for undefined
-          const channels = (storedChannels !== undefined)
-            ? storedChannels
-            : (manifestChannels !== undefined ? manifestChannels : []);
-          const envId = this.session.environment ||
-            "business-channel-web";
-          const env = this.envServices.find((e) => e.id === envId);
-          const envType = env?.type || "desktop";
-          const channelId = envType === "mobile"
-            ? "business-channel-app"
-            : "business-channel-web";
-
-          return channels.includes(channelId) ||
-            channels.includes(envId);
-        },
-
-        goHome() {
-          console.log("Shell: Navigating home...");
-          if (this.session && this.session.scopedUsers) {
-            delete this.session.scopedUsers["global"];
-          }
-
-          if (this.envType === "mobile") {
-            this.launchFlow("mobile-launcher");
-          } else {
-            const spaceTimeEnv = this.envServices.find(
-              (
-                e,
-              ) => (e.id === "space-time" ||
-                e["env.id"] === "space-time"),
-            );
-            if (spaceTimeEnv) {
-              spaceTimeEnv.onActivate(this.session);
+          getManifestChannels(bundle) {
+            if (!bundle) return undefined;
+            let headers;
+            try {
+              headers = bundle.getHeaders();
+            } catch (_e) {
+              return undefined;
             }
-            this.launchFlow("real-life");
-          }
-          this.sidebarOpen = false;
-        },
+            if (!headers) return undefined;
 
-        get envType() {
-          const env = this.envServices.find((e) =>
-            e.id === this.session.environment
-          );
-          if (env?.type === "space-time") return "desktop";
-          return env ? env.type : "desktop";
-        },
+            const configKey = Object.keys(headers || {}).find((k) =>
+              k.toLowerCase() === "configuration"
+            );
+            const configPriming = headers[configKey];
+            if (!configPriming) return undefined;
 
-        get activeFlow() {
-          return this.flows.find((f) => f.id === this.activeFlowId);
-        },
+            try {
+              const primingData = typeof configPriming === "string"
+                ? JSON.parse(configPriming)
+                : configPriming;
+              return primingData.channels;
+            } catch (_e) {
+              return undefined;
+            }
+          },
 
-        get activeNav() {
-          return this.navServices.find((s) =>
-            s.flowId === this.activeFlowId
-          );
-        },
+          isFlowEnabled(id) {
+            const flow = this.flows.find((f) => f.id === id);
+            if (!flow) return false;
 
-        get showSecondarySidebar() {
-          return this.activeNav && this.activeNav.steps &&
-            this.activeNav.steps.length > 0;
-        },
+            const bsn = flow.bsn;
+            if (!bsn) return true;
 
-        getFlowIcon(id) {
-          const icons = {
-            "real-life": "fas fa-globe",
-            "login": "fas fa-sign-in-alt",
-            "user-home-business": "fas fa-briefcase",
-            "user-home-retail": "fas fa-home",
-            "login-flow": "fas fa-sign-in-alt",
-            "dashboard": "fas fa-chart-line",
-            "do-dashboard": "fas fa-cubes",
-            "person-registry": "fas fa-users",
-            "company-registry": "fas fa-building",
-            "backoffice": "fas fa-cogs",
-            "backoffice-web": "fas fa-cogs",
-          };
-          return icons[id] || "fas fa-cube";
-        },
+            const props = this.configAdmin?.getConfiguration(bsn)
+              ?.getProperties();
+            const manifestChannels = this.getManifestChannels(
+              flow.bundle,
+            );
+            const storedChannels = props?.channels;
 
-        init() {
-          const filter = `(objectClass=${FLOW_SERVICE})`;
-          this._tracker = context.trackService(filter, {
-            addingService: (ref) => {
-              const service = context.getService(ref);
-              if (service) {
-                const id = service.id || ref.getProperty("flow.id");
-                console.log(
-                  "Shell: Flow registered:",
-                  id,
-                  " (actual ID:",
-                  service.id,
-                  ")",
-                );
+            // CRITICAL FIX: Empty array means "turned off", so we MUST check for undefined
+            const channels = (storedChannels !== undefined)
+              ? storedChannels
+              : (manifestChannels !== undefined
+                ? manifestChannels
+                : []);
+            const envId = this.session.environment ||
+              "business-channel-web";
+            const env = this.envServices.find((e) => e.id === envId);
+            const envType = env?.type || "desktop";
+            const channelId = envType === "mobile"
+              ? "business-channel-app"
+              : "business-channel-web";
 
-                // Add to flows array with consistent ID
+            return channels.includes(channelId) ||
+              channels.includes(envId);
+          },
+
+          goHome() {
+            console.log("Shell: Navigating home...");
+            if (this.session && this.session.scopedUsers) {
+              delete this.session.scopedUsers["global"];
+            }
+
+            if (this.envType === "mobile") {
+              this.launchFlow("mobile-launcher");
+            } else {
+              const spaceTimeEnv = this.envServices.find(
+                (
+                  e,
+                ) => (e.id === "space-time" ||
+                  e["env.id"] === "space-time"),
+              );
+              if (spaceTimeEnv) {
+                spaceTimeEnv.onActivate(this.session);
+              }
+              this.launchFlow("real-life");
+            }
+            this.sidebarOpen = false;
+          },
+
+          get envType() {
+            const env = this.envServices.find((e) =>
+              e.id === this.session.environment
+            );
+            if (env?.type === "space-time") return "desktop";
+            return env ? env.type : "desktop";
+          },
+
+          get activeFlow() {
+            return this.flows.find((f) => f.id === this.activeFlowId);
+          },
+
+          get activeNav() {
+            return this.navServices.find((s) =>
+              s.flowId === this.activeFlowId
+            );
+          },
+
+          get showSecondarySidebar() {
+            return this.activeNav && this.activeNav.steps &&
+              this.activeNav.steps.length > 0;
+          },
+
+          getFlowIcon(id) {
+            const icons = {
+              "real-life": "fas fa-globe",
+              "login": "fas fa-sign-in-alt",
+              "user-home-business": "fas fa-briefcase",
+              "user-home-retail": "fas fa-home",
+              "login-flow": "fas fa-sign-in-alt",
+              "dashboard": "fas fa-chart-line",
+              "do-dashboard": "fas fa-cubes",
+              "person-registry": "fas fa-users",
+              "company-registry": "fas fa-building",
+              "backoffice": "fas fa-cogs",
+              "backoffice-web": "fas fa-cogs",
+              "shell-cli": "fas fa-terminal",
+            };
+            return icons[id] || "fas fa-cube";
+          },
+
+          init() {
+            const filter = `(objectClass=${FLOW_SERVICE})`;
+            this._tracker = context.trackService(filter, {
+              addingService: (ref) => {
+                const service = context.getService(ref);
+                if (service) {
+                  const id = service.id || ref.getProperty("flow.id");
+                  console.log(
+                    "Shell: Flow registered:",
+                    id,
+                    " (actual ID:",
+                    service.id,
+                    ")",
+                  );
+
+                  // Add to flows array with consistent ID
+                  const flowEntry = {
+                    ...service,
+                    id: id,
+                    bsn: ref.bundle.getSymbolicName(),
+                    bundle: ref.bundle,
+                  };
+                  if (!this.flows.find((f) => f.id === id)) {
+                    this.flows = [...this.flows, flowEntry];
+                  }
+
+                  // CRITICAL: Check if we are waiting for this flow
+                  if (
+                    this.activeFlowId === id ||
+                    (!this.activeFlowId && id === "real-life")
+                  ) {
+                    console.log(
+                      "Shell: Auto-launching flow arrival:",
+                      id,
+                    );
+                    this.launchFlow(id, flowEntry);
+                  }
+                }
+                return service;
+              },
+              modifiedService: (_ref, service) => {
+                const id = service.id || _ref.getProperty("flow.id");
                 const flowEntry = {
                   ...service,
                   id: id,
-                  bsn: ref.bundle.getSymbolicName(),
-                  bundle: ref.bundle,
+                  bsn: _ref.bundle.getSymbolicName(),
+                  bundle: _ref.bundle,
                 };
-                if (!this.flows.find((f) => f.id === id)) {
-                  this.flows = [...this.flows, flowEntry];
+                this.flows = this.flows.map((
+                  f,
+                ) => (f.id === id ? flowEntry : f));
+              },
+              removedService: (ref, service) => {
+                const id = service.id || ref.getProperty("flow.id");
+                this.flows = this.flows.filter((f) => f.id !== id);
+                context.ungetService(ref);
+              },
+            });
+            this._tracker.open();
+
+            const navFilter = `(objectClass=${NAV_SERVICE})`;
+            this._navTracker = context.trackService(navFilter, {
+              addingService: (ref) => {
+                const service = context.getService(ref);
+                if (service) {
+                  this.navServices = [...this.navServices, service];
+                }
+                return service;
+              },
+              modifiedService: (_ref, service) => {
+                this.navServices = this.navServices.map((
+                  s,
+                ) => (s.flowId === service.flowId ? service : s));
+              },
+              removedService: (ref, service) => {
+                this.navServices = this.navServices.filter((s) =>
+                  s.flowId !== service.flowId
+                );
+                context.ungetService(ref);
+              },
+            });
+            this._navTracker.open();
+
+            const envFilter = `(objectClass=${ENV_SERVICE})`;
+            this._envTracker = context.trackService(envFilter, {
+              addingService: (ref) => {
+                const service = context.getService(ref);
+                if (service) {
+                  this.envServices = [...this.envServices, service];
+                }
+                return service;
+              },
+              modifiedService: (_ref, service) => {
+                this.envServices = this.envServices.map((e) =>
+                  e.id === service.id ? service : e
+                );
+              },
+              removedService: (ref, service) => {
+                this.envServices = this.envServices.filter((e) =>
+                  e.id !== service.id
+                );
+                context.ungetService(ref);
+              },
+            });
+            this._envTracker.open();
+
+            const caFilter = `(objectClass=${CONFIG_ADMIN_SERVICE})`;
+            context.trackService(caFilter, {
+              addingService: (ref) => {
+                this.configAdmin = context.getService(ref);
+
+                // Initial Sidebar State
+                const props = this.configAdmin.getConfiguration(
+                  SHELL_CONFIG_PID,
+                ).getProperties();
+                if (props.showSidebar !== undefined) {
+                  this.sidebarOpen = props.showSidebar;
                 }
 
-                // CRITICAL: Check if we are waiting for this flow
-                if (
-                  this.activeFlowId === id ||
-                  (!this.activeFlowId && id === "real-life")
-                ) {
-                  console.log(
-                    "Shell: Auto-launching flow arrival:",
-                    id,
-                  );
-                  this.launchFlow(id, flowEntry);
-                }
-              }
-              return service;
-            },
-            modifiedService: (_ref, service) => {
-              const id = service.id || _ref.getProperty("flow.id");
-              const flowEntry = {
-                ...service,
-                id: id,
-                bsn: _ref.bundle.getSymbolicName(),
-                bundle: _ref.bundle,
-              };
-              this.flows = this.flows.map((
-                f,
-              ) => (f.id === id ? flowEntry : f));
-            },
-            removedService: (ref, service) => {
-              const id = service.id || ref.getProperty("flow.id");
-              this.flows = this.flows.filter((f) => f.id !== id);
-              context.ungetService(ref);
-            },
-          });
-          this._tracker.open();
-
-          const navFilter = `(objectClass=${NAV_SERVICE})`;
-          this._navTracker = context.trackService(navFilter, {
-            addingService: (ref) => {
-              const service = context.getService(ref);
-              if (service) {
-                this.navServices = [...this.navServices, service];
-              }
-              return service;
-            },
-            modifiedService: (_ref, service) => {
-              this.navServices = this.navServices.map((
-                s,
-              ) => (s.flowId === service.flowId ? service : s));
-            },
-            removedService: (ref, service) => {
-              this.navServices = this.navServices.filter((s) =>
-                s.flowId !== service.flowId
-              );
-              context.ungetService(ref);
-            },
-          });
-          this._navTracker.open();
-
-          const envFilter = `(objectClass=${ENV_SERVICE})`;
-          this._envTracker = context.trackService(envFilter, {
-            addingService: (ref) => {
-              const service = context.getService(ref);
-              if (service) {
-                this.envServices = [...this.envServices, service];
-              }
-              return service;
-            },
-            modifiedService: (_ref, service) => {
-              this.envServices = this.envServices.map((e) =>
-                e.id === service.id ? service : e
-              );
-            },
-            removedService: (ref, service) => {
-              this.envServices = this.envServices.filter((e) =>
-                e.id !== service.id
-              );
-              context.ungetService(ref);
-            },
-          });
-          this._envTracker.open();
-
-          const caFilter = `(objectClass=${CONFIG_ADMIN_SERVICE})`;
-          context.trackService(caFilter, {
-            addingService: (ref) => {
-              this.configAdmin = context.getService(ref);
-
-              // Initial Sidebar State
-              const props = this.configAdmin.getConfiguration(
-                SHELL_CONFIG_PID,
-              ).getProperties();
-              if (props.showSidebar !== undefined) {
-                this.sidebarOpen = props.showSidebar;
-              }
-
-              globalThis.addEventListener("config-updated", (ev) => {
-                if (ev.detail.pid === SHELL_CONFIG_PID) {
-                  if (ev.detail.properties.showSidebar !== undefined) {
-                    this.sidebarOpen = ev.detail.properties.showSidebar;
+                globalThis.addEventListener("config-updated", (ev) => {
+                  if (ev.detail.pid === SHELL_CONFIG_PID) {
+                    if (
+                      ev.detail.properties.showSidebar !== undefined
+                    ) {
+                      this.sidebarOpen =
+                        ev.detail.properties.showSidebar;
+                    }
                   }
-                }
-                this.flows = [...this.flows];
-              });
-            },
-          }).open();
-
-          window.addEventListener("shell-launch-flow", (e) => {
-            this.launchFlow(
-              e.detail.id,
-              null,
-              e.detail.step,
-              e.detail.params,
-            );
-          });
-
-          // DEBUGGER: Identify what is triggering reloads
-          window.addEventListener("beforeunload", (e) => {
-            console.log(
-              "Shell: Page UNLOAD triggered. Check stack trace if possible or recent logs.",
-            );
-            // Non-standard way to peek at who called it, but useful for manual devtools inspection
-            // debugger;
-          });
-        },
-
-        triggerSystemReset() {
-          const resetRefs = context.getServiceReferences(
-            SYSTEM_RESET_SERVICE,
-          );
-          if (resetRefs.length > 0) {
-            const resetSvc = context.getService(resetRefs[0]);
-            resetSvc.factoryReset();
-          } else {
-            // Fallback if bundle not started yet
-            if (
-              confirm(
-                "Reset ALL stored OSGi states across all tenants and backoffices? This CANNOT be undone.",
-              )
-            ) {
-              localStorage.clear();
-              location.reload();
-            }
-          }
-        },
-
-        async launchFlow(id, flow = null, step = null, params = {}) {
-          console.log(
-            `Shell: [Mission] Launch flow: ${id} Step: ${
-              step || params?.step || "null"
-            }`,
-          );
-
-          this.activeFlowId = id;
-          if (this.session) this.session.activeFlowId = id;
-
-          // Transition tick
-          this.flowTransitionReady = false;
-          setTimeout(() => (this.flowTransitionReady = true), 50);
-
-          let targetFlow = flow || this.flows.find((f) => f.id === id);
-          if (!targetFlow) {
-            console.warn(`Shell: Flow ${id} not found yet, waiting...`);
-            return;
-          }
-
-          // Wait for Alpine to render containers (if environment changed)
-          await Alpine.nextTick();
-
-          const containerId = this.envType === "mobile"
-            ? "flow-container-mobile"
-            : "flow-container";
-
-          let el = document.getElementById(containerId);
-
-          // Retry once with a small delay for deep template nesting
-          if (!el) {
-            await new Promise((r) => setTimeout(r, 50));
-            el = document.getElementById(containerId);
-          }
-
-          if (!el) {
-            console.error(
-              `Shell: Target container ${containerId} not found!`,
-            );
-            return;
-          }
-
-          if (targetFlow.launch) {
-            console.log(
-              `Shell: Calling flow.launch() on [${containerId}] for: ${id}`,
-            );
-            el.innerHTML = ""; // Clear previous flow content
-            this.activeFlowId = id; // Set active ID AFTER clearing the previous content to avoid teardown crashes
-
-            // Merge step into params if provided separately
-            const effectiveParams = { ...params };
-            if (step) effectiveParams.step = step;
-
-            targetFlow.launch(el, effectiveParams);
-          } else {
-            console.warn(`Shell: Flow ${id} has no launch method!`);
-          }
-        },
-
-        generateBootstrapCode() {
-          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-          const genBlock = () => {
-            let block = "";
-            for (let i = 0; i < 3; i++) {
-              block += chars.charAt(
-                Math.floor(Math.random() * chars.length),
-              );
-            }
-            return block;
-          };
-          return `${genBlock()}-${genBlock()}-${genBlock()}-${genBlock()}`;
-        },
-
-        async logout() {
-          const scope = this.activeFlowId || "global";
-          const user = (this.session?.scopedUsers || {})[scope] ||
-            (this.session?.scopedUsers || {})["global"];
-
-          if (user && user.scaStrategy === "bootstrap") {
-            const phone = prompt(
-              "Bootstrap Strategy Enforced: Please enter your phone number to secure your account before logging out:",
-              user["bootstrap-phonenumber"] || "",
-            );
-            if (phone) {
-              const newCode = this.generateBootstrapCode();
-              user["bootstrap-phonenumber"] = phone;
-              user["bootstrap-code"] = newCode;
-
-              // Persist via LicenseDataService
-              const licRef = context.getServiceReference(
-                "backoffice.licenses.data",
-              );
-              const licSvc = licRef ? context.getService(licRef) : null;
-              if (licSvc && licSvc.updateUser) {
-                licSvc.updateUser(user.licenseId, {
-                  id: user.id,
-                  "bootstrap-phonenumber": phone,
-                  "bootstrap-code": newCode,
+                  this.flows = [...this.flows];
                 });
-              }
+              },
+            }).open();
 
-              // Show modal
-              this.session.bootstrapCodeModal = {
-                show: true,
-                code: newCode,
-                phone,
-              };
-              // We don't return here yet, we wait for the modal to be closed in the UI
+            window.addEventListener("shell-launch-flow", (e) => {
+              this.launchFlow(
+                e.detail.id,
+                null,
+                e.detail.step,
+                e.detail.params,
+              );
+            });
+
+            // DEBUGGER: Identify what is triggering reloads
+            window.addEventListener("beforeunload", (e) => {
+              console.log(
+                "Shell: Page UNLOAD triggered. Check stack trace if possible or recent logs.",
+              );
+              // Non-standard way to peek at who called it, but useful for manual devtools inspection
+              // debugger;
+            });
+          },
+
+          triggerSystemReset() {
+            const resetRefs = context.getServiceReferences(
+              SYSTEM_RESET_SERVICE,
+            );
+            if (resetRefs.length > 0) {
+              const resetSvc = context.getService(resetRefs[0]);
+              resetSvc.factoryReset();
+            } else {
+              // Fallback if bundle not started yet
+              if (
+                confirm(
+                  "Reset ALL stored OSGi states across all tenants and backoffices? This CANNOT be undone.",
+                )
+              ) {
+                localStorage.clear();
+                location.reload();
+              }
+            }
+          },
+
+          async launchFlow(id, flow = null, step = null, params = {}) {
+            console.log(
+              `Shell: [Mission] Launch flow: ${id} Step: ${
+                step || params?.step || "null"
+              }`,
+            );
+
+            this.activeFlowId = id;
+            if (this.session) this.session.activeFlowId = id;
+
+            // Transition tick
+            this.flowTransitionReady = false;
+            setTimeout(() => (this.flowTransitionReady = true), 50);
+
+            let targetFlow = flow ||
+              this.flows.find((f) => f.id === id);
+            if (!targetFlow) {
+              console.warn(
+                `Shell: Flow ${id} not found yet, waiting...`,
+              );
               return;
             }
-          }
 
-          if (this.session) {
-            this.session.scopedUsers = {}; // SECURITY: Clear ALL session scopes
-          }
+            // Wait for Alpine to render containers (if environment changed)
+            await Alpine.nextTick();
 
-          // SECURITY FIX: Clear all selection contexts to prevent state leakage
-          const selectionRef = context.getServiceReference(
-            "prototyper.selection.service",
-          );
-          const selectionSvc = selectionRef
-            ? context.getService(selectionRef)
-            : null;
-          if (selectionSvc && selectionSvc.clearAllSelections) {
-            selectionSvc.clearAllSelections();
-          }
+            const containerId = this.envType === "mobile"
+              ? "flow-container-mobile"
+              : "flow-container";
 
-          this.sidebarOpen = false;
+            let el = document.getElementById(containerId);
 
-          if (this.envType === "mobile") {
-            this.launchFlow("mobile-launcher");
-          } else {
-            this.launchFlow("real-life"); // Redirect to home on logout
-          }
-        },
-
-        closeBootstrapModal() {
-          this.session.bootstrapCodeModal.show = false;
-
-          // Now actually logout
-          if (this.session) {
-            this.session.scopedUsers = {}; // SECURITY: Clear ALL session scopes
-          }
-
-          // SECURITY FIX: Clear all selection contexts to prevent state leakage
-          const selectionRef = context.getServiceReference(
-            "prototyper.selection.service",
-          );
-          const selectionSvc = selectionRef
-            ? context.getService(selectionRef)
-            : null;
-          if (selectionSvc && selectionSvc.clearAllSelections) {
-            selectionSvc.clearAllSelections();
-          }
-
-          this.sidebarOpen = false;
-
-          if (this.envType === "mobile") {
-            this.launchFlow("mobile-launcher");
-          } else {
-            this.launchFlow("real-life"); // Redirect to home
-          }
-        },
-      }));
-
-      Alpine.start();
-
-      // Hardcoded flow manifests (as per user modification)
-      const manifests = [
-        "./bundles/system-services/system-logger/manifest.json",
-        "./bundles/system-services/shared-ui-components/manifest.json",
-        "./bundles/system-services/global-state/manifest.json",
-        "./bundles/system-services/selection/manifest.json",
-        "./bundles/system-services/config-admin/manifest.json",
-        "./bundles/system-services/yaml-service/manifest.json",
-        "./bundles/system-services/backoffice-do-registry/manifest.json",
-        "./bundles/system-clients/person-registry/manifest.json",
-        "./bundles/system-clients/company-registry/manifest.json",
-        "./bundles/flows/sca-migration/manifest.json",
-        "./bundles/flows/promo-flow/manifest.json",
-        "./bundles/flows/cases/manifest.json",
-        "./bundles/flows/store/manifest.json",
-        "./bundles/flows/card-order/manifest.json",
-        "./bundles/flows/virtual-card-order/manifest.json",
-        "./bundles/flows/business-account-order/manifest.json",
-        "./bundles/flows/business-credit-card-order/manifest.json",
-        "./bundles/flows/redeem-invite/manifest.json",
-        "./bundles/flows/do-dashboard/manifest.json",
-        "./bundles/flows/bootstrap-license/manifest.json",
-        "./bundles/user-clients/legacy-app/manifest.json",
-        "./bundles/user-clients/modern-desktop-app/manifest.json",
-        "./bundles/flows/company-authorizations/manifest.json",
-        "./bundles/flows/signing/manifest.json",
-        "./bundles/system-services/backoffice-fellows/manifest.json",
-        "./bundles/user-services/invitation-admin/manifest.json",
-        "./bundles/user-services/user-management/manifest.json",
-        "./bundles/system-services/backoffice-tenants/manifest.json",
-        "./bundles/system-services/event-monitor/manifest.json",
-        "./bundles/real-life/dashboard/manifest.json",
-        "./bundles/flows/login/manifest.json",
-        "./bundles/flows/dashboard/manifest.json",
-        "./bundles/system-clients/backoffice-web/manifest.json",
-        "./bundles/system-services/backoffice-yaml-editor/manifest.json",
-        "./bundles/system-services/backoffice-capabilities/manifest.json",
-        "./bundles/system-services/backoffice-business-functions/manifest.json",
-        "./bundles/system-services/backoffice-rules/manifest.json",
-        "./bundles/system-services/backoffice-campaigns/manifest.json",
-        "./bundles/system-services/backoffice-topics/manifest.json",
-        "./bundles/system-services/backoffice-sca-methods/manifest.json",
-        "./bundles/system-services/backoffice-sca/manifest.json",
-        "./bundles/system-services/backoffice-licenses/manifest.json",
-        "./bundles/system-services/plexus/manifest.json",
-        "./bundles/system-services/backoffice-evaluation/manifest.json",
-        "./bundles/system-services/backoffice-signing/manifest.json",
-        "./bundles/system-services/backoffice-cases/manifest.json",
-        "./bundles/environments/web-browser/manifest.json",
-        "./bundles/system-services/limes/manifest.json",
-        "./bundles/user-clients/business-channel-web/manifest.json",
-        "./bundles/user-clients/retail-channel-app/manifest.json",
-        "./bundles/environments/space-time/manifest.json",
-        "./bundles/environments/mobile-device/manifest.json",
-        "./bundles/system-services/system-reset/manifest.json",
-        "./bundles/flows/user-home-business/manifest.json",
-        "./bundles/flows/user-home-retail/manifest.json",
-        "./bundles/system-services/email-data/manifest.json",
-        "./bundles/user-services/email-provider/manifest.json",
-        "./bundles/user-clients/email-client/manifest.json",
-        "./bundles/system-clients/case-monitor/manifest.json",
-        "./bundles/system-clients/email-monitor/manifest.json",
-        "./bundles/system-services/system-ready/manifest.json",
-        "./bundles/system-services/bpmn-engine/manifest.json",
-        "./bundles/flows/hello-bpmn/manifest.json",
-        "./bundles/system-services/outreach-service/manifest.json",
-        "./bundles/system-services/atomic-orchestrator/manifest.json",
-        "./bundles/flows/hello-world-do/manifest.json",
-      ];
-
-      const splashScreen = document.getElementById("splash-screen");
-      const splashStatus = document.getElementById("splash-status");
-      const splashProgress = document.getElementById("splash-progress");
-
-      let loadedCount = 0;
-      let bootErrors = [];
-
-      for (const manifestPath of manifests) {
-        let bsn = "unknown";
-        try {
-          loadedCount++;
-          const progress = (loadedCount / manifests.length) * 100;
-          if (splashProgress) {
-            splashProgress.style.width = `${progress}%`;
-          }
-
-          const bundle = await context.installBundle(manifestPath);
-          bsn = bundle.symbolicName ||
-            (bundle.getHeaders
-              ? bundle.getHeaders()["Bundle-SymbolicName"]
-              : "unknown");
-
-          if (splashStatus) {
-            splashStatus.innerText = `Loading bundle: ${bsn}...`;
-          }
-
-          console.log(
-            `[Shell] Proc: ${manifestPath} (BSN: ${bsn}, State: ${bundle.state})`,
-          );
-
-          // Only start if INSTALLED (2) or RESOLVED (4)
-          if (bundle.state === 2 || bundle.state === 4) {
-            await bundle.start();
-            if (bundle.state !== 32) {
-              const msg =
-                `Bundle ${bsn} failed to start (State: ${bundle.state}).`;
-              console.warn(
-                `[Shell] ${msg} This usually indicates missing or unresolved Require-Capability entries.`,
-              );
-              bootErrors.push(msg);
-            } else {
-              console.log(
-                `[Shell] Bundle ${bsn} started successfully.`,
-              );
+            // Retry once with a small delay for deep template nesting
+            if (!el) {
+              await new Promise((r) => setTimeout(r, 50));
+              el = document.getElementById(containerId);
             }
+
+            if (!el) {
+              console.error(
+                `Shell: Target container ${containerId} not found!`,
+              );
+              return;
+            }
+
+            if (targetFlow.launch) {
+              console.log(
+                `Shell: Calling flow.launch() on [${containerId}] for: ${id}`,
+              );
+              el.innerHTML = ""; // Clear previous flow content
+              this.activeFlowId = id; // Set active ID AFTER clearing the previous content to avoid teardown crashes
+
+              // Merge step into params if provided separately
+              const effectiveParams = { ...params };
+              if (step) effectiveParams.step = step;
+
+              targetFlow.launch(el, effectiveParams);
+            } else {
+              console.warn(`Shell: Flow ${id} has no launch method!`);
+            }
+          },
+
+          generateBootstrapCode() {
+            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            const genBlock = () => {
+              let block = "";
+              for (let i = 0; i < 3; i++) {
+                block += chars.charAt(
+                  Math.floor(Math.random() * chars.length),
+                );
+              }
+              return block;
+            };
+            return `${genBlock()}-${genBlock()}-${genBlock()}-${genBlock()}`;
+          },
+
+          async logout() {
+            const scope = this.activeFlowId || "global";
+            const user = (this.session?.scopedUsers || {})[scope] ||
+              (this.session?.scopedUsers || {})["global"];
+
+            if (user && user.scaStrategy === "bootstrap") {
+              const phone = prompt(
+                "Bootstrap Strategy Enforced: Please enter your phone number to secure your account before logging out:",
+                user["bootstrap-phonenumber"] || "",
+              );
+              if (phone) {
+                const newCode = this.generateBootstrapCode();
+                user["bootstrap-phonenumber"] = phone;
+                user["bootstrap-code"] = newCode;
+
+                // Persist via LicenseDataService
+                const licRef = context.getServiceReference(
+                  "backoffice.licenses.data",
+                );
+                const licSvc = licRef
+                  ? context.getService(licRef)
+                  : null;
+                if (licSvc && licSvc.updateUser) {
+                  licSvc.updateUser(user.licenseId, {
+                    id: user.id,
+                    "bootstrap-phonenumber": phone,
+                    "bootstrap-code": newCode,
+                  });
+                }
+
+                // Show modal
+                this.session.bootstrapCodeModal = {
+                  show: true,
+                  code: newCode,
+                  phone,
+                };
+                // We don't return here yet, we wait for the modal to be closed in the UI
+                return;
+              }
+            }
+
+            if (this.session) {
+              this.session.scopedUsers = {}; // SECURITY: Clear ALL session scopes
+            }
+
+            // SECURITY FIX: Clear all selection contexts to prevent state leakage
+            const selectionRef = context.getServiceReference(
+              "prototyper.selection.service",
+            );
+            const selectionSvc = selectionRef
+              ? context.getService(selectionRef)
+              : null;
+            if (selectionSvc && selectionSvc.clearAllSelections) {
+              selectionSvc.clearAllSelections();
+            }
+
+            this.sidebarOpen = false;
+
+            if (this.envType === "mobile") {
+              this.launchFlow("mobile-launcher");
+            } else {
+              this.launchFlow("real-life"); // Redirect to home on logout
+            }
+          },
+
+          closeBootstrapModal() {
+            this.session.bootstrapCodeModal.show = false;
+
+            // Now actually logout
+            if (this.session) {
+              this.session.scopedUsers = {}; // SECURITY: Clear ALL session scopes
+            }
+
+            // SECURITY FIX: Clear all selection contexts to prevent state leakage
+            const selectionRef = context.getServiceReference(
+              "prototyper.selection.service",
+            );
+            const selectionSvc = selectionRef
+              ? context.getService(selectionRef)
+              : null;
+            if (selectionSvc && selectionSvc.clearAllSelections) {
+              selectionSvc.clearAllSelections();
+            }
+
+            this.sidebarOpen = false;
+
+            if (this.envType === "mobile") {
+              this.launchFlow("mobile-launcher");
+            } else {
+              this.launchFlow("real-life"); // Redirect to home
+            }
+          },
+        }));
+
+        Alpine.start();
+
+        // Hardcoded flow manifests (as per user modification)
+        const manifests = [
+          "./bundles/system-services/system-logger/manifest.json",
+          "./bundles/system-services/shared-ui-components/manifest.json",
+          "./bundles/system-services/global-state/manifest.json",
+          "./bundles/system-services/selection/manifest.json",
+          "./bundles/system-services/config-admin/manifest.json",
+          "./bundles/system-services/yaml-service/manifest.json",
+          "./bundles/system-services/backoffice-do-registry/manifest.json",
+          "./bundles/system-clients/person-registry/manifest.json",
+          "./bundles/system-clients/company-registry/manifest.json",
+          "./bundles/flows/sca-migration/manifest.json",
+          "./bundles/flows/promo-flow/manifest.json",
+          "./bundles/flows/cases/manifest.json",
+          "./bundles/flows/store/manifest.json",
+          "./bundles/flows/card-order/manifest.json",
+          "./bundles/flows/virtual-card-order/manifest.json",
+          "./bundles/flows/business-account-order/manifest.json",
+          "./bundles/flows/business-credit-card-order/manifest.json",
+          "./bundles/flows/redeem-invite/manifest.json",
+          "./bundles/flows/do-dashboard/manifest.json",
+          "./bundles/flows/bootstrap-license/manifest.json",
+          "./bundles/user-clients/legacy-app/manifest.json",
+          "./bundles/user-clients/modern-desktop-app/manifest.json",
+          "./bundles/flows/company-authorizations/manifest.json",
+          "./bundles/flows/signing/manifest.json",
+          "./bundles/system-services/backoffice-fellows/manifest.json",
+          "./bundles/user-services/invitation-admin/manifest.json",
+          "./bundles/user-services/user-management/manifest.json",
+          "./bundles/system-services/backoffice-tenants/manifest.json",
+          "./bundles/system-services/event-monitor/manifest.json",
+          "./bundles/real-life/dashboard/manifest.json",
+          "./bundles/flows/login/manifest.json",
+          "./bundles/flows/dashboard/manifest.json",
+          "./bundles/system-clients/backoffice-web/manifest.json",
+          "./bundles/system-services/backoffice-yaml-editor/manifest.json",
+          "./bundles/system-services/backoffice-capabilities/manifest.json",
+          "./bundles/system-services/backoffice-business-functions/manifest.json",
+          "./bundles/system-services/backoffice-rules/manifest.json",
+          "./bundles/system-services/backoffice-campaigns/manifest.json",
+          "./bundles/system-services/backoffice-topics/manifest.json",
+          "./bundles/system-services/backoffice-sca-methods/manifest.json",
+          "./bundles/system-services/backoffice-sca/manifest.json",
+          "./bundles/system-services/backoffice-licenses/manifest.json",
+          "./bundles/system-services/plexus/manifest.json",
+          "./bundles/system-services/backoffice-evaluation/manifest.json",
+          "./bundles/system-services/backoffice-signing/manifest.json",
+          "./bundles/system-services/backoffice-cases/manifest.json",
+          "./bundles/environments/web-browser/manifest.json",
+          "./bundles/system-services/limes/manifest.json",
+          "./bundles/user-clients/business-channel-web/manifest.json",
+          "./bundles/user-clients/retail-channel-app/manifest.json",
+          "./bundles/environments/space-time/manifest.json",
+          "./bundles/environments/mobile-device/manifest.json",
+          "./bundles/system-services/system-reset/manifest.json",
+          "./bundles/flows/user-home-business/manifest.json",
+          "./bundles/flows/user-home-retail/manifest.json",
+          "./bundles/system-services/email-data/manifest.json",
+          "./bundles/user-services/email-provider/manifest.json",
+          "./bundles/user-clients/email-client/manifest.json",
+          "./bundles/system-clients/case-monitor/manifest.json",
+          "./bundles/system-clients/email-monitor/manifest.json",
+          "./bundles/system-services/system-ready/manifest.json",
+          "./bundles/system-services/bpmn-engine/manifest.json",
+          "./bundles/flows/hello-bpmn/manifest.json",
+          "./bundles/system-services/outreach-service/manifest.json",
+          "./bundles/system-services/atomic-orchestrator/manifest.json",
+          "./bundles/flows/hello-world-do/manifest.json",
+          "./bundles/system-clients/shell-cli/manifest.json",
+        ];
+
+        const splashScreen = document.getElementById("splash-screen");
+        const splashStatus = document.getElementById("splash-status");
+        const splashProgress = document.getElementById(
+          "splash-progress",
+        );
+
+        let loadedCount = 0;
+        let bootErrors = [];
+
+        for (const manifestPath of manifests) {
+          let bsn = "unknown";
+          try {
+            loadedCount++;
+            const progress = (loadedCount / manifests.length) * 100;
+            if (splashProgress) {
+              splashProgress.style.width = `${progress}%`;
+            }
+
+            const bundle = await context.installBundle(manifestPath);
+            bsn = bundle.symbolicName ||
+              (bundle.getHeaders
+                ? bundle.getHeaders()["Bundle-SymbolicName"]
+                : "unknown");
+
+            if (splashStatus) {
+              splashStatus.innerText = `Loading bundle: ${bsn}...`;
+            }
+
+            console.log(
+              `[Shell] Proc: ${manifestPath} (BSN: ${bsn}, State: ${bundle.state})`,
+            );
+
+            // Only start if INSTALLED (2) or RESOLVED (4)
+            if (bundle.state === 2 || bundle.state === 4) {
+              await bundle.start();
+              if (bundle.state !== 32) {
+                const msg =
+                  `Bundle ${bsn} failed to start (State: ${bundle.state}).`;
+                console.warn(
+                  `[Shell] ${msg} This usually indicates missing or unresolved Require-Capability entries.`,
+                );
+                bootErrors.push(msg);
+              } else {
+                console.log(
+                  `[Shell] Bundle ${bsn} started successfully.`,
+                );
+              }
+            }
+          } catch (e) {
+            console.error(`[Shell] Failed bundle ${manifestPath}:`, e);
+            bootErrors.push(
+              `Activator start error in ${bsn}: ${e.message}`,
+            );
           }
-        } catch (e) {
-          console.error(`[Shell] Failed bundle ${manifestPath}:`, e);
-          bootErrors.push(
-            `Activator start error in ${bsn}: ${e.message}`,
-          );
         }
-      }
 
-      const readyFilter = `(objectClass=${SYSTEM_READY_SERVICE})`;
+        const readyFilter = `(objectClass=${SYSTEM_READY_SERVICE})`;
 
-      const showRedScreen = (errors) => {
-        if (
-          splashScreen && !splashScreen.classList.contains("opacity-0")
-        ) {
-          splashScreen.className =
-            "fixed inset-0 z-[1000] bg-red-950 flex flex-col items-center justify-center p-8 transition-all duration-500 overflow-hidden";
-          splashScreen.innerHTML = `
+        const showRedScreen = (errors) => {
+          if (
+            splashScreen &&
+            !splashScreen.classList.contains("opacity-0")
+          ) {
+            splashScreen.className =
+              "fixed inset-0 z-[1000] bg-red-950 flex flex-col items-center justify-center p-8 transition-all duration-500 overflow-hidden";
+            splashScreen.innerHTML = `
                   <!-- Blood red cinematic background pulse -->
                   <div class="absolute inset-0 bg-red-600/10 blur-[100px] scale-150 animate-pulse"></div>
                   
@@ -1198,13 +1216,13 @@
                         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-900 via-red-500 to-red-900 opacity-50"></div>
                         <ul class="text-red-400 font-mono text-xs space-y-3">
                             ${
-            errors.map((err) => `
+              errors.map((err) => `
                               <li class="flex items-start">
                                 <span class="text-red-600 mr-2">>></span>
                                 <span class="break-all">${err}</span>
                               </li>
                             `).join("")
-          }
+            }
                         </ul>
                       </div>
                       
@@ -1214,97 +1232,109 @@
                       </button>
                   </div>
               `;
-        }
-      };
+          }
+        };
 
-      // Global watcher for async bundle start failures (e.g. from deferred OSGi resolution)
-      window.addEventListener("unhandledrejection", function (event) {
-        const errStr = event.reason
-          ? (event.reason.message || String(event.reason))
-          : "Unknown Error";
-        if (
-          errStr.includes("test") ||
-          errStr.toLowerCase().includes("error")
-        ) {
-          bootErrors.push(`[Async Fallback] ${errStr}`);
-          showRedScreen(bootErrors);
-        }
-      });
-
-      let bootTimeout;
-      const checkTimeout = () => {
-        const notActive = context.getBundles().filter((b) =>
-          b.state !== 32 && b.state !== 1 && b.state !== "ACTIVE" &&
-          b.state !== "UNINSTALLED"
-        );
-        if (notActive.length > 0) {
-          bootErrors.push(
-            `[Boot Timeout] The following bundles failed to reach ACTIVE state: ${
-              notActive.map((b) => (b.getSymbolicName
-                ? b.getSymbolicName()
-                : (b.symbolicName || (b.getHeaders
-                  ? b.getHeaders()["Bundle-SymbolicName"]
-                  : b.id)))
-              ).join(", ")
-            }`,
-          );
-        } else {
-          bootErrors.push(
-            "[Boot Timeout] System Ready service was never registered.",
-          );
-        }
-        showRedScreen(bootErrors);
-      };
-
-      if (bootErrors.length > 0) {
-        showRedScreen(bootErrors);
-
-        // Still track READY in background, but the user must click the button to dismiss the splash
-        context.trackService(readyFilter, {
-          addingService: () =>
-            console.log(
-              "Shell: [SYSTEM READY] Service arrived! (Hidden behind error screen)",
-            ),
-        }).open();
-      } else {
-        // Wait for Universe to be "Ready" (OSGi Style)
-        if (splashStatus) {
-          splashStatus.innerText =
-            "Aligning the stars (Waiting for data)...";
-        }
-
-        bootTimeout = setTimeout(checkTimeout, 8000); // 8 seconds absolute maximum timeout
-
-        context.trackService(readyFilter, {
-          addingService: (ref) => {
-            clearTimeout(bootTimeout);
-            console.log("Shell: [SYSTEM READY] Service arrived!");
-            if (splashStatus) {
-              splashStatus.innerText = "Universe Ready!";
-            }
-            if (splashScreen) {
-              splashScreen.classList.add("opacity-0");
-              splashScreen.classList.add("scale-150");
-              setTimeout(() => splashScreen.remove(), 1000);
-            }
-          },
-        }).open();
-      }
-
-      // Final Diagnostic
-      setTimeout(() => {
-        console.log("--- FINAL BUNDLE DIAGNOSTICS ---");
-        const bundles = context.getBundles();
-        bundles.forEach((b) => {
-          const bsn = b.symbolicName ||
-            (b.getHeaders
-              ? b.getHeaders()["Bundle-SymbolicName"]
-              : "unknown");
-          console.log(
-            `Bundle: ${bsn}, State: ${b.state} (Active=32, Resolved=4, Installed=2)`,
-          );
+        // Global watcher for async bundle start failures (e.g. from deferred OSGi resolution)
+        window.addEventListener("unhandledrejection", function (event) {
+          const errStr = event.reason
+            ? (event.reason.message || String(event.reason))
+            : "Unknown Error";
+          if (
+            errStr.includes("test") ||
+            errStr.toLowerCase().includes("error")
+          ) {
+            bootErrors.push(`[Async Fallback] ${errStr}`);
+            showRedScreen(bootErrors);
+          }
         });
-      }, 1000);
+
+        let bootTimeout;
+        const checkTimeout = () => {
+          const notActive = context.getBundles().filter((b) =>
+            b.state !== 32 && b.state !== 1 && b.state !== "ACTIVE" &&
+            b.state !== "UNINSTALLED"
+          );
+          if (notActive.length > 0) {
+            bootErrors.push(
+              `[Boot Timeout] The following bundles failed to reach ACTIVE state: ${
+                notActive.map((b) => (b.getSymbolicName
+                  ? b.getSymbolicName()
+                  : (b.symbolicName || (b.getHeaders
+                    ? b.getHeaders()["Bundle-SymbolicName"]
+                    : b.id)))
+                ).join(", ")
+              }`,
+            );
+          } else {
+            bootErrors.push(
+              "[Boot Timeout] System Ready service was never registered.",
+            );
+          }
+          showRedScreen(bootErrors);
+        };
+
+        if (bootErrors.length > 0) {
+          showRedScreen(bootErrors);
+
+          // Still track READY in background, but the user must click the button to dismiss the splash
+          context.trackService(readyFilter, {
+            addingService: () =>
+              console.log(
+                "Shell: [SYSTEM READY] Service arrived! (Hidden behind error screen)",
+              ),
+          }).open();
+        } else {
+          // Wait for Universe to be "Ready" (OSGi Style)
+          if (splashStatus) {
+            splashStatus.innerText =
+              "Aligning the stars (Waiting for data)...";
+          }
+
+          bootTimeout = setTimeout(checkTimeout, 8000); // 8 seconds absolute maximum timeout
+
+          context.trackService(readyFilter, {
+            addingService: (ref) => {
+              clearTimeout(bootTimeout);
+              console.log("Shell: [SYSTEM READY] Service arrived!");
+              if (splashStatus) {
+                splashStatus.innerText = "Universe Ready!";
+              }
+              if (splashScreen) {
+                splashScreen.classList.add("opacity-0");
+                splashScreen.classList.add("scale-150");
+                setTimeout(() => splashScreen.remove(), 1000);
+              }
+            },
+          }).open();
+        }
+
+        // Final Diagnostic
+        setTimeout(() => {
+          console.log("--- FINAL BUNDLE DIAGNOSTICS ---");
+          const bundles = context.getBundles();
+          bundles.forEach((b) => {
+            const bsn = b.symbolicName ||
+              (b.getHeaders
+                ? b.getHeaders()["Bundle-SymbolicName"]
+                : "unknown");
+            console.log(
+              `Bundle: ${bsn}, State: ${b.state} (Active=32, Resolved=4, Installed=2)`,
+            );
+          });
+        }, 1000);
+      };
+
+      // AUTH GATEKEEPER - Only start the universe if authenticated and on allowlist
+      checkAccess()
+        .then((user) => {
+          console.log("Shell: [AUTH ACCESS GRANTED]", user.email);
+          initUniverse();
+        })
+        .catch((err) => {
+          console.error("Shell: [AUTH ACCESS DENIED]", err);
+          // Redirect or show a more permanent error screen if needed
+        });
     </script>
   </body>
 </html>

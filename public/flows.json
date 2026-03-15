@@ -3,5 +3,6 @@
   "./bundles/flows/dashboard/manifest.json",
   "./bundles/system-clients/person-registry/manifest.json",
   "./bundles/system-clients/company-registry/manifest.json",
+  "./bundles/system-clients/shell-cli/manifest.json",
   "./bundles/system-clients/backoffice/manifest.json"
 ]

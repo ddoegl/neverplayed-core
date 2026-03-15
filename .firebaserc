@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "cladmin-bc594"
+  },
+  "targets": {
+    "cladmin-bc594": {
+      "hosting": {
+        "main": [
+          "neverplayed"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

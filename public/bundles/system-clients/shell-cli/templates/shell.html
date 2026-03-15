@@ -1,0 +1,75 @@
+<div class="h-full flex flex-col bg-slate-950 font-mono text-xs text-blue-400 p-4 overflow-hidden" 
+     x-data="globalThis.getShellScope()"
+     @click="$refs.commandInput.focus()">
+    
+    <!-- Shell Header -->
+    <div class="flex items-center justify-between border-b border-blue-900/50 pb-2 mb-4 shrink-0">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-terminal text-blue-500"></i>
+            <span class="font-bold tracking-widest uppercase opacity-70">Neverplayed Shell v1.0.0</span>
+        </div>
+        <div class="flex gap-2">
+            <div class="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
+            <div class="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50"></div>
+        </div>
+    </div>
+
+    <!-- Output Area -->
+    <div class="flex-1 overflow-y-auto space-y-2 mb-4 scrollbar-thin scrollbar-thumb-blue-900" x-ref="outputArea">
+        <template x-for="log in history" :key="log.timestamp">
+            <div class="flex gap-3 animate-fade-in">
+                <span class="opacity-30 shrink-0" x-text="log.time"></span>
+                <div class="flex-1">
+                    <template x-if="log.type === 'input'">
+                        <div class="flex items-center gap-2">
+                            <span class="text-blue-600 font-bold">$</span>
+                            <span class="text-white" x-text="log.content"></span>
+                        </div>
+                    </template>
+                    <template x-if="log.type === 'output'">
+                        <div class="text-blue-300 leading-relaxed" x-html="log.content"></div>
+                    </template>
+                    <template x-if="log.type === 'error'">
+                        <div class="text-red-400 font-bold" x-text="log.content"></div>
+                    </template>
+                    <template x-if="log.type === 'success'">
+                        <div class="text-emerald-400" x-text="log.content"></div>
+                    </template>
+                </div>
+            </div>
+        </template>
+        
+        <!-- Welcome Message -->
+        <div class="py-4 opacity-50 italic">
+            Connection established. Type /help for available commands.
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="flex items-center gap-2 bg-blue-950/20 border border-blue-900/50 rounded-lg px-3 py-2 shrink-0">
+        <span class="text-blue-600 font-bold animate-pulse">></span>
+        <input type="text" 
+               x-model="currentCommand" 
+               x-ref="commandInput"
+               @keydown.enter="executeCommand()"
+               @keydown.up="navigateHistory(-1)"
+               @keydown.down="navigateHistory(1)"
+               placeholder="Enter command..."
+               class="bg-transparent border-none outline-none text-white w-full placeholder:text-blue-900" 
+               autofocus>
+    </div>
+
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.15s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #1e3a8a; border-radius: 10px; }
+    </style>
+</div>
