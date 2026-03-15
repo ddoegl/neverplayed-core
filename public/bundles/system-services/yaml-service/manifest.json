@@ -1,0 +1,6 @@
+{
+  "Bundle-SymbolicName": "pandino.util.yaml",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Provide-Capability": "pandino.util.yaml;version=\"1.0.0\""
+}

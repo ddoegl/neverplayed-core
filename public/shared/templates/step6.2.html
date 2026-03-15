@@ -1,0 +1,107 @@
+<div class="h-full" x-data="{ approval: { approved: false } }">
+    <div class="grid grid-cols-4 gap-4">
+        <!-- Main Card: Review Data -->
+        <div class="col-span-2 bg-white p-6 rounded shadow-md">
+            <h3 class="text-xl font-bold mb-4">Step 6.2: Review and Admit</h3>
+
+            <p class="mb-4 text-sm">
+                Review the provided data and conclude the invitation process.
+            </p>
+            <p class="mb-4 text-sm font-bold">
+                Here are the details provided by the invitee:
+            </p>
+
+            <div class="space-y-4 mb-6 border p-4 rounded bg-gray-50">
+                <div>
+                    <span class="block text-xs text-gray-500 uppercase"
+                    >Full Name</span>
+                    <span
+                        class="font-bold"
+                        x-text="currentFellow?.firstname + ' ' + currentFellow?.lastname"
+                    >July Wiser</span>
+                </div>
+                <div>
+                    <span class="block text-xs text-gray-500 uppercase"
+                    >Birth Date (Security Feature)</span>
+                    <span
+                        class="font-bold"
+                        x-text="currentFellow?.birthdate || '31.08.1984'"
+                    >31.08.1984</span>
+                </div>
+                <div>
+                    <span class="block text-xs text-gray-500 uppercase"
+                    >Security Question Answer</span>
+                    <span
+                        class="font-bold"
+                        x-text="invitation?.securityAnswer || '42'"
+                    >42</span>
+                    <span class="text-xs text-gray-400 block"
+                    >(Question: "<span
+                            x-text="invitation?.securityQuestion"
+                        ></span>")</span>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="flex items-center space-x-2">
+                    <input
+                        type="checkbox"
+                        class="form-checkbox h-5 w-5 text-blue-600"
+                        x-model="approval.approved"
+                    >
+                    <span class="font-bold text-sm">Approve Invitation</span>
+                </label>
+                <p class="text-xs text-gray-500 mt-1 ml-7">
+                    Approve the invitation if all data matches your records.
+                </p>
+            </div>
+
+            <div class="bg-blue-50 text-blue-800 p-3 rounded text-xs mb-6">
+                <p>
+                    Ensure all data matches your records before approving. If
+                    data is incomplete, you can reject or inquire further.
+                </p>
+            </div>
+
+            <div class="flex space-x-4">
+                <button
+                    class="bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                    @click="if(approval.approved) { loadStep('step7') } else { alert('Please check the approval box.') }"
+                    :class="{ 'opacity-50 cursor-not-allowed': !approval.approved }"
+                >
+                    Approve
+                </button>
+                <button
+                    class="text-red-600 hover:underline font-bold py-2 px-4 rounded"
+                >
+                    Reject
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar: Context -->
+        <div class="col-span-2 bg-white p-6 rounded shadow-md h-full">
+            <h3 class="text-xl font-bold mb-4">Context</h3>
+            <p class="text-sm text-gray-600">
+                You are reviewing the redemption of an invitation sent to <span
+                    x-text="currentFellow?.firstname + ' ' + currentFellow?.lastname"
+                >July Wiser</span>.
+            </p>
+            <div class="mt-8 p-4 bg-gray-100 rounded text-center">
+                <div
+                    class="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center text-xl font-bold"
+                    x-text="(currentFellow?.firstname?.[0] || '') + (currentFellow?.lastname?.[0] || '')"
+                >
+                    JW
+                </div>
+                <p
+                    class="font-bold"
+                    x-text="currentFellow?.firstname + ' ' + currentFellow?.lastname"
+                >
+                    July Wiser
+                </p>
+                <p class="text-xs text-gray-500">Invitee</p>
+            </div>
+        </div>
+    </div>
+</div>

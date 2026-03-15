@@ -1,0 +1,74 @@
+id: sample-do
+label: Sample Remote DO
+domainObject:
+  strategyId: REMOTE_STRATEGY
+  label: Remote Strategy
+  limesPrefix: REMOTE
+  properties:
+    "Source": "Server"
+    "Version": "1.0.0"
+  actions:
+    - id: view
+      label: View Details
+      icon: fas fa-eye
+    - id: edit
+      label: Edit Metadata
+      icon: fas fa-edit
+
+permissionKeys:
+  REMOTE_VIEW:
+    id: REMOTE_VIEW
+    label: "remote:view"
+    value: "remote:view"
+  REMOTE_EDIT:
+    id: REMOTE_EDIT
+    label: "remote:edit"
+    value: "remote:edit"
+
+features:
+  REMOTE_ATOMIC:
+    id: REMOTE_ATOMIC
+    label: "remote:atomic"
+    description: "Access to Atomic Remote features"
+    keys:
+      - REMOTE_VIEW
+      - REMOTE_EDIT
+
+capabilities:
+  - id: REMOTE_WORLD_ADMIN
+    operator: "OR"
+    matchers:
+      - type: "matchAlways"
+    features:
+      - id: "REMOTE_ATOMIC"
+        keys:
+          - REMOTE_VIEW
+          - REMOTE_EDIT
+
+guards:
+  - id: REMOTE_VIEW
+    operator: "OR"
+    matchers:
+      - type: "matchAlways"
+    features:
+      - id: "REMOTE_ATOMIC"
+        keys:
+          - REMOTE_VIEW
+  - id: REMOTE_EDIT
+    operator: "OR"
+    matchers:
+      - type: "matchAlways"
+    features:
+      - id: "REMOTE_ATOMIC"
+        keys:
+          - REMOTE_EDIT
+
+ui:
+  parts:
+    "banner":
+      type: "text"
+      value: "This Domain Object was ingested from the server! 🌐⚡️"
+    "btn":
+      type: "button"
+      label: "Acknowledge"
+      action: "ACK"

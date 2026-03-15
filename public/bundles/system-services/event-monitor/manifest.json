@@ -1,0 +1,16 @@
+{
+  "Bundle-SymbolicName": "event-monitor",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Configuration": {
+    "flowType": "system-flow",
+    "channels": ["real-life"],
+    "level": "INFO",
+    "topics": ["backoffice/invitations/*"]
+  },
+  "Require-Capability": [
+    "osgi.service; filter=\"(objectClass=pandino.persistence.manager)\"",
+    "osgi.service; filter=\"(objectClass=prototyper.config.admin)\"",
+    "osgi.service; filter=\"(objectClass=@pandino/log-service)\""
+  ]
+}

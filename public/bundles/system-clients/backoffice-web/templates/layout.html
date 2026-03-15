@@ -1,0 +1,22 @@
+<div
+  class="bg-gray-100 text-gray-900 min-h-full flex flex-col font-sans relative pb-10"
+>
+  <header
+    x-show="false"
+    class="px-8 py-4 bg-gray-50 border-b border-gray-200 backdrop-blur-md flex flex-col xl:flex-row xl:justify-between xl:items-center gap-4 z-10"
+  >
+    <!-- Hidden as it's now in the shell's secondary sidebar -->
+  </header>
+
+  <div class="flex-1 w-full max-w-[1600px] mx-auto overflow-y-auto z-0">
+    <!-- Flow Content Area -->
+    <div id="backoffice-content-area" class="flex flex-col flex-1 h-full min-h-0 bg-transparent rounded-xl">
+      {{{flowContent}}}
+    </div>
+  </div>
+
+  <!-- Dynamic Plugin Overlays -->
+  <template x-for="(overlay, index) in host.pluginOverlays" :key="index">
+    <div x-html="overlay"></div>
+  </template>
+</div>

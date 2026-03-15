@@ -1,0 +1,18 @@
+{
+  "Bundle-ManifestVersion": "1",
+  "Bundle-SymbolicName": "backoffice-web",
+  "Bundle-Name": "Backoffice Flow",
+  "Bundle-Description": "Administrative Backoffice Flow",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js",
+  "Bundle-Assets": "templates/layout.html",
+  "Provide-Capability": "backoffice.shell;version=\"1.0.0\"",
+  "Require-Capability": [
+    "osgi.service; filter:=\"(objectClass=infrastructure.persons.data)\"",
+    "osgi.service; filter:=\"(objectClass=infrastructure.companies.data)\""
+  ],
+  "Configuration": {
+    "flowType": "system-flow",
+    "channels": ["real-life", "business-portal", "web-browser"]
+  }
+}

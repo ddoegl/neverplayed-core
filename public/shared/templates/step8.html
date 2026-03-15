@@ -1,0 +1,38 @@
+<div class="h-full flex flex-col justify-center items-center">
+    <!-- Success Card -->
+    <div class="bg-white p-8 rounded shadow-md max-w-lg w-full text-center">
+        <div
+            class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-4xl mb-6 mx-auto"
+        >
+            <i class="fas fa-check"></i>
+        </div>
+
+        <h3 class="text-2xl font-bold mb-4">Order Processed Successfully!</h3>
+        <p class="text-lg text-gray-600 mb-8">
+            The Virtual Business Card for <strong>July Wiser</strong> has been
+            successfully authorized and ordered.
+        </p>
+
+        <div class="bg-gray-50 p-4 rounded mb-8 text-left text-sm">
+            <p>
+                <span class="font-bold">Company:</span> Bike Value Logistics
+                GmbH
+            </p>
+            <p><span class="font-bold">Card Holder:</span> July Wiser</p>
+            <p><span class="font-bold">Status:</span> Active & Ready</p>
+        </div>
+
+        <button
+            class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow hover:bg-blue-700 transition"
+            @click="loadStep('step0')"
+        >
+            Start New Authorization
+        </button>
+        <button
+            class="mt-4 text-blue-600 hover:underline"
+            @click="window.location.reload()"
+        >
+            Return to Dashboard
+        </button>
+    </div>
+</div>

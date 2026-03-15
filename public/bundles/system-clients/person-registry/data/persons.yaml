@@ -1,0 +1,75 @@
+- id: rob
+  firstname: Rob
+  lastname: Richter
+  birthdate: "1978-04-03"
+  userids: ["rob", "robby"]
+  emails: ["rob.richter@some.mail.provider"]
+  authorizations:
+    - company: bikevalue
+      authorizations: ["CARDADMINISTRATION"]
+    - company: annahobs
+      authorizations: ["GENERAL"]
+  template: content/persons/person.md
+- id: july
+  firstname: July
+  lastname: Wiser
+  birthdate: "1984-08-31"
+  emails: ["july.wiser@some.mail.provider"]
+  authorizations: []
+  template: content/persons/person.md
+- id: anna
+  firstname: Anna
+  lastname: Hobs
+  birthdate: "1975-07-08"
+  emails: ["anna@mail"]
+  authorizations: []
+  template: content/persons/person.md
+- id: john
+  firstname: John
+  lastname: Mayor
+  birthdate: "1972-02-04"
+  emails: ["john.mayor@some.mail.provider"]
+  authorizations: []
+  template: content/persons/person.md
+- id: bactor
+  firstname: Adam
+  lastname: Bactor
+  birthdate: "1996-06-17"
+  emails: ["*", "adam.bactor@some.mail.provider"]
+  authorizations: []
+  template: content/persons/person.md
+- id: joemiller
+  firstname: Joe
+  lastname: Miller
+  birthdate: "2000-02-13"
+  emails:
+    - joe.miller@some.mail.provider
+- id: dd
+  firstname: Daniel
+  lastname: Doegl
+  birthdate: "1972-07-16"
+  emails: ["dd@mail"]
+  authorizations: []
+  template: content/persons/person.md
+- id: sc-admin
+  firstname: Sarah
+  lastname: Admin
+  birthdate: "1985-05-15"
+  emails: ["sarah.admin@testing.mail"]
+  userids: ["sc-admin", "sc-locked"]
+- id: sc-user-1
+  firstname: Mike
+  lastname: Migrator
+  birthdate: "1990-01-20"
+  emails: ["mike.migrator@testing.mail"]
+  userids: [
+    "sc-user-1",
+    "sc-user-2",
+    "sc-user-3",
+    "sc-user-4",
+    "sc-user-5",
+    "sc-user-6",
+    "sc-user-card",
+    "sc-user-sms",
+    "sc-user-modern",
+  ]

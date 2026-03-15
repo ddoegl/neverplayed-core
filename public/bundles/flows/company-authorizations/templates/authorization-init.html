@@ -1,0 +1,338 @@
+<div
+  class="col-span-4 h-full flex flex-col"
+  @fellows-updated.window="updateTrigger++"
+  @invitations-updated.window="updateTrigger++"
+>
+  <h1>
+    License Member Profile
+  </h1>
+  <!-- Main Tabs -->
+  <div class="flex space-x-8 border-b border-gray-300 mb-6">
+    <a
+      href="#"
+      class="pb-3 text-lg font-bold transition-colors duration-200 focus:outline-none"
+      :class="currentMainTab === 'company' ? 'border-b-4 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700 border-b-4 border-transparent'"
+      @click.prevent="currentMainTab = 'company'"
+      x-text="selectedCompany?.name || (selectedCompany?.firstname + ' ' + selectedCompany?.lastname)"
+    >
+      License Member Profile
+    </a>
+    <a
+      href="#"
+      class="pb-3 text-lg font-bold transition-colors duration-200 focus:outline-none"
+      :class="currentMainTab === 'fellows' ? 'border-b-4 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700 border-b-4 border-transparent'"
+      @click.prevent="currentMainTab = 'fellows'"
+    >
+      Fellows
+    </a>
+  </div>
+
+  <!-- View 1: Company Profile -->
+  <div x-show="currentMainTab === 'company'" class="flex-1 overflow-y-auto">
+    <div class="flex justify-start ml-8">
+      <div x-html="selectedCompany?.html" class="prose max-w-none"></div>
+    </div>
+  </div>
+
+  <!-- View 2: Fellows -->
+  <div
+    x-show="currentMainTab === 'fellows'"
+    class="flex-1 flex flex-col h-[calc(100vh-200px)]"
+  >
+    <!-- Fellow Tabs (Text Only) -->
+    <div class="flex space-x-6 border-b border-gray-200 mb-4 px-1">
+      <a
+        href="#"
+        class="pb-2 text-sm font-medium transition-colors duration-200 focus:outline-none"
+        :class="currentFellowTab === 'authorized' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-900 border-b-2 border-transparent'"
+        @click.prevent="currentFellowTab = 'authorized'"
+      >
+        Authorized <span
+          class="text-xs ml-1 bg-gray-300 text-gray-600 py-0.5 px-2 rounded-full"
+          x-text="getTabCount('authorized')"
+        ></span>
+      </a>
+      <a
+        href="#"
+        class="pb-2 text-sm font-medium transition-colors duration-200 focus:outline-none"
+        :class="currentFellowTab === 'employees' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-900 border-b-2 border-transparent'"
+        @click.prevent="currentFellowTab = 'employees'"
+      >
+        Employees & Affiliates <span
+          class="text-xs ml-1 bg-gray-300 text-gray-600 py-0.5 px-2 rounded-full"
+          x-text="getTabCount('employees')"
+        ></span>
+      </a>
+      <a
+        href="#"
+        class="pb-2 text-sm font-medium transition-colors duration-200 focus:outline-none"
+        :class="currentFellowTab === 'invitations' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-900 border-b-2 border-transparent'"
+        @click.prevent="currentFellowTab = 'invitations'; closeModal()"
+      >
+        Invitations <span
+          class="text-xs ml-1 bg-gray-300 text-gray-600 py-0.5 px-2 rounded-full"
+          x-text="filteredInvitations.filter(i => ['sent','redeemed'].includes(i.status)).length"
+        ></span>
+      </a>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="mb-4">
+      <div class="relative">
+        <input
+          type="text"
+          x-model="searchQuery"
+          placeholder="Search fellows by name..."
+          class="w-full border rounded pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+        <div
+          class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+        >
+          <svg
+            class="h-5 w-5 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            >
+            </path>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Horizontal Filters (Only for Authorized Tab) -->
+    <div class="mb-6" x-show="currentFellowTab === 'authorized'">
+      <div class="flex flex-wrap gap-4 items-center">
+        <span class="text-xs font-bold uppercase text-gray-500 mr-2"
+        >Filter:</span>
+        <template x-for="auth in authorizations" :key="auth.id">
+          <label
+            class="flex items-center space-x-2 cursor-pointer"
+            x-show="auth.manageable || getAuthorizationCount(auth.id) > 0"
+          >
+            <input
+              type="checkbox"
+              :value="auth.id"
+              x-model="selectedFilters"
+              class="form-checkbox text-blue-600 rounded"
+            >
+            <span class="text-sm">
+              <span x-text="auth.name"></span>
+              <span
+                class="text-gray-500 text-xs"
+                x-text="'(' + getAuthorizationCount(auth.id) + ')'"
+              ></span>
+            </span>
+          </label>
+        </template>
+      </div>
+    </div>
+
+    <!-- Invitations Tab Content -->
+    <div
+      x-show="currentFellowTab === 'invitations'"
+      class="flex-1 overflow-y-auto"
+      id="invitation-admin-container"
+      x-init="
+        $watch('currentFellowTab', value => {
+          if (value === 'invitations') {
+            embedSubFlow('invitation-admin', 'invitation-admin-container', { step: 'dashboard' });
+          }
+        })
+      "
+    >
+      <div class="flex items-center justify-center p-12 text-gray-400 italic">
+        <i class="fas fa-spinner fa-spin mr-2"></i> Loading Invitations...
+      </div>
+    </div>
+
+    <!-- Scrollable Fellow List (hidden when Invitations tab is active) -->
+    <div
+      class="flex-1 overflow-y-auto pr-2"
+      x-show="currentFellowTab !== 'invitations'"
+    >
+      <div
+        class="grid gap-4"
+        :class="currentFellowTab === 'authorized' ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-4'"
+      >
+        <template x-show="filteredFellows.length === 0">
+          <div class="text-center text-gray-500 mt-10">
+            No fellows found in this tab.
+          </div>
+        </template>
+        <template x-for="fellow in filteredFellows" :key="fellow.id">
+          <div
+            class="bg-white p-4 rounded shadow cursor-pointer hover:shadow-lg transition-shadow border"
+          >
+            <div x-html="fellow.html"></div>
+
+            <!-- Dynamic User IDs List -->
+            <div class="mt-2 border-t pt-2">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-gray-500 uppercase">
+                  User IDs:
+                </span>
+                <span
+                  class="text-blue-600 text-xs font-bold cursor-pointer hover:underline"
+                  @click="selectFellow(fellow); openModal('manage-user-ids')"
+                >
+                  &rarr;</span>
+              </div>
+              <div class="flex flex-wrap gap-1">
+                <template
+                  x-for="possession in getPersonPossessions(fellow.personId || fellow.person || fellow.id)"
+                  :key="possession.id"
+                >
+                  <span
+                    class="text-xs px-2 rounded-full border border-gray-200 bg-gray-50 flex items-center gap-1"
+                  >
+                    <template x-if="possession.isOwner">
+                      <i class="fas fa-crown text-[8px] text-amber-500"></i>
+                    </template>
+                    <template x-if="possession.isHolder">
+                      <i class="fas fa-handshake text-[8px] text-indigo-500"></i
+                      >
+                    </template>
+                    <span x-text="possession.id"></span>
+                  </span>
+                </template>
+                <span
+                  x-show="getPersonPossessions(fellow.personId || fellow.person || fellow.id).length === 0"
+                  class="text-xs text-gray-400 italic"
+                >None</span>
+              </div>
+            </div>
+
+            <!-- Dynamic Authorizations List -->
+            <div class="mt-2 border-t pt-2">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-gray-500 uppercase">
+                  Authorizations:
+                </span>
+                <span
+                  class="text-blue-600 text-xs font-bold cursor-pointer hover:underline"
+                  @click="selectFellow(fellow); openModal('grant-authorization')"
+                >
+                  &rarr;</span>
+              </div>
+              <div class="flex flex-wrap gap-1">
+                <template
+                  x-for="auth in getFellowAuths(fellow)"
+                  :key="auth.id"
+                >
+                  <span
+                    class="text-xs px-2 py-1 rounded-full"
+                    :class="auth.type === 'general' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'"
+                    x-text="auth.name"
+                  ></span>
+                </template>
+                <span
+                  class="mt-4 text-right"
+                  x-show="getFellowAuths(fellow).length === 0"
+                  class="text-xs text-gray-400 italic"
+                >None</span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Slide-over Modal Container -->
+  <div
+    class="fixed inset-0 overflow-hidden z-50"
+    x-show="isModalOpen"
+    style="display: none"
+    x-data="{ modalWidth: 'max-w-md' }"
+    @set-modal-width.window="modalWidth = $event.detail"
+    @keydown.escape.window="closeModal()"
+  >
+    <div class="absolute inset-0 overflow-hidden">
+      <!-- Overlay -->
+      <div
+        class="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity cursor-pointer"
+        x-show="isModalOpen"
+        x-transition:enter="ease-in-out duration-500"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="ease-in-out duration-500"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @click="closeModal()"
+      >
+      </div>
+
+      <!-- Slide-over panel -->
+      <section class="absolute inset-y-0 right-0 pl-10 max-w-full flex">
+        <div
+          class="w-screen transition-all duration-300"
+          :class="modalWidth"
+          x-show="isModalOpen"
+          x-transition:enter="transform transition ease-in-out duration-500 sm:duration-700"
+          x-transition:enter-start="translate-x-full"
+          x-transition:enter-end="translate-x-0"
+          x-transition:leave="transform transition ease-in-out duration-500 sm:duration-700"
+          x-transition:leave-start="translate-x-0"
+          x-transition:leave-end="translate-x-full"
+        >
+          <div
+            class="h-full flex flex-col py-6 bg-white shadow-xl overflow-y-scroll"
+          >
+            <div class="px-4 sm:px-6">
+              <div class="flex items-start justify-between">
+                <h2
+                  class="text-lg font-medium text-gray-900"
+                  id="slide-over-title"
+                >
+                </h2>
+                <div class="ml-3 h-7 flex items-center">
+                  <button
+                    @click="closeModal()"
+                    class="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    <span class="sr-only">Close panel</span>
+                    <svg
+                      class="h-6 w-6"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <template x-if="currentSubFlowId === null">
+              <div
+                class="mt-6 relative flex-1 px-4 sm:px-6"
+                x-html="modalContent"
+              >
+              </div>
+            </template>
+            <div
+              id="subflow-modal-container"
+              x-show="currentSubFlowId !== null"
+              class="mt-6 relative flex-1 px-4 sm:px-6"
+            >
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

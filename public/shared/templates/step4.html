@@ -1,0 +1,71 @@
+<div class="flex justify-center h-full">
+    <div
+        class="w-full max-w-sm bg-gray-900 rounded-3xl overflow-hidden shadow-xl border-4 border-gray-800 relative"
+        style="height: 700px"
+    >
+        <!-- Phone Bezel/Header -->
+        <div
+            class="absolute top-0 w-full h-8 bg-gray-800 flex justify-center items-center z-10"
+        >
+            <div class="w-16 h-4 bg-black rounded-b-xl"></div>
+        </div>
+
+        <!-- Screen Content -->
+        <div class="bg-gray-100 h-full overflow-y-auto pt-10 pb-20 relative">
+            <div class="p-6 text-center">
+                <h3 class="text-lg font-bold mb-4">Provide a Second Factor</h3>
+
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2"
+                    >One-Time Password (OTP)</label>
+                    <input
+                        type="text"
+                        class="w-full border-2 border-blue-500 rounded p-3 text-center text-xl font-mono tracking-widest"
+                        placeholder="______"
+                        x-data="{ input: '' }"
+                        x-model="input"
+                        @keydown.enter="if(input === invitation.otp) { loadStep('step5.1') } else { alert('Wrong OTP (try 123456)') }"
+                    />
+                </div>
+
+                <div class="text-sm text-gray-600 mb-6">
+                    <p>Enter the OTP sent to your phone number.</p>
+                    <button class="text-blue-600 hover:underline mt-2">
+                        Resend OTP
+                    </button>
+                </div>
+
+                <!-- Simulate auto-submit or button -->
+                <button
+                    class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow hover:bg-blue-700 transition"
+                    x-data="{ input: '' }"
+                    @click="loadStep('step5.1')"
+                >
+                    Verify
+                </button>
+
+                <div class="mt-8 text-xs text-gray-400">
+                    <p>The OTP is valid for a limited time.</p>
+                </div>
+            </div>
+
+            <!-- App Bottom Nav Placeholder -->
+            <div
+                class="absolute bottom-0 w-full h-16 bg-white border-t flex justify-around items-center"
+            >
+                <div class="flex flex-col items-center text-gray-400">
+                    <i class="fas fa-home"></i>
+                    <span class="text-xs">Home</span>
+                </div>
+                <div class="flex flex-col items-center text-blue-600">
+                    <i class="fas fa-compass"></i>
+                    <span class="text-xs">Discover</span>
+                </div>
+                <div class="flex flex-col items-center text-gray-400">
+                    <i class="fas fa-user"></i>
+                    <span class="text-xs">Profile</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

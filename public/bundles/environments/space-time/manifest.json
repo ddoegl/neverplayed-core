@@ -1,0 +1,7 @@
+{
+  "Bundle-SymbolicName": "@prototyper/env.space-time",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"prototyper.env.service\"; env.id=\"space-time\"",
+  "Configuration": { "flowType": "environment-flow" }
+}

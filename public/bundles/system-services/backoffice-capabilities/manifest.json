@@ -1,0 +1,15 @@
+{
+  "Bundle-ManifestVersion": "1",
+  "Bundle-SymbolicName": "backoffice.capabilities",
+  "Bundle-Name": "Backoffice Capability Registry",
+  "Bundle-Description": "Management for Features and Functional Domains",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"backoffice.capabilities.data\"",
+  "Configuration": {
+    "flowType": "backoffice-flow",
+    "channels": [
+      "backoffice-web"
+    ]
+  }
+}

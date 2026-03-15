@@ -1,0 +1,132 @@
+<div
+  class="min-h-screen w-full bg-slate-50 flex flex-col items-center justify-center p-8"
+>
+  <div
+    class="max-w-4xl w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 flex flex-col md:flex-row shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)]"
+  >
+    <!-- Left Column: Branding & Illustration -->
+    <div
+      class="md:w-5/12 bg-blue-600 p-12 text-white flex flex-col justify-between relative overflow-hidden"
+    >
+      <!-- Decorative Background -->
+      <div
+        class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-blue-500 rounded-full blur-3xl opacity-50"
+      >
+      </div>
+      <div
+        class="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-indigo-700 rounded-full blur-3xl opacity-50"
+      >
+      </div>
+
+      <div class="relative z-10">
+        <div
+          class="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mb-8 border border-white/20"
+        >
+          <img src="branding.svg" class="w-10 h-10 brightness-0 invert" />
+        </div>
+        <h1 class="text-4xl font-black tracking-tight leading-tight mb-4">
+          Unbound <br />
+          License <br />
+          <span class="text-blue-200">Detected.</span>
+        </h1>
+        <p class="text-blue-100/80 text-lg leading-relaxed font-medium">
+          This license exists in the registry but has not yet been bound to a
+          physical person or legal entity.
+        </p>
+      </div>
+
+      <div class="relative z-10 pt-12">
+        <div
+          class="flex items-center gap-3 text-sm font-bold tracking-widest uppercase opacity-60"
+        >
+          <div class="w-8 h-px bg-white"></div>
+          Initial Setup Phase
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Action Area -->
+    <div class="md:w-7/12 p-16 flex flex-col justify-center bg-white">
+      <div class="mb-12">
+        <div
+          class="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-100 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest mb-6"
+        >
+          <span
+            class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"
+          ></span>
+          Immediate Action Required
+        </div>
+        <h2 class="text-3xl font-bold text-slate-900 mb-6 tracking-tight">
+          Finalize Ownership
+        </h2>
+        <p class="text-slate-500 leading-relaxed mb-8">
+          To start using your licenses and authorizations, you must bind your
+          identity to this license. This process creates the first "Fellow"
+          record and establishes the administrative link.
+        </p>
+
+        <div class="space-y-6">
+          <!-- Feature highlight -->
+          <div
+            class="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 transition-all hover:bg-slate-100"
+          >
+            <div
+              class="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0"
+            >
+              <i class="fas fa-fingerprint text-blue-500"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 text-sm">Identity Binding</h4>
+              <p class="text-xs text-slate-500 mt-1">
+                Link your person record to the administrative user account.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 transition-all hover:bg-slate-100"
+          >
+            <div
+              class="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0"
+            >
+              <i class="fas fa-shield-alt text-green-500"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 text-sm">Role Assignment</h4>
+              <p class="text-xs text-slate-500 mt-1">
+                Assign the "Owner" and "Holder" roles to yourself.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <button
+          @click="launchInvitationModal()"
+          class="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-3xl shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 text-lg group"
+        >
+          <i
+            class="fas fa-user-plus text-blue-400 group-hover:scale-110 transition-transform"
+          ></i>
+          Bind Identity Now
+        </button>
+
+        <p
+          class="text-center text-[10px] text-slate-400 uppercase tracking-widest font-bold"
+        >
+          This step is mandatory for administrative users
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cinematic Footer -->
+  <div
+    class="mt-12 text-slate-400 font-mono text-[10px] uppercase tracking-[0.2em] flex items-center gap-6"
+  >
+    <span>System Version: 1.1.0-bootstrap</span>
+    <div class="w-1.5 h-1.5 bg-slate-300 rounded-full"></div>
+    <span>Instance ID: <span x-text="bootstrapForm.licenseId"></span></span>
+  </div>
+</div>

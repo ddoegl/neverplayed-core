@@ -1,0 +1,145 @@
+<div class="h-full">
+  <div class="grid grid-cols-4 gap-4">
+    <!-- Main Card: Final Sign off -->
+    <div class="col-span-2 bg-white p-6 rounded shadow-md h-full">
+      <h3 class="text-xl font-bold mb-4">Sign Admission</h3>
+
+      <p class="text-sm text-gray-600 mb-6">
+        <template x-if="invitation?.type === 'owner-binding'">
+          <span>Finalise the activation by signing. This will bind the identity
+            of
+            <strong
+              x-text="invitee ? (invitee.firstname || invitee.firstName) + ' ' + (invitee.lastname || invitee.lastName) : '—'"
+            ></strong>
+            formally to the license <strong>Administrator</strong>.</span>
+        </template>
+        <template x-if="invitation?.type !== 'owner-binding'">
+          <span>Finalise the admission by signing. This will create the
+            fellowship between
+            <strong
+              x-text="invitee ? (invitee.firstname || invitee.firstName) + ' ' + (invitee.lastname || invitee.lastName) : '—'"
+            ></strong>
+            and <strong x-text="selectedCompany?.name || '—'"></strong>.</span>
+        </template>
+      </p>
+
+      <div class="space-y-3 mb-6 text-sm">
+        <div class="flex justify-between border-b pb-2">
+          <span class="text-gray-500">Person</span>
+          <span
+            class="font-bold"
+            x-text="invitee ? (invitee.firstname || invitee.firstName) + ' ' + (invitee.lastname || invitee.lastName) : '—'"
+          >
+          </span>
+        </div>
+        <div class="flex justify-between border-b pb-2">
+          <span
+            class="text-gray-500"
+            x-text="invitation?.type === 'owner-binding' ? 'Target Organization' : 'Issuer'"
+          ></span>
+          <span
+            class="font-bold text-blue-700"
+            x-text="selectedCompany?.name || selectedCompany?.firstname + ' ' + selectedCompany?.lastname || '—'"
+          ></span>
+        </div>
+        <div class="flex justify-between border-b pb-2">
+          <span class="text-gray-500">Invitation Code</span>
+          <span
+            class="font-mono font-bold"
+            x-text="invitation?.code || '—'"
+          ></span>
+        </div>
+        <div class="flex justify-between border-b pb-2">
+          <span class="text-gray-500">Action</span>
+          <span
+            class="text-green-700 font-bold"
+            x-text="invitation?.type === 'owner-binding' ? 'Bind Administrative Identity' : 'Create Fellowship'"
+          ></span>
+        </div>
+      </div>
+
+      <div
+        class="bg-blue-50 border border-blue-200 p-3 rounded text-xs text-blue-800"
+      >
+        <p x-show="invitation?.type === 'owner-binding'">
+          By signing, you are confirming your administrative custody of this
+          license. Your identity will be formally bound to the system
+          administrator account and standard security methods will be enforced.
+        </p>
+        <p x-show="invitation?.type !== 'owner-binding'">
+          By signing, you are confirming the admission of this person as a
+          fellow of the company. If a fellowship already exists, it will be
+          reconfirmed.
+        </p>
+      </div>
+    </div>
+
+    <!-- Sidebar: Summary & Final Button -->
+    <div
+      class="col-span-2 bg-white p-6 rounded shadow-md flex flex-col justify-between h-full"
+    >
+      <div>
+        <h3 class="text-xl font-bold mb-4">Summary</h3>
+        <hr class="mb-4" />
+
+        <div class="mb-4">
+          <span
+            class="block text-sm font-bold"
+            x-text="invitation?.type === 'owner-binding' ? 'Target Organization' : 'Company'"
+          ></span>
+          <span x-text="selectedCompany?.name || '—'"></span>
+        </div>
+
+        <div class="mb-4">
+          <span
+            class="block text-sm font-bold"
+            x-text="invitation?.type === 'owner-binding' ? 'Identity Holder' : 'New Fellow'"
+          ></span>
+          <div
+            class="flex items-center gap-3 mt-1 p-2 bg-gray-50 border rounded"
+          >
+            <div
+              class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm"
+              x-text="(invitee?.firstname?.[0] || invitee?.firstName?.[0] || '?') + (invitee?.lastname?.[0] || invitee?.lastName?.[0] || '')"
+            >
+            </div>
+            <div>
+              <p
+                class="font-bold text-sm"
+                x-text="invitee ? (invitee.firstname || invitee.firstName) + ' ' + (invitee.lastname || invitee.lastName) : '—'"
+              >
+              </p>
+              <p
+                class="text-xs text-gray-500 font-mono"
+                x-text="currentFellow?.id || ''"
+              >
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <span class="block text-sm font-bold">Invitation</span>
+          <span
+            class="text-sm font-mono"
+            x-text="invitation?.code || '—'"
+          ></span>
+          <span
+            class="ml-2 px-2 py-0.5 rounded text-xs bg-green-100 text-green-700"
+            x-text="invitation?.status || '—'"
+          >
+          </span>
+        </div>
+      </div>
+
+      <div class="flex space-x-4 mt-8">
+        <button
+          class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded hover:bg-blue-700 transition shadow"
+          @click="signAdmission()"
+          x-text="invitation?.type === 'owner-binding' ? '✓ Sign & Activate' : '✓ Sign & Admit'"
+        >
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

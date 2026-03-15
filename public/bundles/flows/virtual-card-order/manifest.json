@@ -1,0 +1,9 @@
+{
+  "Bundle-SymbolicName": "virtual-card-order",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+    "Configuration": {
+        "flowType": "order-flow",
+        "channels": ["business-channel-web"]
+    }
+}

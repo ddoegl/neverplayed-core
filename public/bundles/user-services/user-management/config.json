@@ -1,0 +1,27 @@
+{
+  "id": "user-management",
+  "title": "User Management",
+  "steps": [
+    {
+      "id": "dashboard",
+      "label": "User Management",
+      "template": "dashboard.html",
+      "title": "User Management",
+      "type": "main"
+    },
+    {
+      "id": "manage-permissions",
+      "label": "Manage Permissions",
+      "template": "manage-permissions.html",
+      "title": "Manage Permissions",
+      "type": "sub"
+    },
+    {
+      "id": "holder-registry",
+      "label": "Holder Registry",
+      "template": "holder-registry.html",
+      "title": "Holder Registry",
+      "type": "sub"
+    }
+  ]
+}

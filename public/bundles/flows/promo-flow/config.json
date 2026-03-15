@@ -1,0 +1,23 @@
+{
+  "id": "promo-flow",
+  "name": "Promotion Flow",
+  "icon": "fas fa-bullhorn",
+  "type": "hidden",
+  "defaultStep": "promo-stepper",
+  "layout": "layout.html",
+  "fullScreen": true,
+  "steps": [
+    {
+      "id": "promo-stepper",
+      "name": "New Promotions",
+      "label": "Promotion Stepper",
+      "template": "promo-stepper.html"
+    },
+    {
+      "id": "promo-viewer",
+      "name": "Promotion Details",
+      "label": "Promotion Viewer",
+      "template": "promo-viewer.html"
+    }
+  ]
+}

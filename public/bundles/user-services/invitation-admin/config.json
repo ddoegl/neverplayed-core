@@ -1,0 +1,12 @@
+{
+    "id": "invitation-admin",
+    "title": "Invite New Person",
+    "steps": [
+        { "id": "dashboard", "label": "Dashboard", "template": "dashboard.html", "title": "Invitation Dashboard", "type": "main" },
+        { "id": "details", "label": "Person Details", "template": "person-details.html", "title": "Person Details", "type": "modal" },
+        { "id": "security", "label": "Security Setup", "template": "security-setup.html", "title": "Security Setup", "type": "modal" },
+        { "id": "confirm", "label": "Confirm Invitation", "template": "confirm-invitation.html", "title": "Confirm Invitation", "type": "main" },
+        { "id": "start-admission", "label": "Start Admission", "template": "start-admission.html", "title": "Start Admission", "type": "main" },
+        { "id": "sign-admission", "label": "Sign Admission", "template": "sign-admission.html", "title": "Sign Admission", "type": "main" }
+    ]
+}

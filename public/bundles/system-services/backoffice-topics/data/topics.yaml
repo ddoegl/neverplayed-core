@@ -1,0 +1,15 @@
+- id: "topic_support"
+  title: "Support Topic"
+  strategy: GLOBAL
+- id: "topic_product_inquiry"
+  title: "Product Inquiry"
+  strategy: GLOBAL
+- id: "topic_legal_inquiry"
+  title: "Legal Inquiry"
+  strategy: LEGALREP
+- id: "topic_financial_inquiry"
+  title: "Financial Inquiry"
+  strategy: LEGALREP
+- id: "topic_cardadmin_inquiry"
+  title: "Card Administration Inquiry"
+  strategy: CARDADMINISTRATION

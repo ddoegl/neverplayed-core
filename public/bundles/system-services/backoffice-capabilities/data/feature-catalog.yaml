@@ -1,0 +1,87 @@
+DOCUMENTSREQUESTS:
+  id: DOCUMENTSREQUESTS
+  label: documents:requests
+  description: manage document requests and verification
+  keys:
+    - DOCUMENTS_VIEW_ALLOWED
+    - DOCUMENTS_MANAGE_ALLOWED
+IMPORTORDERS:
+  id: IMPORTORDERS
+  label: import:orders
+  description: process import orders
+  keys:
+    - IMPORTORDERS_CREATE_ALLOWED
+ASSETSTRADING:
+  id: ASSETSTRADING
+  label: assets:trading
+  description: trade MATS assets
+  keys:
+    - ASSETSTRADING_MANAGE_ALLOWED_MATS
+LOANIQ:
+  id: LOANIQ
+  label: loan:iq:integration
+  description: view loan balances and statements
+  keys:
+    - LOANIQ_VIEW_BALANCE_STATEMENTS
+MULTIBANKING:
+  id: MULTIBANKING
+  label: multi:banking
+  description: aggregate multiple bank accounts
+  keys:
+    - MULTIBANKING_MANAGE_ENABLED
+MESSENGER:
+  id: MESSENGER
+  label: messenger:hub
+  description: secure communication hub
+  keys:
+    - MESSENGER_MANAGE_LIGHT_CONVERSATIONS
+    - MESSENGER_MANAGE_CONVERSATIONS
+    - MESSENGER_VIEW_CONVERSATIONS
+FX:
+  id: FX
+  label: foreign:exchange
+  description: manage FX rates and settings
+  keys:
+    - FX_MANAGE_RATESETTINGS
+USERMANAGEMENT:
+  id: USERMANAGEMENT
+  label: user:administration
+  description: manage users and permissions
+  keys:
+    - USERMANAGEMENT_MANAGE_ALLOWED
+FINANCIALHEALTH:
+  id: FINANCIALHEALTH
+  label: financial:health
+  description: financial wellness and insights
+  keys:
+    - FINANCIALHEALTH_MANAGE_ALLOWED
+GUARANTEE:
+  id: GUARANTEE
+  label: guarantee:business
+  description: view and create guarantee orders
+  keys:
+    - GUARANTEE_VIEW_INSTANCES
+    - GUARANTEE_CREATE_ORDER
+    - GUARANTEE_CREATE_ORDER_SIGNINGFLOW
+LETTER_OF_CREDIT:
+  id: LETTER_OF_CREDIT
+  label: letter:of:credit
+  description: manage letters of credit
+  keys:
+    - LETTEROFCREDIT_VIEW_INSTANCES
+    - LETTEROFCREDIT_CREATE_ORDER
+    - LETTEROFCREDIT_CREATE_ORDER_SIGNINGFLOW
+CARDADMINISTRATION:
+  id: CARDADMINISTRATION
+  label: card:administration
+  description: manage cards and limits
+  keys:
+    - CARDADMINISTRATION_MANAGE_ALLOWED
+DO:
+  id: DO
+  label: do
+  description: manage do
+  keys:
+    - DO_VIEW_ALLOWED
+    - DO_SIGN_ALLOWED
+    - DO_TRADE_ALLOWED

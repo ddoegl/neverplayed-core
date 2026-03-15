@@ -1,0 +1,138 @@
+<div
+  class="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+  x-data="{
+    search: '',
+    get filteredFellows() {
+        if (!this.search) return host.fellowsData?.FELLOWS || [];
+        const s = this.search.toLowerCase();
+        return (host.fellowsData?.FELLOWS || []).filter(f => 
+            f.id.toLowerCase().includes(s) || 
+            f.personId.toLowerCase().includes(s) || 
+            f.fellowOf.toLowerCase().includes(s)
+        );
+    }
+}"
+>
+  <!-- Header -->
+  <div
+    class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center"
+  >
+    <div>
+      <h2 class="text-lg font-bold text-gray-800 m-0">Fellow Management</h2>
+      <p class="text-xs text-gray-500 m-0">
+        Inspect fellow relationships and granted authorizations across the
+        ecosystem.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <i
+          class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"
+        ></i>
+        <input
+          type="text"
+          x-model="search"
+          placeholder="Search fellows..."
+          class="pl-9 pr-4 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none w-64 shadow-sm"
+        >
+      </div>
+      <button
+        @click="host.openFellowsEditor()"
+        class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-2"
+      >
+        <i class="fas fa-edit"></i> Edit Configuration
+      </button>
+    </div>
+  </div>
+
+  <!-- Table Content -->
+  <div class="flex-1 overflow-auto">
+    <table class="w-full border-collapse">
+      <thead class="sticky top-0 bg-white shadow-sm z-10">
+        <tr
+          class="bg-gray-50 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-200"
+        >
+          <th class="px-6 py-3">Fellow ID</th>
+          <th class="px-6 py-3">Person</th>
+          <th class="px-6 py-3">Fellow Of</th>
+          <th class="px-6 py-3">Role</th>
+          <th class="px-6 py-3">Authorizations</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <template x-for="fellow in filteredFellows" :key="fellow.id">
+          <tr class="hover:bg-gray-50 transition-colors text-sm text-gray-700">
+            <td
+              class="px-6 py-4 font-mono text-xs text-gray-500"
+              x-text="fellow.id"
+            >
+            </td>
+            <td
+              class="px-6 py-4 font-bold text-indigo-600"
+              x-text="fellow.personId"
+            >
+            </td>
+            <td class="px-6 py-4" x-text="fellow.fellowOf"></td>
+            <td class="px-6 py-4">
+              <span
+                class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border"
+                :class="{
+                                    'bg-purple-50 text-purple-700 border-purple-100': fellow.role === 'LEGALREPS',
+                                    'bg-emerald-50 text-emerald-700 border-emerald-100': fellow.role === 'DOSIGNEE',
+                                    'bg-blue-50 text-blue-700 border-blue-100': !['LEGALREPS', 'DOSIGNEE'].includes(fellow.role),
+                                    'bg-gray-50 text-gray-400 border-gray-100 italic': !fellow.role
+                                }"
+                x-text="fellow.role || 'No Role'"
+              ></span>
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex flex-wrap gap-1">
+                <template
+                  x-for="auth in (fellow.authorizations || [])"
+                  :key="auth"
+                >
+                  <span
+                    class="px-2 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-mono text-gray-600 shadow-sm"
+                    x-text="auth"
+                  ></span>
+                </template>
+                <template
+                  x-if="!fellow.authorizations || fellow.authorizations.length === 0"
+                >
+                  <span class="text-gray-400 italic text-xs">None</span>
+                </template>
+              </div>
+            </td>
+          </tr>
+        </template>
+        <template x-if="filteredFellows.length === 0">
+          <tr>
+            <td colspan="5" class="px-6 py-20 text-center">
+              <i
+                class="fas fa-users-slash text-4xl text-gray-200 mb-4 block"
+              ></i>
+              <p class="text-gray-500 italic">
+                No fellows found matching your search.
+              </p>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Footer Stats -->
+  <div
+    class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center shrink-0"
+  >
+    <div class="text-[10px] text-gray-400 uppercase font-black tracking-widest">
+      Total Fellows: <span
+        class="text-gray-600"
+        x-text="host.fellowsData?.FELLOWS?.length || 0"
+      ></span>
+    </div>
+    <div class="text-[10px] text-gray-400 italic">
+      Source: <span class="font-mono">backoffice.fellows.data</span>
+    </div>
+  </div>
+</div>

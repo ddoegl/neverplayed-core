@@ -1,0 +1,10 @@
+{
+  "Bundle-SymbolicName": "@prototyper/flow.hello-bpmn",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Bundle-Assets": "processes/hello-world.bpmn,templates/main.html",
+  "Configuration": {
+    "flowType": "service-flow",
+    "channels": ["backoffice-web"]
+  }
+}

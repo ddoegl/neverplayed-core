@@ -1,0 +1,82 @@
+<div class="h-full">
+    <div class="grid grid-cols-4 gap-4">
+        <!-- Main Card: Final Sign off -->
+        <div class="col-span-2 bg-white p-6 rounded shadow-md h-full">
+            <h3 class="text-xl font-bold mb-4">Step 7: Conclude Card Order</h3>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2"
+                >For which Virtual Card Manager?</label>
+                <input
+                    type="text"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight bg-gray-100"
+                    value="Bike Value Logistics GmbH"
+                    readonly
+                />
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2"
+                >For whom do you want to issue the Virtual Business Card?</label
+                >
+                <input
+                    type="text"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight bg-gray-100"
+                    value="&#x2714; July Wiser"
+                    readonly
+                />
+            </div>
+        </div>
+
+        <!-- Sidebar: Summary & Final Button -->
+        <div
+            class="col-span-2 bg-white p-6 rounded shadow-md flex flex-col justify-between h-full"
+        >
+            <div>
+                <h3 class="text-xl font-bold mb-4">Order Summary</h3>
+                <hr class="mb-4" />
+
+                <div class="mb-4">
+                    <span class="block text-sm font-bold"
+                    >Virtual Card Manager</span>
+                    <span>Bike Value Logistics GmbH</span>
+                </div>
+
+                <div class="mb-4">
+                    <span class="block text-sm font-bold">Card Holder</span>
+                    <div class="mt-1">
+                        <input
+                            type="text"
+                            class="w-full text-sm p-2 bg-gray-50 border rounded"
+                            value="&#x2714; July Wiser"
+                            readonly
+                        />
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-bold">Option 1</label>
+                    <div class="border p-2 rounded bg-gray-50 text-sm">
+                        Some Option 1
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-bold">Option 2</label>
+                    <div class="border p-2 rounded bg-gray-50 text-sm">
+                        Some Option 2
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex space-x-4 mt-8">
+                <button
+                    class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700"
+                    @click="loadStep('step8')"
+                >
+                    Sign Order (Final)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

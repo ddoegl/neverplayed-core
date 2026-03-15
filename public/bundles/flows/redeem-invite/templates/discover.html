@@ -1,0 +1,46 @@
+<!-- Store Image Simulation -->
+<div class="bg-blue-600 h-16 flex items-center justify-center text-white">
+    <h2 class="text-2xl font-bold">Store</h2>
+</div>
+<div class="w-full">
+    <!-- Fallback if images missing, simulate structure -->
+
+    <div class="p-4 grid grid-cols-2 gap-4">
+        <div class="bg-white p-4 rounded shadow h-32"></div>
+        <div class="bg-white p-4 rounded shadow h-32"></div>
+
+        <!-- The Clickable Card -->
+        <div
+            class="bg-white p-2 rounded shadow cursor-pointer border-2 border-transparent hover:border-blue-500 transition"
+            @click="loadStep('step4')"
+        >
+            <div
+                class="h-20 bg-gradient-to-r from-blue-400 to-blue-600 rounded mb-2"
+            >
+            </div>
+            <p class="text-xs font-bold text-center">
+                Business Virtual Card
+            </p>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow h-32"></div>
+    </div>
+</div>
+
+<!-- Absolute Bottom Menu -->
+<div
+    class="absolute bottom-8 w-full h-16 bg-white border-t flex justify-around items-center"
+>
+    <div class="flex flex-col items-center text-gray-400">
+        <i class="fas fa-home"></i>
+        <span class="text-xs">Home</span>
+    </div>
+    <div class="flex flex-col items-center text-blue-600">
+        <i class="fas fa-compass"></i>
+        <span class="text-xs">Discover</span>
+    </div>
+    <div class="flex flex-col items-center text-gray-400">
+        <i class="fas fa-user"></i>
+        <span class="text-xs">Profile</span>
+    </div>
+</div>

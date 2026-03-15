@@ -1,0 +1,8 @@
+{
+  "Bundle-ManifestVersion": "2",
+  "Bundle-SymbolicName": "@prototyper/plexus",
+  "Bundle-Name": "Plexus Matcher Engine",
+  "Bundle-Description": "Dynamic and Compiled Evaluator Engine for Rules and Capabilities",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js"
+}

@@ -1,0 +1,129 @@
+<div x-data="{ viewState: 'start' }">
+    <!-- Teleport content to modal -->
+    <template x-teleport="#slide-over-content">
+        <div x-show="currentStep === 'step1'">
+            <!-- View 1: Company Info & Start -->
+            <div x-show="viewState === 'start'">
+                <h2 class="text-2xl font-bold text-center mb-4">
+                    Angaben zum Unternehmen
+                </h2>
+                <hr class="mb-4" />
+                <div class="flex justify-start mt-4 ml-8">
+                    <div x-html="selectedCompany?.html" class="prose"></div>
+                </div>
+                <div class="flex justify-start ml-8 mt-4">
+                    <button
+                        class="mt-4 bg-blue-600 text-white px-4 py-2 rounded"
+                        @click="viewState = 'form'"
+                    >
+                        Neue Vollmacht (Start Wizard)
+                    </button>
+                </div>
+            </div>
+
+            <!-- View 2: Form (Type & Person) -->
+            <div x-show="viewState === 'form'">
+                <h2 class="text-2xl font-bold text-center mb-4">
+                    Angaben zur Vollmacht
+                </h2>
+                <hr class="mb-4" />
+
+                <div class="flex justify-center mb-4">
+                    <!-- Placeholder header image -->
+                    <div
+                        class="bg-blue-100 w-full h-24 rounded flex items-center justify-center text-blue-500"
+                    >
+                        Company Header Image
+                    </div>
+                </div>
+
+                <label class="block mt-4 font-bold"
+                >Welche Vollmacht soll erteilt werden?</label>
+                <select
+                    x-model="form.authzType"
+                    class="bg-white text-black p-2 rounded border w-full"
+                >
+                    <option value="NONE">Choose Type</option>
+                    <option value="cardadmin">Card administration</option>
+                    <option value="NEW">Custom</option>
+                </select>
+
+                <fellow-selector
+                    x-model="form.selectedFellow"
+                    x-effect="$el.fellows = fellows"
+                    @change="handleFellowChange()"
+                ></fellow-selector>
+
+                <!-- New Person Fields -->
+                <div
+                    x-show="showNewPersonForm"
+                    class="mt-4 border p-4 rounded bg-gray-50 transition-all"
+                    x-transition
+                >
+                    <h4 class="font-bold mb-2 text-sm text-gray-600">
+                        Personal Details
+                    </h4>
+                    <div class="mb-2">
+                        <label class="text-xs">First Name</label>
+                        <input
+                            type="text"
+                            x-model="form.newPerson.firstName"
+                            class="block w-full p-2 border rounded"
+                            placeholder="First Name"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <label class="text-xs">Last Name</label>
+                        <input
+                            type="text"
+                            x-model="form.newPerson.lastName"
+                            class="block w-full p-2 border rounded"
+                            placeholder="Last Name"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <label class="text-xs">Birth Date</label>
+                        <input
+                            type="date"
+                            x-model="form.newPerson.birthDate"
+                            class="block w-full p-2 border rounded"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <label class="text-xs">Email</label>
+                        <input
+                            type="email"
+                            x-model="form.newPerson.email"
+                            class="block w-full p-2 border rounded"
+                            placeholder="Email"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <label class="text-xs">Phone</label>
+                        <input
+                            type="tel"
+                            x-model="form.newPerson.phone"
+                            class="block w-full p-2 border rounded"
+                            placeholder="Phone"
+                        >
+                    </div>
+                </div>
+
+                <div class="flex space-x-2 mt-8">
+                    <button
+                        class="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded"
+                        @click="viewState = 'start'"
+                    >
+                        Back
+                    </button>
+                    <button
+                        class="flex-1 bg-blue-600 text-white px-4 py-2 rounded"
+                        @click="if(form.selectedFellow === 'NEW') { loadStep('step1.1') } else { loadStep('step2') }"
+                    >
+                        Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>

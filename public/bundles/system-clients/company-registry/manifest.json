@@ -1,0 +1,12 @@
+{
+  "Bundle-ManifestVersion": "1",
+  "Bundle-SymbolicName": "company-registry",
+  "Bundle-Name": "Company Registry",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"infrastructure.companies.data\"",
+  "Configuration": {
+    "flowType": "system-flow",
+    "channels": ["real-life", "web-browser"]
+  }
+}

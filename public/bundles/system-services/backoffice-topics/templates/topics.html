@@ -1,0 +1,203 @@
+<div
+  class="flex flex-col flex-1 h-full overflow-hidden"
+  x-data="{ 
+    showTopicsYaml: false,
+    selectedTopicIndex: 0,
+    initSelection() {
+      const tops = host.parsedTopics || [];
+      if (tops.length > 0 && this.selectedTopicIndex >= tops.length) {
+        this.selectedTopicIndex = Math.max(0, tops.length - 1);
+      }
+    },
+    addTopic() {
+      if (!host.parsedTopics) host.parsedTopics = [];
+      host.parsedTopics.push({ 
+        id: 'topic_' + (host.parsedTopics.length + 1), 
+        title: 'New Topic', 
+        strategy: 'GLOBAL_BROADCAST' 
+      });
+      this.selectedTopicIndex = host.parsedTopics.length - 1;
+      host.saveTopics();
+    },
+    deleteTopic() {
+      if (confirm('Delete this Topic?')) {
+        host.parsedTopics.splice(this.selectedTopicIndex, 1);
+        this.selectedTopicIndex = Math.max(0, this.selectedTopicIndex - 1);
+        host.saveTopics();
+      }
+    }
+  }"
+  x-init="$watch('host.parsedTopics', value => initSelection())"
+>
+  <div class="flex justify-between items-center mb-4 shrink-0">
+    <p class="text-gray-500 text-sm m-0">
+      Attach structured schemas to topic segmentation strategies.
+    </p>
+    <button
+      @click="host.openTopicsEditor()"
+      class="text-xs font-mono bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2 text-slate-500"
+    >
+      <i class="fas fa-code"></i>
+      <span>View YAML Source</span>
+    </button>
+  </div>
+
+  <!-- TOPICS FORM -->
+  <div
+    class="flex-1 overflow-hidden flex flex-row rounded-xl border border-gray-200 bg-white shadow-sm"
+  >
+    <!-- Sidebar / Directory -->
+    <div
+      class="w-72 border-r border-slate-200 bg-slate-50 flex flex-col h-full shrink-0"
+    >
+      <div
+        class="p-4 flex justify-between items-center border-b border-slate-200 bg-white"
+      >
+        <h3
+          class="text-slate-700 font-bold text-xs uppercase tracking-widest m-0"
+        >
+          Topics
+        </h3>
+        <button
+          @click="addTopic()"
+          class="text-blue-600 hover:text-blue-800 text-xl font-bold leading-none cursor-pointer flex items-center justify-center w-8 h-8 rounded-xl hover:bg-blue-50 transition-colors"
+          title="Create Topic"
+        >
+          <i class="fas fa-plus scale-75"></i>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+        <template x-for="(top, idx) in host.parsedTopics" :key="idx">
+          <div
+            class="px-4 py-3 rounded-2xl cursor-pointer border transition-all duration-200 flex flex-col gap-1 shadow-sm"
+            :class="{'bg-blue-600 border-blue-600 text-white shadow-blue-200': selectedTopicIndex === idx, 'bg-white border-slate-100 hover:border-slate-300 text-slate-600': selectedTopicIndex !== idx}"
+            @click="selectedTopicIndex = idx"
+          >
+            <div
+              class="font-black tracking-tight truncate text-sm"
+              x-text="top.title || 'Untitled Topic'"
+            >
+            </div>
+            <div
+              class="text-[10px] font-bold opacity-60 font-mono"
+              x-text="top.id"
+            >
+            </div>
+          </div>
+        </template>
+        <template x-if="!host.parsedTopics || host.parsedTopics.length === 0">
+          <div
+            class="text-[10px] text-slate-400 text-center p-8 italic border border-dashed border-slate-200 rounded-3xl"
+          >
+            No topics found.
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto p-12 bg-slate-50/50 h-full relative">
+      <template x-if="!host.parsedTopics || host.parsedTopics.length === 0">
+        <div
+          class="flex flex-col items-center justify-center h-full text-slate-300 gap-6 opacity-60"
+        >
+          <div
+            class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl"
+          >
+            <i class="fas fa-layer-group text-slate-400"></i>
+          </div>
+          <div class="text-center">
+            <p
+              class="text-xs font-black uppercase tracking-widest text-slate-800 m-0"
+            >
+              No Topics Configured
+            </p>
+            <p class="text-[10px] font-bold text-slate-400 mt-2">
+              Initialize a topic to define dynamic content schemas for your
+              users.
+            </p>
+          </div>
+        </div>
+      </template>
+
+      <!-- Active Topic Editing -->
+      <template
+        x-if="host.parsedTopics && host.parsedTopics.length > 0 && selectedTopicIndex >= 0 && selectedTopicIndex < host.parsedTopics.length"
+      >
+        <div class="flex flex-col max-w-2xl mx-auto h-full gap-6">
+          <div class="flex justify-between items-start shrink-0">
+            <div>
+              <h2
+                class="text-3xl font-bold text-gray-800 mb-2"
+                x-text="host.parsedTopics[selectedTopicIndex].title || 'Untitled Topic'"
+              >
+              </h2>
+              <div
+                class="text-xs font-mono text-gray-500 bg-gray-200 px-2 py-1 rounded inline-block"
+                x-text="'ID: ' + host.parsedTopics[selectedTopicIndex].id"
+              >
+              </div>
+            </div>
+            <button
+              @click="deleteTopic()"
+              class="text-red-600 hover:text-red-800 font-semibold transition-colors px-4 py-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-sm shadow-sm flex items-center gap-2"
+            >
+              <i class="fas fa-trash-alt"></i> Delete Topic
+            </button>
+          </div>
+
+          <div
+            class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col shrink-0"
+          >
+            <div class="p-6 bg-white flex flex-col gap-4">
+              <div>
+                <label
+                  class="block text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1.5"
+                >Topic ID (Unique)</label>
+                <input
+                  type="text"
+                  x-model="host.parsedTopics[selectedTopicIndex].id"
+                  @input.debounce.500ms="host.saveTopics()"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-emerald-600 font-bold focus:border-blue-500 focus:bg-white outline-none"
+                >
+              </div>
+              <div>
+                <label
+                  class="block text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1.5"
+                >Display Title / Topic Name</label>
+                <input
+                  type="text"
+                  x-model="host.parsedTopics[selectedTopicIndex].title"
+                  @input.debounce.500ms="host.saveTopics()"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:bg-white outline-none"
+                >
+              </div>
+              <div>
+                <label
+                  class="block text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1.5"
+                >Target Delivery Strategy</label>
+                <select
+                  x-model="host.parsedTopics[selectedTopicIndex].strategy"
+                  @change="host.saveTopics()"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-blue-700 font-semibold focus:border-blue-500 focus:bg-white outline-none appearance-none"
+                >
+                  <template
+                    x-for="strat in (host.parsedTopicStrategies || [])"
+                    :key="strat.id"
+                  >
+                    <option
+                      :value="strat.id"
+                      :selected="host.parsedTopics[selectedTopicIndex].strategy === strat.id"
+                      x-text="strat.id"
+                    >
+                    </option>
+                  </template>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>

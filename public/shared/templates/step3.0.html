@@ -1,0 +1,67 @@
+<div class="flex justify-center h-full">
+  <div
+    class="w-full max-w-sm bg-gray-900 rounded-3xl overflow-hidden shadow-xl border-4 border-gray-800 relative"
+    style="height: 700px"
+  >
+    <!-- Phone Bezel/Header -->
+    <div
+      class="absolute top-0 w-full h-8 bg-gray-800 flex justify-center items-center z-10"
+    >
+      <div class="w-16 h-4 bg-black rounded-b-xl"></div>
+    </div>
+
+    <!-- Screen Content -->
+    <div class="bg-white h-full overflow-y-auto pt-10 pb-20 relative">
+      <!-- App Header Placeholder -->
+      <div class="bg-blue-600 h-16 w-full flex items-center px-4">
+        <span class="text-white font-bold">d-Connect</span>
+      </div>
+
+      <!-- Content -->
+      <div class="p-6 text-center">
+        <h3 class="text-lg font-bold mb-4">Enter Invitation ID</h3>
+        <p class="text-sm text-gray-600 mb-6">
+          Please enter the unique invitation ID you received via email.
+        </p>
+
+        <input
+          type="text"
+          class="w-full border-2 border-blue-500 rounded p-3 text-center text-xl font-mono tracking-widest mb-6"
+          placeholder="000 0000 000"
+          x-model="invitation.code"
+        />
+
+        <button
+          class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow hover:bg-blue-700 transition"
+          @click="loadStep('step3.1')"
+        >
+          Continue
+        </button>
+
+        <div class="mt-8 text-xs text-gray-400">
+          <p>
+            Ensure you enter the correct invitation ID to proceed.
+          </p>
+        </div>
+      </div>
+
+      <!-- App Bottom Nav Placeholder -->
+      <div
+        class="absolute bottom-0 w-full h-16 bg-white border-t flex justify-around items-center"
+      >
+        <div class="flex flex-col items-center text-gray-400">
+          <i class="fas fa-home"></i>
+          <span class="text-xs">Home</span>
+        </div>
+        <div class="flex flex-col items-center text-blue-600">
+          <i class="fas fa-compass"></i>
+          <span class="text-xs">Discover</span>
+        </div>
+        <div class="flex flex-col items-center text-gray-400">
+          <i class="fas fa-user"></i>
+          <span class="text-xs">Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

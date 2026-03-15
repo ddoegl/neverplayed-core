@@ -1,0 +1,40 @@
+- id: GLOBAL_BROADCAST
+  matchers:
+    - type: matchAlways
+  operator: AND
+- id: LEGAL_UPDATE
+  matchers:
+    - type: matchRole
+      value: LEGALREPS
+  operator: AND
+- id: LEGAL_UPDATE_BIKEVALUE
+  matchers:
+    - type: matchRole
+      value: LEGALREPS
+    - type: matchProperty
+      key: licenseCustomers
+      value: bikevalue
+  operator: AND
+- id: TRADE_PROMO
+  matchers:
+    - type: matchFeature
+      value: IMPORTORDERS
+  operator: AND
+- id: GUARANTEE_PROMO_BIKEVALUE
+  matchers:
+    - type: matchFeature
+      value: GUARANTEE
+    - type: matchProperty
+      key: licenseCustomers
+      value: bikevalue
+  operator: AND
+- id: FOR_ADMINS_ONLY
+  matchers:
+    - type: matchRole
+      value: ADMINISTRATOR
+  operator: AND
+- id: FOR_CARDADMINS_ONLY
+  matchers:
+    - type: matchRole
+      value: CARDADMINISTRATION
+  operator: AND

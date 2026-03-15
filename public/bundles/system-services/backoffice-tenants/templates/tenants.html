@@ -1,0 +1,331 @@
+<div
+  class="flex flex-col flex-1 h-full overflow-hidden"
+  x-data="{ 
+    addTenant(parsedTenants, saveTenants) {
+      if (!parsedTenants.TENANTS) parsedTenants.TENANTS = [];
+      parsedTenants.TENANTS.push({ 
+        id: 'NEW_TENANT_' + (parsedTenants.TENANTS.length + 1), 
+        name: 'Unassigned Tenant Name', 
+        customers: [] 
+      });
+      this.selectedTenantIndex = host.parsedTenants.TENANTS.length - 1;
+      saveTenants();
+    },
+    deleteTenant(parsedTenants, saveTenants) {
+      if (confirm('Are you sure you want to delete this Tenant?')) {
+        parsedTenants.TENANTS.splice(this.selectedTenantIndex, 1);
+        host.selectedTenantIndex = Math.max(0, host.selectedTenantIndex - 1);
+        saveTenants();
+      }
+    },
+    linkCustomer(parsedTenants, saveTenants) {
+      if (!host.parsedTenants.TENANTS[host.selectedTenantIndex].customers) {
+        host.parsedTenants.TENANTS[host.selectedTenantIndex].customers = [];
+      }
+      host.parsedTenants.TENANTS[host.selectedTenantIndex].customers.push({ 
+        id: '', 
+        name: '', 
+        _key: Math.random().toString(36).substr(2, 9) 
+      });
+      saveTenants();
+    },
+    updateCustomerEntity(cIdx, newId, parsedTenants, spaCustomers, saveTenants) {
+      const cus = host.parsedTenants.TENANTS[host.selectedTenantIndex].customers[cIdx];
+      cus.id = newId;
+      const selectedCus = spaCustomers.find(c => String(c.id) === String(newId));
+      if (selectedCus) {
+          cus.name = selectedCus.name;
+          cus.type = selectedCus.type === 'Company' ? 'organization' : 'natural-person';
+      }
+      saveTenants();
+    },
+    unlinkCustomer(cIdx, parsedTenants, saveTenants) {
+      if (confirm('Unlink this customer?')) {
+        host.parsedTenants.TENANTS[host.selectedTenantIndex].customers.splice(cIdx, 1);
+        saveTenants();
+      }
+    }
+  }"
+>
+  <div class="flex justify-between items-center mb-4 shrink-0">
+    <p class="text-gray-500 text-sm m-0">
+      Manage hierarchical structures mapping sub-customers beneath umbrella
+      tenants.
+    </p>
+    <button
+      @click="host.openTenantsEditor()"
+      class="text-xs px-3 py-1.5 rounded border transition-colors flex items-center gap-2 bg-gray-50 border-gray-200 text-gray-600 hover:text-gray-800"
+    >
+      <i class="fas fa-edit"></i>
+      <span>Edit as YAML</span>
+    </button>
+  </div>
+
+  <!-- TENANTS FORM -->
+  <div
+    x-show="true"
+    class="flex-1 overflow-hidden flex flex-row rounded-xl border border-gray-200 bg-white shadow-sm"
+  >
+    <!-- Sidebar / Directory -->
+    <div
+      class="w-72 border-r border-gray-200 bg-gray-50 flex flex-col h-full shrink-0"
+    >
+      <div
+        class="p-4 flex justify-between items-center border-b border-gray-200 bg-white"
+      >
+        <h3
+          class="text-gray-700 font-semibold text-sm uppercase tracking-wider m-0"
+        >
+          Directory
+        </h3>
+        <button
+          @click="addTenant(host.parsedTenants, () => host.saveTenants())"
+          class="text-blue-600 hover:text-blue-800 text-xl font-bold leading-none cursor-pointer flex items-center justify-center w-6 h-6 rounded hover:bg-blue-50 transition-colors"
+          title="Add New Tenant"
+        >
+          +
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+        <template
+          x-for="(tenant, tIdx) in host.parsedTenants.TENANTS"
+          :key="tIdx"
+        >
+          <div
+            class="px-4 py-3 rounded-lg cursor-pointer border transition-all duration-200 flex flex-col"
+            :class="{'bg-blue-50 border-blue-200 text-blue-900 shadow-sm': host.selectedTenantIndex === tIdx, 'bg-white border-gray-100 hover:bg-gray-100 text-gray-600 hover:border-gray-300': host.selectedTenantIndex !== tIdx}"
+            @click="host.selectedTenantIndex = tIdx"
+          >
+            <div
+              class="font-semibold tracking-wide truncate text-sm"
+              x-text="tenant.name || 'Unnamed'"
+            >
+            </div>
+            <div
+              class="text-[10px] text-gray-500 font-mono truncate mt-1 break-all"
+              x-text="tenant.id"
+            >
+            </div>
+          </div>
+        </template>
+        <template
+          x-if="!host.parsedTenants.TENANTS || host.parsedTenants.TENANTS.length === 0"
+        >
+          <div
+            class="text-xs text-gray-500 text-center p-4 italic border border-dashed border-gray-200 rounded-lg"
+          >
+            No tenants found.
+          </div>
+        </template>
+      </div>
+      <div class="p-4 border-t border-gray-200 bg-gray-50 text-center shrink-0">
+        <!-- Sub-module reset button removed to prevent race conditions and reload disruption -->
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto p-8 bg-gray-50/50 h-full relative">
+      <template
+        x-if="!host.parsedTenants.TENANTS || host.parsedTenants.TENANTS.length === 0"
+      >
+        <div
+          class="flex flex-col items-center justify-center h-full text-gray-400 gap-3"
+        >
+          <i class="fas fa-sitemap text-4xl opacity-50"></i>
+          <p>Create a tenant from the directory to get started.</p>
+        </div>
+      </template>
+      <template
+        x-if="host.parsedTenants.TENANTS && host.parsedTenants.TENANTS.length > 0 && host.selectedTenantIndex >= 0 && host.selectedTenantIndex < host.parsedTenants.TENANTS.length"
+      >
+        <div class="flex flex-col max-w-4xl mx-auto h-full">
+          <div class="flex justify-between items-start mb-6 shrink-0">
+            <div>
+              <h2
+                class="text-3xl font-bold text-gray-800 mb-2"
+                x-text="host.parsedTenants.TENANTS[host.selectedTenantIndex].name || 'Unnamed Tenant'"
+              >
+              </h2>
+              <div
+                class="text-xs font-mono text-gray-500 bg-gray-200 px-2 py-1 rounded inline-block"
+                x-text="'ID: ' + host.parsedTenants.TENANTS[host.selectedTenantIndex].id"
+              >
+              </div>
+            </div>
+            <button
+              @click="deleteTenant(host.parsedTenants, () => host.saveTenants())"
+              class="text-red-600 hover:text-red-800 font-semibold transition-colors px-4 py-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-sm shadow-sm flex items-center gap-2"
+            >
+              <i class="fas fa-trash-alt"></i> Delete Tenant
+            </button>
+          </div>
+
+          <div
+            class="bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden"
+          >
+            <div class="p-6 border-b border-gray-200 shrink-0">
+              <h3
+                class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"
+              >
+                <i class="fas fa-id-card text-blue-500"></i> Identity
+                Configuration
+              </h3>
+              <div class="grid grid-cols-2 gap-6">
+                <div>
+                  <label
+                    class="block text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 font-bold"
+                  >Tenant ID (Unique)</label>
+                  <input
+                    type="text"
+                    x-model="host.parsedTenants.TENANTS[host.selectedTenantIndex].id"
+                    @input.debounce.500ms="host.saveTenants()"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-emerald-600 font-bold focus:border-blue-500 focus:bg-white outline-none transition-all"
+                  >
+                </div>
+                <div>
+                  <label
+                    class="block text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 font-bold"
+                  >Display Name</label>
+                  <input
+                    type="text"
+                    x-model="host.parsedTenants.TENANTS[host.selectedTenantIndex].name"
+                    @input.debounce.500ms="host.saveTenants()"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:bg-white outline-none transition-all"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="p-6 flex-1 overflow-y-auto flex flex-col bg-gray-50/30">
+              <div class="flex justify-between items-center mb-4 shrink-0">
+                <h3
+                  class="text-lg font-semibold text-gray-800 m-0 flex items-center gap-2"
+                >
+                  <i class="fas fa-users text-blue-500"></i> Mapped Customers
+                  <span
+                    class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                    x-text="(host.parsedTenants.TENANTS[host.selectedTenantIndex].customers || []).length"
+                  ></span>
+                </h3>
+                <button
+                  @click="linkCustomer(host.parsedTenants, () => host.saveTenants())"
+                  class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+                >
+                  <i class="fas fa-link"></i> Link Customer
+                </button>
+              </div>
+
+              <div class="flex flex-col gap-3">
+                <template
+                  x-if="!host.parsedTenants.TENANTS[host.selectedTenantIndex].customers || host.parsedTenants.TENANTS[host.selectedTenantIndex].customers.length === 0"
+                >
+                  <div
+                    class="text-sm text-gray-500 bg-white rounded-lg p-6 text-center border border-dashed border-gray-300"
+                  >
+                    No customers currently mapped to this tenant.
+                  </div>
+                </template>
+                <template
+                  x-for="(cus, cIdx) in host.parsedTenants.TENANTS[host.selectedTenantIndex].customers"
+                  :key="cus._key || cIdx"
+                >
+                  <div
+                    class="flex gap-3 items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative group/cus"
+                    x-init="
+                                const reg = host.spaCustomers.find(c => String(c.id) === String(cus.id));
+                                if (reg && String(reg.id) === String(cus.id)) {
+                                    cus.name = reg.name;
+                                    if (!cus.type) cus.type = (reg.type === 'Company' ? 'organization' : 'natural-person');
+                                }"
+                  >
+                    <div
+                      class="flex items-center justify-center w-8 h-8 rounded bg-gray-100 text-gray-400 shrink-0"
+                    >
+                      <i
+                        class="fas"
+                        :class="cus.type === 'organization' ? 'fa-building' : 'fa-user'"
+                      ></i>
+                    </div>
+                    <select
+                      @change="updateCustomerEntity(cIdx, $el.value, host.parsedTenants, host.spaCustomers, () => host.saveTenants())"
+                      class="flex-1 bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-blue-700 font-semibold focus:border-blue-500 focus:bg-white outline-none rounded-lg appearance-none cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
+                    >
+                      <option value="" disabled :selected="!cus.id">
+                        Select a mapped entity...
+                      </option>
+                      <template
+                        x-if="cus.id && !host.spaCustomers.find(c => String(c.id) === String(cus.id))"
+                      >
+                        <option
+                          :value="cus.id"
+                          x-text="cus.name || (cus.id + ' (Pending/External)')"
+                          selected
+                        >
+                        </option>
+                      </template>
+                      <optgroup label="Companies">
+                        <template
+                          x-for="spaCus in host.spaCustomers.filter(c => c.type === 'Company' && (!host.parsedTenants.TENANTS[host.selectedTenantIndex].customers.some(tc => String(tc.id) === String(c.id)) || String(c.id) === String(cus.id)))"
+                          :key="'comp-'+spaCus.id"
+                        >
+                          <option
+                            :value="spaCus.id"
+                            x-text="spaCus.name"
+                            :selected="String(spaCus.id) === String(cus.id)"
+                          >
+                          </option>
+                        </template>
+                      </optgroup>
+                      <optgroup label="Persons">
+                        <template
+                          x-for="spaCus in host.spaCustomers.filter(c => c.type === 'Person' && (!host.parsedTenants.TENANTS[host.selectedTenantIndex].customers.some(tc => String(tc.id) === String(c.id)) || String(c.id) === String(cus.id)))"
+                          :key="'pers-'+spaCus.id"
+                        >
+                          <option
+                            :value="spaCus.id"
+                            x-text="spaCus.name"
+                            :selected="String(spaCus.id) === String(cus.id)"
+                          >
+                          </option>
+                        </template>
+                      </optgroup>
+                    </select>
+
+                    <select
+                      @change="cus.type = $event.target.value; host.saveTenants()"
+                      class="w-40 bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:bg-white outline-none rounded-lg appearance-none cursor-pointer shrink-0"
+                    >
+                      <option
+                        value="organization"
+                        :selected="cus.type === 'organization'"
+                      >
+                        Organization
+                      </option>
+                      <option
+                        value="natural-person"
+                        :selected="cus.type === 'natural-person'"
+                        :disabled="host.isCompany(cus.id)"
+                      >
+                        Natural Person
+                      </option>
+                    </select>
+
+                    <button
+                      @click="unlinkCustomer(cIdx, host.parsedTenants, () => host.saveTenants())"
+                      class="text-red-400 hover:text-red-600 w-8 h-8 flex items-center justify-center hover:bg-red-50 rounded-lg text-sm transition-colors shrink-0"
+                      title="Unlink Customer"
+                    >
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- YAML Editor is now handled by the Backoffice Host shell -->
+</div>

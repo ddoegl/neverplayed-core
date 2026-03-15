@@ -1,0 +1,35 @@
+- id: LEGALREPS
+  type: legal-representative
+  label: "Legal Representatives"
+  roles:
+    - owner
+    - managing director
+    - managing partner
+    - authorized-signatory
+- id: PRIVATEREP
+  type: private-representative
+  label: "Private Representative"
+  roles:
+    - self
+    - parent
+    - guardian
+- id: ADMINISTRATOR
+  type: operator
+  label: "System Administrator"
+  roles: []
+- id: CARDADMINISTRATION
+  type: authorized-delegate
+  label: "Card Administration"
+  roles: []
+- id: GUARANTEE
+  type: authorized-delegate
+  label: "Guarantee Delegate"
+  roles: []
+- id: LETTER_OF_CREDIT
+  type: authorized-delegate
+  label: "Letter of Credit Delegate"
+  roles: []
+- id: DOSIGNEE
+  type: authorized-delegate
+  label: "DO Signee"
+  roles: []

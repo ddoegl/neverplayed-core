@@ -1,0 +1,58 @@
+{
+    "id": "redeem-invite",
+    "title": "Redeem Invitation",
+    "layout": "layout.html",
+    "defaultStep": "email-view",
+    "fullScreen": true,
+    "steps": [
+        {
+            "id": "dashboard",
+            "title": "Redemption Dashboard",
+            "label": "Redemption Dashboard",
+            "template": "dashboard.html",
+            "type": "main"
+        },
+        {
+            "id": "email-view",
+            "title": "Invitation Email",
+            "label": "Invitation Email",
+            "template": "email-mobile-view.html",
+            "type": "mobile"
+        },
+        {
+            "id": "redeem-code",
+            "title": "Enter Code",
+            "label": "Enter Code",
+            "template": "redeem-code.html",
+            "type": "mobile"
+        },
+        {
+            "id": "otp",
+            "title": "OTP",
+            "label": "OTP",
+            "template": "otp.html",
+            "type": "mobile"
+        },
+        {
+            "id": "invitation-view",
+            "title": "Invitation View",
+            "label": "Invitation View",
+            "template": "invitation-view.html",
+            "type": "mobile"
+        },
+        {
+            "id": "accept-invitation",
+            "title": "Accept Invitation",
+            "label": "Accept Invitation",
+            "template": "accept-invitation.html",
+            "type": "mobile"
+        },
+        {
+            "id": "success",
+            "title": "Success",
+            "label": "Success",
+            "template": "success.html",
+            "type": "mobile"
+        }
+    ]
+}

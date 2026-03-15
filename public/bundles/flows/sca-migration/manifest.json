@@ -1,0 +1,5 @@
+{
+  "Bundle-SymbolicName": "sca-migration",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js"
+}

@@ -1,0 +1,29 @@
+- id: bikevalue
+  name: Bike Value Logistics GmbH
+  regNr: "FN 123456 g"
+  legalRepresentatives:
+    - personId: john
+      role: managing-partner
+    - personId: anna
+      role: managing-director
+  address: Musterstraße 1, 1010 Wien
+  description: We specialize in efficient logistics for microphones and other audio equipment.
+  template: content/companies/bikevalue.md
+- id: annahobs
+  name: Anna Hobs Holding GmbH
+  regNr: "FN 987654 x"
+  legalRepresentatives:
+    - personId: anna
+      role: owner
+  address: Beispielweg 2, 8010 Graz
+  description: A holding company with a focus on sustainable investments.
+  template: content/companies/annahobs.md
+- id: KUNDE_AGENCY_1
+  name: Creative Dark Arts Agency
+  regNr: "FN 666666 x"
+  legalRepresentatives:
+    - personId: bactor
+      role: owner
+  address: Devil's Tower 666, 666 Hell
+  description: We specialize in dark arts and magic.
+  template: content/companies/agency.md

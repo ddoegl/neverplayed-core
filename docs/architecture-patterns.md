@@ -1,0 +1,577 @@
+# Architecture Patterns: Backoffice Reactivity & State Management
+
+This document outlines the core architectural patterns used for building
+reactive and consistent user interfaces within the Pandino Backoffice ecosystem.
+
+---
+
+## 1. The `$watch` Pattern for Cross-Context Reactivity
+
+When building complex "Master/Detail" interfaces using Alpine.js and OSGi
+services, we often encounter scenarios where multiple data sources need to stay
+in sync.
+
+### The Problem
+
+Alpine.js reactivity is scoped to the `x-data` component. However, in our
+system, the "Host" (the Backoffice Shell) often provides a reactive Proxy
+(`host`) that contains the global state. Changing a selection in a sidebar
+(Master view) might not automatically trigger a re-render of a Detail view if
+the detail view relies on a local reference established during `x-init`.
+
+### The Solution: `$watch`
+
+We use the Alpine.js `$watch` magic property to explicitly monitor changes in
+the global state or local selection indices and update internal component
+references accordingly.
+
+**Example: Master/Detail Selection Sync**
+
+```html
+<div
+  x-data="{ 
+    selectedIdx: 0,
+    strat: null
+  }"
+  x-init="
+    strat = host.parsedData[selectedIdx];
+    $watch('selectedIdx', value => { 
+        strat = host.parsedData[value];
+    });
+  "
+>
+  <!-- Sidebar -->
+  <template x-for="(item, idx) in host.parsedData">
+    <div @click="selectedIdx = idx">...</div>
+  </template>
+
+  <!-- Detail View -->
+  <div x-text="strat.name"></div>
+</div>
+```
+
+**Where it is used:**
+
+- `backoffice-capabilities` (Strategy selection sync)
+- `backoffice-campaigns` (Campaign strategy selection sync)
+- `backoffice-topics` (Topic strategy selection sync)
+- `backoffice-licenses` (User/License selection sync)
+- `backoffice-sca` (SCA strategy management)
+
+---
+
+## 2. Component Binding Patterns (Alpine + OSGi)
+
+When dynamically loading flows and rendering their templates into shell
+containers (like `index.html`'s `flow-container`), we must reliably bridge the
+global OSGi module scope into the local Alpine UI reactivity tree.
+
+### The "Fresh Factory" Pattern (Recommended)
+
+Used for standalone pages or full-screen flows (e.g. `backoffice-web`). Instead
+of trying to inject a pre-bound `Alpine.reactive` proxy, we expose a **plain
+Javascript setup function** to `globalThis` that Alpine naturally calls during
+its DOM parsing phase via an explicit `x-data` attribute in the template.
+
+**Activator Setup**:
+
+```javascript
+launch: (async (targetElement) => {
+  globalThis.getMyFlowScope = () => ({
+    count: 0,
+    increment() {
+      this.count++;
+    },
+  });
+  targetElement.innerHTML = await fetch("view.html").text();
+});
+```
+
+**Template Markup**:
+
+```html
+<div x-data="globalThis.getMyFlowScope()">
+  <button @click="increment()">Add</button>
+</div>
+```
+
+### Fragment Shadowing (Alternative)
+
+Used for smaller UI utilities injected into existing dashboards (e.g.
+`config-admin`, `poc-evaluator`). We inject a reactive proxy onto the target
+element's internal `_x_dataStack` property.
+
+**Activator Setup**:
+
+```javascript
+launch: (async (targetElement) => {
+  const state = Alpine.reactive({ count: 0 });
+  targetElement._x_dataStack = [state]; // Seed the stack
+  targetElement.innerHTML = await fetch("view.html").text();
+});
+```
+
+---
+
+## 3. Global Service Discovery via `shared-types.js`
+
+To prevent "magic string" fragmentation and runtime `null` pointer exceptions,
+all OSGi service interfaces and flow IDs are centralized in
+`osgi/shared-types.js`.
+
+- **Registration**: Always use the constant from `shared-types.js`.
+- **Consumption**: Always use a getter/helper in your Activator that can
+  re-query the `BundleContext` if the local reference is null (Lazy Loading).
+
+---
+
+## 4. Persistence Patterns
+
+The project follows a "Local-First" persistence strategy using the OSGi
+`PersistenceManager`.
+
+1. **Bundle Configuration**: Use `ConfigAdmin` for settings (log levels, feature
+   flags). It handles defaults via `manifest.json` and dispatches
+   `config-updated` events.
+2. **Domain Data (Seed & Persist)**:
+   - **Attempt Load**: Try to load from `PersistenceManager` using a unique PID.
+   - **Fallback to Seed**: If empty, `fetch` the static YAML/JSON asset from the
+     bundle.
+   - **Hydrate & Store**: Parse and store it in PM to "lock" it for future
+     sessions.
+3. **Reactive Session Persistence**: Use
+   `Alpine.effect(() => { pm.store(ID, state); })` for global UI state to
+   automatically sync property changes to `localStorage`.
+
+---
+
+## 5. Configuration over Code (The Bridging Pattern)
+
+To ensure smooth transitions between legacy data formats and modern composable
+structures:
+
+- **Detection**: Check for legacy properties (e.g., `strat.primitive`) in `x-if`
+  templates.
+- **Migration**: Provide a non-destructive "Upgrade" action that transforms the
+  data into the new harmonized format (`matchers` array).
+- **Normalization**: Ensure internal getters (e.g., `availableFeatures`) handle
+  diverse data sources reactively.
+
+---
+
+## 6. Cross-Flow Event Signaling
+
+In a decoupled OSGi architecture, bundles often need to request actions from one
+another without direct object dependencies. We achieve this via standard DOM
+events and the `@pandino/event-admin` for background tasks.
+
+### The "Modal Signal" Pattern
+
+Used when an embedded subflow (e.g., `invitation-admin`) needs the host (e.g.,
+`company-authorizations`) to launch a slide-over modal on its behalf.
+
+**Subflow Dispatch**:
+
+```javascript
+targetElement.dispatchEvent(
+  new CustomEvent("invitation-admin-request-modal", {
+    detail: { step: "person-details", type: "employee" },
+    bubbles: true,
+  }),
+);
+```
+
+**Host Listener & Late-Binding State**:
+
+When the host receives the request, it loads the subflow and then "late-binds"
+specific state parameters onto the subflow's Alpine proxy via its
+`_x_dataStack`.
+
+```javascript
+targetElement.addEventListener("invitation-admin-request-modal", (e) => {
+  const { step, type, code } = e.detail;
+
+  // 1. Load the subflow into the modal container
+  state.loadSubFlow("invitation-admin", step);
+
+  // 2. Late-bind specific state params via nextTick or timeout
+  setTimeout(() => {
+    const container = document.getElementById("subflow-modal-container");
+    if (container && container._x_dataStack && container._x_dataStack[0]) {
+      const subState = container._x_dataStack[0];
+      if (type) subState.invitationType = type;
+      if (code) {
+        subState.invitation = subState.filteredInvitations.find(
+          (i) => i.code?.toUpperCase() === code?.toUpperCase(),
+        );
+      }
+    }
+  }, 250);
+});
+```
+
+**Benefits**:
+
+- **Decoupling**: The subflow doesn't need to know how the host renders modals.
+- **Consistency**: The host maintains control over the UI container
+  (slide-over).
+- **Flexibility**: Works regardless of whether the subflow is embedded or
+  standalone.
+
+---
+
+## 7. The `onActivate` Hook (Dynamic Injection)
+
+In a portal/host architecture where multiple sub-flows share a single reactive
+state (`hostState`), we use the `onActivate` hook to inject business logic
+methods into the host precisely when the sub-flow is selected.
+
+### The Problem
+
+Different flows (e.g., `user-management` vs. `company-settings`) might need to
+provide different implementations for a common placeholder method (e.g.,
+`performAction`). If these methods are injected only during bundle `start`, they
+can be overwritten by other bundles or missing if the portal restarts.
+
+### The Solution
+
+Define an `onActivate` method in the flow object. The Host (Portal) is
+responsible for calling this hook whenever the user navigates to this specific
+flow.
+
+**Sub-flow Activator**:
+
+```javascript
+const serviceObj = {
+  id: "my-flow",
+  onActivate: (hostState) => {
+    // Inject specific logic only when this flow is active
+    hostState.performAssignment = (id, target) => {
+      /* logic */
+    };
+  },
+};
+```
+
+**Host Discovery/Activation**:
+
+```javascript
+// When loading a step
+const flow = registeredFlows.find((f) => f.id === stepId);
+if (flow && typeof flow.onActivate === "function") {
+  flow.onActivate(this.state); // 'this.state' is the reactive portal state
+}
+```
+
+---
+
+## 8. Resilient Service Retrieval (On-Demand Lookup)
+
+To handle OSGi race conditions and late-arriving infrastructure services, avoid
+storing service references as class members or module-level variables.
+
+### The Problem
+
+If a bundle looks up a service (e.g., `LICENSE_DATA_SERVICE`) during its `start`
+phase and the provider bundle hasn't registered it yet, the reference remains
+`null` for the lifetime of the bundle, causing intermittent runtime failures.
+
+### The Solution: On-Demand Helper
+
+Implement a small `getSvc` helper within the scope of your business logic
+methods. This ensures the service is re-queried from the `BundleContext` every
+time it is needed.
+
+**Example: Resilient Activator Pattern**
+
+```javascript
+onActivate: ((hostState) => {
+  const getSvc = (sid) => {
+    const ref = context.getServiceReference(sid);
+    return ref ? context.getService(ref) : null;
+  };
+
+  hostState.saveOperation = () => {
+    const svc = getSvc(MY_SERVICE_ID);
+    if (!svc) {
+      console.error("Service not available yet!");
+      return;
+    }
+    svc.performSave();
+  };
+});
+```
+
+**Benefits**:
+
+- **Robustness**: Immune to bundle startup order.
+- **Self-Healing**: If a provider bundle is restarted (updated), the consumer
+  automatically picks up the new service instance.
+- **Testability**: Easier to mock context-based lookups than module-level
+  globals.
+
+---
+
+## 9. Reactive Data Projection (Projection Pattern)
+
+When bridging local bundle data (e.g. from `PersistenceManager`) to the global
+Backoffice `hostState`, we must ensure the projection is established during the
+active lifecycle of the UI.
+
+**In `activator.js` -> `onActivate`**:
+
+```javascript
+onActivate: ((hostState) => {
+  // Project local data into hostState for Alpine usage
+  hostState.myLocalData = myInternalData;
+
+  // Logic that operates on the projected data
+  hostState.performAction = () => {
+    myInternalSvc.process(hostState.myLocalData);
+  };
+});
+```
+
+This pattern ensures that the UI always has access to a reactive reference that
+triggers re-renders, while keeping the source of truth managed within the
+bundle's internal scope.
+
+---
+
+## 10. Defensive Data Normalization
+
+Alpine.js can exhibit unexpected behavior (like iterating over characters of a
+string instead of items in an array) if data types vary. We use defensive
+normalization when loading or storing data.
+
+1. **Array Enforcement**: Always check if a property is an array before storing
+   it in the host state or PM.
+2. **Value Guarding**: Filter out null/undefined values to prevent UI crashes.
+
+**Example**:
+
+```javascript
+const normalize = (data) => {
+  if (data && Array.isArray(data.items)) {
+    data.items = [...new Set(data.items.filter(Boolean))];
+  } else if (data && typeof data.items === "string") {
+    data.items = [data.items]; // Convert to list
+  }
+};
+```
+
+This is especially important for properties like `licenseholder` or `customers`
+which might be edited by hand in YAML files or registry editors.
+
+---
+
+## 11. Dual-Bridge Reactivity Pattern (OSGi + DOM)
+
+When dealing with deeply embedded flows where OSGi `EventHandler` updates might
+be delayed or partially blocked by Alpine.js's component lifecycle, we use a
+"Dual-Bridge" approach.
+
+### The Problem
+
+An OSGi `EventHandler` registered in an activator might receive an event (e.g.,
+`invitations/updated`), but if the Alpine state it tries to update is part of a
+sub-flow that was dynamically injected, reactivity might not propagate
+immediately to the UI elements.
+
+### The Solution
+
+1. **Service-to-Service (OSGi)**: Continue using `@pandino/event-admin` for
+   decoupled service logic.
+2. **Service-to-UI (DOM)**: Dispatch a standard DOM CustomEvent on `globalThis`.
+   This allows any Alpine component in the tree to listen directly via
+   `@event-name.window` and trigger a local `updateTrigger`.
+
+**Provider (e.g., Invitation Service)**:
+
+```javascript
+publishEvent(context, topic, data) {
+  // 1. OSGi Bridge
+  eventAdmin.postEvent(eventFactory.build(topic, data));
+  
+  // 2. DOM Bridge (Global Signal)
+  const domTopic = topic.replaceAll('/', '-'); // e.g., 'invitations-updated'
+  globalThis.dispatchEvent(new CustomEvent(domTopic, { detail: data }));
+}
+```
+
+**Consumer (e.g., Authorizations Dashboard)**:
+
+````html
+<div
+  x-data="{ updateTrigger: 0 }"
+  @invitations-updated.window="updateTrigger++"
+>
+  ...
+</div>
+
+--- ## 12. The Limes Guarding Pattern (ENTITY_ACTION) To ensure a predictable
+and surgical authorization architecture, all business modules must follow the
+`ENTITY_ACTION` naming convention for Limes strategies. ### The Pattern
+Strategies should be named using an uppercase prefix for the entity type,
+followed by an underscore and the action name (also uppercase). -
+**Visibility**: Use `${ENTITY}_VIEW` (e.g., `CASE_VIEW`, `PRODUCT_VIEW`) for
+general resource visibility. - **Actions**: Use `${ENTITY}_${ACTION}` (e.g.,
+`CASE_SIGN`, `PRODUCT_TRADE`) for specific state transitions or operations. ###
+Implementation in Domain Objects The `backoffice-do-registry` supports this
+pattern via a `limesPrefix` property in the strategy definition. ```yaml id:
+product-strategy limesPrefix: PRODUCT actions: - id: sign label: Authorize
+Product
+````
+
+The evaluator will automatically resolve this to `PRODUCT_VIEW` and
+`PRODUCT_SIGN` when querying Limes.
+
+### Benefits
+
+- **Predictability**: Developers know exactly what strategy ID to register or
+  query.
+- **Surgical Control**: Avoids "God Strategies" by separating visibility from
+  specific actions.
+- **Discoverability**: Standardized names are easier to find in the Limes
+  Management UI.
+
+---
+
+## 13. Flow Registration & Discovery Pattern
+
+For flows to be correctly discovered by portals (like the Business Portal or
+Backoffice) and filtered by channel, they must provide specific metadata during
+OSGi service registration.
+
+### The Problem
+
+Bundles that register a `FLOW_SERVICE` but omit service properties are invisible
+to portals that use `ServiceTrackers` with LDAP filters. While the manifest's
+`Configuration` object is used for initial system setup, the **runtime
+registration** is the source of truth for navigation.
+
+### The Solution
+
+Always provide a properties object as the third argument to
+`context.registerService`.
+
+**Required Properties:**
+
+- `flow.id`: A unique string identifier (e.g., `do-dashboard`).
+- `flowType`: Categorization for the portal (e.g., `service-flow`,
+  `backoffice-flow`).
+- `channels`: An array of channel IDs where this flow should be visible (e.g.,
+  `["business-channel-web"]`).
+
+**Example: Standard Flow Registration**
+
+```javascript
+context.registerService(FLOW_SERVICE, {
+  id: "my-flow",
+  title: "My Flow",
+  launch: (container) => {/* ... */},
+}, {
+  "flow.id": "my-flow",
+  "flowType": "service-flow",
+  "channels": ["business-channel-web"],
+});
+```
+
+### Benefits
+
+- **Automatic Navigation**: Portals will automatically pick up and display the
+  flow in the sidebar based on the current channel.
+- **Early Filtering**: Allows portals to filter out flows that shouldn't be
+  accessible in specific environments (e.g., hiding backoffice tools from retail
+  users).
+- **Consistency**: Bridges the static manifest declaration with the dynamic OSGi
+  service registry.
+
+---
+
+## 14. Limes Evaluation & Identity Resolution
+
+To ensure consistent authorization results across different UI contexts (Shell
+vs. Portal), always pass the **User ID** (string) to Limes instead of the raw
+session user object.
+
+### The Problem
+
+Limes' `isAllowed(userOrId, ...)` method is overloaded:
+
+1. **Pass a String (ID)**: Limes performs an on-demand lookup in the global
+   Evaluation State to find the **fully enriched capability object**. This
+   object contains the mapped permissions, features, and pre-filtered Domain
+   Objects.
+2. **Pass an Object**: Limes assumes the object **is** the already-enriched
+   capability object. If you pass a raw session user object, it lacks the
+   required permission metadata, causing all checks to fail silently.
+
+### The Solution
+
+Always use the User ID to leverage the system's evaluation pipeline.
+
+**Correct Pattern (e.g., in sub-flows):**
+
+```javascript
+const userId = session.currentUser?.id;
+// This triggers a full capability lookup
+const allowed = limes.isAllowed(userId, "MY_STRATEGY", myContext);
+```
+
+**Incorrect Pattern:**
+
+```javascript
+const user = session.currentUser;
+// Limes will treat 'user' as the enriched capability object and fail to find permissions!
+const allowed = limes.isAllowed(user, "MY_STRATEGY", myContext);
+```
+
+### Benefits
+
+- **Context Independence**: Works in the Backoffice Shell and Business Portal
+  regardless of how the session is stored locally.
+- **Data Integrity**: Ensures you are checking against the system's "Ground
+  Truth" for a user's permissions, which may be more extensive than the basic
+  session data.
+- **Simplicity**: Reduces the need to pass heavy objects between different
+  layers of the UI.
+
+---
+
+## 15. Navigation Stability & Partial Shell Updates
+
+To prevent flickering and preserve UI state (like open dialogs) during background service refreshes, shell clients must use defensive partial update logic.
+
+### The Problem
+
+If a shell activator re-renders the entire main content area (`innerHTML = ""`) whenever it receives a navigation request or a "step updated" signal, it destroys all active DOM nodes, including Alpine components and their local states (dialogs, form inputs).
+
+### The Solution: `data-active-step` Tracking
+
+Instead of just checking if the `stepId` is the same, shells should track the **rendered** state using a data attribute on the content container.
+
+**Correct "Stable" Implementation:**
+
+```javascript
+const contentArea = document.getElementById("content-area");
+const isSameStep = this.currentStep === targetId;
+const isAlreadyRendered = contentArea && contentArea.dataset.activeStep === targetId;
+
+if (isSameStep && isAlreadyRendered) {
+    // Skip DOM destruction! 
+    // Just trigger child activation logic if needed.
+    if (extension.onActivate) extension.onActivate(this);
+    return;
+}
+
+// Perform update and tag the container
+contentArea.innerHTML = newHtml;
+contentArea.dataset.activeStep = targetId;
+```
+
+**Benefits:**
+
+- **Zero Flickering**: Seamless transitions for background updates.
+- **State Preservation**: Dialogs and overlays remain active.
+- **Performance**: Skips expensive DOM parsing and Alpine initialization for redundant calls.

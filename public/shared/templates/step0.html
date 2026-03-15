@@ -1,0 +1,179 @@
+<div class="col-span-4" x-data="{ viewState: '' }">
+<div class="col-span-4" x-data="{ viewState: '' }">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <template x-for="company in companies" :key="company.id">
+            <div 
+                class="bg-white p-4 rounded shadow cursor-pointer hover:shadow-lg transition-shadow"
+                @click="selectCompany(company); viewState = 'start'"
+            >
+                <div x-html="company.html"></div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Teleport the Wizard Content to the global slide-over -->
+    <template x-teleport="#slide-over-content">
+        <div x-show="currentStep === 'step0'">
+            <!-- 
+                Start View (Company Details) - Now inside Modal
+             -->
+            <div x-show="viewState === 'start'">
+                <h2 class="text-2xl font-bold text-center mb-4">
+                    Angaben zum Unternehmen in Step
+                </h2>
+                <hr class="mb-4" />
+
+                <div class="flex justify-start mt-4 ml-8">
+                    <!-- Dynamic Company Content -->
+                     <div x-html="selectedCompany?.html" class="prose"></div>
+                </div>
+
+                <div class="flex justify-start ml-8 mt-4">
+                    <div class="w-full">
+                        <button
+                            class="mt-4 bg-blue-600 text-white px-4 py-2 rounded"
+                            @click="viewState = 'form'"
+                        >
+                            Neue Vollmacht (Open Modal)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 
+                Form View
+             -->
+            <div x-show="viewState === 'form'">
+                <h2 class="text-2xl font-bold text-center mb-4">
+                    Angaben zur Vollmacht
+                </h2>
+                <hr class="mb-4" />
+
+                <div class="flex justify-center mb-4">
+                    <img
+                        src="../assets/company-info/bikevalue_details_header.png"
+                    />
+                </div>
+
+                <label class="block mt-4"
+                >Welche Vollmacht soll erteilt werden?</label>
+                <select
+                    x-model="form.authzType"
+                    class="bg-white text-black p-2 rounded border w-full"
+                >
+                    <option value="NONE">Choose Type</option>
+                    <option value="cardadmin">Card administration</option>
+                    <option value="NEW">Custom</option>
+                </select>
+
+                <label class="block mt-4"
+                >Wer soll bevollmächtigt werden?</label>
+                <select
+                    x-model="form.selectedFellow"
+                    @change="handleFellowChange()"
+                    class="bg-white text-black p-2 rounded border w-full"
+                >
+                    <option value="NONE">Choose Person</option>
+                    <option value="john">&#x2714; John Mayor</option>
+                    <option value="anna">&#x2714; Anna Hobs</option>
+                    <option value="NEW">&#x2b; Invite new person</option>
+                </select>
+
+                <div
+                    x-show="showNewPersonForm"
+                    class="mt-4 border p-4 rounded bg-gray-50"
+                >
+                    <div class="mb-2">
+                        <label>First Name</label>
+                        <input
+                            type="text"
+                            x-model="form.newPerson.firstName"
+                            class="block w-full p-2 border"
+                            placeholder="First Name"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <label>Last Name</label>
+                        <input
+                            type="text"
+                            x-model="form.newPerson.lastName"
+                            class="block w-full p-2 border"
+                            placeholder="Last Name"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <label>Birth Date</label>
+                        <input
+                            type="date"
+                            x-model="form.newPerson.birthDate"
+                            class="block w-full p-2 border"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <label>Email</label>
+                        <input
+                            type="email"
+                            x-model="form.newPerson.email"
+                            class="block w-full p-2 border"
+                            placeholder="Email"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <label>Phone</label>
+                        <input
+                            type="tel"
+                            x-model="form.newPerson.phone"
+                            class="block w-full p-2 border"
+                            placeholder="Phone"
+                        >
+                    </div>
+                </div>
+
+                <button
+                    class="mt-8 bg-blue-600 text-white px-4 py-2 rounded w-full"
+                    @click="viewState = 'summary'"
+                >
+                    Vollmacht erstellen
+                </button>
+            </div>
+
+            <!-- 
+                Summary View
+            -->
+            <div x-show="viewState === 'summary'">
+                <h2 class="text-2xl font-bold text-center mb-4">
+                    Zusammenfassung Vollmacht
+                </h2>
+                <hr class="mb-4" />
+
+                <div class="bg-gray-100 p-4 rounded mb-4">
+                    <p>
+                        <strong>Auth Type:</strong>
+                        <span x-text="form.authzType"></span>
+                    </p>
+                    <p>
+                        <strong>Person:</strong>
+                        <span
+                            x-text="form.selectedFellow === 'NEW' ? (form.newPerson.firstName + ' ' + form.newPerson.lastName) : holderName"
+                        ></span>
+                    </p>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button
+                        class="flex-1 mt-4 bg-gray-500 text-white px-4 py-2 rounded"
+                        @click="viewState = 'form'"
+                    >
+                        Back
+                    </button>
+                    <button
+                        class="flex-1 mt-4 bg-green-600 text-white px-4 py-2 rounded"
+                        @click="closeModal(); loadStep('step1')"
+                    >
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>

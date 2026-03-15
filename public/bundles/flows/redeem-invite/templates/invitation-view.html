@@ -1,0 +1,53 @@
+<!-- Screen Content -->
+<div class="p-6">
+  <div class="bg-blue-50 rounded-lg p-4 border border-blue-100 mb-6">
+    <p class="text-sm text-blue-600 mb-2">
+      You are invited to connect to
+    </p>
+    <p
+      class="font-bold text-lg text-slate-900 mb-4"
+      x-text="invitation.companyName"
+    >
+    </p>
+
+    <div class="flex items-center mb-4">
+      <div
+        class="w-10 h-10 rounded-full bg-orange-400 flex items-center justify-center text-white font-bold mr-3"
+        x-text="currentFellow ? getInitials(currentFellow) : '?'"
+      >
+        RR
+      </div>
+      <div>
+        <p class="text-xs text-slate-400">Inviting Person</p>
+        <p
+          class="font-bold text-slate-900 text-sm"
+          x-text="currentFellow ? (currentFellow.firstname + ' ' + currentFellow.lastname) : 'System'"
+        >
+        </p>
+      </div>
+    </div>
+
+    <div class="border-l-2 border-blue-200 pl-3 mt-4">
+      <p class="italic text-sm text-slate-600">
+        "Dear <span
+          x-text="selectedPerson ? selectedPerson.firstname : 'Partner'"
+        ></span>, please connect with us to redeem your new Business Virtual
+        Card."
+      </p>
+    </div>
+  </div>
+
+  <div class="text-center mt-8">
+    <button
+      class="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-slate-800 transition transform active:scale-95"
+      @click="loadStep('accept-invitation')"
+    >
+      Continue
+    </button>
+    <button
+      class="text-slate-400 text-sm mt-4 hover:text-slate-900 transition font-medium"
+    >
+      Reject Invitation
+    </button>
+  </div>
+</div>

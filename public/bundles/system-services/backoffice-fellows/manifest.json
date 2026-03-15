@@ -1,0 +1,15 @@
+{
+  "Bundle-SymbolicName": "backoffice.fellows",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Require-Capability": [
+    "pandino.util.yaml;version=\"1.0.0\"",
+    "osgi.service; filter=\"(objectClass=pandino.persistence.manager)\""
+  ],
+  "Configuration": {
+    "flowType": "backoffice-flow",
+    "channels": [
+      "backoffice-web"
+    ]
+  }
+}

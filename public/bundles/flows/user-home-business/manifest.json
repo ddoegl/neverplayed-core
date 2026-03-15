@@ -1,0 +1,12 @@
+{
+  "Bundle-SymbolicName": "@prototyper/flow.user-home-business",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Provide-Capability": "prototyper.flow.service;version=\"1.0.0\";flow.id=\"user-home-business\"",
+  "Configuration": {
+    "flowType": "service-flow",
+    "channels": ["business-channel-web"],
+    "flow.title": "Business Dashboard",
+    "flow.icon": "fas fa-th-large"
+  }
+}

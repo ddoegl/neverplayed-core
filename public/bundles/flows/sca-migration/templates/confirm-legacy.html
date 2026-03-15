@@ -1,0 +1,70 @@
+<div
+  class="flex flex-col items-center justify-center min-h-[400px] p-8 text-center animate-fadeIn"
+>
+  <div
+    class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm"
+  >
+    <i class="fas fa-mobile-alt text-2xl"></i>
+  </div>
+
+  <h2 class="text-2xl font-bold text-gray-900 mb-4">Check your Legacy Token</h2>
+
+  <div class="space-y-6 max-w-md mx-auto">
+    <p class="text-gray-600 leading-relaxed">
+      We've sent a confirmation request to your <strong>Legacy Software
+        Token</strong> app. Please open the legacy app and approve the
+      migration.
+    </p>
+
+    <div
+      class="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 text-left"
+    >
+      <div
+        class="w-12 h-12 bg-white rounded-xl shadow-sm flex-shrink-0 flex items-center justify-center"
+      >
+        <i class="fas fa-bell text-blue-500 animate-bounce"></i>
+      </div>
+      <div>
+        <div
+          class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5"
+        >
+          Notification
+        </div>
+        <div class="text-sm font-semibold text-gray-700">
+          "Confirm Migration to Modern Token"
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-center gap-3 py-4">
+      <div class="flex gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+        <span
+          class="w-2 h-2 rounded-full bg-blue-600 animate-pulse [animation-delay:0.2s]"
+        ></span>
+        <span
+          class="w-2 h-2 rounded-full bg-blue-600 animate-pulse [animation-delay:0.4s]"
+        ></span>
+      </div>
+      <span class="text-xs font-bold text-blue-600/60 uppercase tracking-widest"
+      >Awaiting Confirmation</span>
+    </div>
+  </div>
+
+  <div class="mt-8 flex flex-col gap-3 w-full max-w-xs mx-auto">
+    <!-- Simulation: Clicking this "Manual Redirect" acts as if migration was confirmed -->
+    <button
+      @click="loadStep('progress')"
+      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-md active:scale-[0.98]"
+    >
+      Confirmed in Legacy App
+    </button>
+
+    <button
+      @click="loadStep('download-app')"
+      class="text-gray-400 hover:text-gray-600 text-sm font-medium py-2"
+    >
+      Resend Notification
+    </button>
+  </div>
+</div>

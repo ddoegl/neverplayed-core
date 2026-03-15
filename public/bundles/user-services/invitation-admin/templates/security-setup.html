@@ -1,0 +1,102 @@
+<div>
+  <div x-show="currentStep === 'security' || currentStep === 'security-setup'">
+    <h2 class="text-2xl font-bold text-center mb-4">
+      Security & Invitation
+    </h2>
+    <hr class="mb-4" />
+
+    <!-- Security Feature -->
+    <div class="mb-4">
+      <label class="block font-bold mb-1">Security Feature</label>
+      <select
+        x-model="form.securityFeature"
+        class="bg-white text-black p-2 rounded border w-full"
+      >
+        <option value="none">None</option>
+        <option value="birthdate">Birthdate</option>
+        <option value="account-number">Account Number</option>
+        <option value="id-document">ID Document</option>
+      </select>
+      <p class="text-xs text-gray-500 mt-1">
+        Select an additional security feature for verification.
+      </p>
+    </div>
+
+    <!-- Security Question -->
+    <div class="mb-4">
+      <label class="block font-bold mb-1">Optional Security Question</label>
+      <select
+        x-model="form.securityQuestionType"
+        class="bg-white text-black p-2 rounded border w-full"
+      >
+        <option value="none">None</option>
+        <option value="supervisor">
+          Name of direct supervisor?
+        </option>
+        <option value="department">Name of department?</option>
+        <option value="project">Current internal project?</option>
+        <option value="custom">Custom Question</option>
+      </select>
+    </div>
+
+    <div class="mb-4" x-show="form.securityQuestionType === 'custom'">
+      <label class="block font-bold mb-1 text-sm">Custom Question</label>
+      <input
+        type="text"
+        x-model="form.customSecurityQuestion"
+        class="block w-full p-2 border rounded"
+        placeholder="Enter question..."
+      >
+    </div>
+
+    <!-- Personal Message -->
+    <div class="mb-6">
+      <label class="block font-bold mb-1">Optional Personal Message</label>
+      <textarea
+        x-model="form.personalMessage"
+        class="block w-full p-2 border rounded h-24"
+        placeholder="Add a personal message to the invitee..."
+      ></textarea>
+    </div>
+
+    <!-- Inviter Info (Info Mode) -->
+    <div class="bg-blue-50 p-4 rounded mb-4 text-sm">
+      <p>
+        <span class="font-bold">Your Name:</span>
+        <span
+          x-text="currentFellow ? (currentFellow.firstname + ' ' + currentFellow.lastname) : 'System'"
+        >Rob Richter</span>
+      </p>
+      <p>
+        <span class="font-bold">Your Org:</span>
+        <span x-text="selectedCompany ? selectedCompany.name : 'System'"
+        >Bike Value Logistics GmbH</span>
+      </p>
+    </div>
+
+    <!-- Consent -->
+    <div class="mb-6">
+      <label class="flex items-start space-x-2">
+        <input type="checkbox" x-model="form.consent" class="mt-1">
+        <span class="text-sm"
+        >I consent to provide my Name and the name of my organization as part of
+          the invitation.</span>
+      </label>
+    </div>
+
+    <div class="flex space-x-2 mt-8">
+      <button
+        class="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded"
+        @click="loadStep('person-details')"
+      >
+        Back
+      </button>
+      <button
+        class="flex-1 bg-blue-600 text-white px-4 py-2 rounded"
+        @click="if(prepareInvitation()) loadStep('confirm-invitation')"
+      >
+        Create Invitation
+      </button>
+    </div>
+  </div>
+</div>

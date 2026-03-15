@@ -1,0 +1,116 @@
+<div
+  class="min-h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50"
+>
+  <div
+    class="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-gray-100"
+  >
+    <div>
+      <div
+        class="mx-auto h-16 w-16 bg-amber-500 rounded-2xl flex items-center justify-center shadow-lg mb-6 text-white text-2xl"
+      >
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      <h2
+        class="text-center text-3xl font-extrabold text-gray-900 tracking-tight"
+      >
+        Security Verification
+      </h2>
+      <p class="mt-2 text-center text-sm text-gray-600">
+        Choose an authentication method to continue
+      </p>
+    </div>
+
+    <div
+      class="mt-8 space-y-4"
+      x-data="{
+      activeMethods: [],
+      initMethods() {
+        const stratKey = pendingLoginUser.scaStrategy;
+        if (stratKey === 'bootstrap') {
+          this.activeMethods.push({ 
+            id: 'bootstrap-otp', 
+            label: 'One-Time PIN (SMS)', 
+            icon: 'fas fa-key', 
+            color: 'blue',
+            isBootstrap: true 
+          });
+          return;
+        }
+        const strat = parsedSCAStrategies[stratKey];
+        if (strat) {
+          // Dynamically render methods from parsedSCAMethods
+          const methods = parsedSCAMethods || {};
+          Object.entries(methods).forEach(([methodKey, methodDef]) => {
+            if (strat[methodKey] === true) {
+              this.activeMethods.push({
+                id: methodKey,
+                label: methodDef.label || methodKey,
+                icon: methodDef.icon || 'fas fa-key',
+                color: methodDef.color || 'gray'
+              });
+            }
+          });
+        }
+      }
+    }"
+      x-init="initMethods()"
+    >
+      <template x-for="method in activeMethods" :key="method.id">
+        <button
+          @click="if(method.isBootstrap) { 
+            alert('SCA Bootstrap: A one-time PIN has been sent via SMS to the registered number.'); 
+            const input = prompt('Enter the Bootstrap Security Code (Format: XXX-XXX-XXX-XXX) provided during your last logout:');
+            if (!input || input.toUpperCase().trim() !== (pendingLoginUser['bootstrap-code'] || '').toUpperCase().trim()) {
+                alert('Invalid Security Code. Access denied.');
+                return;
+            }
+          } completeLoginWithSCA(method.id)"
+          class="w-full flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50/30 transition-all group group-active:scale-[0.98]"
+        >
+          <div class="flex items-center gap-4">
+            <div
+              :class="`w-10 h-10 rounded-full flex items-center justify-center bg-${method.color}-100 text-${method.color}-600 text-lg`"
+            >
+              <i :class="method.icon"></i>
+            </div>
+            <div class="text-left">
+              <div
+                class="text-sm font-bold text-gray-900"
+                x-text="method.label"
+              >
+              </div>
+              <div
+                class="text-[10px] text-gray-500 font-mono"
+                x-text="method.id"
+              >
+              </div>
+            </div>
+          </div>
+          <i
+            class="fas fa-chevron-right text-gray-300 group-hover:text-blue-500 transition-colors"
+          ></i>
+        </button>
+      </template>
+
+      <!-- If no methods available -->
+      <template x-if="activeMethods.length === 0">
+        <div class="p-6 text-center bg-red-50 border border-red-100 rounded-xl">
+          <i class="fas fa-exclamation-triangle text-red-500 mb-2 text-xl"></i>
+          <p class="text-sm text-red-700 font-semibold italic">
+            Your assigned strategy has no active authentication methods. Access
+            denied.
+          </p>
+        </div>
+      </template>
+
+      <div class="text-center pt-4">
+        <button
+          @click="selectFlow('login', 'dashboard')"
+          class="text-sm font-medium text-gray-500 hover:text-gray-700 transition"
+        >
+          Cancel and return to login
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,9 @@
+{
+  "Bundle-SymbolicName": "store",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Configuration": {
+    "flowType": "service-flow",
+    "channels": ["business-channel-web", "retail-channel-web"]
+  }
+}

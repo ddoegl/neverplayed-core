@@ -1,0 +1,29 @@
+- id: fellowship-grant
+  name: "Fellowship Grant"
+  strategyId: COMPANY_LRS
+  description: "Granting a new fellowship to a person on behalf of a company."
+
+- id: authorization-grant
+  name: "Authorization Grant"
+  strategyId: COMPANY_LRS
+  description: "Granting fine-grained authorizations to an existing fellow."
+
+- id: license-bootstrap
+  name: "License Bootstrap"
+  strategyId: JOINT_SIGNATURE
+  description: "Setting up a new license involving both the provider and the customer person."
+
+- id: holder-acceptance
+  name: "License User ID Acceptance"
+  strategyId: PERSON_ONLY
+  description: "A person accepting the holdership of a license user ID."
+
+- id: user-adoption
+  name: "User ID Adoption"
+  strategyId: JOINT_SIGNATURE
+  description: "Moving a User ID from the pool to a definitive owner, requiring signatures from both Company and Person."
+
+- id: licenseholder-assignment
+  name: "License Holder Assignment"
+  strategyId: PERSON_ONLY
+  description: "A person accepting the holdership of a license, binding the administrator ID to their profile."

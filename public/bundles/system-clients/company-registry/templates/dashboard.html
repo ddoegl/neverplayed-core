@@ -1,0 +1,70 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <h2 class="text-2xl font-bold">Company Registry</h2>
+    <div class="flex items-center gap-2">
+      <button
+        @click="openYamlEditor()"
+        class="bg-gray-100 text-gray-700 px-4 py-2 rounded shadow border border-gray-200 hover:bg-gray-200"
+      >
+        <i class="fas fa-file-code mr-2"></i> Edit as YAML
+      </button>
+      <button
+        @click="editCompany(null)"
+        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+      >
+        <i class="fas fa-plus mr-2"></i> Add Company
+      </button>
+    </div>
+  </div>
+
+  <div
+    class="bg-white shadow rounded-lg overflow-hidden border border-gray-200"
+  >
+    <ul class="divide-y divide-gray-200">
+      <template x-for="company in companies" :key="company.id">
+        <li class="p-4 hover:bg-gray-50 flex items-center justify-between">
+          <div>
+            <h3
+              class="text-lg font-bold text-gray-800"
+              x-text="company.name"
+            >
+            </h3>
+            <p class="text-sm text-gray-500">
+              ID: <span
+                class="font-mono text-xs"
+                x-text="company.id"
+              ></span>
+            </p>
+            <p class="text-sm text-gray-500" x-text="company.regNr"></p>
+          </div>
+          <div class="flex space-x-2">
+            <button
+              @click="editCompany(company)"
+              class="text-blue-600 hover:text-blue-800 p-2"
+            >
+              <i class="fas fa-edit"></i>
+            </button>
+            <button
+              @click="deleteCompany(company.id)"
+              class="text-red-600 hover:text-red-800 p-2"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </li>
+      </template>
+      <template x-if="companies.length === 0">
+        <li class="p-8 text-center text-gray-500">
+          No companies found. Create one to get started.
+        </li>
+      </template>
+    </ul>
+  </div>
+
+  <!-- Dynamic Plugin Overlays -->
+  <template x-if="host?.pluginOverlays">
+    <template x-for="(overlay, index) in host.pluginOverlays" :key="index">
+      <div x-html="overlay"></div>
+    </template>
+  </template>
+</div>

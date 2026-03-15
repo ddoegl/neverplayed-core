@@ -1,0 +1,14 @@
+{
+  "Bundle-SymbolicName": "invitation-admin",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Configuration": {
+    "flowType": "admin-flow",
+    "required-permissions": ["usermanagement:manage:allowed"],
+    "channels": ["business-channel-web"]
+  },
+  "Require-Capability": [
+    "pandino.util.yaml;version=\"1.0.0\"",
+    "osgi.service; filter=\"(objectClass=pandino.persistence.manager)\""
+  ]
+}

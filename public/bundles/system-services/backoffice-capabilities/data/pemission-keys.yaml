@@ -1,0 +1,88 @@
+DOCUMENTS_VIEW_ALLOWED:
+  id: DOCUMENTS_VIEW_ALLOWED
+  label: documents:view:allowed
+  value: documents:view:allowed
+DOCUMENTS_MANAGE_ALLOWED:
+  id: DOCUMENTS_MANAGE_ALLOWED
+  label: documents:manage:allowed
+  value: documents:manage:allowed
+IMPORTORDERS_CREATE_ALLOWED:
+  id: IMPORTORDERS_CREATE_ALLOWED
+  label: importorders:create:allowed
+  value: importorders:create:allowed
+ASSETSTRADING_MANAGE_ALLOWED_MATS:
+  id: ASSETSTRADING_MANAGE_ALLOWED_MATS
+  label: assetstrading:manage:allowed_mats
+  value: assetstrading:manage:allowed_mats
+LOANIQ_VIEW_BALANCE_STATEMENTS:
+  id: LOANIQ_VIEW_BALANCE_STATEMENTS
+  label: loaniq:view:balance_statements
+  value: loaniq:view:balance_statements
+MULTIBANKING_MANAGE_ENABLED:
+  id: MULTIBANKING_MANAGE_ENABLED
+  label: multibanking:manage:enabled
+  value: multibanking:manage:enabled
+MESSENGER_MANAGE_LIGHT_CONVERSATIONS:
+  id: MESSENGER_MANAGE_LIGHT_CONVERSATIONS
+  label: messenger:manage:light_conversations
+  value: messenger:manage:light_conversations
+MESSENGER_MANAGE_CONVERSATIONS:
+  id: MESSENGER_MANAGE_CONVERSATIONS
+  label: messenger:manage:conversations
+  value: messenger:manage:conversations
+MESSENGER_VIEW_CONVERSATIONS:
+  id: MESSENGER_VIEW_CONVERSATIONS
+  label: messenger:view:conversations
+  value: messenger:view:conversations
+FX_MANAGE_RATESETTINGS:
+  id: FX_MANAGE_RATESETTINGS
+  label: fx:manage:ratesettings
+  value: fx:manage:ratesettings
+USERMANAGEMENT_MANAGE_ALLOWED:
+  id: USERMANAGEMENT_MANAGE_ALLOWED
+  label: usermanagement:manage:allowed
+  value: usermanagement:manage:allowed
+FINANCIALHEALTH_MANAGE_ALLOWED:
+  id: FINANCIALHEALTH_MANAGE_ALLOWED
+  label: financialhealth:manage:allowed
+  value: financialhealth:manage:allowed
+GUARANTEE_VIEW_INSTANCES:
+  id: GUARANTEE_VIEW_INSTANCES
+  label: guarantee:view:instances
+  value: guarantee:view:instances
+GUARANTEE_CREATE_ORDER:
+  id: GUARANTEE_CREATE_ORDER
+  label: guarantee:create:order
+  value: guarantee:create:order
+GUARANTEE_CREATE_ORDER_SIGNINGFLOW:
+  id: GUARANTEE_CREATE_ORDER_SIGNINGFLOW
+  label: guarantee:create:order_signingflow
+  value: guarantee:create:order_signingflow
+LETTEROFCREDIT_VIEW_INSTANCES:
+  id: LETTEROFCREDIT_VIEW_INSTANCES
+  label: letterofcredit:view:instances
+  value: letterofcredit:view:instances
+LETTEROFCREDIT_CREATE_ORDER:
+  id: LETTEROFCREDIT_CREATE_ORDER
+  label: letterofcredit:create:order
+  value: letterofcredit:create:order
+LETTEROFCREDIT_CREATE_ORDER_SIGNINGFLOW:
+  id: LETTEROFCREDIT_CREATE_ORDER_SIGNINGFLOW
+  label: letterofcredit:create:order_signingflow
+  value: letterofcredit:create:order_signingflow
+CARDADMINISTRATION_MANAGE_ALLOWED:
+  id: CARDADMINISTRATION_MANAGE_ALLOWED
+  label: cardadministration:manage:allowed
+  value: cardadministration:manage:allowed
+DO_VIEW_ALLOWED:
+  id: DO_VIEW_ALLOWED
+  label: do:view:allowed
+  value: do:view:allowed
+DO_SIGN_ALLOWED:
+  id: DO_SIGN_ALLOWED
+  label: do:sign:allowed
+  value: do:sign:allowed
+DO_TRADE_ALLOWED:
+  id: DO_TRADE_ALLOWED
+  label: do:trade:allowed
+  value: do:trade:allowed

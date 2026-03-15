@@ -1,0 +1,20 @@
+- id: GLOBAL
+  matchers:
+    - type: matchAlways
+  operator: AND
+- id: LEGALREP
+  matchers:
+    - type: matchRole
+      value: LEGALREPS
+  operator: AND
+- id: CARDADMINISTRATION
+  matchers:
+    - type: matchRole
+      value: CARDADMINISTRATION
+  operator: AND
+- id: ADMINISTRATOR
+  type: global
+  matchers:
+    - type: matchRole
+      value: ADMINISTRATOR
+  operator: AND

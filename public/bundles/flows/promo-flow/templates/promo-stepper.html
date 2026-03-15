@@ -1,0 +1,85 @@
+<div
+  class="flex flex-col items-center justify-center min-h-[400px] p-8 text-center"
+>
+  <!-- Progress Indicator -->
+  <div class="mb-8 flex gap-2">
+    <template x-for="(p, idx) in (promoFlow?.promos || [])" :key="idx">
+      <div
+        class="h-1.5 w-12 rounded-full transition-colors duration-300"
+        :class="idx === promoFlow.currentIndex ? 'bg-blue-600' : 'bg-gray-200'"
+      >
+      </div>
+    </template>
+  </div>
+
+  <template
+    x-if="promoFlow?.promos && promoFlow.promos[promoFlow.currentIndex]"
+  >
+    <div
+      class="max-w-md w-full animate-fadeIn"
+      x-data="{ get currentPromo() { return promoFlow.promos[promoFlow.currentIndex] } }"
+    >
+      <div
+        class="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm transition-colors"
+        :class="currentChannel === 'retail' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'"
+      >
+        <i class="fas fa-gift text-3xl"></i>
+      </div>
+
+      <h2
+        class="text-3xl font-bold text-gray-900 mb-4"
+        x-text="currentPromo?.title"
+      >
+      </h2>
+
+      <p class="text-gray-600 mb-8 leading-relaxed">
+        We've selected this special offer specifically for you! Click below to
+        learn more or continue to your dashboard.
+      </p>
+
+      <div class="flex flex-col gap-3">
+        <button
+          @click="promoFlow.currentIndex < promoFlow.promos.length - 1 ? nextPromo() : redeemPromo(currentPromo)"
+          class="w-full font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
+          :class="currentChannel === 'retail' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'"
+        >
+          <span
+            x-text="promoFlow.currentIndex < promoFlow.promos.length - 1 ? 'Next Promotion' : 'Explore Offer'"
+          ></span>
+        </button>
+
+        <button
+          @click="await nextPromo()"
+          class="text-gray-500 hover:text-gray-800 text-sm font-medium py-2"
+        >
+          Skip for now
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <template
+    x-if="!promoFlow?.promos || !promoFlow.promos[promoFlow.currentIndex]"
+  >
+    <div class="text-gray-500">
+      <i class="fas fa-spinner fa-spin mb-4 text-2xl"></i>
+      <p>Loading your promotions...</p>
+    </div>
+  </template>
+</div>
+
+<style>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+</style>

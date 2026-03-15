@@ -1,0 +1,15 @@
+{
+  "Bundle-ManifestVersion": "1",
+  "Bundle-SymbolicName": "backoffice.rules",
+  "Bundle-Name": "Backoffice Rules Extension",
+  "Bundle-Description": "Management for Capability Keys and Access Strategies",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js",
+  "Require-Capability": "osgi.service; filter:=\"(objectClass=backoffice.capabilities.data)\"",
+  "Configuration": {
+    "flowType": "backoffice-flow",
+    "channels": [
+      "backoffice-web"
+    ]
+  }
+}

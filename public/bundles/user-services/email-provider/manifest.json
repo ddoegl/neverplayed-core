@@ -1,0 +1,6 @@
+{
+  "Bundle-SymbolicName": "email-provider",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Configuration": {}
+}

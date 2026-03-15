@@ -1,0 +1,42 @@
+<!-- Screen Content -->
+<div
+  class="bg-emerald-600 p-10 text-center h-full flex flex-col items-center justify-center"
+>
+  <div
+    class="w-24 h-24 bg-white/20 rounded-[40px] flex items-center justify-center text-white text-4xl mb-8 backdrop-blur-md animate-bounce-subtle"
+  >
+    <i class="fas fa-check"></i>
+  </div>
+
+  <h3 class="text-3xl font-black text-white mb-4">You're in!</h3>
+  <p
+    class="text-lg text-emerald-100 mb-8 max-w-[240px] mx-auto leading-relaxed"
+    x-text="'Your data has been submitted to ' + (invitation.companyName || 'the company') + ' for review.'"
+  >
+  </p>
+
+  <p class="text-sm text-emerald-200/60 mb-12 italic">
+    Hang tight! You'll receive a notification once the admission is processed.
+  </p>
+
+  <button
+    class="w-full py-4 bg-white text-emerald-700 font-bold rounded-2xl shadow-xl hover:bg-emerald-50 transition transform active:scale-95"
+    @click="await selectFlow('user-home-retail')"
+  >
+    Back to Home
+  </button>
+</div>
+
+<style>
+  @keyframes bounce-subtle {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  .animate-bounce-subtle {
+    animation: bounce-subtle 2s infinite ease-in-out;
+  }
+</style>

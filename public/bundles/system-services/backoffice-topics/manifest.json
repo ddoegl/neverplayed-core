@@ -1,0 +1,21 @@
+{
+  "Bundle-ManifestVersion": "1",
+  "Bundle-SymbolicName": "backoffice.topics",
+  "Bundle-Name": "Backoffice Topics Extension",
+  "Bundle-Description": "Management for Topics and Topic Strategies",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js",
+  "Require-Capability": [
+    "pandino.util.yaml;version=\"1.0.0\"",
+    "backoffice.shell;version=\"1.0.0\"",
+    "osgi.service; filter:=\"(objectClass=backoffice.data.tenants)\"",
+    "osgi.service; filter:=\"(objectClass=backoffice.capabilities.data)\"",
+    "backoffice.business.functions;version=\"1.0.0\""
+  ],
+  "Configuration": {
+    "flowType": "backoffice-flow",
+    "channels": [
+      "backoffice-web"
+    ]
+  }
+}

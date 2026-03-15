@@ -1,0 +1,84 @@
+<div
+  class="flex flex-col items-center justify-center min-h-[400px] p-8 animate-fadeIn"
+  x-data="{ pin: '' }"
+>
+  <div
+    class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm"
+  >
+    <i class="fas fa-key text-2xl"></i>
+  </div>
+
+  <h2
+    class="text-2xl font-bold text-gray-900 mb-2 text-center"
+    x-text="currentStep === 'define-pin-1' ? 'Define your Token PIN' : 'Confirm your Token PIN'"
+  >
+  </h2>
+  <p class="text-gray-500 text-sm mb-10 text-center max-w-xs">
+    Your PIN must be 6 digits and will be used to authorize transactions and
+    logins.
+  </p>
+
+  <!-- PIN Input Simulation -->
+  <div class="flex gap-3 mb-12">
+    <template x-for="i in 6" :key="i">
+      <div
+        class="w-12 h-16 bg-gray-50 border-2 rounded-xl flex items-center justify-center text-2xl font-bold text-gray-800 transition-all"
+        :class="pin.length >= i ? 'border-blue-500 bg-white ring-4 ring-blue-50' : 'border-gray-200'"
+      >
+        <span x-show="pin.length >= i" class="animate-pinDot">•</span>
+      </div>
+    </template>
+  </div>
+
+  <!-- Number Pad -->
+  <div class="grid grid-cols-3 gap-6 mb-12 max-w-[280px]">
+    <template x-for="n in [1,2,3,4,5,6,7,8,9]" :key="n">
+      <button
+        @click="if(pin.length < 6) pin += n"
+        class="w-16 h-16 rounded-full bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xl font-semibold text-gray-700 transition-colors shadow-sm active:scale-90"
+      >
+        <span x-text="n"></span>
+      </button>
+    </template>
+    <div class="w-16 h-16"></div>
+    <button
+      @click="if(pin.length < 6) pin += '0'"
+      class="w-16 h-16 rounded-full bg-gray-50 hover:bg-gray-100 text-xl font-semibold text-gray-700 shadow-sm active:scale-90"
+    >
+      0
+    </button>
+    <button
+      @click="pin = pin.slice(0, -1)"
+      class="w-16 h-16 flex items-center justify-center text-gray-400 hover:text-gray-600 active:scale-90"
+    >
+      <i class="fas fa-backspace text-xl"></i>
+    </button>
+  </div>
+
+  <button
+    @click="if(pin.length === 6) { currentStep === 'define-pin-1' ? loadStep('define-pin-2') : loadStep('biometrics') }"
+    :disabled="pin.length < 6"
+    class="w-full max-w-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-[0.98]"
+  >
+    Continue
+  </button>
+</div>
+
+<style>
+  @keyframes pinDot {
+    0% {
+      transform: scale(0.5);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  .animate-pinDot {
+    animation: pinDot 0.2s ease-out forwards;
+  }
+</style>

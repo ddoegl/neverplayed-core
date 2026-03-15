@@ -1,0 +1,113 @@
+<div class="p-8 max-w-6xl mx-auto space-y-8">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-black text-slate-900">Email Monitor</h1>
+      <p class="text-slate-500">
+        View all emails issued by the system across the universe.
+      </p>
+    </div>
+    <button
+      @click="refresh()"
+      class="px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center space-x-2"
+    >
+      <i class="fas fa-sync-alt"></i>
+      <span>Refresh Logs</span>
+    </button>
+  </div>
+
+  <div
+    class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm"
+  >
+    <table class="w-full text-left border-collapse">
+      <thead>
+        <tr class="bg-slate-50 border-b border-slate-200">
+          <th
+            class="p-4 text-xs font-bold uppercase tracking-widest text-slate-400"
+          >
+            Timestamp
+          </th>
+          <th
+            class="p-4 text-xs font-bold uppercase tracking-widest text-slate-400"
+          >
+            Recipient (To)
+          </th>
+          <th
+            class="p-4 text-xs font-bold uppercase tracking-widest text-slate-400"
+          >
+            Subject
+          </th>
+          <th
+            class="p-4 text-xs font-bold uppercase tracking-widest text-slate-400 text-right"
+          >
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <template x-for="email in allEmails" :key="email.id">
+          <tr class="hover:bg-slate-50/50 transition-colors group">
+            <td
+              class="p-4 text-sm text-slate-500 font-mono"
+              x-text="formatDate(email.timestamp)"
+            >
+            </td>
+            <td class="p-4 font-bold text-slate-900" x-text="email.to"></td>
+            <td class="p-4 text-sm text-slate-700" x-text="email.subject"></td>
+            <td class="p-4 text-right">
+              <button
+                @click="inspectEmail(email)"
+                class="text-xs font-bold text-blue-600 hover:text-blue-700 uppercase tracking-tight"
+              >
+                Inspect Payload
+              </button>
+            </td>
+          </tr>
+        </template>
+        <template x-if="allEmails.length === 0">
+          <tr>
+            <td colspan="4" class="p-12 text-center text-slate-400 italic">
+              No emails have been sent yet.
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Payload Modal -->
+  <template x-if="selectedEmail">
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+      @click.self="closePayload()"
+    >
+      <div
+        class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in duration-200"
+      >
+        <div
+          class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50"
+        >
+          <h2 class="text-xl font-bold text-slate-900">Email Payload</h2>
+          <button
+            @click="closePayload()"
+            class="text-slate-400 hover:text-slate-600"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div
+          class="p-6 overflow-auto bg-slate-900 font-mono text-sm text-blue-300"
+        >
+          <pre x-text="JSON.stringify(selectedEmail, null, 2)"></pre>
+        </div>
+        <div class="p-6 border-t border-slate-100 bg-slate-50 text-right">
+          <button
+            @click="closePayload()"
+            class="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>

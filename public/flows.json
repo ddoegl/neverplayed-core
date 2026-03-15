@@ -1,0 +1,7 @@
+[
+  "./bundles/flows/login/manifest.json",
+  "./bundles/flows/dashboard/manifest.json",
+  "./bundles/system-clients/person-registry/manifest.json",
+  "./bundles/system-clients/company-registry/manifest.json",
+  "./bundles/system-clients/backoffice/manifest.json"
+]

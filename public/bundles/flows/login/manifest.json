@@ -1,0 +1,11 @@
+{
+  "Bundle-SymbolicName": "@prototyper/flow.login",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Bundle-Assets": "templates/dashboard.html, templates/sca-selection.html",
+  "Require-Capability": [
+    "osgi.service; filter:=\"(objectClass=prototyper.session.service)\"",
+    "osgi.service; filter:=\"(objectClass=infrastructure.persons.data)\""
+  ],
+  "Provide-Capability": "prototyper.flow.service;version=\"1.0.0\";flow.id=\"login\""
+}

@@ -1,0 +1,31 @@
+<div
+  class="flex flex-col items-center justify-center min-h-[400px] p-8 text-center bg-slate-100 rounded-3xl border-4 border-slate-200"
+>
+  <div
+    class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-6"
+  >
+    Security Request
+  </div>
+
+  <h2 class="text-2xl font-bold text-slate-800 mb-4">Confirm Migration?</h2>
+
+  <p class="text-slate-600 text-sm mb-8 leading-relaxed max-w-xs mx-auto">
+    Do you want to authorize the migration to the <strong>Modern Token</strong>
+    on your other device?
+  </p>
+
+  <div class="grid grid-cols-2 gap-3 w-full max-w-xs mx-auto">
+    <button
+      @click="selectFlow('user-home')"
+      class="bg-white hover:bg-slate-50 text-slate-600 font-bold py-3 rounded-xl border border-slate-200 transition-all active:scale-95"
+    >
+      Decline
+    </button>
+    <button
+      @click="loadStep('success')"
+      class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-md active:scale-95"
+    >
+      Confirm
+    </button>
+  </div>
+</div>

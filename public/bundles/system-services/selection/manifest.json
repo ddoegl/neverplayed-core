@@ -1,0 +1,5 @@
+{
+  "Bundle-SymbolicName": "prototyper.selection",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js"
+}

@@ -1,0 +1,57 @@
+<div class="p-8">
+  <h1 class="text-3xl font-bold mb-8 text-center text-pink-600">
+    Pending Invitations
+  </h1>
+
+  <div class="max-w-4xl mx-auto space-y-4">
+    <template
+      x-if="invitations.filter(i => (i.status === 'pending' || i.status === 'sent') && (!selectedPerson || (selectedPerson.emails && (selectedPerson.emails.includes('*') || selectedPerson.emails.includes(i.targetEmail) || i.targetEmail === '*')))).length === 0"
+    >
+      <div
+        class="text-center p-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200"
+      >
+        <p class="text-gray-500">No pending invitations found.</p>
+      </div>
+    </template>
+
+    <template
+      x-for="inv in invitations.filter(i => (i.status === 'pending' || i.status === 'sent') && (!selectedPerson || (selectedPerson.emails && (selectedPerson.emails.includes('*') || selectedPerson.emails.includes(i.targetEmail) || i.targetEmail === '*'))))"
+      :key="inv.code"
+    >
+      <div
+        class="bg-white p-6 rounded-lg shadow border border-gray-200 flex justify-between items-center hover:shadow-md transition"
+      >
+        <div>
+          <h3
+            class="text-xl font-bold"
+            x-text="inv.firstName + ' ' + inv.lastName"
+          >
+          </h3>
+          <p class="text-gray-600" x-text="inv.targetEmail"></p>
+          <div
+            class="mt-2 text-xs font-mono bg-gray-100 px-2 py-1 rounded inline-block"
+            x-text="'Code: ' + inv.code"
+          >
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <button
+            @click="openRedemption(inv)"
+            class="bg-pink-600 hover:bg-pink-700 text-white px-6 py-2 rounded-lg font-bold transition shadow-sm"
+          >
+            Redeem
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <div class="mt-8 text-center">
+      <button
+        @click="selectFlow('real-life')"
+        class="text-gray-500 hover:text-gray-700 font-medium"
+      >
+        <i class="fas fa-arrow-left mr-2"></i> Back to Real Life
+      </button>
+    </div>
+  </div>
+</div>

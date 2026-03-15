@@ -1,0 +1,10 @@
+- id: matchAlways
+  description: always matches
+- id: matchFeature
+  description: matches if the feature is enabled
+- id: matchLicenseholder
+  description: matches if the licenseholder has the capability
+- id: matchRole
+  description: matches if the role has the capability
+- id: matchProperty
+  description: matches if the property has the value

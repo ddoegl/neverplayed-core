@@ -1,0 +1,27 @@
+<!-- Content -->
+<div class="p-6 text-center">
+  <h3 class="text-lg font-bold mb-4">Enter Invitation ID</h3>
+  <p class="text-sm text-gray-600 mb-6">
+    Please enter the unique invitation ID you received via email.
+  </p>
+
+  <input
+    type="text"
+    class="w-full border-2 border-blue-500 rounded p-3 text-center text-xl font-mono tracking-widest mb-6"
+    placeholder="000 0000 000"
+    x-model="invitation.code"
+  />
+
+  <button
+    class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow hover:bg-blue-700 transition"
+    @click="loadStep('otp')"
+  >
+    Continue
+  </button>
+
+  <div class="mt-8 text-xs text-gray-400">
+    <p>
+      Ensure you enter the correct invitation ID to proceed.
+    </p>
+  </div>
+</div>

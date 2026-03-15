@@ -1,0 +1,9 @@
+{
+    "id": "cases",
+    "title": "Case Management",
+    "steps": [
+        { "id": "dashboard", "label": "Dashboard", "template": "dashboard.html", "title": "Case Management", "type": "main" },
+        { "id": "cases-init", "label": "Case Overview", "template": "cases-init.html", "title": "Case Overview", "type": "main" },
+        { "id": "case-details", "label": "Case Details", "template": "case-details.html", "title": "Case Details", "type": "main" }
+    ]
+}

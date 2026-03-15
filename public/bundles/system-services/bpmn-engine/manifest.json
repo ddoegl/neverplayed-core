@@ -1,0 +1,11 @@
+{
+  "Bundle-SymbolicName": "@prototyper/bpmn-engine",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Configuration": {
+    "flowType": "system-flow",
+    "channels": [
+      "backoffice-web"
+    ]
+  }
+}

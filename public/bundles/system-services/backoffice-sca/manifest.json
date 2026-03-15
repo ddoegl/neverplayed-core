@@ -1,0 +1,16 @@
+{
+  "Bundle-ManifestVersion": "1",
+  "Bundle-SymbolicName": "backoffice.sca",
+  "Bundle-Name": "Backoffice SCA Extension",
+  "Bundle-Description": "Management for SCA Strategies",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js",
+  "Provide-Capability": "backoffice.sca.strategies;version=\"1.0.0\"",
+  "Require-Capability": "backoffice.sca.methods",
+  "Configuration": {
+    "flowType": "backoffice-flow",
+    "channels": [
+      "backoffice-web"
+    ]
+  }
+}

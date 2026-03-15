@@ -1,0 +1,113 @@
+<div class="p-4">
+    <div class="grid grid-cols-4 gap-4">
+        <!-- Left Column: Details -->
+        <div class="col-span-2 bg-white p-6 rounded shadow-md">
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2"
+                >For which Virtual Card Manager?</label>
+                <input
+                    type="text"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight bg-gray-100"
+                    value="Bike Value Logistics GmbH"
+                    readonly
+                />
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2"
+                >For whom do you want to issue the Virtual Business Card?</label
+                >
+                <input
+                    type="text"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight bg-gray-100"
+                    :value="'\u231B ' + (currentFellow ? currentFellow.firstname : 'July') + ' Wiser - Pending Invitation ' + invitation.code"
+                    readonly
+                />
+            </div>
+        </div>
+
+        <!-- Right Column: Order Summary -->
+        <div class="col-span-2 bg-white p-6 rounded shadow-md">
+            <h3 class="text-xl font-bold mb-4">Order Summary</h3>
+            <hr class="mb-4" />
+
+            <div class="mb-4">
+                <span class="block text-sm font-bold"
+                >Virtual Card Manager</span>
+                <span>Bike Value Logistics GmbH</span>
+            </div>
+
+            <div class="mb-4">
+                <span class="block text-sm font-bold">Card Holder</span>
+                <div class="mt-1">
+                    <input
+                        type="text"
+                        class="w-full text-sm p-2 bg-gray-50 border rounded"
+                        :value="'\u231B ' + (currentFellow ? currentFellow.firstname : 'July') + ' Wiser - Pending Invitation ' + invitation.code"
+                        readonly
+                    />
+                    <button
+                        class="text-blue-600 text-sm mt-1 hover:underline"
+                        @click="loadStep('step2')"
+                    >
+                        View Invitation
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold">Option 1</label>
+                <div class="border p-2 rounded bg-gray-50 text-sm">
+                    Some Option 1
+                </div>
+            </div>
+
+            <div class="mt-8">
+                <button
+                    class="w-full bg-gray-300 text-gray-500 font-bold py-2 px-4 rounded cursor-not-allowed"
+                    disabled
+                >
+                    Sign (Simulated)
+                </button>
+                <p class="text-xs text-gray-500 mt-2 text-center">
+                    In this demo, you can proceed by switching roles or
+                    navigating to Step 3 manually.
+                </p>
+                <button
+                    class="w-full mt-4 bg-green-600 text-white font-bold py-2 px-4 rounded"
+                    @click="loadStep('step3.0')"
+                >
+                    Proceed to Redemption (Invitee View)
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom: Options -->
+        <div class="col-span-2 bg-white p-6 rounded shadow-md">
+            <h3 class="text-xl font-bold mb-4">Order Options</h3>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-bold mb-1">Option 1</label>
+                    <input
+                        type="text"
+                        class="w-full border p-2 rounded text-sm"
+                    />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">Option 2</label>
+                    <input
+                        type="text"
+                        class="w-full border p-2 rounded text-sm"
+                    />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">Option 3</label>
+                    <input
+                        type="text"
+                        class="w-full border p-2 rounded text-sm"
+                    />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

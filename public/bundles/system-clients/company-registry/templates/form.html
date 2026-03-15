@@ -1,0 +1,210 @@
+<div class="bg-white shadow rounded-lg p-6 max-w-2xl mx-auto mt-8">
+  <h2
+    class="text-2xl font-bold mb-6"
+    x-text="editingCompany.id ? 'Edit Company' : 'New Company'"
+  >
+  </h2>
+
+  <form @submit.prevent="saveCompany" class="space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700"
+      >Company Name</label>
+      <input
+        type="text"
+        x-model="editingCompany.name"
+        required
+        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+      >
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700"
+      >Registration Number</label>
+      <input
+        type="text"
+        x-model="editingCompany.regNr"
+        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+      >
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Address</label>
+      <textarea
+        x-model="editingCompany.address"
+        rows="2"
+        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+      ></textarea>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Description</label>
+      <textarea
+        x-model="editingCompany.description"
+        rows="3"
+        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+      ></textarea>
+    </div>
+
+    <template x-if="editingCompany.id">
+      <div>
+        <label class="block text-sm font-medium text-gray-700"
+        >ID (Internal)</label>
+        <input
+          type="text"
+          x-model="editingCompany.id"
+          disabled
+          class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 text-gray-500 font-mono text-sm"
+        >
+      </div>
+    </template>
+
+    <!-- Legal Representatives Section -->
+    <div
+      class="pt-6 border-t border-gray-200"
+      x-data="{
+            newRepPersonId: '',
+            newRepRole: 'owner',
+            addRepresentative() {
+                if (!this.newRepPersonId) return;
+                
+                if (!editingCompany.legalRepresentatives) {
+                    editingCompany.legalRepresentatives = [];
+                }
+                
+                const exists = editingCompany.legalRepresentatives.some(
+                    r => r.personId === this.newRepPersonId && r.role === this.newRepRole
+                );
+                
+                if (!exists) {
+                    editingCompany.legalRepresentatives.push({
+                        personId: this.newRepPersonId,
+                        role: this.newRepRole
+                    });
+                }
+                
+                this.newRepPersonId = '';
+            },
+            removeRepresentative(index) {
+                if (editingCompany.legalRepresentatives) {
+                    editingCompany.legalRepresentatives.splice(index, 1);
+                }
+            }
+        }"
+    >
+      <h3 class="text-lg font-medium text-gray-900 mb-4">
+        Legal Representatives
+      </h3>
+
+      <ul class="mb-4 space-y-2">
+        <template
+          x-for="(rep, index) in (editingCompany.legalRepresentatives || [])"
+          :key="rep.personId + '-' + rep.role"
+        >
+          <li
+            class="flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200"
+          >
+            <div>
+              <span
+                class="font-medium text-gray-800"
+                x-text="
+                                (() => {
+                                    const p = persons.find(p => p.id === rep.personId);
+                                    return p ? p.firstname + ' ' + p.lastname : 'Unknown Person';
+                                })()
+                            "
+              ></span>
+              <span
+                class="ml-2 px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-800"
+                x-text="
+                                rep.role === 'owner' ? 'Owner' :
+                                rep.role === 'managing-partner' ? 'Managing partner' :
+                                rep.role === 'managing-director' ? 'Managing Director' :
+                                rep.role === 'authorized-signatory' ? 'Authorized Signatory' : rep.role
+                            "
+              ></span>
+            </div>
+            <button
+              type="button"
+              @click="removeRepresentative(index)"
+              class="text-red-500 hover:text-red-700"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </li>
+        </template>
+        <template
+          x-if="!(editingCompany.legalRepresentatives && editingCompany.legalRepresentatives.length)"
+        >
+          <li class="text-sm text-gray-500 italic py-2">
+            No representatives assigned.
+          </li>
+        </template>
+      </ul>
+
+      <div
+        class="flex items-end space-x-2 bg-gray-50 p-4 rounded border border-gray-200"
+      >
+        <div class="flex-1">
+          <label class="block text-xs font-medium text-gray-700 mb-1"
+          >Person</label>
+          <select
+            x-model="newRepPersonId"
+            class="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select a person...</option>
+            <template x-for="p in persons" :key="p.id">
+              <option
+                :value="p.id"
+                x-text="p.firstname + ' ' + p.lastname"
+              >
+              </option>
+            </template>
+          </select>
+        </div>
+        <div class="flex-1">
+          <label class="block text-xs font-medium text-gray-700 mb-1"
+          >Role</label>
+          <select
+            x-model="newRepRole"
+            class="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="owner">Owner</option>
+            <option value="managing-partner">
+              Managing partner
+            </option>
+            <option value="managing-director">
+              Managing Director
+            </option>
+            <option value="authorized-signatory">
+              Authorized Signatory
+            </option>
+          </select>
+        </div>
+        <button
+          type="button"
+          @click="addRepresentative"
+          :disabled="!newRepPersonId"
+          class="mb-0 bg-gray-200 text-gray-700 px-4 py-2 rounded shadow hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+
+    <div class="flex justify-end space-x-3 pt-6">
+      <button
+        type="button"
+        @click="loadStep('dashboard')"
+        class="bg-gray-200 text-gray-700 px-4 py-2 rounded shadow hover:bg-gray-300"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+      >
+        Save Company
+      </button>
+    </div>
+  </form>
+</div>

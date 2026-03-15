@@ -1,0 +1,88 @@
+<div class="flex flex-col h-full bg-white overflow-hidden">
+  <!-- Header -->
+  <div class="p-4 pt-12 bg-white border-b flex items-center space-x-4">
+    <button
+      @click="loadStep('dashboard')"
+      class="p-2 -ml-2 text-slate-400 hover:text-slate-900"
+    >
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="flex-1 min-w-0">
+      <h1
+        class="text-lg font-bold text-slate-900 truncate"
+        x-text="selectedEmail.subject"
+      >
+      </h1>
+    </div>
+    <div class="flex space-x-2">
+      <button class="p-2 text-slate-400 hover:text-red-500">
+        <i class="fas fa-trash"></i>
+      </button>
+      <button class="p-2 text-slate-400 hover:text-blue-500">
+        <i class="fas fa-reply"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- content -->
+  <div class="flex-1 overflow-y-auto p-4">
+    <!-- Sender info -->
+    <div class="flex items-center space-x-3 mb-6">
+      <div
+        class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold"
+        x-text="selectedEmail.from.charAt(0).toUpperCase()"
+      >
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex justify-between items-baseline">
+          <span
+            class="font-bold text-slate-900 truncate"
+            x-text="selectedEmail.from"
+          ></span>
+          <span
+            class="text-xs text-slate-400 shrink-0"
+            x-text="formatDate(selectedEmail.timestamp)"
+          ></span>
+        </div>
+        <div class="text-xs text-slate-500">To: Me</div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div
+      class="text-slate-700 whitespace-pre-wrap leading-relaxed mb-8"
+      x-text="selectedEmail.body"
+    >
+    </div>
+
+    <!-- Call to Action (Invitation) -->
+    <template x-if="selectedEmail.data?.type === 'invitation'">
+      <div
+        class="p-6 bg-slate-50 rounded-3xl border border-slate-200 text-center space-y-4"
+      >
+        <div
+          class="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl mx-auto flex items-center justify-center text-2xl"
+        >
+          <i class="fas fa-envelope-open-text"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-900">Invitation to Join</h3>
+          <p class="text-sm text-slate-500">
+            Use the code below to redeem your invitation in the app.
+          </p>
+        </div>
+        <div
+          class="bg-white border-2 border-dashed border-slate-200 p-4 rounded-2xl font-mono text-2xl font-black text-blue-600 tracking-widest"
+          x-text="selectedEmail.data.code"
+        >
+        </div>
+        <button
+          class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition-transform"
+          @click="targetElement.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: 'retail-channel-app', params: { step: 'redeem-invite', subStep: 'redeem-code', code: selectedEmail.data.code } }, bubbles: true }))"
+        >
+          Redeem Invitation
+        </button>
+      </div>
+    </template>
+  </div>
+</div>

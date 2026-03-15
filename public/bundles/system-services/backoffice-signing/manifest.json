@@ -1,0 +1,9 @@
+{
+  "Bundle-SymbolicName": "backoffice-signing",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Configuration": {
+    "flowType": "backoffice-flow",
+    "channels": ["backoffice-web"]
+  }
+}

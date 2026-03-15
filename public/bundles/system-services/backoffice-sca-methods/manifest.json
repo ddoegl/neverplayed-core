@@ -1,0 +1,15 @@
+{
+  "Bundle-ManifestVersion": "1",
+  "Bundle-SymbolicName": "backoffice.sca.methods",
+  "Bundle-Name": "SCA Methods Management",
+  "Bundle-Description": "Backoffice UI for SCA Methods",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js",
+  "Provide-Capability": "backoffice.sca.methods;version=\"1.0.0\"",
+  "Configuration": {
+    "flowType": "backoffice-flow",
+    "channels": [
+      "backoffice-web"
+    ]
+  }
+}

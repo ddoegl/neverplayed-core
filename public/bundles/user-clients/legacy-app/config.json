@@ -1,0 +1,28 @@
+{
+  "id": "legacy-app",
+  "name": "Legacy Token",
+  "icon": "fas fa-mobile-alt",
+  "type": "hidden",
+  "defaultStep": "login",
+  "layout": "layout.html",
+  "steps": [
+    {
+      "id": "login",
+      "name": "Legacy Login",
+      "label": "Login",
+      "template": "login.html"
+    },
+    {
+      "id": "confirm-migration",
+      "name": "Security Request",
+      "label": "Confirm Migration",
+      "template": "confirm.html"
+    },
+    {
+      "id": "success",
+      "name": "Action Confirmed",
+      "label": "Success",
+      "template": "success.html"
+    }
+  ]
+}

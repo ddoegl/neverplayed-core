@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Robust YAML DSL - Fixed</title>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/yamljs/0.3.0/yaml.min.js"
+    ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 40px;
+        background: #f4f7f6;
+      }
+      .ui-container {
+        max-width: 500px;
+        margin: auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+      }
+      .btn {
+        width: 100%;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #6366f1;
+        color: white;
+        height: 45px;
+      }
+      .log-box {
+        margin-top: 1rem;
+        background: #1e293b;
+        color: #38bdf8;
+        padding: 1rem;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ui-container">
+      <ui-factory>
+        <script type="text/yaml">
+          parts:
+            trigger:
+              label: "Fetch User Data"
+              onAction:
+                call: "apiService"
+                params:
+                  endpoint: "https://jsonplaceholder.typicode.com/users/1"
+                method: "GET"
+        </script>
+      </ui-factory>
+    </div>
+
+    <script type="module">
+      // Global Services
+      window.Services = {
+        apiService: async (p) => {
+          const res = await fetch(p.endpoint, { method: p.method });
+          return await res.json();
+        },
+      };
+
+      class UIFactory extends HTMLElement {
+        connectedCallback() {
+          // Use a slightly longer delay to ensure Alpine is fully settled
+          setTimeout(() => {
+            const script = this.querySelector(
+              'script[type="text/yaml"]',
+            );
+            if (!script) return;
+
+            try {
+              const schema = YAML.parse(script.textContent.trim());
+
+              // Attach the action config directly to this DOM element
+              // so Alpine can access it without messy string injection.
+              this._actionCfg = schema.parts.trigger.onAction;
+              this._label = schema.parts.trigger.label;
+
+              this.innerHTML = `
+                            <div x-data="{ 
+                                loading: false, 
+                                data: null,
+                                async run() {
+                                    this.loading = true;
+                                    try {
+                                        // $el refers to the parent (ui-factory) where we stored our data
+                                        const cfg = this.$el.closest('ui-factory')._actionCfg;
+                                        const res = await window.Services[cfg.call](cfg.params);
+                                        this.data = JSON.stringify(res, null, 2);
+                                    } catch(e) { 
+                                        this.data = 'Error: ' + e.message; 
+                                    } finally { 
+                                        this.loading = false; 
+                                    }
+                                }
+                            }">
+                                <button class="btn" @click="run" :disabled="loading">
+                                    <span x-text="loading ? 'Loading...' : '${this._label}'"></span>
+                                </button>
+                                <div x-show="data" class="log-box">
+                                    <pre x-text="data"></pre>
+                                </div>
+                            </div>
+                        `;
+
+              if (window.Alpine) {
+                window.Alpine.initTree(this);
+              }
+            } catch (e) {
+              console.error("YAML/Parsing Error:", e);
+            }
+          }, 100);
+        }
+      }
+      customElements.define("ui-factory", UIFactory);
+    </script>
+  </body>
+</html>

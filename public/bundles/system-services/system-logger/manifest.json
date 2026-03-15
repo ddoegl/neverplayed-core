@@ -1,0 +1,8 @@
+{
+  "Bundle-ManifestVersion": "2",
+  "Bundle-SymbolicName": "system.logger",
+  "Bundle-Name": "System Logger",
+  "Bundle-Description": "Provides the @pandino/pandino/Logger service",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js"
+}

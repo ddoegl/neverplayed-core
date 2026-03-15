@@ -1,0 +1,39 @@
+INVITATIONS:
+  - id: inv_1771914042143
+    code: INV-3301
+    email: joe.miller@some.mail.provider
+    firstName: Joe
+    lastName: Miller
+    fromId: bikevalue
+    licenseId: BIKEVALUE_MAIN_LICENSE
+    status: sent
+    createdAt: "2026-02-24T06:20:42.143Z"
+    targetEmail: joe.miller@some.mail.provider
+    personId: joemiller
+    sentAt: "2026-02-24T06:20:45.473Z"
+  - id: inv_1771926479274
+    code: INV-3302
+    email: adam.bactor@some.mail.provider
+    firstName: Adam
+    lastName: Bactor
+    fromId: bikevalue
+    licenseId: BIKEVALUE_MAIN_LICENSE
+    status: redeemed
+    createdAt: "2026-02-24T06:20:42.143Z"
+    targetEmail: adam.bactor@some.mail.provider
+    personId: bactor
+    sentAt: "2026-02-24T06:20:45.473Z"
+    redeemedAt: "2026-02-24T09:45:28.817Z"
+    redeemedByPersonId: bactor
+  - id: inv_test_persistence
+    code: TEST-PERSIST
+    firstName: Test
+    lastName: Persist
+    fromId: bikevalue
+    licenseId: BIKEVALUE_MAIN_LICENSE
+    status: redeemed
+    createdAt: "2026-02-24T18:00:00.000Z"
+    personId: rob
+    redeemedAt: "2026-02-24T18:10:00.000Z"
+    redeemedByPersonId: rob
+    isSelfSigning: true

@@ -1,0 +1,68 @@
+<div class="flex justify-center h-full">
+    <div
+        class="w-full max-w-sm bg-gray-900 rounded-3xl overflow-hidden shadow-xl border-4 border-gray-800 relative"
+        style="height: 700px"
+    >
+        <!-- Phone Bezel/Header -->
+        <div
+            class="absolute top-0 w-full h-8 bg-gray-800 flex justify-center items-center z-10"
+        >
+            <div class="w-16 h-4 bg-black rounded-b-xl"></div>
+        </div>
+
+        <!-- Screen Content -->
+        <div
+            class="bg-green-600 h-full overflow-y-auto pt-10 pb-20 relative text-white flex flex-col items-center justify-center"
+        >
+            <div class="p-6 text-center">
+                <div
+                    class="w-20 h-20 bg-white rounded-full flex items-center justify-center text-green-600 text-4xl mb-6 mx-auto"
+                >
+                    <i class="fas fa-check"></i>
+                </div>
+
+                <h3 class="text-2xl font-bold mb-4">Success!</h3>
+                <p class="text-lg opacity-90 mb-8">
+                    Your data has been submitted to Bike Value Logistics GmbH
+                    for review.
+                </p>
+
+                <p class="text-sm opacity-75 mb-12">
+                    After admission, your Business Virtual Card will be
+                    processed and you will receive further instructions.
+                </p>
+
+                <button
+                    class="w-full bg-white text-green-600 font-bold py-3 rounded shadow hover:bg-gray-100 transition"
+                    @click="loadStep('step0')"
+                >
+                    Back to Start
+                </button>
+            </div>
+
+            <!-- App Bottom Nav Placeholder -->
+            <div
+                class="absolute bottom-0 w-full h-16 bg-white border-t flex justify-around items-center text-gray-500"
+            >
+                <div class="flex flex-col items-center">
+                    <i class="fas fa-home"></i>
+                    <span class="text-xs">Home</span>
+                </div>
+                <div class="flex flex-col items-center text-blue-600">
+                    <i class="fas fa-compass"></i>
+                    <span class="text-xs">Discover</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <i class="fas fa-user"></i>
+                    <span class="text-xs">Profile</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <button
+        class="w-64 h-16 m16 bg-blue-600 text-white font-bold py-3 rounded shadow hover:bg-blue-700 transition"
+        @click="startAdmission('rob')"
+    >
+        Start Admission
+    </button>
+</div>

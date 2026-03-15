@@ -1,0 +1,153 @@
+<div class="h-full" x-data="{ approval: { approved: false } }">
+  <div class="grid grid-cols-4 gap-4">
+    <!-- Main Card: Review Data -->
+    <div class="col-span-2 bg-white p-6 rounded shadow-md">
+      <h3 class="text-xl font-bold mb-4">Review Redemption</h3>
+
+      <p class="mb-4 text-sm text-gray-600">
+        Review the data shared by the invitee and approve or reject the
+        admission.
+      </p>
+
+      <div class="space-y-4 mb-6 border p-4 rounded bg-gray-50">
+        <div>
+          <span class="block text-xs text-gray-500 uppercase">Full Name</span>
+          <span
+            class="font-bold"
+            x-text="invitee ? (invitee.firstname || invitee.firstName) + ' ' + (invitee.lastname || invitee.lastName) : '—'"
+          >
+          </span>
+        </div>
+        <div>
+          <span class="block text-xs text-gray-500 uppercase"
+          >Birth Date (Security Feature)</span>
+          <span
+            class="font-bold"
+            x-text="invitee?.birthdate || '—'"
+          ></span>
+        </div>
+        <div>
+          <span class="block text-xs text-gray-500 uppercase">Email</span>
+          <span
+            class="font-bold"
+            x-text="(currentFellow?.emails && currentFellow.emails.find(e => e !== '*')) || invitation?.targetEmail || '—'"
+          >
+          </span>
+        </div>
+        <div>
+          <span class="block text-xs text-gray-500 uppercase"
+          >Security Answer</span>
+          <span
+            class="font-bold"
+            x-text="invitation?.securityAnswer || '42'"
+          ></span>
+          <span class="text-xs text-gray-400 block">
+            (Question: "<span
+              x-text="invitation?.securityQuestion || 'What\&apos;s the meaning of life?'"
+            ></span>")
+          </span>
+        </div>
+        <div>
+          <span class="block text-xs text-gray-500 uppercase">Redeemed at</span>
+          <span
+            x-text="invitation?.redeemedAt ? new Date(invitation.redeemedAt).toLocaleString() : '—'"
+          ></span>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <label class="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="checkbox"
+            class="form-checkbox h-5 w-5 text-blue-600"
+            x-model="approval.approved"
+          >
+          <span class="font-bold text-sm"
+          >All data matches — approve admission</span>
+        </label>
+        <p class="text-xs text-gray-500 mt-1 ml-7">
+          Verify the identity details match your records before approving.
+        </p>
+      </div>
+
+      <div class="bg-blue-50 text-blue-800 p-3 rounded text-xs mb-6">
+        <p>
+          Approving will move this person to the <strong>sign-off</strong> step
+          to finalise the fellowship creation.
+        </p>
+      </div>
+
+      <div class="flex space-x-4">
+        <button
+          class="flex-1 bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition"
+          :class="{ 'opacity-50 cursor-not-allowed': !approval.approved }"
+          @click="approval.approved ? loadStep('sign-admission') : alert('Please check the approval box first.')"
+        >
+          Approve →
+        </button>
+        <button
+          class="flex-1 border border-red-400 text-red-600 hover:bg-red-50 font-bold py-2 px-4 rounded transition"
+          @click="if(confirm('Reject this invitation? This cannot be undone.')) { invitation.status = 'rejected'; invitation.rejectedAt = new Date().toISOString(); saveState(); loadStep('start-admission'); }"
+        >
+          Reject
+        </button>
+      </div>
+    </div>
+
+    <!-- Sidebar: Context -->
+    <div class="col-span-2 bg-white p-6 rounded shadow-md h-full">
+      <h3 class="text-xl font-bold mb-4">Context</h3>
+      <p class="text-sm text-gray-600 mb-6">
+        You are reviewing the redemption of an invitation sent to
+        <span
+          class="font-bold"
+          x-text="invitee ? (invitee.firstname || invitee.firstName) + ' ' + (invitee.lastname || invitee.lastName) : invitation?.targetEmail || '—'"
+        >
+        </span>.
+      </p>
+
+      <!-- Avatar -->
+      <div class="p-4 bg-gray-100 rounded text-center mb-6">
+        <div
+          class="w-16 h-16 bg-blue-200 rounded-full mx-auto mb-2 flex items-center justify-center text-xl font-bold text-blue-700"
+          x-text="(invitee?.firstname?.[0] || invitee?.firstName?.[0] || '?') + (invitee?.lastname?.[0] || invitee?.lastName?.[0] || '')"
+        >
+        </div>
+        <p
+          class="font-bold"
+          x-text="currentFellow ? currentFellow.firstname + ' ' + currentFellow.lastname : '—'"
+        >
+        </p>
+        <p
+          class="text-xs text-gray-500 font-mono"
+          x-text="currentFellow?.id || ''"
+        >
+        </p>
+        <p class="text-xs text-gray-400 mt-1">Invitee</p>
+      </div>
+
+      <!-- Invitation meta -->
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-gray-500">Code</span>
+          <span
+            class="font-mono font-bold"
+            x-text="invitation?.code || '—'"
+          ></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-500">Invited to</span>
+          <span class="font-bold" x-text="selectedCompany?.name || '—'"></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-500">Status</span>
+          <span
+            class="px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700"
+            x-text="invitation?.status || '—'"
+          >
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

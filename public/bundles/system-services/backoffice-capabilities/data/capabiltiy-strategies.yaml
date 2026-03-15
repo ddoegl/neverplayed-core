@@ -1,0 +1,231 @@
+- id: GLOBAL_DOCUMENTS
+  matchers:
+    - type: matchAlways
+  operator: AND
+  keys: []
+  features:
+    - id: DOCUMENTSREQUESTS
+      scope: ANY
+      keys:
+        - DOCUMENTS_VIEW_ALLOWED
+- id: IMPORTORDERS
+  matchers:
+    - type: matchFeature
+      value: IMPORTORDERS
+  operator: AND
+  keys: []
+  features:
+    - id: IMPORTORDERS
+      scope: ANY
+      keys:
+        - IMPORTORDERS_CREATE_ALLOWED
+- id: ASSETSTRADING
+  matchers:
+    - type: matchFeature
+      value: ASSETSTRADING
+  operator: AND
+  keys: []
+  features:
+    - id: ASSETSTRADING
+      scope: ANY
+      keys:
+        - ASSETSTRADING_MANAGE_ALLOWED_MATS
+- id: LOANIQ
+  matchers:
+    - type: matchFeature
+      value: LOANIQ
+  operator: AND
+  keys: []
+  features:
+    - id: LOANIQ
+      scope: ANY
+      keys:
+        - LOANIQ_VIEW_BALANCE_STATEMENTS
+- id: MULTIBANKING
+  matchers:
+    - type: matchFeature
+      value: MULTIBANKING
+  operator: AND
+  keys: []
+  features:
+    - id: MULTIBANKING
+      scope: ANY
+      keys:
+        - MULTIBANKING_MANAGE_ENABLED
+- id: MESSENGER_LIGHT
+  matchers:
+    - type: matchLicenseholder
+  operator: AND
+  keys: []
+  features:
+    - id: MESSENGER
+      scope: ANY
+      keys:
+        - MESSENGER_MANAGE_LIGHT_CONVERSATIONS
+- id: ADMINISTRATOR_CAPS
+  matchers:
+    - type: matchRole
+      value: ADMINISTRATOR
+  operator: AND
+  keys: []
+  features:
+    - id: FX
+      scope: ANY
+      keys:
+        - FX_MANAGE_RATESETTINGS
+    - id: USERMANAGEMENT
+      scope: ANY
+      keys:
+        - USERMANAGEMENT_MANAGE_ALLOWED
+    - id: DOCUMENTSREQUESTS
+      scope: ANY
+      keys:
+        - DOCUMENTS_VIEW_ALLOWED
+        - DOCUMENTS_MANAGE_ALLOWED
+- id: LEGALREP_CAPS
+  matchers:
+    - type: matchRole
+      value: LEGALREPS
+  operator: AND
+  keys: []
+  features:
+    - id: DOCUMENTSREQUESTS
+      scope: OWN
+      keys:
+        - DOCUMENTS_VIEW_ALLOWED
+        - DOCUMENTS_MANAGE_ALLOWED
+    - id: FINANCIALHEALTH
+      scope: OWN
+      keys:
+        - FINANCIALHEALTH_MANAGE_ALLOWED
+    - id: GUARANTEE
+      scope: OWN
+      keys:
+        - GUARANTEE_VIEW_INSTANCES
+        - GUARANTEE_CREATE_ORDER
+        - GUARANTEE_CREATE_ORDER_SIGNINGFLOW
+    - id: LETTER_OF_CREDIT
+      scope: OWN
+      keys:
+        - LETTEROFCREDIT_VIEW_INSTANCES
+        - LETTEROFCREDIT_CREATE_ORDER
+        - LETTEROFCREDIT_CREATE_ORDER_SIGNINGFLOW
+    - id: MESSENGER
+      scope: OWN
+      keys:
+        - MESSENGER_MANAGE_CONVERSATIONS
+        - MESSENGER_VIEW_CONVERSATIONS
+    - id: USERMANAGEMENT
+      scope: ANY
+      keys:
+        - USERMANAGEMENT_MANAGE_ALLOWED
+    - id: CARDADMINISTRATION
+      scope: OWN
+      keys:
+        - CARDADMINISTRATION_MANAGE_ALLOWED
+    - id: DO
+      scope: OWN
+      keys:
+        - DO_VIEW_ALLOWED
+        - DO_SIGN_ALLOWED
+        - DO_TRADE_ALLOWED
+- id: CARDADMIN_CAPS
+  matchers:
+    - type: matchRole
+      value: CARDADMINISTRATION
+  operator: AND
+  keys: []
+  features:
+    - id: CARDADMINISTRATION
+      scope: OWN
+      keys:
+        - CARDADMINISTRATION_MANAGE_ALLOWED
+- id: GUARANTEE_CAPS
+  matchers:
+    - type: matchRole
+      value: GUARANTEE
+  operator: AND
+  keys: []
+  features:
+    - id: GUARANTEE
+      scope: OWN
+      keys:
+        - GUARANTEE_VIEW_INSTANCES
+        - GUARANTEE_CREATE_ORDER
+        - GUARANTEE_CREATE_ORDER_SIGNINGFLOW
+- id: LETTER_OF_CREDIT_CAPS
+  matchers:
+    - type: matchRole
+      value: LETTER_OF_CREDIT
+  operator: AND
+  keys: []
+  features:
+    - id: LETTER_OF_CREDIT
+      scope: OWN
+      keys:
+        - LETTEROFCREDIT_VIEW_INSTANCES
+        - LETTEROFCREDIT_CREATE_ORDER
+        - LETTEROFCREDIT_CREATE_ORDER_SIGNINGFLOW
+- id: PRIVATEREP_CAPS
+  matchers:
+    - type: matchRole
+      value: PRIVATEREP
+  operator: AND
+  keys: []
+  features:
+    - id: DOCUMENTSREQUESTS
+      scope: OWN
+      keys:
+        - DOCUMENTS_MANAGE_ALLOWED
+    - id: FINANCIALHEALTH
+      scope: OWN
+      keys:
+        - FINANCIALHEALTH_MANAGE_ALLOWED
+    - id: GUARANTEE
+      scope: OWN
+      keys:
+        - GUARANTEE_VIEW_INSTANCES
+        - GUARANTEE_CREATE_ORDER
+        - GUARANTEE_CREATE_ORDER_SIGNINGFLOW
+    - id: LETTER_OF_CREDIT
+      scope: OWN
+      keys:
+        - LETTEROFCREDIT_VIEW_INSTANCES
+        - LETTEROFCREDIT_CREATE_ORDER
+        - LETTEROFCREDIT_CREATE_ORDER_SIGNINGFLOW
+    - id: MESSENGER
+      scope: OWN
+      keys:
+        - MESSENGER_MANAGE_CONVERSATIONS
+        - MESSENGER_VIEW_CONVERSATIONS
+    - id: USERMANAGEMENT
+      scope: ANY
+      keys:
+        - USERMANAGEMENT_MANAGE_ALLOWED
+    - id: CARDADMINISTRATION
+      scope: OWN
+      keys:
+        - CARDADMINISTRATION_MANAGE_ALLOWED
+        - LETTEROFCREDIT_CREATE_ORDER
+        - LETTEROFCREDIT_CREATE_ORDER_SIGNINGFLOW
+- id: SPECIAL_PREVIEW_USER
+  matchers:
+    - type: matchProperty
+      key: userId
+      value: "6786432"
+  operator: AND
+  keys:
+    - PREVIEW_BETA_DASHBOARD_ALLOWED
+- id: DOSIGNEE_CAPS
+  matchers:
+    - type: matchRole
+      value: DOSIGNEE
+  operator: AND
+  keys: []
+  features:
+    - id: DO
+      scope: ANY
+      keys:
+        - DO_VIEW_ALLOWED
+        - DO_SIGN_ALLOWED
+        - DO_TRADE_ALLOWED

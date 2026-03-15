@@ -1,0 +1,85 @@
+<div class="flex justify-center h-full">
+  <div
+    class="w-full max-w-sm bg-gray-900 rounded-3xl overflow-hidden shadow-xl border-4 border-gray-800 relative"
+    style="height: 700px"
+  >
+    <!-- Phone Bezel/Header -->
+    <div
+      class="absolute top-0 w-full h-8 bg-gray-800 flex justify-center items-center z-10"
+    >
+      <div class="w-16 h-4 bg-black rounded-b-xl"></div>
+    </div>
+
+    <!-- Screen Content -->
+    <div
+      class="bg-blue-600 h-full overflow-y-auto pt-10 pb-20 relative text-white"
+    >
+      <div class="p-6">
+        <div class="bg-white/10 rounded-lg p-4 backdrop-blur-sm mb-6">
+          <p class="text-sm opacity-80 mb-2">
+            You are invited to connect to
+          </p>
+          <p class="font-bold text-lg mb-4">
+            Bike Value Logistics GmbH
+          </p>
+
+          <div class="flex items-center mb-4">
+            <div
+              class="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-black font-bold mr-3"
+              x-text="currentFellow ? getInitials(currentFellow) : '?'"
+            >
+              RR
+            </div>
+            <div>
+              <p class="text-xs opacity-80">Inviting Person</p>
+              <p
+                class="font-bold"
+                x-text="currentFellow ? (currentFellow.firstname + ' ' + currentFellow.lastname) : 'System'"
+              >
+              </p>
+            </div>
+          </div>
+
+          <div class="border-l-2 border-white/30 pl-3 mt-4">
+            <p class="italic text-sm">
+              "Dear <span
+                x-text="selectedPerson ? selectedPerson.firstname : 'Partner'"
+              ></span>, please connect with us to redeem your new Business
+              Virtual Card."
+            </p>
+          </div>
+        </div>
+
+        <div class="text-center mt-8">
+          <button
+            class="w-full bg-white text-blue-600 font-bold py-3 rounded shadow hover:bg-gray-100 transition"
+            @click="loadStep('step5.2')"
+          >
+            Continue
+          </button>
+          <button class="text-white/70 text-sm mt-4 hover:underline">
+            Reject Invitation
+          </button>
+        </div>
+      </div>
+
+      <!-- App Bottom Nav Placeholder -->
+      <div
+        class="absolute bottom-0 w-full h-16 bg-white border-t flex justify-around items-center text-gray-500"
+      >
+        <div class="flex flex-col items-center">
+          <i class="fas fa-home"></i>
+          <span class="text-xs">Home</span>
+        </div>
+        <div class="flex flex-col items-center text-blue-600">
+          <i class="fas fa-compass"></i>
+          <span class="text-xs">Discover</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <i class="fas fa-user"></i>
+          <span class="text-xs">Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
