@@ -7,7 +7,7 @@ import {
     FEATURE_DATA_SERVICE,
     DOMAIN_OBJECT_REGISTRY_SERVICE, 
     BO_EXTENSION_SERVICE,
-    LIMES_SERVICE
+    LIMES_SERVICE, SIGNING_DATA_SERVICE
 } from "../../../shared-types.js";
 
 export default class Activator {
@@ -146,7 +146,7 @@ export default class Activator {
   }
 
   registerAtomicComponents(context, bundle, spec, source = "bundle") {
-    const { id, label, capabilities, permissionKeys, features, guards, ui, domainObject, actions } = spec;
+    const { id, label, capabilities, permissionKeys, features, guards, ui, domainObject, actions, caseTypes } = spec;
     const bsn = bundle ? bundle.getSymbolicName() : `synthetic.${source}.${id}`;
     const headers = bundle ? bundle.getHeaders() : {};
     
@@ -224,7 +224,7 @@ export default class Activator {
 
     // 3. UI Guards (Limes Strategies)
     if (guards) {
-        const limes = getSvc(LIMES_SERVICE);
+        const limes = getSvc(LIMES_SERVICE, SIGNING_DATA_SERVICE);
         if (limes) {
             console.log(`Atomic Orchestrator: Registering ${guards.length} UI guards for ${id}`);
             guards.forEach(g => {
@@ -354,7 +354,25 @@ export default class Activator {
         }
     }
 
-    // 6. Register Action Services from Spec
+    // 6. Register Case Types
+    if (caseTypes) {
+        const signingSvc = getSvc(SIGNING_DATA_SERVICE);
+        if (signingSvc) {
+            console.log(`Atomic Orchestrator: Registering ${Object.keys(caseTypes).length} case types for ${id}`);
+            const current = signingSvc.getCaseTypes() || [];
+            const newTypes = Array.isArray(caseTypes) ? caseTypes : 
+                             Object.entries(caseTypes).map(([cid, val]) => ({ id: cid, ...val }));
+            
+            newTypes.forEach(nt => {
+                const idx = current.findIndex(t => t.id === nt.id);
+                if (idx === -1) current.push(nt);
+                else current[idx] = nt;
+            });
+            signingSvc.setCaseTypes(current);
+        }
+    }
+
+    // 7. Register Action Services from Spec
     if (actions) {
         Object.entries(actions).forEach(([aid, actionSpec]) => {
             console.log(`Atomic Orchestrator: Registering action service ${aid} for ${id}`);

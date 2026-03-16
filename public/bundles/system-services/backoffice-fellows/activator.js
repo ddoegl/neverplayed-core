@@ -104,6 +104,15 @@ export default class Activator {
             AUTHORIZATIONS: seedYaml.AUTHORIZATIONS || persisted.AUTHORIZATIONS || []
         };
         pm.store(FELLOWS_PID, data);
+
+        // Bridge to host states for global availability
+        [globalThis.backofficeState, globalThis.businessPortalState].forEach(state => {
+            if (state) {
+                state.fellowsData = data;
+                state.recompile?.();
+            }
+        });
+
         globalThis.dispatchEvent(new CustomEvent('fellows-updated', { detail: { action: 'reconcile' } }));
       }
     };

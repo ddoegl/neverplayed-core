@@ -29,7 +29,10 @@ capabilities:
   - id: BUSINESS_USER
     operator: "OR"
     matchers:
-      - type: "matchAlways"
+      - type: "matchRole"
+        value: "ADMINISTRATOR"
+      - type: "matchRole"
+        value: "LEGALREPS"
     features:
       - id: "BUSINESS_FLOWS"
         keys:
@@ -50,64 +53,99 @@ ui:
   steps:
     step_init:
       order: 1
-      title: "Order Options"
+      title: "Select License Member"
       parts:
-        intro_text:
+        intro:
           type: "text"
-          value: "Configure your new business account parameters below."
-        
-        selection_grid:
-          type: "row"
-          parts:
-            product_select:
-              kind: "select-input"
-              id: "productName"
-              label: "Product Type"
-              value: "Business_Account"
-              options:
-                - value: "Business_Account"
-                  label: "Business Account (Standard)"
-                - value: "Premium_Account"
-                  label: "Business Account (Premium)"
-            
-            fellow_select:
-              kind: "select-input"
-              id: "fellowId"
-              label: "Card Holder (Fellow)"
-              value: "NONE"
-              options:
-                - value: "NONE"
-                  label: "Open"
-                - value: "FELLOW_001"
-                  label: "Daniela Doe"
-                - value: "FELLOW_002"
-                  label: "John Smith"
-                - value: "FELLOW_003"
-                  label: "Alice Johnson"
-
-        summary_area:
-          type: "text"
-          value: |
-            ### Order Summary
-            **Product:** ${this.productName}
-            **Holder:** ${this.fellowId}
-        
-        submit_btn:
+          value: "Please select the customer from license **${this.activeLicense.id}** for which you want to open a business account."
+        member_select:
+          kind: "select-input"
+          id: "selectedMemberId"
+          label: "License Member"
+          optionSource: "${this.currentMembers}"
+        next_btn:
           kind: "command-button"
           variant: "primary"
-          label: "Conclude Order"
-          call: "synthetic.server.submit-order"
-          params:
-            product: "${this.productName}"
-            fellow: "${this.fellowId}"
+          label: "Continue"
+          call: "NEXT_STEP"
+
+    step_fellow:
+      order: 2
+      title: "Select Card Holder"
+      parts:
+        intro:
+          type: "text"
+          value: "Choose a fellow from **${this.selectedMemberId}** who will hold the new business card."
+        fellow_select:
+          kind: "select-input"
+          id: "fellowId"
+          label: "Account Signee"
+          optionSource: "${this.currentFellows}"
+        btn_row:
+          type: "row"
+          parts:
+            back_btn:
+              kind: "command-button"
+              variant: "default"
+              label: "Back"
+              call: "PREV_STEP"
+            next_btn:
+              kind: "command-button"
+              variant: "primary"
+              label: "Configure Account"
+              call: "NEXT_STEP"
+
+    step_summary:
+      order: 3
+      title: "Order Summary"
+      parts:
+        summary:
+          type: "text"
+          value: |
+            ### Almost done!
+            You are about to order a **Business Account** for:
+            - **License:** ${this.activeLicense.id}
+            - **Member:** ${this.selectedMemberId}
+            - **Holder:** ${this.fellowId}
+        btn_row:
+          type: "row"
+          parts:
+            back_btn:
+              kind: "command-button"
+              variant: "default"
+              label: "Back"
+              call: "PREV_STEP"
+            submit_btn:
+              kind: "command-button"
+              variant: "success"
+              label: "Place Order"
+              call: "synthetic.case.create"
+              params:
+                caseTypeId: "business-account-order"
+                companyId: "${this.selectedMemberId}"
+                targetPersonId: "${this.fellowId}"
+                successMessage: "Your order has been placed! A signing case has been created for ${this.selectedMemberId}. ✅"
+                onSuccess: "REDIRECT"
+                redirectFlowId: "cases"
+                redirectParams:
+                  companyId: "${this.selectedMemberId}"
+
+caseTypes:
+  business-account-order:
+    id: "business-account-order"
+    name: "Business Account Enrollment"
+    strategyId: "JOINT_SIGNATURE"
+    description: "Enrollment for a business account, requiring signatures from Company LRs and the Individual."
 
 actions:
-  synthetic.server.submit-order:
-    type: "API"
+  synthetic.case.create:
+    type: "LOCAL"
     params:
-      endpoint: "https://jsonplaceholder.typicode.com/posts"
-      method: "POST"
-      body:
-        title: "Order Submitted"
-        productName: "${product}"
-        fellowId: "${fellow}"
+      caseTypeId: "business-account-order"
+      companyId: "${this.selectedMemberId}"
+      targetPersonId: "${this.fellowId}"
+      successMessage: "Your order has been placed! A signing case has been created for ${this.selectedMemberId}. ✅"
+      onSuccess: "REDIRECT"
+      redirectFlowId: "cases"
+      redirectParams:
+        companyId: "${this.selectedMemberId}"

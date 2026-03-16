@@ -64,9 +64,15 @@ export default class Activator {
         }
       },
       resolveStrategy: (caseTypeId) => {
+        console.log(`BO Signing: Resolving strategy for type [${caseTypeId}]. Known types:`, caseTypes.map(t => t.id));
         const type = caseTypes.find(t => t.id === caseTypeId);
-        if (!type) return null;
-        return strategies.find(s => s.id === type.strategyId);
+        if (!type) {
+            console.warn(`BO Signing: Case type [${caseTypeId}] not found!`);
+            return null;
+        }
+        const strat = strategies.find(s => s.id === type.strategyId);
+        if (!strat) console.warn(`BO Signing: Strategy [${type.strategyId}] not found for type [${caseTypeId}]!`);
+        return strat;
       }
     };
 

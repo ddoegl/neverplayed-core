@@ -12,15 +12,34 @@ export class AtomicComponentBase extends HTMLElement {
 
     /**
      * Standardized Hydration Lifecycle.
-     * @param {Object} spec The uiSpec compliant specification.
-     * @param {Object} context The OSGi / Bundle context.
-     * @param {Function} interpolator String interpolation utility from the factory.
      */
-    hydrate(spec, context, interpolator) {
+    hydrate(spec, context, interpolator, resolver) {
         this._spec = spec;
         this._context = context;
         this._interpolator = interpolator || ((s) => s);
-        this.render();
+        this._resolver = resolver || ((s) => s);
+
+        // Auto-render when state changes
+        if (globalThis.Alpine?.effect) {
+            this._effectCleanup = globalThis.Alpine.effect(() => {
+                this.render();
+            });
+        } else {
+            this.render();
+        }
+    }
+
+    disconnectedCallback() {
+        if (this._effectCleanup) {
+            this._effectCleanup();
+        }
+    }
+
+    /**
+     * Resolves variables to their underlying value (string, array, object).
+     */
+    resolve(path) {
+        return this._resolver ? this._resolver(path) : path;
     }
 
     /**

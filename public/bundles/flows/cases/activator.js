@@ -310,6 +310,24 @@ export default class Activator {
         if (params?.action === 'sign-case' && params.caseId) {
            state.performSignCase(params.caseId, params.signatureIndex);
            await state.loadStep(params.step || "case-details");
+        } else if (params?.companyId) {
+            console.log("Cases Flow: Auto-selecting company from params:", params.companyId);
+            // Wait for services to arrive if needed
+            const selectTarget = () => {
+                if (!state.licenseDataService || !state.selectionService || !state.currentLicenseId) {
+                    setTimeout(selectTarget, 100);
+                    return;
+                }
+                const license = state.licenseDataService.getLicense(state.currentLicenseId);
+                const company = state.licenseDataService.getFilteredMembers?.(state.currentLicenseId).find(c => String(c.id) === String(params.companyId));
+                if (company) {
+                    state.selectCompany(company);
+                } else {
+                    console.warn("Cases Flow: Company not found for auto-selection:", params.companyId);
+                }
+                state.loadStep("dashboard");
+            };
+            selectTarget();
         } else if (params?.step) {
            if (params.caseId && state.caseService) {
                state.selectedCase = state.caseService.getCase(params.caseId);

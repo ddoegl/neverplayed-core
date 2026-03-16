@@ -12,6 +12,23 @@ export default class Activator {
         const BO_SESSION_PID = "pandino.backoffice.session";
         const sessionState = pm.load(BO_SESSION_PID) || {};
 
+        // Shared Reactive Repository for all portals
+        const sharedData = Alpine.reactive({
+            parsedLicenses: { LICENSES: [] },
+            parsedTenants: { TENANTS: [] },
+            persons: [],
+            companies: []
+        });
+
+        // Hydrate Shared Repository
+        const licenseData = pm.load("pandino.backoffice.licenses");
+        console.log("Global State: Hydrating Licenses from Persistence Manager", licenseData ? licenseData.LICENSES?.length : "NONE");
+        if (licenseData) Object.assign(sharedData.parsedLicenses, licenseData);
+        
+        const tenantData = pm.load("pandino.backoffice.tenants");
+        console.log("Global State: Hydrating Tenants from Persistence Manager", tenantData ? tenantData.TENANTS?.length : "NONE");
+        if (tenantData) Object.assign(sharedData.parsedTenants, tenantData);
+
         const state = Alpine.reactive({
             currentStep: sessionState.currentStep || "",
             steps: [], 
@@ -37,10 +54,10 @@ export default class Activator {
                 cancel: () => {},
             },
             parsedRules: {},
-            parsedLicenses: { LICENSES: [] },
+            get parsedLicenses() { return sharedData.parsedLicenses; },
+            get parsedTenants() { return sharedData.parsedTenants; },
             parsedTopicStrategies: [],
             parsedTopics: [],
-            parsedTenants: { TENANTS: [] },
             parsedFeatures: {},
             parsedBusinessFunctions: [], 
             parsedCampaigns: [],
@@ -61,21 +78,28 @@ export default class Activator {
             get host() { return this; },
             get currentLicense() {
                 const ref = context.getServiceReference(SELECTION_SERVICE);
-                return ref ? context.getService(ref).getSelection('business').currentLicenseId : null;
+                const sel = ref ? context.getService(ref).getSelection('business') : null;
+                return sel?.currentLicenseId || null;
             },
             get activeLicense() {
-                const licenses = (this.parsedLicenses?.LICENSES || []);
+                const licenses = (sharedData.parsedLicenses?.LICENSES || []);
                 const currentId = this.currentLicense;
                 if (!currentId) return null;
-                return licenses.find(l => l.id === currentId);
+                return licenses.find(l => String(l.id) === String(currentId));
             },
             get persons() {
+                if (sharedData.persons.length) return sharedData.persons;
                 const ref = context.getServiceReference("infrastructure.persons.data");
-                return ref ? context.getService(ref).getPersons() || [] : [];
+                const list = ref ? context.getService(ref).getPersons() || [] : [];
+                if (list.length) sharedData.persons = list;
+                return list;
             },
             get companies() {
+                if (sharedData.companies.length) return sharedData.companies;
                 const ref = context.getServiceReference("infrastructure.companies.data");
-                return ref ? context.getService(ref).getCompanies() || [] : [];
+                const list = ref ? context.getService(ref).getCompanies() || [] : [];
+                if (list.length) sharedData.companies = list;
+                return list;
             },
             isCompany(id) {
                 return this.companies.some(c => String(c.id) === String(id));
@@ -151,6 +175,17 @@ export default class Activator {
                 session: null,
                 renderedHTML: "",
                 pluginOverlays: [],
+
+                get currentLicense() {
+                    const ref = context.getServiceReference(SELECTION_SERVICE);
+                    const sel = ref ? context.getService(ref).getSelection('business') : null;
+                    return sel?.currentLicenseId || null;
+                },
+                get activeLicense() {
+                    return state.activeLicense; // Point to backofficeState's getter (shared result)
+                },
+                get persons() { return state.persons; },
+                get companies() { return state.companies; },
                 
                 init() {
                     Alpine.effect(() => {

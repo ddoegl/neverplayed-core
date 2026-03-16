@@ -1,7 +1,7 @@
 /**
  * Component to render UI from YAML spec
  * 
- * VERSION: 1.5.0 (Forensic & Fallback Edition)
+ * VERSION: 1.6.0 (Robust Registry Edition)
  */
 
 if (!globalThis.__UI_FACTORY_REGISTRY) {
@@ -23,7 +23,22 @@ class UIFactory extends HTMLElement {
     setBundleContext(ctx) {
         this._context = ctx;
         if (ctx) {
-            this._yamlService = ctx.getService("prototyper.yaml.service") || globalThis.Services?.["prototyper.yaml.service"];
+            this._yamlService = this._getService("prototyper.yaml.service");
+        }
+    }
+
+    _getService(id) {
+        if (!this._context) return globalThis.Services?.[id];
+        try {
+            // Pandino/OSGi: getService requires a ServiceReference
+            if (this._context.getServiceReference) {
+                const ref = this._context.getServiceReference(id);
+                if (ref) return this._context.getService(ref);
+            }
+            // Fallback to global registry
+            return globalThis.Services?.[id];
+        } catch (e) {
+            return globalThis.Services?.[id];
         }
     }
 
@@ -130,7 +145,9 @@ class UIFactory extends HTMLElement {
                 if (s.title) {
                     const h3 = document.createElement('h3');
                     h3.className = "text-lg font-black mb-6 text-gray-800 tracking-tight";
-                    h3.textContent = s.title;
+                    // Interpolate title reactively - use dot notation for deep paths
+                    const titleText = s.title.replace(/\${this\.(.+?)}/g, `<span x-text="values.$1"></span>`);
+                    h3.innerHTML = titleText;
                     stepWrapper.appendChild(h3);
                 }
 
@@ -158,18 +175,28 @@ class UIFactory extends HTMLElement {
     }
 
     _createState(spec) {
-        const steps = spec.steps || {};
-        const initialStep = spec.initialStep || (Object.keys(steps).length > 0 ? Object.keys(steps)[0] : null);
+        // Bridge existing host data if available
+        const host = globalThis.backofficeState || globalThis.businessPortalState || {};
+        const baseValues = {
+            activeLicense: host.activeLicense || {},
+            companies: host.companies || [],
+            persons: host.persons || [],
+            fellowsData: host.fellowsData || { FELLOWS: [] },
+            parsedLicenses: host.parsedLicenses || { LICENSES: [] },
+            ...host.currentApplication
+        };
 
-        let s = {
+        const initialStep = spec.initialStep || (Object.keys(spec.steps || {}).length > 0 ? Object.keys(spec.steps)[0] : null);
+
+        const s = {
             loading: false,
             data: null,
             guards: {},
-            values: {},
+            values: baseValues,
             currentStep: initialStep,
             history: [],
             initialStep: initialStep,
-            stepKeys: Object.keys(steps),
+            stepKeys: Object.keys(spec.steps || {}),
             
             init() {
                 console.log(`UIFactory connected to Alpine Data`);
@@ -192,14 +219,61 @@ class UIFactory extends HTMLElement {
                 if (p.parts) collect(p.parts);
             });
         };
-        collect(spec.parts || {});
-        Object.values(steps).forEach(step => collect(step.parts || {}));
+        Object.values(spec.steps || {}).forEach(step => collect(step.parts || {}));
 
-        if (globalThis.Alpine?.reactive) {
-            s = globalThis.Alpine.reactive(s);
-        }
+        this._state = globalThis.Alpine.reactive(s);
 
-        return s;
+        // Add dynamic filtering logic and reactive host bridge
+        globalThis.Alpine.effect(() => {
+            const state = this._state.values;
+            const bo = globalThis.backofficeState || {};
+            const bp = globalThis.businessPortalState || {};
+            
+            // --- Live Portals Sync (Dual-Portal Aware) ---
+            const hActive = bp.activeLicense || bo.activeLicense || null;
+            const hFellows = bp.fellowsData || bo.fellowsData || null;
+            const hCompanies = bp.companies || bo.companies || [];
+            const hPersons = bp.persons || bo.persons || [];
+
+            if (hActive && hActive.id) {
+                console.log(`UIFactory [${this._id}]: Received Active License -> ${hActive.id}`);
+                state.activeLicense = hActive;
+            }
+            if (hFellows) state.fellowsData = hFellows;
+            if (hCompanies.length) state.companies = hCompanies;
+            if (hPersons.length) state.persons = hPersons;
+
+            // 1. Derive Members from current License Customers (Reactive)
+            const customers = (state.activeLicense?.customers || []);
+            state.currentMembers = customers.map(id => {
+                const entity = (state.companies || []).find(c => String(c.id) === String(id)) || 
+                               (state.persons || []).find(p => String(p.id) === String(id));
+                return {
+                    id: String(id),
+                    displayName: entity ? (entity.name || `${entity.firstname || ''} ${entity.lastname || ''}`.trim()) : id
+                };
+            });
+
+            // 2. Derive Fellows from selected Member (Reactive)
+            const selectedMemberId = state.selectedMemberId;
+            if (selectedMemberId) {
+                const allFellows = state.fellowsData?.FELLOWS || [];
+                const filteredFellows = allFellows.filter(f => String(f.fellowOf) === String(selectedMemberId));
+                
+                // Resolve Fellow names from persons
+                state.currentFellows = filteredFellows.map(f => {
+                    const person = (state.persons || []).find(p => String(p.id) === String(f.personId));
+                    return {
+                        id: f.personId,
+                        displayName: person ? `${person.firstname || ''} ${person.lastname || ''}`.trim() : f.personId
+                    };
+                });
+            } else {
+                state.currentFellows = [];
+            }
+        });
+
+        return this._state;
     }
 
     async runAction(action, scope) {
@@ -267,6 +341,55 @@ class UIFactory extends HTMLElement {
             // Pass 2: Resolve against other Params (finalParams)
             doInterp(finalParams);
 
+            // Handle synthetic actions
+            if (action.call === 'synthetic.client.summary-alert') {
+                alert(finalParams.message || "Action Completed!");
+                scope.loading = false;
+                return;
+            }
+
+            if (action.call === 'synthetic.case.create') {
+                const caseSvc = this._getService("backoffice.cases.data");
+                if (!caseSvc) throw new Error("Case Service not available.");
+
+                console.log(`UIFactory: Creating case of type ${finalParams.caseTypeId}`, finalParams);
+                const newCase = await caseSvc.createCase(
+                    finalParams.caseTypeId, 
+                    {
+                        companyId: finalParams.companyId,
+                        targetPersonId: finalParams.targetPersonId,
+                        title: finalParams.title || `Order for ${finalParams.companyId}`,
+                        description: finalParams.description || `Business Account Order via Atomic Flow`
+                    },
+                    finalParams.html
+                );
+
+                if (newCase) {
+                    alert(finalParams.successMessage || `Case ${newCase.id} created successfully!`);
+                    if (finalParams.onSuccess === "RESET") {
+                        scope.currentStep = scope.stepKeys[0];
+                        scope.history = [];
+                        scope.values = { activeLicense: scope.values.activeLicense }; 
+                    } else if (finalParams.onSuccess === "REDIRECT" && finalParams.redirectFlowId) {
+                        console.log(`UIFactory: Redirecting to flow ${finalParams.redirectFlowId} with params:`, finalParams.redirectParams);
+                        
+                        const isPortal = !!globalThis.businessPortalState;
+                        const isSubflow = !!document.getElementById('business-subflow-container');
+                        const eventName = isPortal ? 'business-portal-launch' : (isSubflow ? 'business-launch-flow' : 'shell-launch-flow');
+                        
+                        console.log(`UIFactory: Dispatching redirect event: ${eventName}`);
+                        globalThis.dispatchEvent(new CustomEvent(eventName, { 
+                            detail: { 
+                                id: finalParams.redirectFlowId, 
+                                params: finalParams.redirectParams 
+                            } 
+                        }));
+                    }
+                }
+                scope.loading = false;
+                return;
+            }
+
             // 2. Lookup Service
             if (this._context) {
                 const refs = this._context.getServiceReferences("prototyper.action.service", `(action.id=${action.call})`);
@@ -292,8 +415,34 @@ class UIFactory extends HTMLElement {
     interpolate(str, scope, extra = {}) {
         if (!str) return "";
         return str.replace(/\${(this\.)?(.+?)}/g, (_, _prefix, key) => {
-            return extra[key] ?? scope.values[key] ?? scope[key] ?? "";
+            const val = extra[key] ?? scope.values[key] ?? scope[key] ?? null;
+            if (val !== null && val !== undefined) return val;
+            
+            // Try deep resolution if key contains dots
+            if (key.includes('.')) {
+                const parts = key.split('.');
+                const deep = parts.reduce((acc, part) => acc && acc[part], scope.values) ?? 
+                             parts.reduce((acc, part) => acc && acc[part], scope);
+                if (deep !== undefined && deep !== null) return deep;
+            }
+            return "";
         });
+    }
+
+    resolveValue(expr, scope) {
+        if (typeof expr !== 'string') return expr;
+        const match = expr.match(/^\${(this\.)?(.+?)}$/);
+        if (match) {
+            const path = match[2];
+            const resolvePath = (obj, p) => p.split('.').reduce((acc, part) => acc && acc[part], obj);
+            const result = resolvePath(scope.values, path) ?? resolvePath(scope, path);
+            
+            if (path.includes('activeLicense')) {
+                console.log(`UIFactory Resolve Debug: ${path} ->`, result);
+            }
+            return result;
+        }
+        return this.interpolate(expr, scope);
     }
 
     renderPart(_id, p) {
@@ -310,7 +459,12 @@ class UIFactory extends HTMLElement {
         if (tagName) {
             const el = document.createElement(tagName);
             if (el.hydrate) {
-                el.hydrate(p, this._context, (s) => this.interpolate(s, this._state));
+                el.hydrate(
+                    p, 
+                    this._context, 
+                    (s) => this.interpolate(s, this._state),
+                    (path) => this.resolveValue(path, this._state)
+                );
             }
             if (p.guard) {
                 const wrapper = document.createElement('div');
@@ -334,7 +488,8 @@ class UIFactory extends HTMLElement {
             });
         } else if (p.type === 'text' || typeof p.value === 'string') {
             container.className = "mb-5 text-gray-500 leading-relaxed font-semibold";
-            const text = (p.value || "").replace(/\${this\.(.+?)}/g, `<span x-text="values['$1'] || ''" class="text-blue-600 font-bold"></span>`);
+            // Support deep paths reactively - IMPORTANT: use values.path
+            const text = (p.value || "").replace(/\${this\.(.+?)}/g, `<span x-text="values.$1 || ''" class="text-blue-600 font-bold"></span>`);
             container.innerHTML = text;
         } else if (p.type === 'result') {
             container.setAttribute('x-show', 'data');
@@ -357,7 +512,7 @@ class UIFactory extends HTMLElement {
 
     async resolveGuards(scope) {
         if (!this._context) return;
-        const lime = this._context.getService("prototyper.limes.service") || globalThis.Services?.["prototyper.limes.service"];
+        const lime = this._getService("prototyper.limes.service");
         if (!lime) return;
         for (const g of Object.keys(scope.guards)) {
             try {

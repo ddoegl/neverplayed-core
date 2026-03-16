@@ -16,16 +16,20 @@ class AtomicSelect extends AtomicComponentBase {
 
         // Handle options: can be static or dynamic
         let optionsHtml = "";
-        const options = this._spec.options || [];
+        let options = this._spec.options || [];
         
-        // If options is a string, it might be an expression like ${this.companies}
-        // But our current interpolate handles strings, not array results.
-        // For now, let's support static options and simple string-based dynamic lists if needed.
+        if (this._spec.optionSource) {
+            const resolved = this.resolve(this._spec.optionSource);
+            if (Array.isArray(resolved)) {
+                options = resolved;
+            }
+        }
         
         options.forEach(opt => {
-            const optValue = opt.value ?? opt;
-            const optLabel = this.interp(opt.label ?? optValue);
-            optionsHtml += `<sl-option value="${optValue}">${optLabel}</sl-option>`;
+            const optValue = opt.id || opt.value || opt;
+            const optLabel = this.interp(opt.displayName || opt.label || opt.name || optValue);
+            const isSelected = String(value) === String(optValue);
+            optionsHtml += `<sl-option value="${optValue}" ${isSelected ? 'selected' : ''}>${optLabel}</sl-option>`;
         });
 
         this.innerHTML = `

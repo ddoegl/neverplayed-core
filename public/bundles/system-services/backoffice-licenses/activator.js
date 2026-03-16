@@ -102,16 +102,17 @@ export default class Activator {
         pm.store(LICENSES_PID, licenses);
         console.log("LicenseDataService: Persisted to PM.");
         
-        if (globalThis.backofficeState) {
-            const state = globalThis.backofficeState;
-            console.log("LicenseDataService: Syncing with backofficeState...");
-            if (state.parsedLicenses && typeof state.parsedLicenses === 'object') {
-                Object.assign(state.parsedLicenses, licenses);
-            } else {
-                state.parsedLicenses = licenses;
+        // Bridge to host states for global availability
+        [globalThis.backofficeState, globalThis.businessPortalState].forEach(state => {
+            if (state) {
+                if (state.parsedLicenses && typeof state.parsedLicenses === 'object') {
+                    Object.assign(state.parsedLicenses, licenses);
+                } else {
+                    state.parsedLicenses = licenses;
+                }
+                state.recompile?.();
             }
-            state.recompile?.();
-        }
+        });
       },
       getFilteredMembers: (licenseId) => {
         if (!licenseId) return [];
