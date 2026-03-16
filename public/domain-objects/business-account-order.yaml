@@ -53,7 +53,7 @@ ui:
   steps:
     step_init:
       order: 1
-      title: "Select License Member"
+      title: "Select Account Owner"
       parts:
         intro:
           type: "text"
@@ -71,11 +71,11 @@ ui:
 
     step_fellow:
       order: 2
-      title: "Select Card Holder"
+      title: "Select Account Signee"
       parts:
         intro:
           type: "text"
-          value: "Choose a fellow from **${this.selectedMemberId}** who will hold the new business card."
+          value: "Choose a fellow from **${this.selectedMemberId}** who will be signee of the new business account."
         fellow_select:
           kind: "select-input"
           id: "fellowId"
@@ -105,8 +105,8 @@ ui:
             ### Almost done!
             You are about to order a **Business Account** for:
             - **License:** ${this.activeLicense.id}
-            - **Member:** ${this.selectedMemberId}
-            - **Holder:** ${this.fellowId}
+            - **Account Owner:** ${this.selectedMemberId}
+            - **Account Signee:** ${this.fellowId}
         btn_row:
           type: "row"
           parts:
