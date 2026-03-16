@@ -64,11 +64,68 @@ guards:
           - REMOTE_EDIT
 
 ui:
-  parts:
-    "banner":
-      type: "text"
-      value: "This Domain Object was ingested from the server! 🌐⚡️"
-    "btn":
-      type: "button"
-      label: "Acknowledge"
-      action: "ACK"
+  initialStep: step1
+  steps:
+    step1:
+      order: 1
+      title: "Step 1: Welcome"
+      parts:
+        intro:
+          type: "text"
+          value: "Welcome to the Multi-step Atomic Flow! This is the first step."
+        nextBtn:
+          type: "action"
+          label: "Start Flow"
+          call: "NEXT_STEP"
+          class: "btn btn-primary w-full"
+
+    step2:
+      order: 2
+      title: "Step 2: User Input"
+      parts:
+        instruction:
+          type: "text"
+          value: "Please enter a User ID to fetch details from JSONPlaceholder."
+        userIdInput:
+          type: "input"
+          id: "userId"
+          label: "User ID"
+          placeholder: "e.g. 1"
+          value: "1"
+        navButtons:
+          type: "row" # Assuming row wrapping or just vertical stack
+          parts:
+            backBtn:
+              type: "action"
+              label: "Back"
+              call: "PREV_STEP"
+              class: "btn btn-secondary mr-2"
+            nextBtn:
+              type: "action"
+              label: "Next"
+              call: "NEXT_STEP"
+              class: "btn btn-primary"
+
+    step3:
+      order: 3
+      title: "Step 3: Confirmation & Action"
+      parts:
+        confirm:
+          type: "text"
+          value: "You have selected User ID: **${this.userId}**."
+        actionBtn:
+          type: "action"
+          guard: "REMOTE_EDIT"
+          label: "Send Magic Greeting"
+          onAction:
+            call: "apiService"
+            params:
+              endpoint: "https://jsonplaceholder.typicode.com/users/${this.userId}"
+              method: "GET"
+        resultDisplay:
+          type: "result"
+        backBtn:
+          type: "action"
+          label: "Back"
+          call: "PREV_STEP"
+          class: "btn btn-secondary w-full"
