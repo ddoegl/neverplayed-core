@@ -1,0 +1,113 @@
+id: business-account-order
+label: Business Account Order
+domainObject:
+  strategyId: ACCOUNT_ORDER_STRATEGY
+  label: Business Account Order
+  properties:
+    "Product": "Business Bank Account"
+    "Status": "Draft"
+  actions:
+    - id: view
+      label: Open Flow
+      icon: fas fa-university
+
+permissionKeys:
+  BUSINESS_VIEW:
+    id: BUSINESS_VIEW
+    label: "business:view"
+    value: "business:view"
+
+features:
+  BUSINESS_FLOWS:
+    id: BUSINESS_FLOWS
+    label: "business:flows"
+    description: "Access to Business Atomic Flows"
+    keys:
+      - BUSINESS_VIEW
+
+capabilities:
+  - id: BUSINESS_USER
+    operator: "OR"
+    matchers:
+      - type: "matchAlways"
+    features:
+      - id: "BUSINESS_FLOWS"
+        keys:
+          - BUSINESS_VIEW
+
+guards:
+  - id: BUSINESS_VIEW
+    operator: "OR"
+    matchers:
+      - type: "matchAlways"
+    features:
+      - id: "BUSINESS_FLOWS"
+        keys:
+          - BUSINESS_VIEW
+
+ui:
+  initialStep: step_init
+  steps:
+    step_init:
+      order: 1
+      title: "Order Options"
+      parts:
+        intro_text:
+          type: "text"
+          value: "Configure your new business account parameters below."
+        
+        selection_grid:
+          type: "row"
+          parts:
+            product_select:
+              kind: "select-input"
+              id: "productName"
+              label: "Product Type"
+              value: "Business_Account"
+              options:
+                - value: "Business_Account"
+                  label: "Business Account (Standard)"
+                - value: "Premium_Account"
+                  label: "Business Account (Premium)"
+            
+            fellow_select:
+              kind: "select-input"
+              id: "fellowId"
+              label: "Card Holder (Fellow)"
+              value: "NONE"
+              options:
+                - value: "NONE"
+                  label: "Open"
+                - value: "FELLOW_001"
+                  label: "Daniela Doe"
+                - value: "FELLOW_002"
+                  label: "John Smith"
+                - value: "FELLOW_003"
+                  label: "Alice Johnson"
+
+        summary_area:
+          type: "text"
+          value: |
+            ### Order Summary
+            **Product:** ${this.productName}
+            **Holder:** ${this.fellowId}
+        
+        submit_btn:
+          kind: "command-button"
+          variant: "primary"
+          label: "Conclude Order"
+          call: "synthetic.server.submit-order"
+          params:
+            product: "${this.productName}"
+            fellow: "${this.fellowId}"
+
+actions:
+  synthetic.server.submit-order:
+    type: "API"
+    params:
+      endpoint: "https://jsonplaceholder.typicode.com/posts"
+      method: "POST"
+      body:
+        title: "Order Submitted"
+        productName: "${product}"
+        fellowId: "${fellow}"

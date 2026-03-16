@@ -302,7 +302,8 @@ class UIFactory extends HTMLElement {
             'command-button': 'atomic-button',
             'action': 'atomic-button',
             'text-input': 'atomic-input',
-            'input': 'atomic-input'
+            'input': 'atomic-input',
+            'select-input': 'atomic-select'
         };
 
         const tagName = registry[kind];
@@ -333,7 +334,7 @@ class UIFactory extends HTMLElement {
             });
         } else if (p.type === 'text' || typeof p.value === 'string') {
             container.className = "mb-5 text-gray-500 leading-relaxed font-semibold";
-            const text = (p.value || "").replace(/\${this\.(.+?)}/g, `<span x-text="values['$1'] || $1" class="text-blue-600 font-bold"></span>`);
+            const text = (p.value || "").replace(/\${this\.(.+?)}/g, `<span x-text="values['$1'] || ''" class="text-blue-600 font-bold"></span>`);
             container.innerHTML = text;
         } else if (p.type === 'result') {
             container.setAttribute('x-show', 'data');

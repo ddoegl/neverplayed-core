@@ -71,7 +71,10 @@ export default class Activator {
         // 2. Scan LocalStorage
         this.scanLocalStorage(context);
 
-        // 3. Register Ingestion Service for remote ingestion
+        // 3. Scan domain-objects directory
+        this.scanDomainObjects(context);
+
+        // 4. Register Ingestion Service for remote ingestion
         context.registerService("prototyper.atomic.ingestion", {
             ingest: (spec, options = {}) => {
                 const { source = "remote", persist = false } = options;
@@ -98,6 +101,29 @@ export default class Activator {
 
     } catch (err) {
         console.error("Atomic Orchestrator: Unhandled error in start method:", err);
+    }
+  }
+
+  async scanDomainObjects(context) {
+    const yamlRef = context.getServiceReference(YAML_SERVICE);
+    const yaml = yamlRef ? context.getService(yamlRef) : null;
+    if (!yaml) return;
+
+    // In a real system, we'd fetch an index.json or scan the dir.
+    // For this POC, we register the known remote-style specs.
+    const remotes = ["sample-do.yaml", "business-account-order.yaml"];
+    
+    for (const file of remotes) {
+        try {
+            const res = await fetch(`./domain-objects/${file}`);
+            if (res.ok) {
+                const text = await res.text();
+                const spec = yaml.load(text);
+                this.registerAtomicComponents(context, null, spec, "server");
+            }
+        } catch (e) {
+            console.error(`Atomic Orchestrator: Failed to scan remote ${file}`, e);
+        }
     }
   }
 
@@ -342,15 +368,17 @@ export default class Activator {
                     if (outreachSvc && actionSpec.type === "API") {
                         const mergedParams = JSON.parse(JSON.stringify({ ...actionSpec.params, ...params }));
                         
-                        // Simple interpolation for synthetic actions
-                        const interp = (val) => {
-                            if (typeof val !== 'string') return val;
-                            return val.replace(/\${(.+?)}/g, (_, k) => mergedParams[k] ?? "");
+                        // Deep interpolation for synthetic actions
+                        const deepInterp = (obj) => {
+                            for (const k in obj) {
+                                if (typeof obj[k] === 'string') {
+                                    obj[k] = obj[k].replace(/\${(.+?)}/g, (_, varName) => mergedParams[varName] ?? "");
+                                } else if (typeof obj[k] === 'object' && obj[k] !== null) {
+                                    deepInterp(obj[k]);
+                                }
+                            }
                         };
-
-                        for (const k in mergedParams) {
-                            if (typeof mergedParams[k] === 'string') mergedParams[k] = interp(mergedParams[k]);
-                        }
+                        deepInterp(mergedParams);
 
                         return await outreachSvc.execute(mergedParams);
                     }
