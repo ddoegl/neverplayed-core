@@ -36,13 +36,26 @@ class UIFactory extends HTMLElement {
 
     connectedCallback() {
         console.log(`UIFactory [${this._id}]: connected to DOM`);
+        
+        // Listen for standard Atomic Component events
+        this.addEventListener('atomic-action', (e) => {
+            console.log(`UIFactory [${this._id}]: atomic-action received`, e.detail.action);
+            this.runAction(e.detail.action, this._state);
+        });
+
+        this.addEventListener('atomic-change', (e) => {
+            const { id, value } = e.detail;
+            console.log(`UIFactory [${this._id}]: atomic-change received`, id, value);
+            this._state.values[id] = value;
+            this._state.data = null; // Clear results on input change
+        });
+
         // If we already have a spec, render now
         if (this._spec) this.render();
         else setTimeout(() => this.render(), 200);
     }
 
     render() {
-        // Find spec
         let spec = this._spec;
         const script = this.querySelector('script[type="text/yaml"]');
         if (!spec && script) {
@@ -66,21 +79,29 @@ class UIFactory extends HTMLElement {
             return;
         }
 
-        // Avoid re-rendering if spec is same and already rendered
         if (this._rendered && this._spec === spec && this.querySelector('.ui-f-root')) return;
 
         this._spec = spec;
-
-        // Ensure persistent state
         if (!this._state) {
             this._state = this._createState(spec);
             globalThis.__UI_FACTORY_REGISTRY.set(this._id, this._state);
         }
 
         this.setAttribute('data-uif-id', this._id);
-        console.log(`UIFactory [${this._id}]: Structural Render`);
+        
+        // --- HYDRATION ENGINE START ---
+        // Build the root element first
+        const root = document.createElement('div');
+        root.className = 'ui-f-root';
+        root.setAttribute('x-data', `globalThis.__UI_FACTORY_REGISTRY.get('${this._id}')`);
+        
+        const body = document.createElement('div');
+        body.id = 'uif-body';
+        root.appendChild(body);
+        
+        // Hydrate body BEFORE appending to DOM to ensure Alpine sees all children
+        this.hydrateBody(body, spec);
 
-        const html = this.generateHTML(spec);
         this.innerHTML = `
             <style>
                 ui-factory { display: block !important; visibility: visible !important; min-height: 50px; }
@@ -88,20 +109,59 @@ class UIFactory extends HTMLElement {
                 .ui-f-root { opacity: 0; animation: ui-fade 0.4s forwards; }
                 @keyframes ui-fade { to { opacity: 1; } }
             </style>
-            <div class="ui-f-root" x-data="globalThis.__UI_FACTORY_REGISTRY.get('${this._id}')">
-                ${html}
-            </div>
         `;
+        this.appendChild(root);
         
         this._rendered = true;
         setTimeout(() => this.resolveGuards(this._state), 200);
+    }
+
+    hydrateBody(container, spec) {
+        const steps = spec.steps || {};
+        const parts = spec.parts || {};
+
+        if (Object.keys(steps).length > 0) {
+            Object.entries(steps).forEach(([sid, s]) => {
+                const stepWrapper = document.createElement('div');
+                stepWrapper.setAttribute('x-show', `currentStep === '${sid}'`);
+                stepWrapper.setAttribute('x-cloak', '');
+                stepWrapper.className = "p-1";
+                
+                if (s.title) {
+                    const h3 = document.createElement('h3');
+                    h3.className = "text-lg font-black mb-6 text-gray-800 tracking-tight";
+                    h3.textContent = s.title;
+                    stepWrapper.appendChild(h3);
+                }
+
+                Object.entries(s.parts || {}).forEach(([pid, p]) => {
+                    const partEl = this.renderPart(pid, p);
+                    if (partEl) stepWrapper.appendChild(partEl);
+                });
+
+                container.appendChild(stepWrapper);
+            });
+            
+            // Fallback banner
+            const fallback = document.createElement('div');
+            fallback.setAttribute('x-show', "!currentStep || !stepKeys.includes(currentStep)");
+            fallback.className = "p-6 bg-amber-50 rounded-3xl border border-amber-100 text-amber-900 text-sm italic";
+            fallback.setAttribute('x-cloak', '');
+            fallback.innerHTML = `State sync requested... <button @click="currentStep = initialStep" class="font-bold underline ml-1">Restart</button>`;
+            container.appendChild(fallback);
+        } else {
+            Object.entries(parts).forEach(([pid, p]) => {
+                const partEl = this.renderPart(pid, p);
+                if (partEl) container.appendChild(partEl);
+            });
+        }
     }
 
     _createState(spec) {
         const steps = spec.steps || {};
         const initialStep = spec.initialStep || (Object.keys(steps).length > 0 ? Object.keys(steps)[0] : null);
 
-        const s = {
+        let s = {
             loading: false,
             data: null,
             guards: {},
@@ -116,7 +176,6 @@ class UIFactory extends HTMLElement {
             },
 
             async performAction(action) {
-                // Bridge to the host element
                 const host = document.querySelector(`[data-uif-id="${this.instanceId}"]`) || 
                              this.$el?.closest('ui-factory');
                 if (host && host.runAction) {
@@ -126,47 +185,21 @@ class UIFactory extends HTMLElement {
         };
         s.instanceId = this._id;
 
-        // Initialize defaults
         const collect = (parts) => {
             Object.values(parts).forEach(p => {
                 if (p.guard) s.guards[p.guard] = true;
-                if (p.type === 'input' && p.id) s.values[p.id] = p.value || "";
+                if ((p.kind === 'text-input' || p.type === 'input') && p.id) s.values[p.id] = p.value || "";
                 if (p.parts) collect(p.parts);
             });
         };
         collect(spec.parts || {});
         Object.values(steps).forEach(step => collect(step.parts || {}));
 
-        return s;
-    }
-
-    generateHTML(spec) {
-        const steps = spec.steps || {};
-        const parts = spec.parts || {};
-        let body = "";
-
-        if (Object.keys(steps).length > 0) {
-            Object.entries(steps).forEach(([sid, s]) => {
-                const phtml = Object.entries(s.parts || {}).map(([pid, p]) => this.renderPart(pid, p)).join("");
-                body += `
-                    <template x-if="currentStep === '${sid}'">
-                        <div x-cloak class="p-1">
-                            ${s.title ? `<h3 class="text-lg font-black mb-6 text-gray-800 tracking-tight">${s.title}</h3>` : ""}
-                            ${phtml}
-                        </div>
-                    </template>
-                `;
-            });
-            body += `
-                <div x-show="!currentStep || !stepKeys.includes(currentStep)" class="p-6 bg-amber-50 rounded-3xl border border-amber-100 text-amber-900 text-sm italic" x-cloak>
-                    State sync requested... <button @click="currentStep = initialStep" class="font-bold underline ml-1">Restart</button>
-                </div>
-            `;
-        } else {
-            body = Object.entries(parts).map(([pid, p]) => this.renderPart(pid, p)).join("");
+        if (globalThis.Alpine?.reactive) {
+            s = globalThis.Alpine.reactive(s);
         }
 
-        return body;
+        return s;
     }
 
     async runAction(action, scope) {
@@ -196,17 +229,45 @@ class UIFactory extends HTMLElement {
         // Exec
         scope.loading = true;
         try {
-            const params = JSON.parse(JSON.stringify(action.params || {}));
-            const interp = (o) => {
-                for (const k in o) {
-                    if (typeof o[k] === "string") {
-                        o[k] = o[k].replace(/\${this\.(.+?)}/g, (_, m) => scope.values[m] ?? scope[m] ?? "");
-                    } else if (typeof o[k] === "object" && o[k] !== null) interp(o[k]);
+            // 1. Resolve Action Handler
+            let svc = null;
+            let finalParams = JSON.parse(JSON.stringify(action.params || {}));
+
+            // Check if action is defined in local SPEC first
+            const localAction = this._spec.actions?.[action.call];
+            if (localAction) {
+                console.log(`UIFactory: Executing local action definition for ${action.call}`);
+                if (localAction.type === "API") {
+                    // Map local action to the global apiService
+                    action.call = "apiService";
+                    finalParams = { ...localAction.params, ...finalParams };
+                }
+            }
+
+            // Interpolate params - two-pass strategy to handle dependencies
+            const doInterp = (passParams) => {
+                for (const k in finalParams) {
+                    if (typeof finalParams[k] === "string") {
+                        finalParams[k] = this.interpolate(finalParams[k], scope, passParams);
+                    } else if (typeof finalParams[k] === "object" && finalParams[k] !== null) {
+                        // Deep interp
+                        const deep = (obj) => {
+                            for (const dk in obj) {
+                                if (typeof obj[dk] === "string") obj[dk] = this.interpolate(obj[dk], scope, passParams);
+                                else if (typeof obj[dk] === "object" && obj[dk] !== null) deep(obj[dk]);
+                            }
+                        };
+                        deep(finalParams[k]);
+                    }
                 }
             };
-            interp(params);
+            
+            // Pass 1: Resolve against State (scope)
+            doInterp({}); 
+            // Pass 2: Resolve against other Params (finalParams)
+            doInterp(finalParams);
 
-            let svc = null;
+            // 2. Lookup Service
             if (this._context) {
                 const refs = this._context.getServiceReferences("prototyper.action.service", `(action.id=${action.call})`);
                 if (refs?.[0]) {
@@ -215,9 +276,10 @@ class UIFactory extends HTMLElement {
                 }
             }
             if (!svc && globalThis.Services?.[action.call]) svc = globalThis.Services[action.call];
+            
             if (!svc) throw new Error(`Action ${action.call} not found`);
 
-            const res = await (typeof svc === "function" ? svc(params) : svc.execute(params));
+            const res = await (typeof svc === "function" ? svc(finalParams) : svc.execute(finalParams));
             scope.data = res;
         } catch (e) {
             console.error(e);
@@ -227,43 +289,69 @@ class UIFactory extends HTMLElement {
         }
     }
 
+    interpolate(str, scope, extra = {}) {
+        if (!str) return "";
+        return str.replace(/\${(this\.)?(.+?)}/g, (_, _prefix, key) => {
+            return extra[key] ?? scope.values[key] ?? scope[key] ?? "";
+        });
+    }
+
     renderPart(_id, p) {
-        let h = "";
-        const act = p.onAction || (p.call ? p : null);
-        
-        if (act) {
-            const json = JSON.stringify(act).replace(/'/g, "&#39;");
-            h = `
-                <button class="${p.class || 'w-full mb-4 px-6 py-4 rounded-2xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all'}" 
-                        @click.stop.prevent='performAction(${json})' :disabled="loading">
-                    <span x-text="loading ? 'Processing...' : '${p.label || 'Continue'}'"></span>
-                </button>
-            `;
-        } else if (p.parts) {
-            const inner = Object.entries(p.parts).map(([id, sub]) => this.renderPart(id, sub)).join("");
-            h = `<div class="${p.type === 'row' ? 'flex space-x-3' : ''} mb-4">${inner}</div>`;
-        } else if (p.type === 'input') {
-            const id = p.id || _id;
-            h = `
-                <div class="mb-5">
-                    ${p.label ? `<label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">${p.label}</label>` : ""}
-                    <input type="${p.inputType || 'text'}" x-model="values['${id}']" @input="data = null"
-                           placeholder="${p.placeholder || ''}"
-                           class="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white outline-none transition-all font-semibold text-gray-700">
-                </div>
-            `;
-        } else if (p.type === 'text' || typeof p.value === 'string') {
-            const text = (p.value || "").replace(/\${this\.(.+?)}/g, '<span x-text="values[\'$1\'] || $1" class="text-blue-600 font-bold"></span>');
-            h = `<div class="mb-5 text-gray-500 leading-relaxed font-semibold">${text}</div>`;
-        } else if (p.type === 'result') {
-            h = `
-                <div x-show="data" class="mb-4 p-6 bg-gray-900 rounded-3xl border border-gray-800 shadow-2xl overflow-auto max-h-80" x-transition>
-                    <pre x-text="JSON.stringify(data, null, 2)" class="text-[10px] text-gray-400 font-mono leading-relaxed"></pre>
-                </div>
-            `;
+        const kind = p.kind || p.type;
+        const registry = {
+            'command-button': 'atomic-button',
+            'action': 'atomic-button',
+            'text-input': 'atomic-input',
+            'input': 'atomic-input'
+        };
+
+        const tagName = registry[kind];
+        if (tagName) {
+            const el = document.createElement(tagName);
+            if (el.hydrate) {
+                el.hydrate(p, this._context, (s) => this.interpolate(s, this._state));
+            }
+            if (p.guard) {
+                const wrapper = document.createElement('div');
+                wrapper.setAttribute('x-show', `guards['${p.guard}']`);
+                wrapper.setAttribute('x-cloak', '');
+                wrapper.appendChild(el);
+                return wrapper;
+            }
+            return el;
         }
 
-        return p.guard ? `<div x-show="guards['${p.guard}']" x-cloak>${h}</div>` : h;
+        // Logic for legacy types or structural elements
+        const container = document.createElement('div');
+        container.className = "mb-4";
+
+        if (p.parts) {
+            if (p.type === 'row') container.className += " flex space-x-3";
+            Object.entries(p.parts).forEach(([sid, sp]) => {
+                const child = this.renderPart(sid, sp);
+                if (child) container.appendChild(child);
+            });
+        } else if (p.type === 'text' || typeof p.value === 'string') {
+            container.className = "mb-5 text-gray-500 leading-relaxed font-semibold";
+            const text = (p.value || "").replace(/\${this\.(.+?)}/g, `<span x-text="values['$1'] || $1" class="text-blue-600 font-bold"></span>`);
+            container.innerHTML = text;
+        } else if (p.type === 'result') {
+            container.setAttribute('x-show', 'data');
+            container.setAttribute('x-transition', '');
+            container.className = "mb-4 p-6 bg-gray-900 rounded-3xl border border-gray-800 shadow-2xl overflow-auto max-h-80";
+            container.innerHTML = `<pre x-text="JSON.stringify(data, null, 2)" class="text-[10px] text-gray-400 font-mono leading-relaxed"></pre>`;
+        } else {
+            return null;
+        }
+
+        if (p.guard) {
+            const guardWrap = document.createElement('div');
+            guardWrap.setAttribute('x-show', `guards['${p.guard}']`);
+            guardWrap.setAttribute('x-cloak', '');
+            guardWrap.appendChild(container);
+            return guardWrap;
+        }
+        return container;
     }
 
     async resolveGuards(scope) {

@@ -64,68 +64,74 @@ guards:
           - REMOTE_EDIT
 
 ui:
-  initialStep: step1
+  initialStep: step_intro
   steps:
-    step1:
+    step_intro:
       order: 1
-      title: "Step 1: Welcome"
+      title: "Atomic vNext: Multi-step Flow"
       parts:
-        intro:
+        welcome_msg:
           type: "text"
-          value: "Welcome to the Multi-step Atomic Flow! This is the first step."
-        nextBtn:
-          type: "action"
-          label: "Start Flow"
+          value: "Welcome to the future of Atomic UI! This flow now uses native **Shoelace** Web Components and is fully aligned with **W3C uiSpec**."
+        next_btn:
+          kind: "command-button"
+          variant: "primary"
+          label: "Explore Features"
           call: "NEXT_STEP"
-          class: "btn btn-primary w-full"
+          pulse: true
 
-    step2:
+    step_input:
       order: 2
-      title: "Step 2: User Input"
+      title: "Standardized Data Entry"
       parts:
         instruction:
           type: "text"
-          value: "Please enter a User ID to fetch details from JSONPlaceholder."
-        userIdInput:
-          type: "input"
-          id: "userId"
-          label: "User ID"
-          placeholder: "e.g. 1"
+          value: "Please enter a User ID. The input below is a native '<sl-input>' wrapped in our 'atomic-input' contract."
+        user_id:
+          kind: "text-input"
+          id: "targetId"
+          label: "Global User ID"
+          placeholder: "e.g. 7"
           value: "1"
-        navButtons:
-          type: "row" # Assuming row wrapping or just vertical stack
+        nav_row:
+          type: "row"
           parts:
-            backBtn:
-              type: "action"
+            back_btn:
+              kind: "command-button"
+              variant: "default"
               label: "Back"
               call: "PREV_STEP"
-              class: "btn btn-secondary mr-2"
-            nextBtn:
-              type: "action"
-              label: "Next"
+            next_btn:
+              kind: "command-button"
+              variant: "success"
+              label: "Confirm ID"
               call: "NEXT_STEP"
-              class: "btn btn-primary"
 
-    step3:
+    step_confirm:
       order: 3
-      title: "Step 3: Confirmation & Action"
+      title: "Action Orchestration"
       parts:
-        confirm:
+        summary:
           type: "text"
-          value: "You have selected User ID: **${this.userId}**."
-        actionBtn:
-          type: "action"
-          guard: "REMOTE_EDIT"
+          value: "You have selected User ID: **${this.targetId}**. Ready to dispatch the magic greeting?"
+        action_btn:
+          kind: "command-button"
+          variant: "danger"
           label: "Send Magic Greeting"
-          onAction:
-            call: "apiService"
-            params:
-              endpoint: "https://jsonplaceholder.typicode.com/users/${this.userId}"
-              method: "GET"
-        resultDisplay:
+          call: "synthetic.server.sample-do"
+          params:
+            userId: "${this.targetId}"
+        result_area:
           type: "result"
-        backBtn:
-          type: "action"
-          label: "Back"
+        back_btn:
+          kind: "command-button"
+          variant: "neutral"
+          label: "Modify ID"
           call: "PREV_STEP"
-          class: "btn btn-secondary w-full"
+
+actions:
+  synthetic.server.sample-do:
+    type: "API"
+    params:
+      endpoint: "https://jsonplaceholder.typicode.com/users/${userId}"
+      method: "GET"

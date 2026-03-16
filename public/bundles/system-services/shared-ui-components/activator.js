@@ -1,6 +1,7 @@
-import "./components/user-selector.js";
-import "./components/authorization-selector.js";
 import "./components/ui-factory.js";
+import "./components/atomic-component-base.js";
+import "./components/atomic-button.js";
+import "./components/atomic-input.js";
 
 export default class Activator {
   start(context) {

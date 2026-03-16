@@ -120,7 +120,7 @@ export default class Activator {
   }
 
   registerAtomicComponents(context, bundle, spec, source = "bundle") {
-    const { id, label, capabilities, permissionKeys, features, guards, ui, domainObject } = spec;
+    const { id, label, capabilities, permissionKeys, features, guards, ui, domainObject, actions } = spec;
     const bsn = bundle ? bundle.getSymbolicName() : `synthetic.${source}.${id}`;
     const headers = bundle ? bundle.getHeaders() : {};
     
@@ -326,6 +326,41 @@ export default class Activator {
                 registerHandler();
             }
         }
+    }
+
+    // 6. Register Action Services from Spec
+    if (actions) {
+        Object.entries(actions).forEach(([aid, actionSpec]) => {
+            console.log(`Atomic Orchestrator: Registering action service ${aid} for ${id}`);
+            
+            context.registerService("prototyper.action.service", {
+                execute: async (params) => {
+                    // Find the underlying outreach service for API calls
+                    const outreachRef = context.getServiceReference("prototyper.action.service", "(action.id=apiService)");
+                    const outreachSvc = outreachRef ? context.getService(outreachRef) : null;
+                    
+                    if (outreachSvc && actionSpec.type === "API") {
+                        const mergedParams = JSON.parse(JSON.stringify({ ...actionSpec.params, ...params }));
+                        
+                        // Simple interpolation for synthetic actions
+                        const interp = (val) => {
+                            if (typeof val !== 'string') return val;
+                            return val.replace(/\${(.+?)}/g, (_, k) => mergedParams[k] ?? "");
+                        };
+
+                        for (const k in mergedParams) {
+                            if (typeof mergedParams[k] === 'string') mergedParams[k] = interp(mergedParams[k]);
+                        }
+
+                        return await outreachSvc.execute(mergedParams);
+                    }
+                    throw new Error(`Action handler for ${aid} (type: ${actionSpec.type}) not found.`);
+                }
+            }, {
+                "action.id": aid,
+                "bundle.symbolicName": bsn
+            });
+        });
     }
 
     console.log(`Atomic Orchestrator: Successfully registered all components for ${bsn} (${id})`);

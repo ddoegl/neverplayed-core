@@ -2,66 +2,45 @@
 
 Atomic Bundles support declarative multi-step flows using a combination of YAML specifications and the `UIFactory` component. This allows for complex user interactions like wizards, data entry flows, and conditional logic without writing custom JavaScript.
 
-## Schema Overview
+## Schema Overview (uiSpec Aligned)
 
-The UI specification supports a `steps` object and an `initialStep` property.
+The UI specification follows the **W3C uiSpec** meta-model, focusing on semantic `kind` and component `anatomy`.
 
 ```yaml
 ui:
-  initialStep: welcome # Optional: ID of the first step (defaults to first key in steps)
+  initialStep: welcome
   steps:
     welcome:
-      order: 1       # Optional: define sequence for NEXT_STEP/PREV_STEP
+      order: 1
       title: "Welcome"
       parts:
         intro:
-          type: "text"
+          kind: "text" # Or 'type'
           value: "Hello World"
         next:
-          type: "action"
+          kind: "command-button"
+          variant: "primary" # Shoelace-compatible variants
           label: "Start"
           call: "NEXT_STEP"
 ```
 
-### Steps Properties
+### Core Concepts
 
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `order` | `number` | Defines the sequence for sequential navigation. |
-| `title` | `string` | Displayed as a heading for the step. |
-| `parts` | `object` | Dictionary of UI parts to render in this step. |
+| Term | Description |
+| :--- | :--- |
+| **Kind** | The semantic category of the element (e.g., `command-button`, `text-input`). |
+| **Anatomy** | The constituent parts of a component (managed internally by Web Components). |
+| **Variants** | Standardized visual intents: `primary`, `success`, `neutral`, `warning`, `danger`. |
 
-### Navigation Actions
+### Component Suite
 
-Specific action IDs are reserved for flow control:
+Atomic Bundles now leverage the **Shoelace** component library under the hood for a premium look and feel.
 
-- `NEXT_STEP`: Move to the next step defined by the `order` property.
-- `PREV_STEP`: Return to the previous step in history.
-- `GO_TO_STEP`: Jump to a specific step. requires `params.targetStep`.
+#### Command Button (`kind: command-button`)
+Wraps `<sl-button>`. Supports `variant`, `size`, and `pulse`.
 
-Example `GO_TO_STEP`:
-```yaml
-type: "action"
-label: "Jump to End"
-call: "GO_TO_STEP"
-params:
-  targetStep: "confirmation"
-```
-
-## Component Types
-
-### Input Component
-
-Used to collect data from the user.
-
-```yaml
-type: "input"
-id: "userName"
-label: "Your Name"
-placeholder: "Enter name..."
-value: "Default" # Optional initial value
-inputType: "text" # Optional: text, number, password, etc.
-```
+#### Text Input (`kind: text-input`)
+Wraps `<sl-input>`. Supports `label`, `placeholder`, and pill styling.
 
 ### Result Component
 
