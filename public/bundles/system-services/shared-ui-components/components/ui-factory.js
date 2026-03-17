@@ -37,7 +37,7 @@ class UIFactory extends HTMLElement {
             }
             // Fallback to global registry
             return globalThis.Services?.[id];
-        } catch (e) {
+        } catch (_e) {
             return globalThis.Services?.[id];
         }
     }

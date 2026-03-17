@@ -12,7 +12,7 @@ export default class Activator {
             
             addLog(content, type = 'output') {
                 this.history.push({
-                    timestamp: Date.now(),
+                    timestamp: Date.now() + Math.random(), // Make key unique
                     time: new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
                     content,
                     type

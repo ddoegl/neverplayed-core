@@ -64,6 +64,7 @@ export async function checkAccess() {
                     
                     if (accessResult.data.authorized) {
                         console.log("Auth Shield: Access granted for", user.email);
+                        user.isSuperuser = accessResult.data.isSuperuser;
                         resolve(user);
                     } else {
                         console.error("Auth Shield: Access denied for", user.email, accessResult.data);
@@ -116,10 +117,10 @@ export async function checkAccess() {
 }
 
 /**
- * Convenience wrapper for the Cloud Function
+ * Convenience wrapper for the Cloud Function (Nodemailer)
  */
 export async function sendInvitationRequest(targetEmail) {
-    const invite = httpsCallable(functions, 'sendInvitation');
+    const invite = httpsCallable(functions, 'sendInvitationNodemailer');
     const result = await invite({ targetEmail });
     return result.data;
 }

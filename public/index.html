@@ -466,7 +466,7 @@
       } from "shared-types";
       import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
-      const initUniverse = async () => {
+      const initUniverse = async (authenticatedUser) => {
         const pandino = new Pandino({ ...loaderConfiguration });
 
         await pandino.init();
@@ -546,6 +546,19 @@
             this.scopedUsers[scope] = val;
           },
         });
+
+        // Check for Superuser (dd) promotion based on the server-side authorized flag
+        if (authenticatedUser && authenticatedUser.isSuperuser) {
+          console.log("Shell: User authorized for superuser promotion. Mapping to 'dd' for backoffice-web context.");
+          sessionService.scopedUsers['backoffice-web'] = {
+            id: 'dd',
+            firstname: 'Daniel Daniela',
+            lastname: '(Admin)',
+            capabilities: ['superuser', 'admin']
+          };
+          // Also map to global if in Backoffice environment to ensure session works correctly
+          sessionService.scopedUsers['global'] = sessionService.scopedUsers['backoffice-web'];
+        }
 
         // Ensure environment is set if missing in stored state
         if (!sessionService.environment) {
@@ -1309,7 +1322,7 @@
       checkAccess()
         .then((user) => {
           console.log("Shell: [AUTH ACCESS GRANTED]", user.email);
-          initUniverse();
+          initUniverse(user);
         })
         .catch((err) => {
           console.error("Shell: [AUTH ACCESS DENIED]", err);

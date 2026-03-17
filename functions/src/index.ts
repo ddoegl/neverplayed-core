@@ -21,8 +21,8 @@ setGlobalOptions({
 });
 
 /**
- * Validates if the currently signed-in user is on the allowlist.
- * Now fetches from Firebase Remote Config for easier management.
+ * Validates if the currently signed-in user is authorized for universe access
+ * and checks for superuser promotion eligibility.
  */
 export const checkUserAccess = onCall({cors: true}, async (request) => {
   // 1. Authenticated check
@@ -42,119 +42,58 @@ export const checkUserAccess = onCall({cors: true}, async (request) => {
   }
 
   try {
-    // 2. Fetch Allowlist from Remote Config
+    // 2. Fetch Remote Config template
     console.log("Fetching Remote Config template...");
     const template = await admin.remoteConfig().getTemplate();
-    const parameterKeys = Object.keys(template.parameters);
-    console.log(`Available RC keys: ${parameterKeys.join(", ")}`);
+    // Helper to parse comma-separated emails from RC parameters
+    const getAllowlist = (paramName: string) => {
+      const param = template.parameters[paramName];
+      if (!param) return [];
+      const defaultValue = param.defaultValue as { value?: string } | undefined;
+      const val = defaultValue?.value || "";
+      // Handle potential JSON string or plain CSV
+      let list: string[] = [];
+      try {
+        const parsed = JSON.parse(val);
+        list = Array.isArray(parsed) ? parsed : [val];
+      } catch {
+        list = val.split(",").map((e: string) => e.trim());
+      }
+      return list.map((e) => e.toLowerCase()).filter((e) => e.length > 0);
+    };
 
-    const emailsParam = template.parameters["authorized_emails"];
+    const authorizedEmails = getAllowlist("authorized_emails");
+    const superuserEmails = getAllowlist("superuser_promotion_emails");
 
-    if (!emailsParam) {
-      console.error("Param 'authorized_emails' not found in Remote Config.");
-      return {authorized: false, error: "Configuration missing"};
-    }
+    const email = userEmail.toLowerCase();
 
-    const defaultValue = emailsParam.defaultValue as
-      | { value?: string }
-      | undefined;
-    const allowlistStr = defaultValue?.value || "";
-    const allowlist = allowlistStr
-      .split(",")
-      .map((e: string) => e.trim().toLowerCase())
-      .filter((e: string) => e.length > 0);
+    // 3. Level 1: Universe Authorization
+    const isAuthorized = authorizedEmails.includes(email) ||
+      authorizedEmails.some((pattern) => {
+        if (pattern.startsWith("*@")) {
+          return email.endsWith(pattern.substring(1));
+        }
+        return email === pattern;
+      });
 
-    console.log(`Allowlist (from RC): ${JSON.stringify(allowlist)}`);
-    console.log(`Checking user: ${userEmail.toLowerCase()}`);
+    // 4. Level 2: Superuser Promotion
+    const isSuperuser = superuserEmails.includes(email);
 
-    // 3. Authorization check
-    const isAuthorized = allowlist.includes(userEmail.toLowerCase());
-    console.log(`Authorization Result: ${isAuthorized}`);
+    console.log(
+      `Auth result for ${email}: ` +
+      `authorized=${isAuthorized}, isSuperuser=${isSuperuser}`
+    );
 
     return {
       authorized: isAuthorized,
+      isSuperuser: isSuperuser,
       email: userEmail,
     };
   } catch (error) {
-    console.error("Remote Config fetch failed:", error);
-    throw new HttpsError("internal", "Failed to fetch authorization list.");
+    console.error("Authorization check failed:", error);
+    throw new HttpsError("internal", "Failed to verify access permissions.");
   }
 });
 
-import {defineSecret} from "firebase-functions/params";
-import Mailjet from "node-mailjet";
-
-// Define secrets for Mailjet
-const MAILJET_API_KEY = defineSecret("MAILJET_API_KEY");
-const MAILJET_API_SECRET = defineSecret("MAILJET_API_SECRET");
-
-/**
- * Sends a premium invitation email to a fellow.
- * Requires the recipient's email as an argument.
- */
-export const sendInvitation = onCall(
-  {cors: true, secrets: [MAILJET_API_KEY, MAILJET_API_SECRET]},
-  async (request) => {
-    // 1. Admin/Auth check (Optional: Limit who can send invites)
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Auth required.");
-    }
-
-    const {targetEmail} = request.data;
-    if (!targetEmail) {
-      throw new HttpsError("invalid-argument", "Missing targetEmail.");
-    }
-
-    const mailjet = new Mailjet({
-      apiKey: MAILJET_API_KEY.value(),
-      apiSecret: MAILJET_API_SECRET.value(),
-    });
-
-    const htmlContent = `
-      <div style="font-family:sans-serif;background:#0d0d0d;
-        color:#fff;padding:40px;">
-        <h1 style="color:#4f46e5;">Neverplayed</h1>
-        <p>Hello Fellow,</p>
-        <p>The stars have aligned. You are invited to the bootstrap of the
-          <strong>Neverplayed Universe</strong>.</p>
-        <div style="margin:30px 0;">
-          <a href="https://neverplayed.web.app" 
-            style="background:#4f46e5;color:#fff;padding:12px 24px;
-            text-decoration:none;font-weight:bold;">Initialize Connection</a>
-        </div>
-        <p style="font-size:12px;color:#666;">Note: Access requires 
-          Google Auth with this email.</p>
-      </div>`;
-
-    try {
-      const response = await mailjet.post("send", {version: "v3.1"}).request({
-        Messages: [
-          {
-            From: {
-              Email: "fellowship@neverplayed.org",
-              Name: "Neverplayed Invitation Service",
-            },
-            To: [{Email: targetEmail}],
-            Subject: "[Priority] You've been invited to the Fellowship",
-            HTMLPart: htmlContent,
-          },
-        ],
-      });
-
-      const body = response.body as {
-        Messages: Array<{
-          To: Array<{ MessageID: string }>;
-        }>;
-      };
-
-      console.log("Invitation sent successfully to:", targetEmail);
-      return {
-        success: true,
-        messageId: body.Messages[0].To[0].MessageID,
-      };
-    } catch (error) {
-      console.error("Mailjet send failed:", error);
-      throw new HttpsError("internal", "Failed to send email.");
-    }
-  }
-);
+export * from "./mailjet";
+export * from "./google-mail";

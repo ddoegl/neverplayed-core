@@ -43,6 +43,7 @@
     "https://deno.land/std@0.207.0/streams/byte_slice_stream.ts": "c46d7c74836fc8c1a9acd9fe211cbe1bbaaee1b36087c834fb03af4991135c3a",
     "https://deno.land/std@0.207.0/version.ts": "817222f05243ebc6c0cafad14b792049696644d412c04ffda103909d71b02d08",
     "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js": "039f62b40bec14479291b93e0a35d9ad71cc4e6d64e9abf1285e1d2c6f9d83cb",
-    "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js": "33b487bc8e0dd6007ea461c6e63374b51c01101a9f5ad5450a580ea40dfc26ae"
+    "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js": "33b487bc8e0dd6007ea461c6e63374b51c01101a9f5ad5450a580ea40dfc26ae",
+    "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js": "9e6c478b313e63b64e18dad05756fdcfce3e5731a3a4ba0738342fa536ef7fac"
   }
 }
