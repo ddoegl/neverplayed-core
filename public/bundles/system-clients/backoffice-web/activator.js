@@ -212,7 +212,10 @@ export default class Activator {
     context.trackService(boExtFilter, {
       addingService: (ref) => {
         const ext = context.getService(ref);
-        if (!state.steps.find(s => s.id === ext.id)) {
+        const idx = state.steps.findIndex(s => s.id === ext.id);
+        if (idx !== -1) {
+            state.steps[idx] = ext;
+        } else {
             state.steps.push(ext);
         }
         if (!state.currentStep || state.currentStep === ext.id) {

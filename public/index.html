@@ -734,8 +734,13 @@
                     bsn: ref.bundle.getSymbolicName(),
                     bundle: ref.bundle,
                   };
-                  if (!this.flows.find((f) => f.id === id)) {
-                    this.flows = [...this.flows, flowEntry];
+                  const idx = this.flows.findIndex((f) => f.id === id);
+                  if (idx !== -1) {
+                      const newFlows = [...this.flows];
+                      newFlows[idx] = flowEntry;
+                      this.flows = newFlows;
+                  } else {
+                      this.flows = [...this.flows, flowEntry];
                   }
 
                   // CRITICAL: Check if we are waiting for this flow

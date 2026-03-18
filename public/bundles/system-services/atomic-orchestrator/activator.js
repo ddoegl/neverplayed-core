@@ -11,6 +11,10 @@ import {
 } from "../../../shared-types.js";
 
 export default class Activator {
+  constructor() {
+      this.registrations = {};
+  }
+
   async start(context) {
     console.log("Atomic Orchestrator: Starting...");
 
@@ -152,6 +156,14 @@ export default class Activator {
     
     console.log(`Atomic Orchestrator: Registering components for ${bsn} (${id}) from ${source}`);
 
+    // Cleanup previous registrations for this DO (e.g., during live-editing)
+    if (this.registrations[id]) {
+        console.log(`Atomic Orchestrator: Unregistering previous components for ${id}`);
+        this.registrations[id].forEach(reg => { try { reg.unregister(); } catch (_e) {} });
+    }
+    this.registrations[id] = [];
+    const trackReg = (reg) => { if (reg) this.registrations[id].push(reg); return reg; };
+
     // Helper to get service reference and service
     const getSvc = (id) => {
         const ref = context.getServiceReference(id);
@@ -238,7 +250,7 @@ export default class Activator {
 
     // 4. Register Flow Service (UI-DSL)
     if (ui) {
-        context.registerService(FLOW_SERVICE, {
+        trackReg(context.registerService(FLOW_SERVICE, {
             id,
             title: label || id,
             icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
@@ -261,10 +273,10 @@ export default class Activator {
             "flowType": flowType,
             "channels": channels,
             "bundle.symbolicName": bsn
-        });
+        }));
 
         // Register as Backoffice Extension
-        context.registerService(BO_EXTENSION_SERVICE, {
+        trackReg(context.registerService(BO_EXTENSION_SERVICE, {
             id,
             name: label || id,
             icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
@@ -280,7 +292,7 @@ export default class Activator {
             }
         }, {
             "bundle.symbolicName": bsn
-        });
+        }));
     }
 
     // 5. Register Domain Object Strategy & Instance
@@ -323,6 +335,7 @@ export default class Activator {
                        console.log(`Atomic Orchestrator: Registering 'view' handler for ${id}`);
                        registry.registerActionHandler({
                            id: "view",
+                           _sourceFlowId: id, // Used for deduplication during live-reloads
                            match: (inst) => inst.id === id,
                            execute: (_inst, host) => {
                                console.log(`Atomic Orchestrator: [EXECUTE] Launching extension for ${id}`);
@@ -377,7 +390,7 @@ export default class Activator {
         Object.entries(actions).forEach(([aid, actionSpec]) => {
             console.log(`Atomic Orchestrator: Registering action service ${aid} for ${id}`);
             
-            context.registerService("prototyper.action.service", {
+            trackReg(context.registerService("prototyper.action.service", {
                 execute: async (params) => {
                     // Find the underlying outreach service for API calls
                     const outreachRef = context.getServiceReference("prototyper.action.service", "(action.id=apiService)");
@@ -405,7 +418,7 @@ export default class Activator {
             }, {
                 "action.id": aid,
                 "bundle.symbolicName": bsn
-            });
+            }));
         });
     }
 

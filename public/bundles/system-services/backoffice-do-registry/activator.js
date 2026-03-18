@@ -147,6 +147,13 @@ export default class Activator {
 
             registerActionHandler: (handler) => {
                 console.log("DO Registry: Registering action handler", handler);
+                if (handler._sourceFlowId) {
+                    const idx = actionHandlers.findIndex(h => h.id === handler.id && h._sourceFlowId === handler._sourceFlowId);
+                    if (idx !== -1) {
+                        actionHandlers[idx] = handler;
+                        return;
+                    }
+                }
                 actionHandlers.push(handler);
             },
 
@@ -203,6 +210,19 @@ export default class Activator {
                         enumerable: true,
                         configurable: true
                     });
+                }
+
+                // Expose DO Specs from LocalStorage (persisted via Ingestion Service) as reactive array
+                if (!hostState.refreshSpecs) {
+                    hostState.refreshSpecs = () => {
+                        try {
+                            const raw = localStorage.getItem('atomic_persisted_specs');
+                            hostState.domainObjectSpecs = raw ? JSON.parse(raw) : [];
+                        } catch (_e) {
+                            hostState.domainObjectSpecs = [];
+                        }
+                    };
+                    hostState.refreshSpecs();
                 }
 
                 if (!hostState.openDOStrategiesEditor) {
@@ -265,6 +285,7 @@ export default class Activator {
                             const spec = yaml.load(text);
                             // Persist remote specs!
                             await ingestion.ingest(spec, { source: "server", persist: true });
+                            hostState.refreshSpecs();
                         } catch (e) {
                             console.error(`DO Registry: Failed to ingest from server`, e);
                             alert(`Failed: ${e.message}`);
@@ -272,42 +293,190 @@ export default class Activator {
                     };
                 }
 
-                if (!hostState.addLocalDO) {
-                    hostState.addLocalDO = () => {
+                if (!hostState.moveItem) {
+                    hostState.moveItem = (arr, index, offset) => {
+                        if (!arr || !Array.isArray(arr)) return;
+                        const newIdx = index + offset;
+                        if (newIdx >= 0 && newIdx < arr.length) {
+                            const temp = arr[index];
+                            arr[index] = arr[newIdx];
+                            arr[newIdx] = temp;
+                        }
+                    };
+                }
+
+                if (!hostState.createDomainObjectYAML) {
+                    hostState.createDomainObjectYAML = () => {
                         const editor = getSvc(YAML_EDITOR_SERVICE);
                         const ingestion = getSvc(ATOMIC_SPEC_INGESTION_SERVICE);
                         
-                        if (!editor || !ingestion) {
-                            console.error("DO Registry: Editor or Ingestion service NOT found.");
-                            return;
-                        }
+                        if (!editor || !ingestion) return console.error("DO Registry: Editor or Ingestion service NOT found.");
 
                         const template = {
-                            id: "local-" + Date.now(),
-                            label: "My Local DO",
+                            id: "new-domain-object",
+                            label: "New Domain Object",
                             domainObject: {
                                 strategyId: "LOCAL_STRATEGY",
                                 label: "Local Strategy",
-                                properties: {
-                                    "Status": "Draft"
-                                }
+                                properties: { "Status": "Draft" },
+                                actions: [{ id: "view", label: "Open Flow", icon: "fas fa-folder-open" }]
                             },
+                            permissionKeys: {
+                                LOCAL_VIEW: { id: "LOCAL_VIEW", label: "local:view", value: "local:view" }
+                            },
+                            features: {
+                                LOCAL_FLOWS: { id: "LOCAL_FLOWS", label: "local:flows", keys: ["LOCAL_VIEW"] }
+                            },
+                            capabilities: [
+                                { id: "LOCAL_USER", operator: "OR", matchers: [{ type: "matchAlways" }], features: [{ id: "LOCAL_FLOWS", keys: ["LOCAL_VIEW"] }] }
+                            ],
+                            guards: [
+                                { id: "LOCAL_VIEW", operator: "OR", matchers: [{ type: "matchAlways" }], features: [{ id: "LOCAL_FLOWS", keys: ["LOCAL_VIEW"] }] }
+                            ],
                             ui: {
-                                parts: {
-                                    "title": { type: "text", value: "Hello from Local Storage!" }
+                                initialStep: "step_init",
+                                steps: {
+                                    step_init: {
+                                        order: 1,
+                                        title: "Initial Step",
+                                        parts: {
+                                            intro: { type: "text", value: "Hello from your new Flow!" }
+                                        }
+                                    }
                                 }
                             }
                         };
 
                         editor.edit({
-                            title: "Define Local Domain Object",
+                            title: "Create Domain Object (YAML Developer Mode)",
                             data: template,
                             onSave: async (newSpec) => {
-                                // Persistence is now handled by the ingestion service!
                                 await ingestion.ingest(newSpec, { source: "local-storage", persist: true });
+                                hostState.refreshSpecs();
                             }
                         });
                     };
+                }
+
+                if (!hostState.editDomainObjectYAML) {
+                    hostState.editDomainObjectYAML = (specId) => {
+                        const editor = getSvc(YAML_EDITOR_SERVICE);
+                        const ingestion = getSvc(ATOMIC_SPEC_INGESTION_SERVICE);
+                        
+                        if (!editor || !ingestion) return console.error("DO Registry: Editor or Ingestion service NOT found.");
+
+                        const spec = hostState.domainObjectSpecs.find(s => s.id === specId);
+                        if (!spec) return console.error(`DO Registry: Spec ${specId} not found.`);
+
+                        editor.edit({
+                            title: `Edit DO - ${specId} (YAML)`,
+                            data: spec,
+                            onSave: async (updatedSpec) => {
+                                await ingestion.ingest(updatedSpec, { source: "local-storage", persist: true });
+                                hostState.refreshSpecs();
+                            }
+                        });
+                    };
+                }
+                
+                // Visual Editor State Modal Handlers
+                if (!hostState.openVisualEditor) {
+                    hostState.visualEditorData = null;
+                    
+                    hostState.createDomainObjectVisual = () => {
+                        // Initialize empty state for the visual editor
+                        hostState.visualEditorData = {
+                            id: "new-domain-object",
+                            label: "New Domain Object",
+                            strategyId: "LOCAL_STRATEGY",
+                            strategyLabel: "Local Strategy",
+                            steps: []
+                        };
+                    };
+
+                    hostState.editDomainObjectVisual = (specId) => {
+                        const spec = hostState.domainObjectSpecs.find(s => s.id === specId);
+                        if (!spec) return console.error(`DO Registry: Spec ${specId} not found.`);
+                        
+                        // Hydrate visual state from complex spec
+                        const stepsArray = Object.entries(spec.ui?.steps || {}).map(([id, step]) => ({
+                            id,
+                            title: step.title,
+                            order: step.order,
+                            parts: Object.entries(step.parts || {}).map(([pid, part]) => {
+                                const p = { id: pid, ...part };
+                                if (p.type === 'row') {
+                                    p.subParts = Object.entries(p.parts || {}).map(([spid, spart]) => ({ id: spid, ...spart }));
+                                    delete p.parts;
+                                }
+                                return p;
+                            })
+                        })).sort((a,b) => (a.order||0) - (b.order||0));
+
+                        hostState.visualEditorData = {
+                            id: spec.id,
+                            label: spec.label,
+                            strategyId: spec.domainObject?.strategyId || "LOCAL_STRATEGY",
+                            strategyLabel: spec.domainObject?.label || spec.label,
+                            steps: stepsArray,
+                            _originalSpec: spec // keep the remainder
+                        };
+                    };
+                    
+                    hostState.saveVisualEditor = async () => {
+                        const data = hostState.visualEditorData;
+                        const ingestion = getSvc(ATOMIC_SPEC_INGESTION_SERVICE);
+                        if (!ingestion) return console.error("DO Registry: Ingestion service NOT found.");
+                        
+                        // Un-hydrate back into nested format
+                        const stepsObj = {};
+                        data.steps.forEach((step, idx) => {
+                            const partsObj = {};
+                            step.parts.forEach(p => {
+                                const { id, subParts, ...rest } = p;
+                                if (rest.type === 'row') {
+                                    rest.parts = {};
+                                    (subParts || []).forEach(sp => {
+                                        const { id: spid, ...sprest } = sp;
+                                        rest.parts[spid] = sprest;
+                                    });
+                                }
+                                partsObj[id] = rest;
+                            });
+                            stepsObj[step.id] = {
+                                order: idx + 1,
+                                title: step.title,
+                                parts: partsObj
+                            };
+                        });
+
+                        const spec = data._originalSpec || {
+                            permissionKeys: { LOCAL_VIEW: { id: "LOCAL_VIEW", label: "local:view", value: "local:view" } },
+                            features: { LOCAL_FLOWS: { id: "LOCAL_FLOWS", label: "local:flows", keys: ["LOCAL_VIEW"] } },
+                            capabilities: [{ id: "LOCAL_USER", operator: "OR", matchers: [{ type: "matchAlways" }], features: [{ id: "LOCAL_FLOWS", keys: ["LOCAL_VIEW"] }] }],
+                            guards: [{ id: "LOCAL_VIEW", operator: "OR", matchers: [{ type: "matchAlways" }], features: [{ id: "LOCAL_FLOWS", keys: ["LOCAL_VIEW"] }] }]
+                        };
+
+                        spec.id = data.id;
+                        spec.label = data.label;
+                        spec.domainObject = {
+                            strategyId: data.strategyId,
+                            label: data.strategyLabel,
+                            properties: spec.domainObject?.properties || { "Status": "Draft" },
+                            actions: spec.domainObject?.actions || [{ id: "view", label: "Open Flow", icon: "fas fa-folder-open" }]
+                        };
+                        spec.ui = spec.ui || {};
+                        spec.ui.initialStep = data.steps[0]?.id || "step_init";
+                        spec.ui.steps = stepsObj;
+
+                        await ingestion.ingest(spec, { source: "local-storage", persist: true });
+                        hostState.refreshSpecs();
+                        hostState.visualEditorData = null; // Close modal
+                    };
+                    
+                    hostState.closeVisualEditor = () => {
+                        hostState.visualEditorData = null;
+                    }
                 }
             }
         });

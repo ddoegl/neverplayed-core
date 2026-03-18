@@ -270,3 +270,14 @@ select option::before {
 .page-header {
   background-color: #e48721;
 }
+
+/* Custom Typography for Markdown */
+.prose h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem; color: #1e293b; }
+.prose h2 { font-size: 1.25rem; font-weight: bold; margin-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25rem; color: #334155; }
+.prose h3 { font-size: 1.125rem; font-weight: bold; margin-bottom: 0.5rem; color: #475569; }
+.prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+.prose ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
+.prose li { margin-bottom: 0.25rem; }
+.prose p { margin-bottom: 0.75rem; }
+.prose a { color: #2563eb; text-decoration: underline; }
+.prose strong { font-weight: 700; color: #334155; }

@@ -3,6 +3,7 @@
  * 
  * VERSION: 1.6.0 (Robust Registry Edition)
  */
+import { marked } from "https://esm.sh/marked@12.0.1";
 
 if (!globalThis.__UI_FACTORY_REGISTRY) {
     globalThis.__UI_FACTORY_REGISTRY = new Map();
@@ -181,6 +182,7 @@ class UIFactory extends HTMLElement {
             activeLicense: host.activeLicense || {},
             companies: host.companies || [],
             persons: host.persons || [],
+            currentUser: host.currentUser || this._getService("prototyper.session.service")?.currentUser || {},
             fellowsData: host.fellowsData || { FELLOWS: [] },
             parsedLicenses: host.parsedLicenses || { LICENSES: [] },
             ...host.currentApplication
@@ -234,6 +236,7 @@ class UIFactory extends HTMLElement {
             const hFellows = bp.fellowsData || bo.fellowsData || null;
             const hCompanies = bp.companies || bo.companies || [];
             const hPersons = bp.persons || bo.persons || [];
+            const rCurrentUser = bp.currentUser || bo.currentUser || this._getService("prototyper.session.service")?.currentUser || {};
 
             if (hActive && hActive.id) {
                 console.log(`UIFactory [${this._id}]: Received Active License -> ${hActive.id}`);
@@ -242,6 +245,7 @@ class UIFactory extends HTMLElement {
             if (hFellows) state.fellowsData = hFellows;
             if (hCompanies.length) state.companies = hCompanies;
             if (hPersons.length) state.persons = hPersons;
+            if (rCurrentUser) state.currentUser = rCurrentUser;
 
             // 1. Derive Members from current License Customers (Reactive)
             const customers = (state.activeLicense?.customers || []);
@@ -414,7 +418,8 @@ class UIFactory extends HTMLElement {
 
     interpolate(str, scope, extra = {}) {
         if (!str) return "";
-        return str.replace(/\${(this\.)?(.+?)}/g, (_, _prefix, key) => {
+        return str.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
+            const key = k1 || k2;
             const val = extra[key] ?? scope.values[key] ?? scope[key] ?? null;
             if (val !== null && val !== undefined) return val;
             
@@ -431,9 +436,9 @@ class UIFactory extends HTMLElement {
 
     resolveValue(expr, scope) {
         if (typeof expr !== 'string') return expr;
-        const match = expr.match(/^\${(this\.)?(.+?)}$/);
+        const match = expr.match(/^(?:\${(this\.)?(.+?)}$|\{\{\s*(this\.)?(.+?)\s*\}\})$/);
         if (match) {
-            const path = match[2];
+            const path = match[2] || match[4];
             const resolvePath = (obj, p) => p.split('.').reduce((acc, part) => acc && acc[part], obj);
             const result = resolvePath(scope.values, path) ?? resolvePath(scope, path);
             
@@ -487,10 +492,18 @@ class UIFactory extends HTMLElement {
                 if (child) container.appendChild(child);
             });
         } else if (p.type === 'text' || typeof p.value === 'string') {
-            container.className = "mb-5 text-gray-500 leading-relaxed font-semibold";
+            container.className = "mb-5 text-gray-500 leading-relaxed font-semibold prose prose-sm max-w-none prose-p:my-1 prose-a:text-blue-600 prose-strong:text-gray-700";
+            let html = "";
+            try {
+                html = marked.parse(p.value || "");
+            } catch (_e) {
+                html = p.value || "";
+            }
             // Support deep paths reactively - IMPORTANT: use values.path
-            const text = (p.value || "").replace(/\${this\.(.+?)}/g, `<span x-text="values.$1 || ''" class="text-blue-600 font-bold"></span>`);
-            container.innerHTML = text;
+            container.innerHTML = html.replace(/(?:\${this\.(.+?)}|\{\{\s*(?:this\.)?(.+?)\s*\}\})/g, (_, k1, k2) => {
+                const key = k1 || k2;
+                return `<span x-text="typeof values.${key} === 'object' ? JSON.stringify(values.${key}, null, 2) : (values.${key} || '')" class="text-blue-600 font-bold whitespace-pre-wrap font-mono"></span>`;
+            });
         } else if (p.type === 'result') {
             container.setAttribute('x-show', 'data');
             container.setAttribute('x-transition', '');
