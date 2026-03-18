@@ -129,13 +129,17 @@
       class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
     >
       <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
-        <h2 class="text-xl font-bold text-slate-700">DO Specifications (Source)</h2>
+        <h2 class="text-xl font-bold text-slate-700">
+          DO Specifications (Source)
+        </h2>
       </div>
       <div class="p-6">
         <template x-if="host.domainObjectSpecs?.length === 0">
-            <div class="text-sm text-slate-500 italic p-4 text-center border border-dashed border-slate-300 rounded">
-                No local specifications found. Create one above!
-            </div>
+          <div
+            class="text-sm text-slate-500 italic p-4 text-center border border-dashed border-slate-300 rounded"
+          >
+            No local specifications found. Create one above!
+          </div>
         </template>
         <template
           x-for="spec in host.domainObjectSpecs"
@@ -151,320 +155,686 @@
                 x-text="spec.id"
               ></span>
             </div>
-            
+
             <div class="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
-                <button
-                  class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm"
-                  @click="host.editDomainObjectVisual(spec.id)"
-                >
-                  <i class="fas fa-magic mr-1.5 text-emerald-500"></i> Edit Visual
-                </button>
-                <button
-                  class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 transition shadow-sm"
-                  @click="host.editDomainObjectYAML(spec.id)"
-                >
-                  <i class="fas fa-code mr-1.5 text-slate-300"></i> Edit YAML
-                </button>
+              <button
+                class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm"
+                @click="host.editDomainObjectVisual(spec.id)"
+              >
+                <i class="fas fa-magic mr-1.5 text-emerald-500"></i> Edit Visual
+              </button>
+              <button
+                class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 transition shadow-sm"
+                @click="host.editDomainObjectYAML(spec.id)"
+              >
+                <i class="fas fa-code mr-1.5 text-slate-300"></i> Edit YAML
+              </button>
             </div>
           </div>
         </template>
       </div>
     </div>
-
   </div>
 
   <!-- Visual Editor Modal Overlay -->
   <template x-if="host.visualEditorData">
-    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6" @click.self="host.closeVisualEditor()">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-[70vw] max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-            <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
-                <h2 class="text-xl font-bold text-slate-800">
-                    <i class="fas fa-layer-group text-indigo-500 mr-2"></i>
-                    Visual DO Editor
-                </h2>
-                <button @click="host.closeVisualEditor()" class="text-slate-400 hover:text-slate-600">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-
-            <!-- Modal Body (Scrollable) -->
-            <div class="p-6 flex-1 overflow-y-auto bg-slate-50/50">
-                
-                <!-- Basic Info -->
-                <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6 space-y-4">
-                    <div class="flex justify-between items-center border-b pb-2">
-                        <h3 class="text-lg font-semibold text-slate-700">Basic Info & Properties</h3>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Object ID (slug)</label>
-                            <input type="text" x-model="host.visualEditorData.id" class="w-full border-slate-300 rounded-md text-sm p-2 bg-slate-50" placeholder="e.g. my-awesome-do" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Display Label</label>
-                            <input type="text" x-model="host.visualEditorData.label" class="w-full border-slate-300 rounded-md text-sm p-2 bg-slate-50" placeholder="e.g. My Awesome DO" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Strategy ID</label>
-                            <input type="text" x-model="host.visualEditorData.strategyId" class="w-full border-slate-300 rounded-md text-sm p-2 bg-slate-50 font-mono" placeholder="e.g. LOCAL_STRATEGY" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Strategy Label</label>
-                            <input type="text" x-model="host.visualEditorData.strategyLabel" class="w-full border-slate-300 rounded-md text-sm p-2 bg-slate-50" placeholder="e.g. Local Strategy" />
-                        </div>
-                    </div>
-                    
-                    <div class="mt-4 pt-4 border-t border-slate-100">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Extended Properties</label>
-                        <template x-for="(prop, pIdx) in host.visualEditorData.properties" :key="pIdx">
-                            <div class="flex gap-2 mb-2 items-center">
-                                <input type="text" x-model="prop.key" class="w-1/3 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-slate-50" placeholder="Property Key" />
-                                <input type="text" x-model="prop.value" class="flex-1 border-slate-300 rounded px-2 py-1 text-xs bg-slate-50" placeholder="Property Value" />
-                                <button @click="host.visualEditorData.properties.splice(pIdx, 1)" class="text-slate-400 hover:text-red-500 px-2"><i class="fas fa-times"></i></button>
-                            </div>
-                        </template>
-                        <button @click="(host.visualEditorData.properties = host.visualEditorData.properties || []).push({key: '', value: ''})" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"><i class="fas fa-plus mr-1"></i> Add Property</button>
-                    </div>
-                </div>
-
-                <!-- Variables Cheat Sheet -->
-                <div x-data="{ open: false }" class="bg-indigo-50/50 p-4 rounded-lg shadow-sm border border-indigo-100 mb-6">
-                    <button @click="open = !open" class="flex justify-between items-center w-full text-indigo-800 font-semibold text-sm focus:outline-none">
-                        <span class="flex items-center"><i class="fas fa-magic mr-2"></i> Variable Binding Cheat Sheet</span>
-                        <i class="fas" :class="open ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-                    </button>
-                    <div x-show="open" class="mt-4 text-xs text-indigo-900/80 space-y-3">
-                        <p>Most string fields (Text Markdown, Option Sources, Button Calls) support variable interpolation using <code>${this.variable.path}</code>.</p>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <h4 class="font-bold mb-1 border-b border-indigo-200 pb-1">Context Constants</h4>
-                                <ul class="list-disc list-inside space-y-1 ml-1 font-mono">
-                                    <li><span class="font-bold bg-indigo-100 px-1 rounded">\${this.activeLicense.id}</span></li>
-                                    <li><span class="font-bold bg-indigo-100 px-1 rounded">\${this.activeLicense.customers}</span></li>
-                                    <li><span class="font-bold bg-indigo-100 px-1 rounded">\${this.companies}</span></li>
-                                    <li><span class="font-bold bg-indigo-100 px-1 rounded">\${this.persons}</span></li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h4 class="font-bold mb-1 border-b border-indigo-200 pb-1">Dynamic Collections (for Selects)</h4>
-                                <ul class="list-disc list-inside space-y-1 ml-1 font-mono">
-                                    <li><span class="font-bold bg-indigo-100 px-1 rounded">\${this.currentMembers}</span> (License Customers)</li>
-                                    <li><span class="font-bold bg-indigo-100 px-1 rounded">\${this.currentFellows}</span> (Fellows of selected Member)</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="bg-white p-3 rounded border border-indigo-100 mt-2">
-                            <h4 class="font-bold mb-1 text-indigo-700">Inputs</h4>
-                            <p>Any input you capture automatically becomes a variable accessible in later steps!</p>
-                            <p class="font-mono mt-1 text-[10px] bg-slate-50 p-2 rounded">Example: If Step 1 has a select with ID <span class="text-pink-600 font-bold">selectedMemberId</span>, you can use <span class="font-bold bg-indigo-100 px-1 rounded">\${this.<span class="text-pink-600">selectedMemberId</span>}</span> in Step 2.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Case Types Builder -->
-                <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
-                    <div class="flex justify-between items-center mb-4 border-b pb-2">
-                        <h3 class="text-lg font-semibold text-slate-700">Case Types</h3>
-                        <button @click="(host.visualEditorData.caseTypes = host.visualEditorData.caseTypes || []).push({ id: 'new-case-type', name: 'New Case Type', strategyId: 'JOINT_SIGNATURE', description: '' })" class="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 transition">
-                            <i class="fas fa-plus mr-1"></i> Add Case Type
-                        </button>
-                    </div>
-                    <div class="space-y-3">
-                        <template x-for="(ct, cIdx) in host.visualEditorData.caseTypes" :key="cIdx">
-                            <div class="border border-slate-200 rounded p-3 bg-slate-50/50">
-                                <div class="flex gap-2 mb-2">
-                                    <input type="text" x-model="ct.id" class="w-1/3 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-white" placeholder="Case Type ID" />
-                                    <input type="text" x-model="ct.name" class="flex-1 border-slate-300 rounded px-2 py-1 text-xs bg-white" placeholder="Name" />
-                                    <input type="text" x-model="ct.strategyId" class="w-1/4 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-white" placeholder="Strategy ID (e.g JOINT_SIGNATURE)" />
-                                    <button @click="host.visualEditorData.caseTypes.splice(cIdx, 1)" class="text-slate-400 hover:text-red-500 px-2"><i class="fas fa-trash"></i></button>
-                                </div>
-                                <input type="text" x-model="ct.description" class="w-full border-slate-300 rounded px-2 py-1 text-xs bg-white" placeholder="Description" />
-                            </div>
-                        </template>
-                        <template x-if="!(host.visualEditorData.caseTypes?.length)">
-                            <div class="text-xs text-slate-400 italic">No case types defined.</div>
-                        </template>
-                    </div>
-                </div>
-
-                <!-- Actions Builder -->
-                <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6">
-                    <div class="flex justify-between items-center mb-4 border-b pb-2">
-                        <h3 class="text-lg font-semibold text-slate-700">Action Configurations</h3>
-                        <button @click="(host.visualEditorData.actions = host.visualEditorData.actions || []).push({ id: 'synthetic.case.create', type: 'LOCAL', paramsYaml: '' })" class="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 transition">
-                            <i class="fas fa-plus mr-1"></i> Add Action
-                        </button>
-                    </div>
-                    <div class="space-y-3">
-                        <template x-for="(act, aIdx) in host.visualEditorData.actions" :key="aIdx">
-                            <div class="border border-slate-200 rounded p-3 bg-slate-50/50">
-                                <div class="flex gap-2 mb-2">
-                                    <input type="text" x-model="act.id" class="flex-1 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-white" placeholder="Action ID (e.g. synthetic.case.create)" />
-                                    <select x-model="act.type" class="w-32 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-white">
-                                        <option value="LOCAL">LOCAL</option>
-                                        <option value="API">API</option>
-                                    </select>
-                                    <button @click="host.visualEditorData.actions.splice(aIdx, 1)" class="text-slate-400 hover:text-red-500 px-2"><i class="fas fa-trash"></i></button>
-                                </div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Parameters (YAML)</label>
-                                <textarea x-model="act.paramsYaml" class="w-full border-slate-300 rounded px-2 py-2 text-xs font-mono bg-white" rows="3" placeholder="key: value"></textarea>
-                            </div>
-                        </template>
-                        <template x-if="!(host.visualEditorData.actions?.length)">
-                            <div class="text-xs text-slate-400 italic">No custom actions defined.</div>
-                        </template>
-                    </div>
-                </div>
-
-                <!-- Steps Builder -->
-                <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
-                    <div class="flex justify-between items-center mb-4 border-b pb-2">
-                        <h3 class="text-lg font-semibold text-slate-700">UI Flow Steps</h3>
-                        <button @click="host.visualEditorData.steps.push({ id: 'step_' + host.visualEditorData.steps.length, title: 'New Step', parts: [] })" class="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 transition">
-                            <i class="fas fa-plus mr-1"></i> Add Step
-                        </button>
-                    </div>
-
-                    <div class="space-y-4">
-                        <template x-for="(step, sIdx) in host.visualEditorData.steps" :key="sIdx">
-                            <div class="border border-slate-200 rounded-lg overflow-hidden">
-                                <!-- Step Header -->
-                                <div class="bg-slate-100 p-3 flex gap-3 items-center">
-                                    <div class="font-mono text-xs bg-slate-300 px-2 py-1 rounded text-slate-700" x-text="'#' + (sIdx+1)"></div>
-                                    <input type="text" x-model="step.id" class="border-slate-300 rounded px-2 py-1 text-sm font-mono w-32" placeholder="step_id" />
-                                    <input type="text" x-model="step.title" class="border-slate-300 rounded px-2 py-1 text-sm flex-1" placeholder="Step Title" />
-                                    
-                                    <div class="flex flex-col gap-0.5 ml-2">
-                                        <button @click="host.moveItem(host.visualEditorData.steps, sIdx, -1)" class="text-[10px] text-slate-400 hover:text-indigo-600 bg-slate-200 hover:bg-indigo-100 px-1.5 rounded"><i class="fas fa-chevron-up"></i></button>
-                                        <button @click="host.moveItem(host.visualEditorData.steps, sIdx, 1)" class="text-[10px] text-slate-400 hover:text-indigo-600 bg-slate-200 hover:bg-indigo-100 px-1.5 rounded"><i class="fas fa-chevron-down"></i></button>
-                                    </div>
-                                    <button @click="host.visualEditorData.steps.splice(sIdx, 1)" class="text-red-400 hover:text-red-600 px-2"><i class="fas fa-trash"></i></button>
-                                </div>
-                                
-                                <!-- Step Parts -->
-                                <div class="p-4 bg-white space-y-3">
-                                    <template x-for="(part, pIdx) in step.parts" :key="pIdx">
-                                        <div class="flex flex-col gap-2 border-b border-slate-100 pb-3 last:border-0 last:pb-0 mt-3">
-                                            <div class="flex gap-2 items-start w-full">
-                                                <input type="text" x-model="part.id" class="border-slate-300 rounded px-2 py-1 text-xs font-mono w-24 bg-slate-50" placeholder="part_id" />
-                                                
-                                                <select x-model="part.type" class="border-slate-300 rounded px-2 py-1 text-xs bg-slate-50">
-                                                    <option value="">(Select Type)</option>
-                                                    <option value="text">Text / Markdown</option>
-                                                    <option value="row">Button Row</option>
-                                                </select>
-
-                                                <select x-show="!part.type" x-model="part.kind" class="border-slate-300 rounded px-2 py-1 text-xs bg-slate-50">
-                                                    <option value="">(Select Component)</option>
-                                                    <option value="text-input">Text Input</option>
-                                                    <option value="select-input">Select Input</option>
-                                                    <option value="command-button">Command Button</option>
-                                                </select>
-
-                                                <!-- Dynamic inline fields based on type/kind -->
-                                                <div class="flex-1 flex gap-2">
-                                                    <template x-if="part.type === 'text'">
-                                                        <textarea x-model="part.value" class="w-full border-slate-300 rounded px-2 py-1 text-xs font-mono" rows="2" placeholder="Markdown content..."></textarea>
-                                                    </template>
-                                                    <template x-if="part.kind === 'command-button'">
-                                                        <div class="flex flex-col gap-2 w-full">
-                                                            <div class="flex gap-2 w-full">
-                                                                <input type="text" x-model="part.label" class="border-slate-300 rounded w-1/3 px-2 py-1 text-xs" placeholder="Button Label" />
-                                                                <input type="text" x-model="part.call" class="border-slate-300 rounded flex-1 px-2 py-1 text-xs font-mono" placeholder="Action Call (e.g. NEXT_STEP)" />
-                                                                <select x-model="part.variant" class="border-slate-300 rounded w-1/4 px-2 py-1 text-xs">
-                                                                    <option value="primary">Primary</option>
-                                                                    <option value="success">Success</option>
-                                                                    <option value="default">Default</option>
-                                                                </select>
-                                                            </div>
-                                                            <textarea x-model="part.paramsYaml" class="w-full border-slate-200 rounded px-2 py-1 text-[10px] font-mono bg-slate-50" rows="1" placeholder="Optional params (YAML format)&#10;key: value" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
-                                                        </div>
-                                                    </template>
-                                                    <template x-if="part.kind === 'select-input'">
-                                                        <div class="flex gap-2 w-full">
-                                                            <input type="text" x-model="part.label" class="border-slate-300 rounded w-1/2 px-2 py-1 text-xs" placeholder="Input Label" />
-                                                            <input type="text" x-model="part.optionSource" class="border-slate-300 rounded w-1/2 px-2 py-1 text-xs font-mono" placeholder="Source (e.g. ${this.items})" />
-                                                        </div>
-                                                    </template>
-                                                    <template x-if="part.kind === 'text-input'">
-                                                        <div class="flex gap-2 w-full">
-                                                            <input type="text" x-model="part.label" class="border-slate-300 rounded w-1/2 px-2 py-1 text-xs" placeholder="Input Label" />
-                                                            <input type="text" x-model="part.placeholder" class="border-slate-300 rounded w-1/2 px-2 py-1 text-xs" placeholder="Placeholder Text" />
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                                
-                                                <div class="flex flex-col gap-0.5 ml-2 mr-1">
-                                                    <button @click="host.moveItem(step.parts, pIdx, -1)" class="text-[10px] text-slate-300 hover:text-indigo-500 bg-slate-100 hover:bg-indigo-50 px-1 rounded"><i class="fas fa-chevron-up"></i></button>
-                                                    <button @click="host.moveItem(step.parts, pIdx, 1)" class="text-[10px] text-slate-300 hover:text-indigo-500 bg-slate-100 hover:bg-indigo-50 px-1 rounded"><i class="fas fa-chevron-down"></i></button>
-                                                </div>
-                                                <button @click="step.parts.splice(pIdx, 1)" class="text-slate-300 hover:text-red-500 px-2 mt-1"><i class="fas fa-times"></i></button>
-                                            </div>
-
-                                            <!-- Nested UI for row type -->
-                                            <template x-if="part.type === 'row'">
-                                                <div class="w-full ml-11 pl-4 border-l-2 border-indigo-200 mt-1 mb-2">
-                                                    <template x-for="(sp, spIdx) in part.subParts" :key="spIdx">
-                                                        <div class="flex flex-col gap-2 bg-indigo-50/50 p-3 rounded mb-2 w-full border border-indigo-100/50 box-border relative overflow-hidden">
-                                                          <!-- Top Row: ID, Label, Controls -->
-                                                          <div class="flex gap-2 items-center w-full">
-                                                            <input type="hidden" x-model="sp.kind" x-init="sp.kind = sp.kind || 'command-button'" />
-                                                            <input type="text" x-model="sp.id" class="border-slate-300 rounded px-2 py-1 text-xs font-mono w-1/3 min-w-0 bg-white" placeholder="btn_id" />
-                                                            <input type="text" x-model="sp.label" class="border-slate-300 rounded flex-1 min-w-0 px-2 py-1 text-xs bg-white" placeholder="Button Label" />
-                                                            
-                                                            <div class="flex flex-col gap-0.5 shrink-0 ml-1">
-                                                                <button @click="host.moveItem(part.subParts, spIdx, -1)" class="text-[8px] text-indigo-400 hover:text-indigo-700 bg-indigo-100 hover:bg-indigo-300 px-1 rounded"><i class="fas fa-chevron-up"></i></button>
-                                                                <button @click="host.moveItem(part.subParts, spIdx, 1)" class="text-[8px] text-indigo-400 hover:text-indigo-700 bg-indigo-100 hover:bg-indigo-300 px-1 rounded"><i class="fas fa-chevron-down"></i></button>
-                                                            </div>
-                                                            <button @click="part.subParts.splice(spIdx, 1)" class="text-slate-400 hover:text-red-500 px-1 shrink-0"><i class="fas fa-times"></i></button>
-                                                          </div>
-                                                          <!-- Middle Row: Action Call, Variant -->
-                                                          <div class="flex gap-2 items-center w-full">
-                                                            <input type="text" x-model="sp.call" class="border-slate-300 rounded flex-1 min-w-0 px-2 py-1 text-xs font-mono bg-white" placeholder="Action Call (e.g. NEXT_STEP)" />
-                                                            <select x-model="sp.variant" class="border-slate-300 rounded shrink-0 px-2 py-1 text-xs bg-white w-28">
-                                                                <option value="primary">Primary</option>
-                                                                <option value="success">Success</option>
-                                                                <option value="default">Default</option>
-                                                            </select>
-                                                          </div>
-                                                          <!-- Bottom Row: Params -->
-                                                          <textarea x-model="sp.paramsYaml" class="w-full border-slate-200 rounded px-2 py-1.5 text-[10px] font-mono bg-white min-w-0" rows="1" placeholder="Optional params (YAML format)&#10;key: value" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
-                                                        </div>
-                                                    </template>
-                                                    <button @click="part.subParts = part.subParts || []; part.subParts.push({ id: 'btn_' + part.subParts.length, kind: 'command-button', variant: 'default', call: 'NEXT_STEP'})" class="text-xs text-indigo-600 hover:text-indigo-800 transition font-semibold">
-                                                        <i class="fas fa-plus mr-1"></i>Add Button
-                                                    </button>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </template>
-                                    
-                                    <button @click="step.parts.push({ id: 'part_' + step.parts.length })" class="text-xs text-slate-500 hover:text-indigo-600 flex items-center mt-2">
-                                        <i class="fas fa-plus-circle mr-1"></i> Add Part
-                                    </button>
-                                </div>
-                            </div>
-                        </template>
-                        <template x-if="host.visualEditorData.steps.length === 0">
-                            <div class="text-center p-6 text-slate-400 border border-dashed rounded-lg">
-                                No steps defined. Add a step to build your UI flow!
-                            </div>
-                        </template>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
-                <button @click="host.closeVisualEditor()" class="px-4 py-2 rounded text-slate-600 hover:bg-slate-200 transition">Cancel</button>
-                <button @click="host.saveVisualEditor()" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition font-bold">
-                    <i class="fas fa-save mr-2"></i> Save Domain Object
-                </button>
-            </div>
+    <div
+      class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+      @click.self="host.closeVisualEditor()"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-[70vw] max-h-[90vh] flex flex-col overflow-hidden animate-fade-in"
+      >
+        <!-- Modal Header -->
+        <div
+          class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0"
+        >
+          <h2 class="text-xl font-bold text-slate-800">
+            <i class="fas fa-layer-group text-indigo-500 mr-2"></i>
+            Visual DO Editor
+          </h2>
+          <button
+            @click="host.closeVisualEditor()"
+            class="text-slate-400 hover:text-slate-600"
+          >
+            <i class="fas fa-times text-xl"></i>
+          </button>
         </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="p-6 flex-1 overflow-y-auto bg-slate-50/50">
+          <!-- Basic Info -->
+          <div
+            class="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6 space-y-4"
+          >
+            <div class="flex justify-between items-center border-b pb-2">
+              <h3 class="text-lg font-semibold text-slate-700">
+                Basic Info & Properties
+              </h3>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase mb-1"
+                >Object ID (slug)</label>
+                <input
+                  type="text"
+                  x-model="host.visualEditorData.id"
+                  class="w-full border-slate-300 rounded-md text-sm p-2 bg-slate-50"
+                  placeholder="e.g. my-awesome-do"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase mb-1"
+                >Display Label</label>
+                <input
+                  type="text"
+                  x-model="host.visualEditorData.label"
+                  class="w-full border-slate-300 rounded-md text-sm p-2 bg-slate-50"
+                  placeholder="e.g. My Awesome DO"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase mb-1"
+                >Strategy ID</label>
+                <input
+                  type="text"
+                  x-model="host.visualEditorData.strategyId"
+                  class="w-full border-slate-300 rounded-md text-sm p-2 bg-slate-50 font-mono"
+                  placeholder="e.g. LOCAL_STRATEGY"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-bold text-slate-500 uppercase mb-1"
+                >Strategy Label</label>
+                <input
+                  type="text"
+                  x-model="host.visualEditorData.strategyLabel"
+                  class="w-full border-slate-300 rounded-md text-sm p-2 bg-slate-50"
+                  placeholder="e.g. Local Strategy"
+                />
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-100">
+              <label
+                class="block text-xs font-bold text-slate-500 uppercase mb-2"
+              >Extended Properties</label>
+              <template
+                x-for="(prop, pIdx) in host.visualEditorData.properties"
+                :key="pIdx"
+              >
+                <div class="flex gap-2 mb-2 items-center">
+                  <input
+                    type="text"
+                    x-model="prop.key"
+                    class="w-1/3 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-slate-50"
+                    placeholder="Property Key"
+                  />
+                  <input
+                    type="text"
+                    x-model="prop.value"
+                    class="flex-1 border-slate-300 rounded px-2 py-1 text-xs bg-slate-50"
+                    placeholder="Property Value"
+                  />
+                  <button
+                    @click="host.visualEditorData.properties.splice(pIdx, 1)"
+                    class="text-slate-400 hover:text-red-500 px-2"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </template>
+              <button
+                @click="(host.visualEditorData.properties = host.visualEditorData.properties || []).push({key: '', value: ''})"
+                class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
+              >
+                <i class="fas fa-plus mr-1"></i> Add Property
+              </button>
+            </div>
+          </div>
+
+          <!-- Variables Cheat Sheet -->
+          <div
+            x-data="{ open: false }"
+            class="bg-indigo-50/50 p-4 rounded-lg shadow-sm border border-indigo-100 mb-6"
+          >
+            <button
+              @click="open = !open"
+              class="flex justify-between items-center w-full text-indigo-800 font-semibold text-sm focus:outline-none"
+            >
+              <span class="flex items-center"><i class="fas fa-magic mr-2"></i>
+                Variable Binding Cheat Sheet</span>
+              <i
+                class="fas"
+                :class="open ? 'fa-chevron-up' : 'fa-chevron-down'"
+              ></i>
+            </button>
+            <div
+              x-show="open"
+              class="mt-4 text-xs text-indigo-900/80 space-y-3"
+            >
+              <p>
+                Most string fields (Text Markdown, Option Sources, Button Calls)
+                support variable interpolation using <code
+                >${this.variable.path}</code>.
+              </p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 class="font-bold mb-1 border-b border-indigo-200 pb-1">
+                    Context Constants
+                  </h4>
+                  <ul class="list-disc list-inside space-y-1 ml-1 font-mono">
+                    <li>
+                      <span class="font-bold bg-indigo-100 px-1 rounded"
+                      >\${this.activeLicense.id}</span>
+                    </li>
+                    <li>
+                      <span class="font-bold bg-indigo-100 px-1 rounded"
+                      >\${this.activeLicense.customers}</span>
+                    </li>
+                    <li>
+                      <span class="font-bold bg-indigo-100 px-1 rounded"
+                      >\${this.companies}</span>
+                    </li>
+                    <li>
+                      <span class="font-bold bg-indigo-100 px-1 rounded"
+                      >\${this.persons}</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 class="font-bold mb-1 border-b border-indigo-200 pb-1">
+                    Dynamic Collections (for Selects)
+                  </h4>
+                  <ul class="list-disc list-inside space-y-1 ml-1 font-mono">
+                    <li>
+                      <span class="font-bold bg-indigo-100 px-1 rounded"
+                      >\${this.currentMembers}</span> (License Customers)
+                    </li>
+                    <li>
+                      <span class="font-bold bg-indigo-100 px-1 rounded"
+                      >\${this.currentFellows}</span> (Fellows of selected
+                      Member)
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="bg-white p-3 rounded border border-indigo-100 mt-2">
+                <h4 class="font-bold mb-1 text-indigo-700">Inputs</h4>
+                <p>
+                  Any input you capture automatically becomes a variable
+                  accessible in later steps!
+                </p>
+                <p class="font-mono mt-1 text-[10px] bg-slate-50 p-2 rounded">
+                  Example: If Step 1 has a select with ID <span
+                    class="text-pink-600 font-bold"
+                  >selectedMemberId</span>, you can use <span
+                    class="font-bold bg-indigo-100 px-1 rounded"
+                  >\${this.<span class="text-pink-600"
+                    >selectedMemberId</span>}</span> in Step 2.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Case Types Builder -->
+          <div
+            class="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6"
+          >
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+              <h3 class="text-lg font-semibold text-slate-700">Case Types</h3>
+              <button
+                @click="(host.visualEditorData.caseTypes = host.visualEditorData.caseTypes || []).push({ id: 'new-case-type', name: 'New Case Type', strategyId: 'JOINT_SIGNATURE', description: '' })"
+                class="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 transition"
+              >
+                <i class="fas fa-plus mr-1"></i> Add Case Type
+              </button>
+            </div>
+            <div class="space-y-3">
+              <template
+                x-for="(ct, cIdx) in host.visualEditorData.caseTypes"
+                :key="cIdx"
+              >
+                <div class="border border-slate-200 rounded p-3 bg-slate-50/50">
+                  <div class="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      x-model="ct.id"
+                      class="w-1/3 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-white"
+                      placeholder="Case Type ID"
+                    />
+                    <input
+                      type="text"
+                      x-model="ct.name"
+                      class="flex-1 border-slate-300 rounded px-2 py-1 text-xs bg-white"
+                      placeholder="Name"
+                    />
+                    <input
+                      type="text"
+                      x-model="ct.strategyId"
+                      class="w-1/4 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-white"
+                      placeholder="Strategy ID (e.g JOINT_SIGNATURE)"
+                    />
+                    <button
+                      @click="host.visualEditorData.caseTypes.splice(cIdx, 1)"
+                      class="text-slate-400 hover:text-red-500 px-2"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    x-model="ct.description"
+                    class="w-full border-slate-300 rounded px-2 py-1 text-xs bg-white"
+                    placeholder="Description"
+                  />
+                </div>
+              </template>
+              <template x-if="!(host.visualEditorData.caseTypes?.length)">
+                <div class="text-xs text-slate-400 italic">
+                  No case types defined.
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Actions Builder -->
+          <div
+            class="bg-white p-5 rounded-lg shadow-sm border border-slate-200 mb-6"
+          >
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+              <h3 class="text-lg font-semibold text-slate-700">
+                Action Configurations
+              </h3>
+              <button
+                @click="(host.visualEditorData.actions = host.visualEditorData.actions || []).push({ id: 'synthetic.case.create', type: 'LOCAL', paramsYaml: '' })"
+                class="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 transition"
+              >
+                <i class="fas fa-plus mr-1"></i> Add Action
+              </button>
+            </div>
+            <div class="space-y-3">
+              <template
+                x-for="(act, aIdx) in host.visualEditorData.actions"
+                :key="aIdx"
+              >
+                <div class="border border-slate-200 rounded p-3 bg-slate-50/50">
+                  <div class="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      x-model="act.id"
+                      class="flex-1 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-white"
+                      placeholder="Action ID (e.g. synthetic.case.create)"
+                    />
+                    <select
+                      x-model="act.type"
+                      class="w-32 border-slate-300 rounded px-2 py-1 text-xs font-mono bg-white"
+                    >
+                      <option value="LOCAL">LOCAL</option>
+                      <option value="API">API</option>
+                    </select>
+                    <button
+                      @click="host.visualEditorData.actions.splice(aIdx, 1)"
+                      class="text-slate-400 hover:text-red-500 px-2"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                  <label
+                    class="block text-[10px] font-bold text-slate-500 uppercase mb-1"
+                  >Parameters (YAML)</label>
+                  <textarea
+                    x-model="act.paramsYaml"
+                    class="w-full border-slate-300 rounded px-2 py-2 text-xs font-mono bg-white"
+                    rows="3"
+                    placeholder="key: value"
+                  ></textarea>
+                </div>
+              </template>
+              <template x-if="!(host.visualEditorData.actions?.length)">
+                <div class="text-xs text-slate-400 italic">
+                  No custom actions defined.
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Steps Builder -->
+          <div
+            class="bg-white p-5 rounded-lg shadow-sm border border-slate-200"
+          >
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+              <h3 class="text-lg font-semibold text-slate-700">
+                UI Flow Steps
+              </h3>
+              <button
+                @click="host.visualEditorData.steps.push({ id: 'step_' + host.visualEditorData.steps.length, title: 'New Step', parts: [] })"
+                class="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 transition"
+              >
+                <i class="fas fa-plus mr-1"></i> Add Step
+              </button>
+            </div>
+
+            <div class="space-y-4">
+              <template
+                x-for="(step, sIdx) in host.visualEditorData.steps"
+                :key="sIdx"
+              >
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                  <!-- Step Header -->
+                  <div class="bg-slate-100 p-3 flex gap-3 items-center">
+                    <div
+                      class="font-mono text-xs bg-slate-300 px-2 py-1 rounded text-slate-700"
+                      x-text="'#' + (sIdx+1)"
+                    >
+                    </div>
+                    <input
+                      type="text"
+                      x-model="step.id"
+                      class="border-slate-300 rounded px-2 py-1 text-sm font-mono w-32"
+                      placeholder="step_id"
+                    />
+                    <input
+                      type="text"
+                      x-model="step.title"
+                      class="border-slate-300 rounded px-2 py-1 text-sm flex-1"
+                      placeholder="Step Title"
+                    />
+
+                    <div class="flex flex-col gap-0.5 ml-2">
+                      <button
+                        @click="host.moveItem(host.visualEditorData.steps, sIdx, -1)"
+                        class="text-[10px] text-slate-400 hover:text-indigo-600 bg-slate-200 hover:bg-indigo-100 px-1.5 rounded"
+                      >
+                        <i class="fas fa-chevron-up"></i>
+                      </button>
+                      <button
+                        @click="host.moveItem(host.visualEditorData.steps, sIdx, 1)"
+                        class="text-[10px] text-slate-400 hover:text-indigo-600 bg-slate-200 hover:bg-indigo-100 px-1.5 rounded"
+                      >
+                        <i class="fas fa-chevron-down"></i>
+                      </button>
+                    </div>
+                    <button
+                      @click="host.visualEditorData.steps.splice(sIdx, 1)"
+                      class="text-red-400 hover:text-red-600 px-2"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+
+                  <!-- Step Parts -->
+                  <div class="p-4 bg-white space-y-3">
+                    <template x-for="(part, pIdx) in step.parts" :key="pIdx">
+                      <div
+                        class="flex flex-col gap-2 border-b border-slate-100 pb-3 last:border-0 last:pb-0 mt-3"
+                      >
+                        <div class="flex gap-2 items-start w-full">
+                          <input
+                            type="text"
+                            x-model="part.id"
+                            class="border-slate-300 rounded px-2 py-1 text-xs font-mono w-24 bg-slate-50"
+                            placeholder="part_id"
+                          />
+
+                          <select
+                            x-model="part.type"
+                            class="border-slate-300 rounded px-2 py-1 text-xs bg-slate-50"
+                          >
+                            <option value="">(Select Type)</option>
+                            <option value="text">Text / Markdown</option>
+                            <option value="row">Button Row</option>
+                          </select>
+
+                          <select
+                            x-show="!part.type"
+                            x-model="part.kind"
+                            class="border-slate-300 rounded px-2 py-1 text-xs bg-slate-50"
+                          >
+                            <option value="">(Select Component)</option>
+                            <option value="text-input">Text Input</option>
+                            <option value="select-input">Select Input</option>
+                            <option value="command-button">
+                              Command Button
+                            </option>
+                          </select>
+
+                          <!-- Dynamic inline fields based on type/kind -->
+                          <div class="flex-1 flex gap-2">
+                            <template x-if="part.type === 'text'">
+                              <textarea
+                                x-model="part.value"
+                                class="w-full border-slate-300 rounded px-2 py-1 text-xs font-mono"
+                                rows="2"
+                                placeholder="Markdown content..."
+                              ></textarea>
+                            </template>
+                            <template x-if="part.kind === 'command-button'">
+                              <div class="flex flex-col gap-2 w-full">
+                                <div class="flex gap-2 w-full">
+                                  <input
+                                    type="text"
+                                    x-model="part.label"
+                                    class="border-slate-300 rounded w-1/3 px-2 py-1 text-xs"
+                                    placeholder="Button Label"
+                                  />
+                                  <input
+                                    type="text"
+                                    x-model="part.call"
+                                    class="border-slate-300 rounded flex-1 px-2 py-1 text-xs font-mono"
+                                    placeholder="Action Call (e.g. NEXT_STEP)"
+                                  />
+                                  <select
+                                    x-model="part.variant"
+                                    class="border-slate-300 rounded w-1/4 px-2 py-1 text-xs"
+                                  >
+                                    <option value="primary">Primary</option>
+                                    <option value="success">Success</option>
+                                    <option value="default">Default</option>
+                                  </select>
+                                </div>
+                                <textarea
+                                  x-model="part.paramsYaml"
+                                  class="w-full border-slate-200 rounded px-2 py-1 text-[10px] font-mono bg-slate-50"
+                                  rows="1"
+                                  placeholder="Optional params (YAML format)&#10;key: value"
+                                  oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+                                ></textarea>
+                              </div>
+                            </template>
+                            <template x-if="part.kind === 'select-input'">
+                              <div class="flex gap-2 w-full">
+                                <input
+                                  type="text"
+                                  x-model="part.label"
+                                  class="border-slate-300 rounded w-1/2 px-2 py-1 text-xs"
+                                  placeholder="Input Label"
+                                />
+                                <input
+                                  type="text"
+                                  x-model="part.optionSource"
+                                  class="border-slate-300 rounded w-1/2 px-2 py-1 text-xs font-mono"
+                                  placeholder="Source (e.g. ${this.items})"
+                                />
+                              </div>
+                            </template>
+                            <template x-if="part.kind === 'text-input'">
+                              <div class="flex gap-2 w-full">
+                                <input
+                                  type="text"
+                                  x-model="part.label"
+                                  class="border-slate-300 rounded w-1/2 px-2 py-1 text-xs"
+                                  placeholder="Input Label"
+                                />
+                                <input
+                                  type="text"
+                                  x-model="part.placeholder"
+                                  class="border-slate-300 rounded w-1/2 px-2 py-1 text-xs"
+                                  placeholder="Placeholder Text"
+                                />
+                              </div>
+                            </template>
+                          </div>
+
+                          <div class="flex flex-col gap-0.5 ml-2 mr-1">
+                            <button
+                              @click="host.moveItem(step.parts, pIdx, -1)"
+                              class="text-[10px] text-slate-300 hover:text-indigo-500 bg-slate-100 hover:bg-indigo-50 px-1 rounded"
+                            >
+                              <i class="fas fa-chevron-up"></i>
+                            </button>
+                            <button
+                              @click="host.moveItem(step.parts, pIdx, 1)"
+                              class="text-[10px] text-slate-300 hover:text-indigo-500 bg-slate-100 hover:bg-indigo-50 px-1 rounded"
+                            >
+                              <i class="fas fa-chevron-down"></i>
+                            </button>
+                          </div>
+                          <button
+                            @click="step.parts.splice(pIdx, 1)"
+                            class="text-slate-300 hover:text-red-500 px-2 mt-1"
+                          >
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </div>
+
+                        <!-- Nested UI for row type -->
+                        <template x-if="part.type === 'row'">
+                          <div
+                            class="w-full border-l-2 border-indigo-200 mt-1 mb-2"
+                          >
+                            <template
+                              x-for="(sp, spIdx) in part.subParts"
+                              :key="spIdx"
+                            >
+                              <div
+                                class="flex flex-col gap-2 bg-indigo-50/50 p-3 rounded mb-2 w-full border border-indigo-100/50 box-border relative overflow-hidden"
+                              >
+                                <!-- Top Row: ID, Label, Controls -->
+                                <div class="flex gap-2 items-center w-full">
+                                  <input
+                                    type="hidden"
+                                    x-model="sp.kind"
+                                    x-init="sp.kind = sp.kind || 'command-button'"
+                                  />
+                                  <input
+                                    type="text"
+                                    x-model="sp.id"
+                                    class="border-slate-300 rounded px-2 py-1 text-xs font-mono w-1/3 min-w-0 bg-white"
+                                    placeholder="btn_id"
+                                  />
+                                  <input
+                                    type="text"
+                                    x-model="sp.label"
+                                    class="border-slate-300 rounded flex-1 min-w-0 px-2 py-1 text-xs bg-white"
+                                    placeholder="Button Label"
+                                  />
+
+                                  <div
+                                    class="flex flex-col gap-0.5 shrink-0 ml-1"
+                                  >
+                                    <button
+                                      @click="host.moveItem(part.subParts, spIdx, -1)"
+                                      class="text-[8px] text-indigo-400 hover:text-indigo-700 bg-indigo-100 hover:bg-indigo-300 px-1 rounded"
+                                    >
+                                      <i class="fas fa-chevron-up"></i>
+                                    </button>
+                                    <button
+                                      @click="host.moveItem(part.subParts, spIdx, 1)"
+                                      class="text-[8px] text-indigo-400 hover:text-indigo-700 bg-indigo-100 hover:bg-indigo-300 px-1 rounded"
+                                    >
+                                      <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                  </div>
+                                  <button
+                                    @click="part.subParts.splice(spIdx, 1)"
+                                    class="text-slate-400 hover:text-red-500 px-1 shrink-0"
+                                  >
+                                    <i class="fas fa-times"></i>
+                                  </button>
+                                </div>
+                                <!-- Middle Row: Action Call, Variant -->
+                                <div class="flex gap-2 items-center w-full">
+                                  <input
+                                    type="text"
+                                    x-model="sp.call"
+                                    class="border-slate-300 rounded flex-1 min-w-0 px-2 py-1 text-xs font-mono bg-white"
+                                    placeholder="Action Call (e.g. NEXT_STEP)"
+                                  />
+                                  <select
+                                    x-model="sp.variant"
+                                    class="border-slate-300 rounded shrink-0 px-2 py-1 text-xs bg-white w-28"
+                                  >
+                                    <option value="primary">Primary</option>
+                                    <option value="success">Success</option>
+                                    <option value="default">Default</option>
+                                  </select>
+                                </div>
+                                <!-- Bottom Row: Params -->
+                                <textarea
+                                  x-model="sp.paramsYaml"
+                                  class="w-full border-slate-200 rounded px-2 py-1.5 text-[10px] font-mono bg-white min-w-0"
+                                  rows="1"
+                                  placeholder="Optional params (YAML format)&#10;key: value"
+                                  oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+                                ></textarea>
+                              </div>
+                            </template>
+                            <button
+                              @click="part.subParts = part.subParts || []; part.subParts.push({ id: 'btn_' + part.subParts.length, kind: 'command-button', variant: 'default', call: 'NEXT_STEP'})"
+                              class="text-xs text-indigo-600 hover:text-indigo-800 transition font-semibold"
+                            >
+                              <i class="fas fa-plus mr-1"></i>Add Button
+                            </button>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+
+                    <button
+                      @click="step.parts.push({ id: 'part_' + step.parts.length })"
+                      class="text-xs text-slate-500 hover:text-indigo-600 flex items-center mt-2"
+                    >
+                      <i class="fas fa-plus-circle mr-1"></i> Add Part
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <template x-if="host.visualEditorData.steps.length === 0">
+                <div
+                  class="text-center p-6 text-slate-400 border border-dashed rounded-lg"
+                >
+                  No steps defined. Add a step to build your UI flow!
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div
+          class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0"
+        >
+          <button
+            @click="host.closeVisualEditor()"
+            class="px-4 py-2 rounded text-slate-600 hover:bg-slate-200 transition"
+          >
+            Cancel
+          </button>
+          <button
+            @click="host.saveVisualEditor()"
+            class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition font-bold"
+          >
+            <i class="fas fa-save mr-2"></i> Save Domain Object
+          </button>
+        </div>
+      </div>
     </div>
   </template>
 </div>

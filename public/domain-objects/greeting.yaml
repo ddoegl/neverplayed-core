@@ -1,0 +1,83 @@
+permissionKeys:
+  LOCAL_VIEW:
+    id: LOCAL_VIEW
+    label: local:view
+    value: local:view
+features:
+  LOCAL_FLOWS:
+    id: LOCAL_FLOWS
+    label: local:flows
+    keys:
+      - LOCAL_VIEW
+capabilities:
+  - id: LOCAL_USER
+    operator: OR
+    matchers:
+      - type: matchAlways
+    features:
+      - id: LOCAL_FLOWS
+        keys:
+          - LOCAL_VIEW
+guards:
+  - id: LOCAL_VIEW
+    operator: OR
+    matchers:
+      - type: matchAlways
+    features:
+      - id: LOCAL_FLOWS
+        keys:
+          - LOCAL_VIEW
+id: new-domain-object-3
+label: New Domain Object 3
+domainObject:
+  strategyId: LOCAL_STRATEGY
+  label: Local Strategy
+  properties:
+    version: Test
+  actions:
+    - id: view
+      label: Open Flow
+      icon: fas fa-folder-open
+ui:
+  initialStep: step_0
+  steps:
+    step_0:
+      order: 1
+      title: New Step
+      parts:
+        selectedPerson1:
+          kind: select-input
+          optionSource: "{{persons}}"
+          label: selectedPerson
+          id: selectedPerson1
+        part_1:
+          type: row
+          parts:
+            btn_0:
+              kind: command-button
+              variant: primary
+              call: NEXT_STEP
+              id: btn_0
+          id: part_1
+        greeting:
+          kind: text-input
+          label: Greeting
+          placeholder: Hola
+          id: greeting
+    step_1:
+      order: 2
+      title: New Step
+      parts:
+        part_0:
+          type: text
+          value: ${this.greeting} ${this.selectedPerson1}!
+          id: part_0
+        part_1:
+          type: row
+          parts:
+            btn_0:
+              kind: command-button
+              variant: default
+              call: PREV_STEP
+              id: btn_0
+          id: part_1
