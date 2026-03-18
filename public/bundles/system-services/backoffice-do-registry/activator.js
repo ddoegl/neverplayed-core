@@ -406,18 +406,34 @@ export default class Activator {
                             parts: Object.entries(step.parts || {}).map(([pid, part]) => {
                                 const p = { id: pid, ...part };
                                 if (p.type === 'row') {
-                                    p.subParts = Object.entries(p.parts || {}).map(([spid, spart]) => ({ id: spid, ...spart }));
+                                    p.subParts = Object.entries(p.parts || {}).map(([spid, spart]) => {
+                                        const sp = { id: spid, ...spart };
+                                        if (sp.params) sp.paramsYaml = Object.entries(sp.params).map(([k,v]) => `${k}: "${v}"`).join('\n');
+                                        return sp;
+                                    });
                                     delete p.parts;
+                                } else if (p.kind === 'command-button') {
+                                    if (p.params) p.paramsYaml = Object.entries(p.params).map(([k,v]) => `${k}: "${v}"`).join('\n');
                                 }
                                 return p;
                             })
                         })).sort((a,b) => (a.order||0) - (b.order||0));
+
+                        const propsArray = Object.entries(spec.domainObject?.properties || {}).map(([key, value]) => ({ key, value }));
+                        const caseTypesArray = Object.values(spec.caseTypes || {});
+                        const actionsArray = Object.entries(spec.actions || {}).map(([id, act]) => {
+                            const paramsYaml = act.params ? Object.entries(act.params).map(([k,v]) => `${k}: "${v}"`).join('\n') : '';
+                            return { id, type: act.type || 'LOCAL', paramsYaml };
+                        });
 
                         hostState.visualEditorData = {
                             id: spec.id,
                             label: spec.label,
                             strategyId: spec.domainObject?.strategyId || "LOCAL_STRATEGY",
                             strategyLabel: spec.domainObject?.label || spec.label,
+                            properties: propsArray,
+                            caseTypes: caseTypesArray,
+                            actions: actionsArray,
                             steps: stepsArray,
                             _originalSpec: spec // keep the remainder
                         };
@@ -428,19 +444,34 @@ export default class Activator {
                         const ingestion = getSvc(ATOMIC_SPEC_INGESTION_SERVICE);
                         if (!ingestion) return console.error("DO Registry: Ingestion service NOT found.");
                         
+                        const parseParams = (yaml) => {
+                            if (!yaml) return undefined;
+                            let p = {};
+                            yaml.split('\n').filter(l => l.trim()).forEach(l => {
+                                const [k, ...v] = l.split(':');
+                                if (k && v.length) p[k.trim()] = v.join(':').trim().replace(/^['"](.*)['"]$/, '$1');
+                            });
+                            return Object.keys(p).length > 0 ? p : undefined;
+                        };
+
                         // Un-hydrate back into nested format
                         const stepsObj = {};
                         data.steps.forEach((step, idx) => {
                             const partsObj = {};
                             step.parts.forEach(p => {
-                                const { id, subParts, ...rest } = p;
+                                const { id, subParts, paramsYaml, ...rest } = p;
                                 if (rest.type === 'row') {
                                     rest.parts = {};
                                     (subParts || []).forEach(sp => {
-                                        const { id: spid, ...sprest } = sp;
+                                        const { id: spid, paramsYaml: spYaml, ...sprest } = sp;
+                                        if (spYaml) sprest.params = parseParams(spYaml);
+                                        sprest.id = spid; // Retain explicit ID for components
                                         rest.parts[spid] = sprest;
                                     });
+                                } else if (rest.kind === 'command-button' && paramsYaml) {
+                                    rest.params = parseParams(paramsYaml);
                                 }
+                                rest.id = id; // Retain explicit ID for components
                                 partsObj[id] = rest;
                             });
                             stepsObj[step.id] = {
@@ -459,15 +490,35 @@ export default class Activator {
 
                         spec.id = data.id;
                         spec.label = data.label;
+                        
+                        const propsObj = {};
+                        (data.properties || []).forEach(p => { if (p.key) propsObj[p.key] = p.value; });
+
                         spec.domainObject = {
                             strategyId: data.strategyId,
                             label: data.strategyLabel,
-                            properties: spec.domainObject?.properties || { "Status": "Draft" },
+                            properties: Object.keys(propsObj).length > 0 ? propsObj : (spec.domainObject?.properties || { "Status": "Draft" }),
                             actions: spec.domainObject?.actions || [{ id: "view", label: "Open Flow", icon: "fas fa-folder-open" }]
                         };
                         spec.ui = spec.ui || {};
                         spec.ui.initialStep = data.steps[0]?.id || "step_init";
                         spec.ui.steps = stepsObj;
+
+                        if (data.caseTypes && data.caseTypes.length > 0) {
+                            spec.caseTypes = {};
+                            data.caseTypes.forEach(ct => { spec.caseTypes[ct.id] = ct; });
+                        } else {
+                            delete spec.caseTypes;
+                        }
+
+                        if (data.actions && data.actions.length > 0) {
+                            spec.actions = {};
+                            data.actions.forEach(act => {
+                                spec.actions[act.id] = { type: act.type, params: parseParams(act.paramsYaml) };
+                            });
+                        } else {
+                            delete spec.actions;
+                        }
 
                         await ingestion.ingest(spec, { source: "local-storage", persist: true });
                         hostState.refreshSpecs();
