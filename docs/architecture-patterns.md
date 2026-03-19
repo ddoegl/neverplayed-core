@@ -575,3 +575,58 @@ contentArea.dataset.activeStep = targetId;
 - **Zero Flickering**: Seamless transitions for background updates.
 - **State Preservation**: Dialogs and overlays remain active.
 - **Performance**: Skips expensive DOM parsing and Alpine initialization for redundant calls.
+
+---
+
+## 16. Reactive Lifecycle & Zombie Guards (Persistence Safety)
+
+When building complex, long-lived components like the `ui-factory` that use `Alpine.effect` to sync with global states, we must defensively manage their lifecycle to prevent "Zombie Effects" from corrupting data.
+
+### The Problem: Ghost Overwrites
+
+If a component registers global effects (e.g., watching `globalThis.backofficeState`) but is not explicitly cleaned up when the DOM node is removed, the effects stay active in memory. When the global state updates, multiple instances of the component (old sessions) may wake up simultaneously and "Auto-Save" their stale local data, effectively overwriting the user's latest changes.
+
+### The Solution: The "Double-Guard" Pattern
+
+1. **Zombie Guard**: Always check if the component is still connected to the DOM at the start of an effect.
+2. **Hydration Guard**: Ensure persistence only happens *after* the component has successfully synchronized with its source of truth.
+
+**Example: Robust Lifecycle Management**
+
+```javascript
+class MyComponent extends HTMLElement {
+    constructor() {
+        super();
+        this._effects = [];
+        this._isDisconnected = false;
+    }
+
+    disconnectedCallback() {
+        this._isDisconnected = true;
+        this._effects.forEach(cleanup => cleanup());
+    }
+
+    _createState() {
+        const effect = Alpine.effect(() => {
+            // 1. Exit immediately if zombie
+            if (this._isDisconnected) return;
+            
+            // 2. Hydration Guard (Logic)
+            if (!this.state.hydrated) {
+                this.hydrate();
+                return;
+            }
+            
+            // 3. Perform Persistence
+            pm.store(ID, this.state.values);
+        });
+        this._effects.push(effect);
+    }
+}
+```
+
+### Benefits
+
+- **Data Integrity**: Prevents stale sessions from winning race conditions.
+- **Memory Efficiency**: Explicitly destroys reactive computations.
+- **Predictability**: Ensures the "Last Save Wins" only applies to the active UI.

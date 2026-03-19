@@ -1,7 +1,7 @@
 id: sample-do
 label: Sample Remote DO
 domainObject:
-  strategyId: REMOTE_STRATEGY
+  strategyId: LOCAL_STRATEGY
   label: Remote Strategy
   limesPrefix: REMOTE
   properties:

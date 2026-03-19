@@ -41,7 +41,7 @@
       class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
     >
       <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
-        <h2 class="text-xl font-bold text-slate-700">DO Strategies</h2>
+        <h2 class="text-xl font-bold text-slate-700">DO Execution Engines (System)</h2>
       </div>
       <div class="p-6">
         <template x-for="(strat, key) in host.parsedDOStrategies" :key="key">
@@ -69,11 +69,11 @@
       class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
     >
       <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
-        <h2 class="text-xl font-bold text-slate-700">Active Instances</h2>
+        <h2 class="text-xl font-bold text-slate-700">Persisted Instances (Data)</h2>
       </div>
       <div class="p-6">
         <template
-          x-for="inst in (Array.isArray(host.currentDOs) ? host.currentDOs : Object.values(host.parsedDOInstances || {}))"
+          x-for="inst in (Array.isArray(host.currentDOs) ? host.currentDOs : [])"
           :key="inst.id"
         >
           <div
@@ -130,7 +130,7 @@
     >
       <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
         <h2 class="text-xl font-bold text-slate-700">
-          DO Specifications (Source)
+          DO Blueprints (Design & Deploy)
         </h2>
       </div>
       <div class="p-6">
@@ -157,6 +157,12 @@
             </div>
 
             <div class="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
+              <button
+                class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-indigo-600 border border-indigo-700 text-white hover:bg-indigo-500 transition shadow-sm"
+                @click="host.instantiateDO(spec.id)"
+              >
+                <i class="fas fa-play mr-1.5 text-indigo-200"></i> Instantiate
+              </button>
               <button
                 class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm"
                 @click="host.editDomainObjectVisual(spec.id)"

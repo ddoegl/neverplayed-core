@@ -318,7 +318,7 @@ export default class Activator {
                     setTimeout(selectTarget, 100);
                     return;
                 }
-                const license = state.licenseDataService.getLicense(state.currentLicenseId);
+                const _license = state.licenseDataService.getLicense(state.currentLicenseId);
                 const company = state.licenseDataService.getFilteredMembers?.(state.currentLicenseId).find(c => String(c.id) === String(params.companyId));
                 if (company) {
                     state.selectCompany(company);

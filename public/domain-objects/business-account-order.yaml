@@ -1,7 +1,7 @@
 id: business-account-order
 label: Business Account Order
 domainObject:
-  strategyId: ACCOUNT_ORDER_STRATEGY
+  strategyId: LOCAL_STRATEGY
   label: Business Account Order
   properties:
     "Product": "Business Bank Account"

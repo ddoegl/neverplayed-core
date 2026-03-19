@@ -11,7 +11,7 @@ class AtomicInput extends AtomicComponentBase {
         const label = this.interp(this._spec.label || "");
         const placeholder = this.interp(this._spec.placeholder || "");
         const id = this._spec.id;
-        const value = this._spec.value || "";
+        const value = (id && this.resolve(id) !== undefined) ? this.resolve(id) : (this._spec.value || "");
 
         this.innerHTML = `
             <div class="mb-5">

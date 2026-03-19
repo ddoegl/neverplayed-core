@@ -41,22 +41,23 @@ export default class Activator {
                     loginFlow.launch(el, { targetFlow: 'backoffice-web' });
                 }
             } else if (extension?.launch && !extension.templateUrl) {
-                console.log("Activator: Launching extension content into Backoffice container:", extension.id);
-                extension.launch(el);
+                console.log("Activator: Launching extension content into Backoffice container:", extension.id, "with params:", this.currentParams);
+                extension.launch(el, this.currentParams || {});
             }
         };
 
-        state.loadStep = async function(stepId) {
+        state.loadStep = async function(stepId, params = {}) {
             if (this._loadingStep) return;
             this._loadingStep = true;
+            this.currentParams = params;
             try {
-                await this._doLoadStep(stepId);
+                await this._doLoadStep(stepId, params);
             } finally {
                 this._loadingStep = false;
             }
         };
 
-        state._doLoadStep = async function(stepId) {
+        state._doLoadStep = async function(stepId, _params = {}) {
             console.log("Activator: [NAVIGATE] Backoffice loadStep Request:", stepId);
             let actualId = stepId || this.currentStep || (this.steps[0]?.id);
             

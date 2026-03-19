@@ -16,10 +16,11 @@ export default class Activator {
 
     // Provide a service for the orchestrator to interact with the factory
     context.registerService("prototyper.ui.factory", {
-        create: (spec) => {
+        create: (spec, params = {}) => {
             const el = document.createElement("ui-factory");
             // We'll need a way to pass the context/service to the element
             if (el.setBundleContext) el.setBundleContext(context);
+            if (el.setParams) el.setParams(params);
             if (spec && el.setSpec) el.setSpec(spec);
             return el;
         }

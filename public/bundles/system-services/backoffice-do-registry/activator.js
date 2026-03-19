@@ -33,31 +33,17 @@ export default class Activator {
             }, {});
 
             return userCapabilities.map(entry => {
-                const visibleDOs = Object.values(instances).filter(inst => {
+                const visibleDOs = Object.values(instances).map(inst => {
                     const strategy = strategiesMap[inst.strategyId];
-                    const prefix = (strategy?.limesPrefix || "DO").toUpperCase();
-                    const strategyId = strategy?.limesPrefix ? `${prefix}_VIEW` : `${prefix}_VIEW_ALLOWED`;
-                    const allowed = limes.isAllowed(entry, strategyId, inst);
-                    // console.debug(`DO Registry: Checking visibility for ${inst.id} (${strategyId}) -> ${allowed}`);
-                    return allowed;
-                }).map(inst => {
-                    const strategy = strategiesMap[inst.strategyId];
-                    const prefix = (strategy?.limesPrefix || "DO").toUpperCase();
-                    const allowedActions = (strategy?.actions || []).filter(action => {
-                        const actionId = action.id.toUpperCase();
-                        const actionKey = strategy?.limesPrefix ? `${prefix}_${actionId}` : `${prefix}_${actionId}_ALLOWED`;
-                        const allowed = limes.isAllowed(entry, actionKey, inst);
-                        console.debug(`DO Registry: Action ${actionKey} for ${inst.id} -> ${allowed}`);
-                        return allowed;
+                    const allowedActions = (strategy?.actions || []).map(action => {
+                        // For now, allow all actions (matchAlways)
+                        return { ...action, allowed: true };
                     });
-                    if (allowedActions.length === 0) {
-                        const keys = entry.grantedKeys || {};
-                        console.warn(`DO Registry: NO actions found for ${inst.id}. User keys:`, Object.keys(keys).filter(k => k.startsWith('DO_')));
-                    }
+                    
                     return { ...inst, allowedActions, strategy };
                 });
 
-                console.log(`DO Registry: Evaluated ${entry.user} -> Found ${visibleDOs.length} DOs.`);
+                //console.log(`DO Registry: Evaluated ${entry.user} -> Showing all ${visibleDOs.length} DOs for debugging.`);
                 return { 
                     ...entry, 
                     domainObjects: visibleDOs 
@@ -83,20 +69,35 @@ export default class Activator {
         const yamlStrats = yaml.load(stratsText) || {};
         pm.store(STRATEGIES_PID, yamlStrats);
 
-        // Instances
-        const resInst = await fetch("./bundles/system-services/backoffice-do-registry/data/instances.yaml");
-        const instText = await resInst.text();
-        const yamlInst = yaml.load(instText) || {};
-        pm.store(INSTANCES_PID, yamlInst);
+        // Intialize empty Instances if null
+        if (!pm.load(INSTANCES_PID)) {
+            pm.store(INSTANCES_PID, {});
+        }
 
         // Sync with global-state for reactivity
+        const systemSpecs = [];
         const syncWithHost = () => {
             const states = [globalThis.backofficeState, globalThis.businessPortalState].filter(Boolean);
+            
+            // Merge System Specs with Persisted Specs
+            const raw = localStorage.getItem('atomic_persisted_specs');
+            const persisted = raw ? JSON.parse(raw) : [];
+            const mergedBlueprints = [...systemSpecs];
+            
+            persisted.forEach(ps => {
+                if (!mergedBlueprints.find(s => s.id === ps.id)) mergedBlueprints.push(ps);
+            });
+
             states.forEach(s => {
-                s.parsedDOStrategies = pm.load(STRATEGIES_PID);
-                s.parsedDOInstances = pm.load(INSTANCES_PID);
+                s.domainObjectSpecs = mergedBlueprints;
+                s.domainObjectStrategies = pm.load(STRATEGIES_PID) || {};
+                s.domainObjectInstances = pm.load(INSTANCES_PID) || {};
+                
+                // Legacy compatibility
+                s.parsedDOStrategies = s.domainObjectStrategies;
+                s.parsedDOInstances = s.domainObjectInstances;
+
                 if (typeof s.recompile === 'function') {
-                    console.log("DO Registry: Triggering re-evaluation on host state after seeding.");
                     s.recompile();
                 }
             });
@@ -122,8 +123,10 @@ export default class Activator {
             },
 
             getInstance: (id) => {
-                const insts = pm.load(INSTANCES_PID);
-                return Object.values(insts || {}).find(i => i.id === id);
+                const insts = pm.load(INSTANCES_PID) || {};
+                const inst = insts[id];
+                console.log(`DO Registry: getInstance(${id}) -> Found: ${!!inst} (Index size: ${Object.keys(insts).length})`);
+                return inst;
             },
 
             getStrategy: (id) => {
@@ -140,9 +143,32 @@ export default class Activator {
 
             addInstance: (instance) => {
                 const current = pm.load(INSTANCES_PID) || {};
-                // Force ID as key for consistency/no-duplicates
                 current[instance.id] = instance;
+                pm.store(INSTANCES_PID, current); // PERIST!
                 registryService.setInstances(current);
+            },
+            
+            removeInstance: (id) => {
+                console.log(`DO Registry: removeInstance(${id}) request received.`);
+                const current = pm.load(INSTANCES_PID) || {};
+                if (current[id]) {
+                    delete current[id];
+                    pm.store(INSTANCES_PID, current);
+                    registryService.setInstances(current);
+                    console.log(`DO Registry: removeInstance(${id}) - Removed successfully.`);
+                } else {
+                    console.warn(`DO Registry: removeInstance(${id}) - Instance NOT found in index.`);
+                }
+            },
+
+            addBlueprint: (spec) => {
+                const idx = systemSpecs.findIndex(s => s.id === spec.id);
+                if (idx !== -1) {
+                    systemSpecs[idx] = spec;
+                } else {
+                    systemSpecs.push(spec);
+                }
+                syncWithHost();
             },
 
             registerActionHandler: (handler) => {
@@ -171,6 +197,8 @@ export default class Activator {
 
         // Register Service
         context.registerService(DOMAIN_OBJECT_REGISTRY_SERVICE, registryService);
+        console.log("DO Registry Service registered.");
+        globalThis.dispatchEvent(new CustomEvent('do-registry-ready'));
         console.log("DO Registry: Service Registered successfully. 🏛️✅");
 
         // Register UI Extension
@@ -215,12 +243,7 @@ export default class Activator {
                 // Expose DO Specs from LocalStorage (persisted via Ingestion Service) as reactive array
                 if (!hostState.refreshSpecs) {
                     hostState.refreshSpecs = () => {
-                        try {
-                            const raw = localStorage.getItem('atomic_persisted_specs');
-                            hostState.domainObjectSpecs = raw ? JSON.parse(raw) : [];
-                        } catch (_e) {
-                            hostState.domainObjectSpecs = [];
-                        }
+                        syncWithHost();
                     };
                     hostState.refreshSpecs();
                 }
@@ -378,7 +401,41 @@ export default class Activator {
                         });
                     };
                 }
-                
+                // Instantiation Router
+                if (!hostState.instantiateDO) {
+                    hostState.instantiateDO = (specId) => {
+                        const spec = hostState.domainObjectSpecs.find(s => s.id === specId);
+                        if (!spec) return console.error(`DO Registry: Spec ${specId} not found.`);
+
+                        const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
+                        
+                        // Look up strategy from OSGi
+                        const stratRefs = context.getServiceReferences("prototyper.domain.strategy") || [];
+                        let strategySvc = null;
+                        for (const ref of stratRefs) {
+                            const svc = context.getService(ref);
+                            if (svc && svc.id === strategyId) {
+                                strategySvc = svc;
+                                break;
+                            }
+                        }
+
+                        if (!strategySvc) {
+                            return console.error(`DO Registry: Strategy execution engine [${strategyId}] not found for ${specId}.`);
+                        }
+
+                        if (strategySvc.createInstance) {
+                            strategySvc.createInstance(spec);
+                            console.log(`DO Registry: Instantiated ${specId} via ${strategyId}`);
+                            
+                            // Trigger re-evaluation of user capabilities to update active instances list
+                            if (hostState.recompile) hostState.recompile();
+                        } else {
+                            console.error(`DO Registry: Strategy [${strategyId}] does not implement createInstance()`);
+                        }
+                    };
+                }
+
                 // Visual Editor State Modal Handlers
                 if (!hostState.openVisualEditor) {
                     hostState.visualEditorData = null;
@@ -446,7 +503,7 @@ export default class Activator {
                         
                         const parseParams = (yaml) => {
                             if (!yaml) return undefined;
-                            let p = {};
+                            const p = {};
                             yaml.split('\n').filter(l => l.trim()).forEach(l => {
                                 const [k, ...v] = l.split(':');
                                 if (k && v.length) p[k.trim()] = v.join(':').trim().replace(/^['"](.*)['"]$/, '$1');

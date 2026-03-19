@@ -16,8 +16,19 @@ class UIFactory extends HTMLElement {
         this._context = null;
         this._yamlService = null;
         this._rendered = false;
-        this._state = null;
         this._id = "uif-" + Math.random().toString(36).substring(7);
+        this._params = {};
+        this._effects = []; // Track Alpine effects for cleanup
+    }
+
+    disconnectedCallback() {
+        this._isDisconnected = true;
+        console.log(`UIFactory [${this._id}]: disconnected from DOM. Cleaning up ${this._effects.length} effects.`);
+        this._effects.forEach(cleanup => {
+            if (typeof cleanup === 'function') cleanup();
+        });
+        this._effects = [];
+        globalThis.__UI_FACTORY_REGISTRY.delete(this._id);
     }
 
     set context(ctx) { this.setBundleContext(ctx); }
@@ -50,8 +61,14 @@ class UIFactory extends HTMLElement {
         this.render();
     }
 
+    setParams(value) {
+        console.log(`UIFactory [${this._id}]: setParams called`, value);
+        this._params = value || {};
+    }
+
     connectedCallback() {
         console.log(`UIFactory [${this._id}]: connected to DOM`);
+        globalThis.__UI_FACTORY_REGISTRY.set(this._id, this._state);
         
         // Listen for standard Atomic Component events
         this.addEventListener('atomic-action', (e) => {
@@ -116,7 +133,7 @@ class UIFactory extends HTMLElement {
         root.appendChild(body);
         
         // Hydrate body BEFORE appending to DOM to ensure Alpine sees all children
-        this.hydrateBody(body, spec);
+        this.hydrateBody(body, spec.ui || spec);
 
         this.innerHTML = `
             <style>
@@ -188,20 +205,46 @@ class UIFactory extends HTMLElement {
             ...host.currentApplication
         };
 
-        const initialStep = spec.initialStep || (Object.keys(spec.steps || {}).length > 0 ? Object.keys(spec.steps)[0] : null);
+        const ui = spec.ui || spec;
+        const initialStep = ui.initialStep || (Object.keys(ui.steps || {}).length > 0 ? Object.keys(ui.steps)[0] : null);
+
+        // --- Instance Hydration ---
+        let instanceData = {};
+        let instanceStep = initialStep;
+        let instanceHistory = [];
+        let instance = null;
+        const instanceId = this._params?.instanceId;
+
+        if (instanceId) {
+            console.log(`UIFactory [${this._id}]: Found instanceId ${instanceId}, attempting hydration...`);
+            const registry = this._getService("prototyper.domain.object.registry");
+            instance = registry?.getInstance(instanceId);
+            if (instance) {
+                console.log(`UIFactory [${this._id}]: Hydrating from instance properties:`, instance.properties);
+                instanceData = instance.properties || {};
+                if (instance.currentStep) instanceStep = instance.currentStep;
+                if (instance.history) instanceHistory = instance.history || [];
+            }
+        }
 
         const s = {
             loading: false,
             data: null,
             guards: {},
-            values: baseValues,
-            currentStep: initialStep,
-            history: [],
+            values: { ...baseValues, ...instanceData },
+            currentStep: instanceStep,
+            _hydrated: !!instance,
+            history: instanceHistory,
             initialStep: initialStep,
-            stepKeys: Object.keys(spec.steps || {}),
+            _registryReady: false,
+            stepKeys: Object.keys(ui.steps || {}),
             
             init() {
                 console.log(`UIFactory connected to Alpine Data`);
+                globalThis.addEventListener('do-registry-ready', () => {
+                    console.log(`UIFactory [${this._id}]: Registry Ready event received, triggering re-run.`);
+                    this._state._registryReady = !this._state._registryReady; 
+                });
             },
 
             async performAction(action) {
@@ -216,32 +259,32 @@ class UIFactory extends HTMLElement {
 
         const collect = (parts) => {
             Object.values(parts).forEach(p => {
+                const kind = p.kind || p.type;
                 if (p.guard) s.guards[p.guard] = true;
-                if ((p.kind === 'text-input' || p.type === 'input') && p.id) s.values[p.id] = p.value || "";
+                if ((kind === 'text-input' || kind === 'input' || kind === 'select-input') && p.id) {
+                    if (s.values[p.id] === undefined) {
+                        s.values[p.id] = p.value || "";
+                    }
+                }
                 if (p.parts) collect(p.parts);
             });
         };
-        Object.values(spec.steps || {}).forEach(step => collect(step.parts || {}));
+        Object.values(ui.steps || {}).forEach(step => collect(step.parts || {}));
 
         this._state = globalThis.Alpine.reactive(s);
 
-        // Add dynamic filtering logic and reactive host bridge
-        globalThis.Alpine.effect(() => {
+        // --- Live Portals Sync (Dual-Portal Aware) ---
+        const syncEffect = globalThis.Alpine.effect(() => {
             const state = this._state.values;
-            const bo = globalThis.backofficeState || {};
             const bp = globalThis.businessPortalState || {};
-            
-            // --- Live Portals Sync (Dual-Portal Aware) ---
+            const bo = globalThis.backofficeState || {};
             const hActive = bp.activeLicense || bo.activeLicense || null;
             const hFellows = bp.fellowsData || bo.fellowsData || null;
             const hCompanies = bp.companies || bo.companies || [];
             const hPersons = bp.persons || bo.persons || [];
             const rCurrentUser = bp.currentUser || bo.currentUser || this._getService("prototyper.session.service")?.currentUser || {};
 
-            if (hActive && hActive.id) {
-                console.log(`UIFactory [${this._id}]: Received Active License -> ${hActive.id}`);
-                state.activeLicense = hActive;
-            }
+            if (hActive && hActive.id) state.activeLicense = hActive;
             if (hFellows) state.fellowsData = hFellows;
             if (hCompanies.length) state.companies = hCompanies;
             if (hPersons.length) state.persons = hPersons;
@@ -263,8 +306,6 @@ class UIFactory extends HTMLElement {
             if (selectedMemberId) {
                 const allFellows = state.fellowsData?.FELLOWS || [];
                 const filteredFellows = allFellows.filter(f => String(f.fellowOf) === String(selectedMemberId));
-                
-                // Resolve Fellow names from persons
                 state.currentFellows = filteredFellows.map(f => {
                     const person = (state.persons || []).find(p => String(p.id) === String(f.personId));
                     return {
@@ -276,6 +317,96 @@ class UIFactory extends HTMLElement {
                 state.currentFellows = [];
             }
         });
+        this._effects.push(syncEffect);
+
+        // --- Auto-Save Persistence Engine ---
+        const persistenceEffect = globalThis.Alpine.effect(() => {
+            try {
+                if (this._isDisconnected) return;
+
+                // 1. Force tracking of primary reactive dependencies
+                const _trackingStep = this._state.currentStep;
+                const _trackingReady = this._state._registryReady; 
+                const _trackingHydrated = this._state._hydrated;
+                const _trackingHistory = this._state.history.length;
+                
+                const ui = spec.ui || spec;
+                const strategyId = spec.domainObject?.strategyId || (spec.ui || spec).domainObject?.strategyId || spec.strategyId;
+                
+                // 2. Collect field IDs from spec to track them individually (Safe tracking)
+                const specFields = [];
+                const collectFields = (parts) => {
+                    Object.values(parts).forEach(p => {
+                        if (p.id) specFields.push(p.id);
+                        if (p.parts) collectFields(p.parts);
+                    });
+                };
+                Object.values(ui.steps || {}).forEach(step => collectFields(step.parts || {}));
+                
+                // 3. Track each value explicitly (This avoids JSON.stringify crashes on circular host refs)
+                const capturedValues = {};
+                specFields.forEach(f => {
+                    if (this._state.values[f] !== undefined) {
+                        capturedValues[f] = this._state.values[f];
+                    }
+                });
+
+                // 4. Late Hydration Check
+                if (instanceId && !this._state._hydrated) {
+                    const registry = this._getService("prototyper.domain.object.registry");
+                    let instance = registry?.getInstance(instanceId);
+                    
+                    if (!instance && strategyId) {
+                        const stratRefs = this._context.getServiceReferences("prototyper.domain.strategy") || [];
+                        const strategySvcRef = stratRefs.find(r => this._context.getService(r)?.id === strategyId);
+                        const strategySvc = strategySvcRef ? this._context.getService(strategySvcRef) : null;
+                        if (strategySvc?.getInstance) {
+                            instance = strategySvc.getInstance(instanceId, (spec.id || spec.domainObject?.id));
+                        }
+                    }
+
+                    if (instance) {
+                        if (instance.currentStep && instance.currentStep !== this._state.currentStep) {
+                            this._state.currentStep = instance.currentStep;
+                        }
+                        if (instance.properties) {
+                             Object.assign(this._state.values, instance.properties);
+                        }
+                        if (instance.history) {
+                            this._state.history = [...instance.history];
+                        }
+                        this._state._hydrated = true;
+                        return; // Done for this cycle
+                    }
+                }
+
+                // 5. Auto-Save Logic (ONLY if correctly hydrated or confirmed as new)
+                if (instanceId && this._state._hydrated) {
+                    if (strategyId) {
+                        const stratRefs = this._context.getServiceReferences("prototyper.domain.strategy") || [];
+                        let strategySvc = null;
+                        for (const ref of stratRefs) {
+                            const svc = this._context.getService(ref);
+                            if (svc?.id === strategyId) {
+                                strategySvc = svc;
+                                break;
+                            }
+                        }
+
+                        if (strategySvc?.updateInstance) {
+                            strategySvc.updateInstance(instanceId, (spec.id || spec.ui?.id), {
+                                currentStep: this._state.currentStep,
+                                properties: capturedValues,
+                                history: globalThis.Alpine.raw(this._state.history)
+                            });
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error(`UIFactory [${this._id}]: Critical error in Persistence Engine:`, e);
+            }
+        });
+        this._effects.push(persistenceEffect);
 
         return this._state;
     }
@@ -436,18 +567,25 @@ class UIFactory extends HTMLElement {
 
     resolveValue(expr, scope) {
         if (typeof expr !== 'string') return expr;
+        
+        // 1. Check if it's an explicit expression: ${path} or {{path}}
         const match = expr.match(/^(?:\${(this\.)?(.+?)}$|\{\{\s*(this\.)?(.+?)\s*\}\})$/);
-        if (match) {
-            const path = match[2] || match[4];
-            const resolvePath = (obj, p) => p.split('.').reduce((acc, part) => acc && acc[part], obj);
-            const result = resolvePath(scope.values, path) ?? resolvePath(scope, path);
-            
-            if (path.includes('activeLicense')) {
-                console.log(`UIFactory Resolve Debug: ${path} ->`, result);
-            }
-            return result;
-        }
-        return this.interpolate(expr, scope);
+        const path = match ? (match[2] || match[4]) : expr;
+
+        // 2. Resolve Path Helper
+        const resolvePath = (obj, p) => {
+            if (!obj || !p) return undefined;
+            if (p.startsWith('this.')) p = p.substring(5);
+            if (p.startsWith('values.')) p = p.substring(7);
+            return p.split('.').reduce((acc, part) => acc && acc[part] !== undefined ? acc[part] : undefined, obj);
+        };
+
+        // 3. Try to find the value in values or root scope
+        const result = resolvePath(scope.values, path) ?? resolvePath(scope, path);
+        if (result !== undefined) return result;
+
+        // 4. If it was a literal path that failed, fallback to interpolation
+        return match ? undefined : this.interpolate(expr, scope);
     }
 
     renderPart(_id, p) {

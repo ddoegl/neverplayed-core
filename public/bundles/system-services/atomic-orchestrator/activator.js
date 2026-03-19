@@ -159,7 +159,7 @@ export default class Activator {
     // Cleanup previous registrations for this DO (e.g., during live-editing)
     if (this.registrations[id]) {
         console.log(`Atomic Orchestrator: Unregistering previous components for ${id}`);
-        this.registrations[id].forEach(reg => { try { reg.unregister(); } catch (_e) {} });
+        this.registrations[id].forEach(reg => { try { reg.unregister(); } catch (_e) { /* ignore */ } });
     }
     this.registrations[id] = [];
     const trackReg = (reg) => { if (reg) this.registrations[id].push(reg); return reg; };
@@ -254,11 +254,11 @@ export default class Activator {
             id,
             title: label || id,
             icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
-            launch: (container) => {
+            launch: (container, params = {}) => {
                 const factoryRef = context.getServiceReference("prototyper.ui.factory");
                 const factorySvc = factoryRef ? context.getService(factoryRef) : null;
                 if (factorySvc) {
-                    const el = factorySvc.create(spec.ui);
+                    const el = factorySvc.create(spec, params);
                     container.innerHTML = "";
                     container.appendChild(el);
                     if (el.render) el.render();
@@ -280,11 +280,11 @@ export default class Activator {
             id,
             name: label || id,
             icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
-            launch: (container) => {
+            launch: (container, params = {}) => {
                 const factoryRef = context.getServiceReference("prototyper.ui.factory");
                 const factorySvc = factoryRef ? context.getService(factoryRef) : null;
                 if (factorySvc) {
-                    const el = factorySvc.create(spec.ui);
+                    const el = factorySvc.create(spec, params);
                     container.innerHTML = "";
                     container.appendChild(el);
                     if (el.render) el.render();
@@ -319,13 +319,11 @@ export default class Activator {
                     });
                 }
             }
-            // Register Instance
-            doRegistry.addInstance({
-                id,
-                strategyId: domainObject.strategyId,
-                label: domainObject.label || label || id,
-                properties: domainObject.properties || []
-            });
+
+            // Register the Blueprint (Specification) itself
+            if (doRegistry.addBlueprint) {
+                doRegistry.addBlueprint(spec);
+            }
 
             // Register Action Handler for 'view' if UI exists
             if (ui) {
@@ -336,14 +334,14 @@ export default class Activator {
                        registry.registerActionHandler({
                            id: "view",
                            _sourceFlowId: id, // Used for deduplication during live-reloads
-                           match: (inst) => inst.id === id,
+                           match: (inst) => inst.blueprintId === id || inst.id === id, // Legacy support just in case
                            execute: (_inst, host) => {
-                               console.log(`Atomic Orchestrator: [EXECUTE] Launching extension for ${id}`);
+                               console.log(`Atomic Orchestrator: [EXECUTE] Launching extension for ${id} (Instance: ${_inst.id})`);
 
                                if (host && host.loadStep) {
                                    const hostName = host === globalThis.backofficeState ? "Backoffice" : "Business Portal";
                                    console.log(`Atomic Orchestrator: Navigating to ${id} via active shell: ${hostName}`);
-                                   host.loadStep(id);
+                                   host.loadStep(id, { instanceId: _inst.id });
                                 } else {
                                     console.error("Atomic Orchestrator: [ERROR] Context missing in execute(). Host provided:", host ? typeof host : "undefined/null");
                                     if (!host) {
@@ -351,7 +349,7 @@ export default class Activator {
                                         const fallback = document.getElementById("backoffice-root-container") ? globalThis.backofficeState : globalThis.businessPortalState;
                                         if (fallback && fallback.loadStep) {
                                             console.log("Atomic Orchestrator: [RECOVERY] Navigating via fallback host:", fallback === globalThis.backofficeState ? "Backoffice" : "Business Portal");
-                                            fallback.loadStep(id);
+                                            fallback.loadStep(id, { instanceId: _inst.id });
                                         }
                                     }
                                 }
@@ -363,6 +361,44 @@ export default class Activator {
                    }
                 };
                 registerHandler();
+               
+                const registerDeleteHandler = () => {
+                    const registry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
+                    if (registry && registry.registerActionHandler) {
+                        console.log(`Atomic Orchestrator: Registering 'delete' handler for ${id}`);
+                        registry.registerActionHandler({
+                            id: "delete",
+                            _sourceFlowId: id,
+                            match: (inst) => inst.blueprintId === id || inst.id === id,
+                            execute: (_inst, host) => {
+                                console.log(`Atomic Orchestrator: [EXECUTE] Deleting instance ${_inst.id}`);
+                                
+                                // Look up strategy
+                                const stratRefs = context.getServiceReferences("prototyper.domain.strategy") || [];
+                                let strategySvc = null;
+                                for (const ref of stratRefs) {
+                                    const svc = context.getService(ref);
+                                    if (svc && svc.id === _inst.strategyId) {
+                                        strategySvc = svc;
+                                        break;
+                                    }
+                                }
+
+                                if (strategySvc && strategySvc.deleteInstance) {
+                                    const success = strategySvc.deleteInstance(_inst.id, _inst.blueprintId);
+                                    if (success && host && host.recompile) {
+                                        host.recompile(); // Refresh UI
+                                    }
+                                } else {
+                                    console.error(`Atomic Orchestrator: [ERROR] Delete handler failed. Strategy ${_inst.strategyId} not found or missing deleteInstance().`);
+                                }
+                            }
+                        });
+                    } else {
+                        setTimeout(registerDeleteHandler, 500);
+                    }
+                };
+                registerDeleteHandler();
             }
         }
     }
