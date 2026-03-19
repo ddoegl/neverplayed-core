@@ -565,7 +565,7 @@
                 </div>
 
                 <div class="flex flex-wrap gap-2">
-                  <template x-if="perm.customers.length === 0">
+                  <template x-if="!perm.customers || perm.customers.length === 0">
                     <span
                       class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-gray-50 text-[11px] text-gray-600 border border-gray-200 uppercase font-semibold"
                     >
@@ -573,7 +573,7 @@
                       GLOBAL / SHARED
                     </span>
                   </template>
-                  <template x-for="c in perm.customers">
+                  <template x-for="c in (perm.customers || [])">
                     <span
                       class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-indigo-100 text-[11px] text-indigo-800 border border-indigo-300 tracking-wide font-medium"
                       x-html="'<i class=\'fa-solid fa-building opacity-50\'></i> ' + c"

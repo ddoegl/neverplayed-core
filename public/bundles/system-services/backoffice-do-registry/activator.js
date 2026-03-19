@@ -74,37 +74,8 @@ export default class Activator {
             pm.store(INSTANCES_PID, {});
         }
 
-        // Sync with global-state for reactivity
-        const systemSpecs = [];
-        const syncWithHost = () => {
-            const states = [globalThis.backofficeState, globalThis.businessPortalState].filter(Boolean);
-            
-            // Merge System Specs with Persisted Specs
-            const raw = localStorage.getItem('atomic_persisted_specs');
-            const persisted = raw ? JSON.parse(raw) : [];
-            const mergedBlueprints = [...systemSpecs];
-            
-            persisted.forEach(ps => {
-                if (!mergedBlueprints.find(s => s.id === ps.id)) mergedBlueprints.push(ps);
-            });
-
-            states.forEach(s => {
-                s.domainObjectSpecs = mergedBlueprints;
-                s.domainObjectStrategies = pm.load(STRATEGIES_PID) || {};
-                s.domainObjectInstances = pm.load(INSTANCES_PID) || {};
-                
-                // Legacy compatibility
-                s.parsedDOStrategies = s.domainObjectStrategies;
-                s.parsedDOInstances = s.domainObjectInstances;
-
-                if (typeof s.recompile === 'function') {
-                    s.recompile();
-                }
-            });
-        };
-        syncWithHost();
-
         const actionHandlers = [];
+        const systemSpecs = [];
 
         const registryService = {
             getStrategies: () => pm.load(STRATEGIES_PID),
@@ -136,7 +107,6 @@ export default class Activator {
 
             addStrategy: (strategy) => {
                 const current = pm.load(STRATEGIES_PID) || {};
-                // Force ID as key for consistency/no-duplicates
                 current[strategy.id] = strategy;
                 registryService.setStrategies(current);
             },
@@ -149,15 +119,11 @@ export default class Activator {
             },
             
             removeInstance: (id) => {
-                console.log(`DO Registry: removeInstance(${id}) request received.`);
                 const current = pm.load(INSTANCES_PID) || {};
                 if (current[id]) {
                     delete current[id];
                     pm.store(INSTANCES_PID, current);
                     registryService.setInstances(current);
-                    console.log(`DO Registry: removeInstance(${id}) - Removed successfully.`);
-                } else {
-                    console.warn(`DO Registry: removeInstance(${id}) - Instance NOT found in index.`);
                 }
             },
 
@@ -187,13 +153,130 @@ export default class Activator {
                 console.log(`DO Registry: [SERVICE] Handling action ${action.id} for instance ${instance.id}`);
                 const handler = actionHandlers.find(h => h.id === action.id && h.match(instance));
                 if (handler) {
-                    console.log("DO Registry: [SERVICE] Handler found, executing...");
                     handler.execute(instance, host);
                 } else {
-                    console.warn(`DO Registry: [SERVICE] No handler found for action ${action.id} (Instances matched: ${actionHandlers.filter(h => h.id === action.id).length})`);
+                    console.warn(`DO Registry: No handler found for ${action.id}`);
                 }
             }
         };
+
+        const syncWithHost = () => {
+            const states = [globalThis.backofficeState, globalThis.businessPortalState].filter(Boolean);
+            
+            // Merge System Specs with Persisted Specs
+            const raw = localStorage.getItem('atomic_persisted_specs');
+            const persisted = raw ? JSON.parse(raw) : [];
+            const mergedBlueprints = [...systemSpecs];
+            
+            persisted.forEach(ps => {
+                if (!mergedBlueprints.find(s => s.id === ps.id)) mergedBlueprints.push(ps);
+            });
+
+            states.forEach(s => {
+                s.domainObjectSpecs = mergedBlueprints;
+                s.domainObjectStrategies = pm.load(STRATEGIES_PID) || {};
+                s.domainObjectInstances = pm.load(INSTANCES_PID) || {};
+                
+                // Legacy compatibility
+                s.parsedDOStrategies = s.domainObjectStrategies;
+                s.parsedDOInstances = s.domainObjectInstances;
+
+                // INJECT HELPERS into all states for cross-portal consistency
+                if (!s.handleAction) {
+                    s.handleAction = (action, instance) => {
+                        console.log(`DO Registry: [ACTION] Triggering ${action.id} for ${instance.id}`);
+                        registryService.handleAction(action, instance, s);
+                    };
+                }
+
+                if (!s.instantiateDO) {
+                    s.instantiateDO = (specId) => {
+                        const spec = s.domainObjectSpecs.find(sp => sp.id === specId);
+                        if (!spec) return console.error(`DO Registry: Spec ${specId} not found.`);
+
+                        const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
+                        
+                        // Look up strategy from OSGi
+                        const stratRefs = context.getServiceReferences("prototyper.domain.strategy") || [];
+                        let strategySvc = null;
+                        for (const ref of stratRefs) {
+                            const svc = context.getService(ref);
+                            if (svc && svc.id === strategyId) {
+                                strategySvc = svc;
+                                break;
+                            }
+                        }
+
+                        if (!strategySvc) {
+                            return console.error(`DO Registry: Strategy engine [${strategyId}] not found.`);
+                        }
+
+                        if (strategySvc.createInstance) {
+                            const inst = strategySvc.createInstance(spec);
+                            console.log(`DO Registry: Instantiated ${specId} via ${strategyId}`);
+                            if (s.recompile) s.recompile();
+                            return inst;
+                        }
+                    };
+                }
+
+                if (typeof s.recompile === 'function') {
+                    s.recompile();
+                }
+            });
+        };
+        syncWithHost();
+
+        // 3. REGISTER DEFAULT HANDLERS
+        registryService.registerActionHandler({
+            id: 'view',
+            match: (instance) => true,
+            execute: (instance, host) => {
+                console.log(`DO Registry: [SERVICE] Handling action view for instance ${instance.id}`);
+                const blueprint = (host.domainObjectSpecs || []).find(s => s.id === instance.blueprintId);
+                // Launch the flow with the specific instanceId
+                if (blueprint?.ui) {
+                    const params = { instanceId: instance.id };
+                    console.log(`DO Registry: [NAVIGATE] Launching flow ${blueprint.id} for instance ${instance.id}`);
+                    
+                    if (typeof host.launchFlow === 'function') {
+                        host.launchFlow(blueprint.id, null, params);
+                    } else if (typeof host.loadStep === 'function') {
+                        host.loadStep(blueprint.id, params);
+                    } else {
+                        globalThis.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: blueprint.id, step: null, params } }));
+                    }
+                } else {
+                    console.error("DO Registry: Blueprint has no UI configuration, cannot view flow.");
+                }
+            }
+        });
+
+        registryService.registerActionHandler({
+            id: 'delete',
+            match: (instance) => true,
+            execute: (instance, host) => {
+                console.log(`DO Registry: [SERVICE] Handling action delete for instance ${instance.id}`);
+                const blueprint = (host.domainObjectSpecs || []).find(s => s.id === instance.blueprintId);
+                const strategyId = instance.strategyId || blueprint?.domainObject?.strategyId || "LOCAL_STRATEGY";
+                
+                const stratRefs = context.getServiceReferences("prototyper.domain.strategy") || [];
+                let strategySvc = null;
+                for (const ref of stratRefs) {
+                    const svc = context.getService(ref);
+                    if (svc && svc.id === strategyId) {
+                        strategySvc = svc;
+                        break;
+                    }
+                }
+
+                if (strategySvc?.deleteInstance) {
+                    strategySvc.deleteInstance(instance.id, instance.blueprintId);
+                } else {
+                    console.error(`DO Registry: Strategy ${strategyId} does not support delete.`);
+                }
+            }
+        });
 
         // Register Service
         context.registerService(DOMAIN_OBJECT_REGISTRY_SERVICE, registryService);
@@ -211,13 +294,6 @@ export default class Activator {
                 // Initial sync when activated
                 syncWithHost();
 
-                // Expose handleAction to Alpine.js
-                if (!hostState.handleAction) {
-                    hostState.handleAction = (action, instance) => {
-                        console.log(`DO Registry: [ACTION] Triggering ${action.id} for ${instance.id}`);
-                        registryService.handleAction(action, instance, hostState);
-                    };
-                }
 
                 // Expose evaluated DOs for the current user
                 if (!Object.getOwnPropertyDescriptor(hostState, 'currentDOs')) {
@@ -401,40 +477,7 @@ export default class Activator {
                         });
                     };
                 }
-                // Instantiation Router
-                if (!hostState.instantiateDO) {
-                    hostState.instantiateDO = (specId) => {
-                        const spec = hostState.domainObjectSpecs.find(s => s.id === specId);
-                        if (!spec) return console.error(`DO Registry: Spec ${specId} not found.`);
 
-                        const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
-                        
-                        // Look up strategy from OSGi
-                        const stratRefs = context.getServiceReferences("prototyper.domain.strategy") || [];
-                        let strategySvc = null;
-                        for (const ref of stratRefs) {
-                            const svc = context.getService(ref);
-                            if (svc && svc.id === strategyId) {
-                                strategySvc = svc;
-                                break;
-                            }
-                        }
-
-                        if (!strategySvc) {
-                            return console.error(`DO Registry: Strategy execution engine [${strategyId}] not found for ${specId}.`);
-                        }
-
-                        if (strategySvc.createInstance) {
-                            strategySvc.createInstance(spec);
-                            console.log(`DO Registry: Instantiated ${specId} via ${strategyId}`);
-                            
-                            // Trigger re-evaluation of user capabilities to update active instances list
-                            if (hostState.recompile) hostState.recompile();
-                        } else {
-                            console.error(`DO Registry: Strategy [${strategyId}] does not implement createInstance()`);
-                        }
-                    };
-                }
 
                 // Visual Editor State Modal Handlers
                 if (!hostState.openVisualEditor) {

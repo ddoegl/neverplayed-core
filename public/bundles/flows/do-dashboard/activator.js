@@ -16,6 +16,9 @@ export default class Activator {
             const _bState = globalThis.backofficeState;
 
             return {
+                get host() {
+                    return document.getElementById('backoffice-root-container') ? globalThis.backofficeState : globalThis.businessPortalState;
+                },
                 get user() {
                     const u = session?.currentUser || null;
                     if (!u) console.warn("DO Dashboard: [SENSITIVE] session.currentUser is null");
@@ -24,33 +27,24 @@ export default class Activator {
                 get ready() {
                     return !!(doRegistry && limes && session && this.user?.id);
                 },
+                get blueprints() {
+                    return this.host?.domainObjectSpecs || [];
+                },
                 get dos() {
-                    if (!this.ready) {
-                        return [];
-                    }
+                    if (!this.ready) return [];
 
-                    // Fetch directly from registry service for context independence
-                    const allInstances = doRegistry.getInstances() || {};
-                    const rawStrats = doRegistry.getStrategies() || {};
-                    // Strategies in PM are keyed by YAML label (DO_STRATEGY_PRODUCT), 
-                    // instances use the 'id' (product-strategy). We need a map.
-                    const strategies = Object.values(rawStrats).reduce((acc, s) => {
-                        if (s.id) acc[s.id] = s;
-                        return acc;
-                    }, {});
-
+                    const allInstances = this.host?.domainObjectInstances || {};
+                    const strategiesMap = this.host?.domainObjectStrategies || {};
                     const userId = this.user.id;
 
                     return Object.values(allInstances).filter(inst => {
-                        const strategy = strategies[inst.strategyId];
+                        const strategy = strategiesMap[inst.strategyId];
                         const prefix = strategy?.limesPrefix || "DO"; 
                         const viewStrategyId = `${prefix}_VIEW`;
-                        
                         return limes.isAllowed(userId, viewStrategyId, inst);
                     }).map(inst => {
-                        const strategy = strategies[inst.strategyId];
+                        const strategy = strategiesMap[inst.strategyId];
                         const prefix = strategy?.limesPrefix || "DO";
-                        
                         const allowedActions = (strategy?.actions || []).filter(action => {
                             const actionStrategyId = `${prefix}_${action.id.toUpperCase()}`;
                             return limes.isAllowed(userId, actionStrategyId, inst);
@@ -58,29 +52,22 @@ export default class Activator {
                         return { ...inst, allowedActions, strategy };
                     });
                 },
+                instantiate(blueprintId) {
+                    console.log(`DO Dashboard: [CREATE] Instantiating blueprint ${blueprintId}`);
+                    if (this.host?.instantiateDO) {
+                        const inst = this.host.instantiateDO(blueprintId);
+                        if (inst) {
+                            console.log("DO Dashboard: Auto-navigating to new instance", inst.id);
+                            this.triggerAction('view', inst);
+                        }
+                    } else {
+                        console.error("DO Dashboard: Host instantiateDO method not found.");
+                    }
+                },
                 triggerAction(actionId, doInstance) {
                     console.log(`DO Dashboard: [ACTION] Triggering ${actionId} for ${doInstance.id}`);
-                    
                     if (doRegistry && doRegistry.handleAction) {
-                        console.log("DO Dashboard: [DELEGATE] Passing to Registry Service");
-                        const host = document.getElementById('backoffice-root-container') ? globalThis.backofficeState : globalThis.businessPortalState;
-                        doRegistry.handleAction({ id: actionId }, doInstance, host);
-                    } else {
-                        console.warn("DO Dashboard: [FALLBACK] Registry Service handleAction not available, using legacy shell-launch-flow");
-                        let flowId = "real-life";
-                        if (actionId === "sign") flowId = "cases";
-                        if (actionId === "view") flowId = "do-details";
-
-                        globalThis.dispatchEvent(new CustomEvent("shell-launch-flow", {
-                            detail: {
-                                id: flowId,
-                                params: {
-                                    doId: doInstance.id,
-                                    strategyId: doInstance.strategyId,
-                                    action: actionId
-                                }
-                            }
-                        }));
+                        doRegistry.handleAction({ id: actionId }, doInstance, this.host);
                     }
                 }
             };

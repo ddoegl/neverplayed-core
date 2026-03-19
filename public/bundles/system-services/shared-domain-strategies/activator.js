@@ -28,7 +28,7 @@ export default class Activator {
             const localStrategy = {
                 id: "LOCAL_STRATEGY",
                 label: "Local Browser Engine (PM)",
-                limesPrefix: "LOCAL",
+                limesPrefix: "DO",
                 actions: [
                     { id: "view", label: "Resume Flow", icon: "fas fa-play" },
                     { id: "delete", label: "Archive", icon: "fas fa-archive" }
