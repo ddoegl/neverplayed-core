@@ -105,7 +105,8 @@ ui:
               label: "Back"
               action:
                 call: step.navigate
-                params: { step: metadata_edit }
+                params:
+                  target: metadata_edit
             save_btn:
               kind: action
               label: "Save & Register"
