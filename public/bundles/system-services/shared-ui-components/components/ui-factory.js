@@ -461,7 +461,9 @@ class UIFactory extends HTMLElement {
                 for (const key of keys) {
                     const val = this.values[key];
                     console.log(`UIFactory [${this.instanceId}]: Checking key ${key}: ${val} (Type: ${typeof val})`);
-                    if (typeof val === 'string' && val.startsWith('BUSI-')) {
+                    // Generic Case ID pattern: uppercase prefix followed by hyphen and numbers (e.g., BUSI-123)
+                    const isCaseId = typeof val === 'string' && /^[A-Z0-9]+-[0-9]+$/.test(val);
+                    if (isCaseId) {
                         console.log(`UIFactory [${this.instanceId}]: Found case reference to sync: ${key}=${val}`);
                         await this.syncCaseStatus(val);
                     }
@@ -772,8 +774,8 @@ class UIFactory extends HTMLElement {
                     {
                         companyId: finalParams.companyId,
                         targetPersonId: finalParams.targetPersonId,
-                        title: finalParams.title || `Order for ${finalParams.companyId}`,
-                        description: finalParams.description || `Business Account Order via Atomic Flow`
+                        title: finalParams.title || `Case for ${finalParams.companyId || finalParams.targetPersonId || 'Atomic Flow'}`,
+                        description: finalParams.description || `Created via Atomic Flow`
                     },
                     finalParams.html
                 );
