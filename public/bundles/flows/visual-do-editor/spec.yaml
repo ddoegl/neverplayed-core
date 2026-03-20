@@ -37,9 +37,10 @@ ui:
           kind: action
           label: "Start New Blueprint"
           variant: primary
-          action: 
+          action:
             call: step.navigate
-            params: { step: metadata_edit }
+            params:
+              target: metadata_edit
 
     metadata_edit:
       title: "1. Basic Metadata"
@@ -65,16 +66,18 @@ ui:
             back_btn:
               kind: action
               label: "Back"
-              action: 
+              action:
                 call: step.navigate
-                params: { step: welcome }
+                params:
+                  target: welcome
             next_btn:
               kind: action
               label: "Next: UI Builder"
               variant: primary
-              action: 
+              action:
                 call: step.navigate
-                params: { step: ui_builder }
+                params:
+                  target: ui_builder
 
     ui_builder:
       title: "2. UI & Flow Builder"
@@ -100,13 +103,13 @@ ui:
             back_btn:
               kind: action
               label: "Back"
-              action: 
+              action:
                 call: step.navigate
                 params: { step: metadata_edit }
             save_btn:
               kind: action
               label: "Save & Register"
               variant: primary
-              action: 
+              action:
                 call: default
-                params: { action: 'blueprint.save' }
+                params: { action: "blueprint.save" }
