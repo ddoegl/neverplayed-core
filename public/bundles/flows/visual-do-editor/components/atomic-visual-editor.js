@@ -182,6 +182,7 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 this._activeStepId = sid;
                 this.setupVisualEditor(); // Refresh selection
                 this.editStep(sid);
+                this.updatePreview(); // Sync preview to this step
             };
             list.appendChild(btn);
         });
@@ -192,8 +193,11 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             addBtn.onclick = () => {
                 const sid = `step_${Object.keys(this._draftSpec.ui.steps).length + 1}`;
                 this._draftSpec.ui.steps[sid] = { title: "New Step", parts: {} };
+                this._activeStepId = sid;
                 this.saveToState();
                 this.setupVisualEditor();
+                this.editStep(sid);
+                this.updatePreview();
             };
         }
     }
@@ -203,9 +207,11 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         const panel = this.querySelector('#property-panel');
         const fields = this.querySelector('#prop-fields');
         
-        // Only regenerate if we switched steps to preserve focus
-        if (this._activeStepId !== sid || fields.innerHTML === "") {
-            this._activeStepId = sid;
+        // Use a more robust check to ensure we regenerate when the step identity changes
+        const currentId = fields.getAttribute('data-active-sid');
+        
+        if (currentId !== sid || fields.innerHTML === "") {
+            fields.setAttribute('data-active-sid', sid);
             panel.classList.remove('hidden');
             fields.innerHTML = `
                 <div>
@@ -258,7 +264,12 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         const factory = factoryRef ? this._context.getService(factoryRef) : null;
         
         if (factory) {
+            // Force the preview to the current active step
             const previewSpec = JSON.parse(JSON.stringify(this._draftSpec));
+            if (this._activeStepId) {
+                if (!previewSpec.ui) previewSpec.ui = {};
+                previewSpec.ui.initialStep = this._activeStepId;
+            }
             
             if (!this._previewEl) {
                 this._previewEl = factory.create(previewSpec, {});

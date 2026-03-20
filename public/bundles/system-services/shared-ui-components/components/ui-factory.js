@@ -241,9 +241,16 @@ class UIFactory extends HTMLElement {
             // Update state metadata to handle new steps if they changed
             const ui = spec.ui || spec;
             const newKeys = Object.keys(ui.steps || {});
-            if (this._state && JSON.stringify(this._state.stepKeys) !== JSON.stringify(newKeys)) {
+            if (this._state) {
                 this._state.stepKeys = newKeys;
                 this._state.initialStep = ui.initialStep || (newKeys.length > 0 ? newKeys[0] : null);
+                
+                // --- FORCED STEP SYNC (Crucial for Live Preview) ---
+                // If a new spec was explicitly provided (e.g. from editor), 
+                // we force the current step to the new initialStep.
+                if (newSpec && this._state.initialStep) {
+                    this._state.currentStep = this._state.initialStep;
+                }
             }
 
             // Re-hydrate structure into the existing container
