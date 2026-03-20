@@ -76,7 +76,7 @@ export default class Activator {
         };
 
         context.registerService("@pandino/event-admin/EventHandler", eventHandler, {
-            "event.topics": ["backoffice/invitations/*"]
+            "event.topics": ["backoffice/invitations/*", "backoffice/cases/*"]
         });
 
         // Register as a FLOW_SERVICE so it can be governed

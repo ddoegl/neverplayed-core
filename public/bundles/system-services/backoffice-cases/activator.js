@@ -83,7 +83,11 @@ export default class Activator {
 
     const caseService = {
       getCases: () => data.CASES,
-      getCase: (id) => data.CASES.find(c => c.id === id),
+      getCase: (id) => {
+        const c = data.CASES.find(caseItem => caseItem.id === id);
+        console.log(`BO Cases: getCase(${id}) -> Status: ${c?.status || "NOT_FOUND"} (Total records: ${data.CASES.length})`);
+        return c;
+      },
       addCase: (caseItem) => {
         data.CASES.push(caseItem);
         if (pm) pm.store(CASES_PID, data);
@@ -201,6 +205,7 @@ export default class Activator {
             const newStatus = data.CASES[index].status;
 
             if (pm) pm.store(CASES_PID, data);
+            console.log(`BO Cases: Updated Case ${caseId}: ${oldStatus} -> ${newStatus}`);
             
             // Fulfillment Logic: If case just transitioned to 'signed' and is an authorization grant
             if (oldStatus === 'pending' && newStatus === 'signed' && data.CASES[index].type === 'authorization-grant' && fellowsService) {

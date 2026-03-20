@@ -1,7 +1,7 @@
 id: hello-world-do
 label: "Hello World Atomic"
 domainObject:
-  strategyId: hello-world-strategy
+  strategyId: LOCAL_STRATEGY
   label: "Hello World Object"
   limesPrefix: HELLO
   properties:

@@ -162,6 +162,10 @@ export default class Activator {
                         }
                         case 'matchProperty':
                             return runtimeContext[m.key] === m.value;
+                        case 'matchPropertyEmpty':
+                            return !runtimeContext[m.key];
+                        case 'matchPropertyNotEmpty':
+                            return !!runtimeContext[m.key];
                         case 'matchAlways':
                             return m.value !== false;
                         case 'matchNever':
