@@ -1,5 +1,5 @@
 import { marked } from "https://esm.sh/marked@12.0.1";
-import { DOMAIN_OBJECT_REGISTRY_SERVICE, CASE_SERVICE, YAML_SERVICE, SESSION_SERVICE, LIMES_SERVICE } from "../../../../shared-types.js";
+import { DOMAIN_OBJECT_REGISTRY_SERVICE, CASE_SERVICE, YAML_SERVICE, SESSION_SERVICE, LIMES_SERVICE, ATOMIC_COMPONENT_REGISTRY_SERVICE } from "../../../../shared-types.js";
 import { EVENT_HANDLER_INTERFACE_KEY, EVENT_TOPIC } from "https://esm.sh/@pandino/event-api@0.8.33";
 
 // --- OSGi-to-DOM Event Bridge (Dual-Bridge Pattern) ---
@@ -95,10 +95,12 @@ class UIFactory extends HTMLElement {
         this._spec = null;
         this._context = null;
         this._yamlService = null;
+        this._componentRegistry = null;
         this._rendered = false;
         this._id = "uif-" + Math.random().toString(36).substring(7);
         this._params = {};
         this._effects = []; // Track Alpine effects for cleanup
+        this._instanceId = null;
     }
 
     disconnectedCallback() {
@@ -118,7 +120,6 @@ class UIFactory extends HTMLElement {
             if (typeof cleanup === 'function') cleanup();
         });
         this._effects = [];
-        globalThis.__UI_FACTORY_REGISTRY.delete(this._id);
         if (this._guardInterval) clearInterval(this._guardInterval);
     }
 
@@ -126,6 +127,10 @@ class UIFactory extends HTMLElement {
     setBundleContext(ctx) {
         if (!ctx) return;
         this._context = ctx;
+        
+        const registryRef = ctx.getServiceReference(ATOMIC_COMPONENT_REGISTRY_SERVICE);
+        this._componentRegistry = registryRef ? ctx.getService(registryRef) : null;
+
         console.log(`UIFactory [${this._id}]: Bundle Context received. Setting up service trackers...`);
         
         // Track YAML Service reactively
@@ -201,7 +206,8 @@ class UIFactory extends HTMLElement {
         else setTimeout(() => this.render(), 200);
     }
 
-    render() {
+    render(newSpec = null) {
+        if (newSpec) this._spec = newSpec;
         let spec = this._spec;
         const script = this.querySelector('script[type="text/yaml"]');
         if (!spec && script) {
@@ -225,7 +231,31 @@ class UIFactory extends HTMLElement {
             return;
         }
 
-        if (this._rendered && this._spec === spec && this.querySelector('.ui-f-root')) return;
+        // --- 1. IDEMPOTENT RENDER (Reuse existing root if present) ---
+        if (this._rendered && this.container && this.querySelector('.ui-f-root')) {
+            console.log(`UIFactory [${this._id}]: Reactive structure update (newSpec=${!!newSpec})`);
+            
+            // Clear current structure
+            this.container.innerHTML = "";
+            
+            // Update state metadata to handle new steps if they changed
+            const ui = spec.ui || spec;
+            const newKeys = Object.keys(ui.steps || {});
+            if (this._state && JSON.stringify(this._state.stepKeys) !== JSON.stringify(newKeys)) {
+                this._state.stepKeys = newKeys;
+                this._state.initialStep = ui.initialStep || (newKeys.length > 0 ? newKeys[0] : null);
+            }
+
+            // Re-hydrate structure into the existing container
+            this.hydrateBody(this.container, ui);
+            
+            // If we have a new spec, ensure the state knows its values might have changed
+            if (this._state && newSpec) { 
+                // We keep the old values to avoid resetting the user's progress
+                // but we could merge defaults here if needed.
+            }
+            return;
+        }
 
         this._spec = spec;
         if (!this._state) {
@@ -236,7 +266,6 @@ class UIFactory extends HTMLElement {
         this.setAttribute('data-uif-id', this._id);
         
         // --- HYDRATION ENGINE START ---
-        // Build the root element first
         const root = document.createElement('div');
         root.className = 'ui-f-root';
         root.setAttribute('x-data', `globalThis.__UI_FACTORY_REGISTRY.get('${this._id}')`);
@@ -245,7 +274,6 @@ class UIFactory extends HTMLElement {
         body.id = 'uif-body';
         root.appendChild(body);
         
-        // Hydrate body BEFORE appending to DOM to ensure Alpine sees all children
         this.hydrateBody(body, spec.ui || spec);
 
         this.innerHTML = `
@@ -327,17 +355,20 @@ class UIFactory extends HTMLElement {
         let instanceStep = initialStep;
         let instanceHistory = [];
         let instance = null;
-        const instanceId = this._params?.instanceId;
+        this._instanceId = this._params?.instanceId;
+        const instanceId = this._instanceId;
 
         if (instanceId) {
             console.log(`UIFactory [${this._id}]: Found instanceId ${instanceId}, attempting hydration...`);
             const registry = this._getService(DOMAIN_OBJECT_REGISTRY_SERVICE);
             instance = registry?.getInstance(instanceId);
             if (instance) {
-                console.log(`UIFactory [${this._id}]: Hydrating from instance properties:`, instance.properties);
+                console.log(`UIFactory [${this._id}]: Hydration SUCCESS for ${instanceId}. Found properties:`, Object.keys(instance.properties || {}));
                 instanceData = instance.properties || {};
                 if (instance.currentStep) instanceStep = instance.currentStep;
                 if (instance.history) instanceHistory = instance.history || [];
+            } else {
+                console.warn(`UIFactory [${this._id}]: Hydration FAILED for ${instanceId}. Instance not found in registry.`);
             }
         }
 
@@ -352,7 +383,7 @@ class UIFactory extends HTMLElement {
             initialStep: initialStep,
             _registryReady: false,
             stepKeys: Object.keys(ui.steps || {}),
-            
+            instanceId: instanceId,
             init() {
                 console.log(`UIFactory [${this.instanceId}] connected to Alpine Data`);
                 
@@ -627,49 +658,32 @@ class UIFactory extends HTMLElement {
     /**
      * Explicitly persists the current state to the Domain Object registry/strategy.
      */
-    saveInstance(state = this._state, fields = null) {
-        if (!state || !this._context || this._isDisconnected && state === this._state) {
-            // If we are disconnected and no explicit state passed, we might be too late, 
-            // but let's try to use the last known state if available.
-            if (!state) return;
-        }
+    saveInstance(state = this._state) {
+        if (!state) return;
         
         const instanceId = this.getAttribute('instance-id') || this._params?.instanceId;
         if (!instanceId) return;
 
-        const spec = this._spec;
-        if (!spec) return;
+        const spec = this._spec || {};
+        const strategyId = spec.domainObject?.strategyId || (spec.ui || spec).domainObject?.strategyId || "LOCAL_STRATEGY";
 
-        const ui = spec.ui || spec;
-        const strategyId = spec.domainObject?.strategyId || (spec.ui || spec).domainObject?.strategyId || spec.strategyId;
-        if (!strategyId) return;
+        // --- Improved Capture Engine: Grab the entire property bag but exclude synced global state ---
+        const BLACKLIST = [
+            'activeLicense', 'activeLicenseStatus', 'fellowsData', 
+            'companies', '_companiesFingerprint', 'persons', '_personsFingerprint', 
+            'currentUser', 'currentMembers', 'currentFellows', 'parsedLicenses'
+        ];
 
-        // Collect fields if not provided (needed for explicit calls from runAction)
-        if (!fields) {
-            fields = [];
-            const collectFields = (parts) => {
-                Object.values(parts || {}).forEach(p => {
-                    if (p.id) fields.push(p.id);
-                    const params = p.params || {};
-                    if (params.linkToProperty) {
-                        fields.push(params.linkToProperty);
-                        fields.push(params.linkToProperty + 'Status');
-                    }
-                    if (params.statusProperty) fields.push(params.statusProperty);
-                    if (p.parts) collectFields(p.parts);
-                });
-            };
-            Object.values(ui.steps || {}).forEach(step => collectFields(step.parts || {}));
-        }
-
+        const rawValues = globalThis.Alpine?.raw ? globalThis.Alpine.raw(state.values) : { ...state.values };
         const capturedValues = {};
-        fields.forEach(f => {
-            if (state.values[f] !== undefined) {
-                capturedValues[f] = state.values[f];
+        
+        Object.keys(rawValues).forEach(key => {
+            if (!BLACKLIST.includes(key)) {
+                capturedValues[key] = rawValues[key];
             }
         });
 
-        // Safety: Avoid overwriting with empty properties during race conditions
+        // Safety: Avoid overwriting with empty properties during initial boot
         if (Object.keys(capturedValues).length === 0 && !state.currentStep) return;
 
         const stratRefs = this._context.getServiceReferences("prototyper.domain.strategy") || [];
@@ -683,11 +697,11 @@ class UIFactory extends HTMLElement {
         }
 
         if (strategySvc?.updateInstance) {
-            console.log(`UIFactory [${this._id}]: Persisting instance ${instanceId} to strategy ${strategyId}`, capturedValues);
+            console.log(`UIFactory [${this._id}]: Persisting instance ${instanceId} (${Object.keys(capturedValues).length} properties)`, capturedValues);
             strategySvc.updateInstance(instanceId, (spec.id || spec.ui?.id), {
                 currentStep: state.currentStep,
                 properties: capturedValues,
-                history: globalThis.Alpine.raw(state.history || [])
+                history: globalThis.Alpine?.raw ? globalThis.Alpine.raw(state.history || []) : [...(state.history || [])]
             });
         }
     }
@@ -759,10 +773,25 @@ class UIFactory extends HTMLElement {
 
             // Handle synthetic actions
             if (action.call === 'step.navigate') {
-                if (finalParams.target) {
-                    console.log(`UIFactory: Navigating to step ${finalParams.target}`);
-                    scope.currentStep = finalParams.target;
+                const target = finalParams.target || finalParams.step;
+                if (target) {
+                    console.log(`UIFactory: Navigating to step ${target}`);
+                    scope.currentStep = target;
                 }
+                scope.loading = false;
+                return;
+            }
+
+            if (action.call === 'default') {
+                console.log(`UIFactory: Triggering default action: ${finalParams.action}`, finalParams);
+                globalThis.dispatchEvent(new CustomEvent('atomic-default-action', { 
+                    detail: { 
+                        action: finalParams.action, 
+                        params: finalParams,
+                        spec: this._spec,
+                        values: scope.values
+                    } 
+                }));
                 scope.loading = false;
                 return;
             }
@@ -897,17 +926,7 @@ class UIFactory extends HTMLElement {
 
     renderPart(_id, p) {
         const kind = p.kind || p.type;
-        const registry = {
-            'command-button': 'atomic-button',
-            'action': 'atomic-button',
-            'text-input': 'atomic-input',
-            'input': 'atomic-input',
-            'select-input': 'atomic-select',
-            'radio-input': 'atomic-radio',
-            'checkbox-input': 'atomic-checkbox'
-        };
-
-        const tagName = registry[kind];
+        const tagName = this._componentRegistry ? this._componentRegistry.get(kind) : null;
         if (tagName) {
             const el = document.createElement(tagName);
             if (el.hydrate) {

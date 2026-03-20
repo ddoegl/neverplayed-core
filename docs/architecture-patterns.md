@@ -630,3 +630,51 @@ class MyComponent extends HTMLElement {
 - **Data Integrity**: Prevents stale sessions from winning race conditions.
 - **Memory Efficiency**: Explicitly destroys reactive computations.
 - **Predictability**: Ensures the "Last Save Wins" only applies to the active UI.
+
+---
+
+## 17. Non-Destructive Reactive Rendering (The Focus Guard)
+
+When building Custom Elements that use `Alpine.effect` or other reactive triggers to re-render, we must avoid destructive `innerHTML` updates that cause user focus loss in input fields.
+
+### The Problem
+
+A standard `render()` method that sets `this.innerHTML = template` every time a value changes will destroy all active DOM nodes. If the user is currently typing in an `<sl-input>` inside that template, the element is removed and recreated, causing the cursor to vanish.
+
+### The Solution: Idempotent Shell + Targeted Updates
+
+1. **Idempotent Shell**: Use an `_initialized` flag to ensure the main layout is only set once.
+2. **Targeted Sub-updates**: In the `render()` loop, use `this.querySelector()` to update specific text nodes, attributes, or sub-containers.
+3. **Contextual Regeneration**: Only blow away sub-containers (like a property panel) if the *context* (e.g., the selected ID) actually changed.
+
+**Example Pattern**:
+
+```javascript
+render() {
+    // 1. Initialize Shell Once
+    if (!this._initialized) {
+        this.innerHTML = `
+            <div id='container'>
+                <div id='preview'></div>
+                <div id='editor'></div>
+            </div>
+        `;
+        this._initialized = true;
+    }
+
+    // 2. Targeted Updates
+    this.querySelector('#preview').innerText = this.state.previewText;
+    
+    // 3. Conditional Regeneration (Focus Preservation)
+    if (this._activeId !== this.state.selectedId) {
+        this._activeId = this.state.selectedId;
+        this.querySelector('#editor').innerHTML = `<input value='${this.state.val}'>`;
+    }
+}
+```
+
+**Where it is used:**
+
+- `ui-factory.js` (Atomic component updates)
+- `atomic-visual-editor.js` (Tri-view synchronization)
+- `atomic-input.js` / `atomic-select.js` (Direct property updates)

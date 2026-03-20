@@ -1,9 +1,20 @@
-//import { ATOMIC_ORCHESTRATOR_SERVICE } from "../../../shared-types.js";
+import { ATOMIC_COMPONENT_REGISTRY_SERVICE } from "../../../shared-types.js";
+import "./components/atomic-visual-editor.js";
 
 export default class Activator {
-
-    start(_context) {
-        console.log("Visual DO Editor: Bundle started (declarative mode)");
+    start(context) {
+        console.log("Visual DO Editor: Bundle started.");
+        
+        // Register the specialized builder component with the UIFactory via the Registry Service
+        const registryRef = context.getServiceReference(ATOMIC_COMPONENT_REGISTRY_SERVICE);
+        const registry = registryRef ? context.getService(registryRef) : null;
+        
+        if (registry) {
+            registry.register('visual-editor', 'atomic-visual-editor');
+            console.log("Visual DO Editor: Registered 'visual-editor' component strategy via Service.");
+        } else {
+            console.error("Visual DO Editor: Component Registry Service not found!");
+        }
     }
     stop() {
         console.log("Visual DO Editor: Bundle stopped");

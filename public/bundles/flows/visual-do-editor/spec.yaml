@@ -82,21 +82,8 @@ ui:
     ui_builder:
       title: "2. UI & Flow Builder"
       parts:
-        builder_info:
-          type: text
-          value: |
-            This is where the magic happens. You'll soon see the **Tri-View** here:
-            - **Visual Pane** for dragging components.
-            - **Live Preview** to see it in action.
-            - **Code View** for raw YAML editing.
-        placeholder_card:
-          type: card
-          variant: warning
-          label: "Work in Progress"
-          parts:
-            status:
-              type: text
-              value: "The visual building components are currently being scaffolded."
+        builder:
+          kind: visual-editor
         nav_row:
           type: row
           parts:

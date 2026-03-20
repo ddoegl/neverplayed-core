@@ -43,6 +43,7 @@ export const BUNDLE_TYPE_CLIENT = "client-flow";
 export const BUNDLE_TYPE_ENVIRONMENT = "environment-flow";
 export const BUNDLE_TYPE_ATOMIC = "atomic-flow";
 export const ATOMIC_SPEC_INGESTION_SERVICE = "prototyper.atomic.ingestion";
+export const ATOMIC_COMPONENT_REGISTRY_SERVICE = "prototyper.atomic.component.registry";
 export const ATOMIC_MARKER_HEADER = "X-Atomic-Bundle";
 
 export const ATOMIC_BUNDLE_SERVICE = "prototyper.atomic.bundle";
