@@ -21,6 +21,19 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         this._initialized = false;
         this._activeStepId = null;
         this._activePartId = null;
+
+        // Sync with Preview navigation
+        globalThis.addEventListener('atomic-step-changed', (e) => {
+            if (this._previewEl && (e.detail.uifId === this._previewEl.dataset?.uifId || e.detail.instanceId === this._previewEl.getAttribute('instance-id'))) {
+                const newStep = e.detail.stepId;
+                if (newStep && newStep !== this._activeStepId) {
+                    console.log(`AtomicVisualEditor: Syncing step from Preview -> ${newStep}`);
+                    this._activeStepId = newStep;
+                    this.setupVisualEditor();
+                    this.editStep(newStep);
+                }
+            }
+        });
     }
 
     connectedCallback() {
@@ -406,19 +419,172 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 <sl-input label="Option Source" value="${part.optionSource || ''}" id="part-source-input" size="small" help-text="e.g. \${this.items}"></sl-input>
             `;
         } else if (part.kind === 'command-button') {
+            const standardActions = [
+                { id: 'NEXT_STEP', label: '🚶 Next Step', group: 'Navigation' },
+                { id: 'PREV_STEP', label: '🔙 Previous Step', group: 'Navigation' },
+                { id: 'step.navigate', label: '🚀 Jump to Step...', group: 'Navigation' },
+                { id: 'default', label: '⚡ Trigger Default Action', group: 'Logic' },
+                { id: 'synthetic.case.create', label: '📁 Create Case', group: 'Side Effects' },
+                { id: 'synthetic.client.summary-alert', label: '🔔 Show Alert', group: 'Side Effects' },
+                { id: 'apiService', label: '🧩 Call API Service', group: 'Side Effects' }
+            ];
+
+            const currentCall = part.action?.call || '';
+            const isCustom = currentCall && !standardActions.some(a => a.id === currentCall);
+
             html += `
                 <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
-                <sl-input label="Action Call" value="${part.action?.call || ''}" id="part-call-input" size="small"></sl-input>
+                
+                <sl-select label="Action Call" value="${isCustom ? 'CUSTOM' : currentCall}" id="part-call-select" size="small" help-text="Select a standard action or enter custom.">
+                    <sl-menu-label>Navigation</sl-menu-label>
+                    <sl-option value="NEXT_STEP">🚶 Next Step</sl-option>
+                    <sl-option value="PREV_STEP">🔙 Previous Step</sl-option>
+                    <sl-option value="step.navigate">🚀 Jump to Step...</sl-option>
+                    
+                    <sl-menu-label>Logic</sl-menu-label>
+                    <sl-option value="default">⚡ Trigger Default Action</sl-option>
+                    <sl-option value="synthetic.case.create">📁 Create Case</sl-option>
+                    <sl-option value="synthetic.client.summary-alert">🔔 Show Alert</sl-option>
+                    <sl-option value="apiService">🧩 Call API Service</sl-option>
+
+                    <sl-divider></sl-divider>
+                    <sl-option value="CUSTOM">🛠️ Custom Action ID...</sl-option>
+                </sl-select>
+
+                <div id="custom-action-container" class="${isCustom ? '' : 'hidden'} mt-1">
+                    <sl-input placeholder="Enter Action ID (e.g. myService.do)" value="${isCustom ? currentCall : ''}" id="part-call-input-custom" size="small"></sl-input>
+                </div>
+
                 <sl-select label="Variant" value="${part.variant || 'default'}" id="part-variant-input" size="small">
                     <sl-option value="default">Default</sl-option>
                     <sl-option value="primary">Primary</sl-option>
                     <sl-option value="success">Success</sl-option>
                     <sl-option value="danger">Danger</sl-option>
                 </sl-select>
+                <div class="mt-2 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] font-bold uppercase text-gray-400">Parameters</label>
+                        <sl-button size="extra-small" variant="neutral" id="add-param-btn" outline circle><i class="fas fa-plus"></i></sl-button>
+                    </div>
+                    <div id="params-list" class="space-y-2"></div>
+                </div>
             `;
         }
 
         partFields.innerHTML = html;
+
+        // Render Parameters if it's a command button
+        if (part.kind === 'command-button') {
+            const paramsList = partFields.querySelector('#params-list');
+            const addParamBtn = partFields.querySelector('#add-param-btn');
+            const params = part.action?.params || {};
+            if (!part.action) part.action = { call: '' };
+            if (!part.action.params) part.action.params = params;
+
+            const renderParams = () => {
+                const sids = Object.keys(this._draftSpec.ui?.steps || {});
+
+                paramsList.innerHTML = Object.entries(part.action.params).map(([pk, pv]) => {
+                    const isNavTarget = (pk === 'target' || pk === 'step') && part.action.call === 'step.navigate';
+                    
+                    let valInput = `<sl-input value="${pv}" class="param-val flex-1" size="small" placeholder="Value"></sl-input>`;
+                    if (isNavTarget) {
+                        valInput = `
+                            <sl-select value="${pv}" class="param-val flex-1" size="small" placeholder="Select Step">
+                                ${sids.map(sid => `<sl-option value="${sid}">${sid}</sl-option>`).join('')}
+                            </sl-select>
+                        `;
+                    }
+
+                    return `
+                        <div class="flex gap-1 items-center bg-gray-50 p-1 rounded-lg border border-gray-100">
+                            <sl-input value="${pk}" class="param-key w-24" size="small" placeholder="Key" data-old-key="${pk}"></sl-input>
+                            ${valInput}
+                            <sl-button size="extra-small" variant="danger" class="del-param-btn" circle outline data-key="${pk}"><i class="fas fa-times text-[8px]"></i></sl-button>
+                        </div>
+                    `;
+                }).join('');
+
+                paramsList.querySelectorAll('.param-key').forEach(el => {
+                    el.addEventListener('sl-change', (e) => {
+                        const oldKey = el.getAttribute('data-old-key');
+                        const newKey = e.target.value;
+                        if (newKey && newKey !== oldKey) {
+                            part.action.params[newKey] = part.action.params[oldKey];
+                            delete part.action.params[oldKey];
+                            this.saveToState();
+                            this.setupVisualEditor();
+                            renderParams();
+                        }
+                    });
+                });
+
+                paramsList.querySelectorAll('.param-val').forEach(el => {
+                    const update = (e) => {
+                        const key = el.closest('div').querySelector('.param-key').value;
+                        part.action.params[key] = e.target.value;
+                        this.saveToState();
+                        this.updatePreview();
+                        this.setupVisualEditor();
+                    };
+                    el.addEventListener('sl-input', update);
+                    el.addEventListener('sl-change', update);
+                });
+
+                paramsList.querySelectorAll('.del-param-btn').forEach(el => {
+                    el.onclick = () => {
+                        delete part.action.params[el.getAttribute('data-key')];
+                        this.saveToState();
+                        this.updatePreview();
+                        this.setupVisualEditor();
+                        renderParams();
+                    };
+                });
+            };
+
+            addParamBtn.onclick = () => {
+                const newKey = `param_${Object.keys(part.action.params).length + 1}`;
+                part.action.params[newKey] = "";
+                this.saveToState();
+                renderParams();
+            };
+
+            renderParams();
+        }
+
+        // Specialized binding for Action Call Discovery
+        if (part.kind === 'command-button') {
+            const callSelect = partFields.querySelector('#part-call-select');
+            const customContainer = partFields.querySelector('#custom-action-container');
+            const customInput = partFields.querySelector('#part-call-input-custom');
+
+            if (callSelect) {
+                callSelect.addEventListener('sl-change', (e) => {
+                    const val = e.target.value;
+                    if (val === 'CUSTOM') {
+                        customContainer.classList.remove('hidden');
+                        part.action.call = customInput.value;
+                    } else {
+                        customContainer.classList.add('hidden');
+                        part.action.call = val;
+                    }
+                    this.saveToState();
+                    this.updatePreview();
+                    this.setupVisualEditor();
+                    // Re-render to update parameter picker (e.g. if we switched to step.navigate)
+                    this.renderPartProperties(sid, step);
+                });
+            }
+
+            if (customInput) {
+                customInput.addEventListener('sl-input', (e) => {
+                    part.action.call = e.target.value;
+                    this.saveToState();
+                    this.updatePreview();
+                    this.setupVisualEditor();
+                });
+            }
+        }
 
         // Bind events
         const bind = (selector, key, path = null) => {

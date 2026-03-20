@@ -42,18 +42,27 @@ class AtomicSelect extends AtomicComponentBase {
         if (this._spec.optionSource) {
             const resolved = this.resolve(this._spec.optionSource);
             if (Array.isArray(resolved)) options = resolved;
+            else if (resolved && typeof resolved === 'object' && !Array.isArray(resolved)) {
+                // If it's an object (like a map), convert to array of {id, label}
+                options = Object.entries(resolved).map(([k, v]) => ({ id: k, label: v }));
+            }
         }
 
         const newOptionsHtml = options.map(opt => {
-            const optValue = opt.id || opt.value || opt;
-            const optLabel = this.interp(opt.displayName || opt.label || opt.name || optValue);
+            const optValue = String(opt?.id ?? opt?.value ?? opt ?? "");
+            const optLabel = this.interp(String(opt?.displayName ?? opt?.label ?? opt?.name ?? optValue));
             return `<sl-option value="${optValue}">${optLabel}</sl-option>`;
         }).join('');
 
         if (select.innerHTML !== newOptionsHtml) {
+            // Shoelace-safe update: clear then append or just update innerHTML
+            // The crash "reading length of null" often happens if SlSelect 
+            // tries to find a selected option among nulls.
             select.innerHTML = newOptionsHtml;
-            // Restore selection after innerHTML change if needed
-            select.value = value;
+            // Restore selection after innerHTML change
+            select.value = String(value ?? "");
+        } else if (select.value !== String(value ?? "")) {
+            select.value = String(value ?? "");
         }
     }
 }

@@ -191,12 +191,14 @@ class UIFactory extends HTMLElement {
         // Listen for standard Atomic Component events
         this.addEventListener('atomic-action', (e) => {
             console.log(`UIFactory [${this._id}]: atomic-action received`, e.detail.action);
+            e.stopPropagation(); // Prevent bubbling to parent factories (e.g. Editor)
             this.runAction(e.detail.action, this._state);
         });
 
         this.addEventListener('atomic-change', (e) => {
             const { id, value } = e.detail;
             console.log(`UIFactory [${this._id}]: atomic-change received`, id, value);
+            e.stopPropagation(); // Prevent bubbling to parent factories (e.g. Editor)
             this._state.values[id] = value;
             this._state.data = null; // Clear results on input change
         });
@@ -328,10 +330,17 @@ class UIFactory extends HTMLElement {
             
             // Fallback banner
             const fallback = document.createElement('div');
-            fallback.setAttribute('x-show', "!currentStep || !stepKeys.includes(currentStep)");
+            // Make the banner logic case-insensitive too for robustness
+            fallback.setAttribute('x-show', "!currentStep || !stepKeys.some(k => k.toLowerCase() === currentStep.toLowerCase())");
             fallback.className = "p-6 bg-amber-50 rounded-3xl border border-amber-100 text-amber-900 text-sm italic";
             fallback.setAttribute('x-cloak', '');
-            fallback.innerHTML = `State sync requested... <button @click="currentStep = initialStep" class="font-bold underline ml-1">Restart</button>`;
+            
+            // Log for diagnostics
+            fallback.setAttribute('x-effect', `if (currentStep && !stepKeys.includes(currentStep)) { 
+                console.warn('UIFactory [' + instanceId + ']: Navigation Mismatch! currentStep=' + currentStep + ' is NOT in stepKeys:', stepKeys);
+            }`);
+
+            fallback.innerHTML = `State sync requested for \${currentStep}... <button @click="currentStep = initialStep" class="font-bold underline ml-1">Restart</button>`;
             container.appendChild(fallback);
         } else {
             Object.entries(parts).forEach(([pid, p]) => {
@@ -393,6 +402,15 @@ class UIFactory extends HTMLElement {
             instanceId: instanceId,
             resolve: (path) => this.resolveValue(path, this._state),
             init() {
+                // IMPORTANT: 'this' inside Alpine init() is the Proxy. 
+                // We bind it back to the factory to ensure all subsequent 
+                // updates (from render or runAction) are reactive.
+                const factory = document.querySelector(`ui-factory[data-uif-id="${this.uifId}"]`);
+                if (factory) {
+                    factory._state = this;
+                    this._factory = factory;
+                }
+
                 console.log(`UIFactory [${this.instanceId}] connected to Alpine Data`);
                 
                 // Track Case Updates reactively via DOM Bridge (from OSGi)
@@ -409,7 +427,6 @@ class UIFactory extends HTMLElement {
                 };
                 
                 // Store the handler on the factory element for cleanup
-                const factory = document.querySelector(`ui-factory[data-uif-id="${this.uifId}"]`);
                 if (factory) {
                     factory._caseUpdateHandler = caseUpdateHandler;
                 }
@@ -436,6 +453,19 @@ class UIFactory extends HTMLElement {
                 
                 // Initial Case Status Sync
                 this.resolveCaseStatuses();
+
+                // Sync currentStep back to Editor if it changes internally
+                this.$watch('currentStep', (val) => {
+                    if (val) {
+                        globalThis.dispatchEvent(new CustomEvent('atomic-step-changed', { 
+                            detail: { 
+                                stepId: val, 
+                                instanceId: this.instanceId,
+                                uifId: this.uifId
+                            } 
+                        }));
+                    }
+                });
             },
 
             async syncCaseStatus(caseId) {
@@ -784,7 +814,10 @@ class UIFactory extends HTMLElement {
                 const target = finalParams.target || finalParams.step;
                 if (target) {
                     console.log(`UIFactory: Navigating to step ${target}`);
-                    scope.currentStep = target;
+                    // Case-insensitive lookup for robustness
+                    const exact = scope.stepKeys.find(k => k === target);
+                    const fuzzy = scope.stepKeys.find(k => k.toLowerCase() === target.toLowerCase());
+                    scope.currentStep = exact || fuzzy || target;
                 }
                 scope.loading = false;
                 return;
