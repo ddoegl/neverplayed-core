@@ -177,22 +177,44 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         list.innerHTML = "";
         yaml.textContent = this._yamlService ? this._yamlService.dump(this._draftSpec) : JSON.stringify(this._draftSpec, null, 2);
 
-        Object.entries(this._draftSpec.ui?.steps || {}).forEach(([sid, step]) => {
+        const steps = this._draftSpec.ui?.steps || {};
+        const sids = Object.keys(steps);
+
+        sids.forEach((sid, idx) => {
+            const step = steps[sid];
             const btn = document.createElement('div');
             btn.className = `p-3 rounded-xl border cursor-pointer transition-all flex justify-between items-center ${this._activeStepId === sid ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500/20' : 'bg-gray-50 hover:bg-white border-gray-100'}`;
             btn.innerHTML = `
-                <div>
+                <div class="flex-1">
                     <div class="text-[10px] font-mono text-gray-400 uppercase tracking-tighter">${sid}</div>
                     <div class="text-xs font-bold ${this._activeStepId === sid ? 'text-indigo-700' : 'text-gray-600'}">${step.title || 'Untitled'}</div>
                 </div>
-                <i class="fas fa-chevron-right text-[10px] ${this._activeStepId === sid ? 'text-indigo-400' : 'text-gray-300'}"></i>
+                <div class="flex items-center gap-1">
+                    <div class="flex flex-col gap-0.5 mr-2">
+                        <sl-button size="extra-small" variant="neutral" class="reorder-up" circle ${idx === 0 ? 'disabled' : ''}><i class="fas fa-chevron-up text-[8px]"></i></sl-button>
+                        <sl-button size="extra-small" variant="neutral" class="reorder-down" circle ${idx === sids.length - 1 ? 'disabled' : ''}><i class="fas fa-chevron-down text-[8px]"></i></sl-button>
+                    </div>
+                    <i class="fas fa-chevron-right text-[10px] ${this._activeStepId === sid ? 'text-indigo-400' : 'text-gray-300'}"></i>
+                </div>
             `;
-            btn.onclick = () => {
+            
+            btn.onclick = (e) => {
+                if (e.target.closest('sl-button')) return;
                 this._activeStepId = sid;
-                this.setupVisualEditor(); // Refresh selection
+                this.setupVisualEditor();
                 this.editStep(sid);
-                this.updatePreview(); // Sync preview to this step
+                this.updatePreview();
             };
+
+            btn.querySelector('.reorder-up').onclick = (e) => {
+                e.stopPropagation();
+                this.moveStep(sid, -1);
+            };
+            btn.querySelector('.reorder-down').onclick = (e) => {
+                e.stopPropagation();
+                this.moveStep(sid, 1);
+            };
+
             list.appendChild(btn);
         });
 
@@ -209,6 +231,27 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 this.updatePreview();
             };
         }
+    }
+
+    moveStep(sid, offset) {
+        this._draftSpec.ui.steps = this.reorderKeys(this._draftSpec.ui.steps, sid, offset);
+        this.saveToState();
+        this.setupVisualEditor();
+        this.updatePreview();
+    }
+
+    reorderKeys(obj, key, offset) {
+        const keys = Object.keys(obj);
+        const index = keys.indexOf(key);
+        const newIdx = index + offset;
+        if (newIdx < 0 || newIdx >= keys.length) return obj;
+        
+        keys.splice(index, 1);
+        keys.splice(newIdx, 0, key);
+        
+        const newObj = {};
+        keys.forEach(k => { newObj[k] = obj[k]; });
+        return newObj;
     }
 
     editStep(sid) {
@@ -284,23 +327,50 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         const partsList = this.querySelector('#parts-list');
         if (!partsList) return;
 
-        partsList.innerHTML = Object.entries(step.parts || {}).map(([pid, part]) => `
-            <div class="flex justify-between items-center p-2 rounded-lg text-[10px] font-mono border cursor-pointer transition-all ${this._activePartId === pid ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold' : 'bg-gray-50 border-gray-100 text-gray-400'}"
-                 data-part-id="${pid}">
-                <div class="flex items-center">
-                    <i class="fas ${part.type ? 'fa-square' : 'fa-puzzle-piece'} mr-2 opacity-50"></i>
-                    <span>${pid}</span>
+        const pids = Object.keys(step.parts || {});
+
+        partsList.innerHTML = pids.map((pid, idx) => {
+            const part = step.parts[pid];
+            return `
+                <div class="flex justify-between items-center p-2 rounded-lg text-[10px] font-mono border cursor-pointer transition-all ${this._activePartId === pid ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold' : 'bg-gray-50 border-gray-100 text-gray-400'}"
+                     data-part-id="${pid}">
+                    <div class="flex items-center">
+                        <i class="fas ${part.type ? 'fa-square' : 'fa-puzzle-piece'} mr-2 opacity-50"></i>
+                        <span>${pid}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <sl-button size="extra-small" variant="neutral" class="part-up" circle outline ${idx === 0 ? 'disabled' : ''}><i class="fas fa-chevron-up text-[7px]"></i></sl-button>
+                        <sl-button size="extra-small" variant="neutral" class="part-down" circle outline ${idx === pids.length - 1 ? 'disabled' : ''}><i class="fas fa-chevron-down text-[7px]"></i></sl-button>
+                    </div>
                 </div>
-                <i class="fas fa-chevron-right text-[8px] opacity-30"></i>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         partsList.querySelectorAll('[data-part-id]').forEach(el => {
-            el.onclick = () => {
-                this._activePartId = el.getAttribute('data-part-id');
+            const pid = el.getAttribute('data-part-id');
+            el.onclick = (e) => {
+                if (e.target.closest('sl-button')) return;
+                this._activePartId = pid;
                 this.editStep(sid);
             };
+
+            el.querySelector('.part-up').onclick = (e) => {
+                e.stopPropagation();
+                this.movePart(sid, pid, -1);
+            };
+            el.querySelector('.part-down').onclick = (e) => {
+                e.stopPropagation();
+                this.movePart(sid, pid, 1);
+            };
         });
+    }
+
+    movePart(sid, pid, offset) {
+        const step = this._draftSpec.ui.steps[sid];
+        step.parts = this.reorderKeys(step.parts, pid, offset);
+        this.saveToState();
+        this.updatePreview();
+        this.editStep(sid);
     }
 
     renderPartProperties(sid, step) {
