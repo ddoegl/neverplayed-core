@@ -21,7 +21,7 @@ class AtomicButton extends AtomicComponentBase {
 
         this.querySelector('sl-button').addEventListener('click', (e) => {
             e.stopPropagation();
-            this.triggerAction(this._spec.call || "default");
+            this.triggerAction();
         });
     }
 }

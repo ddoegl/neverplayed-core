@@ -24,8 +24,14 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     >
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace-autoloader.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace-autoloader.js"
+    ></script>
 
     <script
       src="bundles/system-services/backoffice-licenses/lib/license-3d.js"
@@ -38,9 +44,15 @@
         animation: sl-pulse 2s infinite;
       }
       @keyframes sl-pulse {
-        0% { box-shadow: 0 0 0 0 rgba(var(--sl-color-primary-600), 0.4); }
-        70% { box-shadow: 0 0 0 10px rgba(var(--sl-color-primary-600), 0); }
-        100% { box-shadow: 0 0 0 0 rgba(var(--sl-color-primary-600), 0); }
+        0% {
+          box-shadow: 0 0 0 0 rgba(var(--sl-color-primary-600), 0.4);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(var(--sl-color-primary-600), 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(var(--sl-color-primary-600), 0);
+        }
       }
     </style>
   </head>
@@ -549,15 +561,18 @@
 
         // Check for Superuser (dd) promotion based on the server-side authorized flag
         if (authenticatedUser && authenticatedUser.isSuperuser) {
-          console.log("Shell: User authorized for superuser promotion. Mapping to 'dd' for backoffice-web context.");
-          sessionService.scopedUsers['backoffice-web'] = {
-            id: 'dd',
-            firstname: 'Daniel Daniela',
-            lastname: '(Admin)',
-            capabilities: ['superuser', 'admin']
+          console.log(
+            "Shell: User authorized for superuser promotion. Mapping to 'dd' for backoffice-web context.",
+          );
+          sessionService.scopedUsers["backoffice-web"] = {
+            id: "dd",
+            firstname: "Daniel Daniela",
+            lastname: "(Admin)",
+            capabilities: ["superuser", "admin"],
           };
           // Also map to global if in Backoffice environment to ensure session works correctly
-          sessionService.scopedUsers['global'] = sessionService.scopedUsers['backoffice-web'];
+          sessionService.scopedUsers["global"] =
+            sessionService.scopedUsers["backoffice-web"];
         }
 
         // Ensure environment is set if missing in stored state
@@ -736,11 +751,11 @@
                   };
                   const idx = this.flows.findIndex((f) => f.id === id);
                   if (idx !== -1) {
-                      const newFlows = [...this.flows];
-                      newFlows[idx] = flowEntry;
-                      this.flows = newFlows;
+                    const newFlows = [...this.flows];
+                    newFlows[idx] = flowEntry;
+                    this.flows = newFlows;
                   } else {
-                      this.flows = [...this.flows, flowEntry];
+                    this.flows = [...this.flows, flowEntry];
                   }
 
                   // CRITICAL: Check if we are waiting for this flow
@@ -1120,6 +1135,7 @@
           "./bundles/flows/user-home-business/manifest.json",
           "./bundles/flows/user-home-retail/manifest.json",
           "./bundles/flows/reactive-order-demo/manifest.json",
+          "./bundles/flows/atomic-showcase/manifest.json",
           "./bundles/system-services/email-data/manifest.json",
           "./bundles/user-services/email-provider/manifest.json",
           "./bundles/user-clients/email-client/manifest.json",

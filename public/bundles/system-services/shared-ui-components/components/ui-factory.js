@@ -758,6 +758,15 @@ class UIFactory extends HTMLElement {
             doInterp(finalParams);
 
             // Handle synthetic actions
+            if (action.call === 'step.navigate') {
+                if (finalParams.target) {
+                    console.log(`UIFactory: Navigating to step ${finalParams.target}`);
+                    scope.currentStep = finalParams.target;
+                }
+                scope.loading = false;
+                return;
+            }
+
             if (action.call === 'synthetic.client.summary-alert') {
                 alert(finalParams.message || "Action Completed!");
                 scope.loading = false;
@@ -893,7 +902,9 @@ class UIFactory extends HTMLElement {
             'action': 'atomic-button',
             'text-input': 'atomic-input',
             'input': 'atomic-input',
-            'select-input': 'atomic-select'
+            'select-input': 'atomic-select',
+            'radio-input': 'atomic-radio',
+            'checkbox-input': 'atomic-checkbox'
         };
 
         const tagName = registry[kind];
@@ -901,7 +912,7 @@ class UIFactory extends HTMLElement {
             const el = document.createElement(tagName);
             if (el.hydrate) {
                 el.hydrate(
-                    p, 
+                    { ...p, id: _id }, 
                     this._context, 
                     (s) => this.interpolate(s, this._state),
                     (path) => this.resolveValue(path, this._state)
@@ -917,36 +928,59 @@ class UIFactory extends HTMLElement {
             return el;
         }
 
-        // Logic for legacy types or structural elements
+        // Logic for specialized structural elements
         const container = document.createElement('div');
         container.className = "mb-4";
 
+        if (p.type === 'row') {
+            container.className += " flex space-x-3";
+        } else if (p.type === 'card') {
+            const variant = p.variant || 'plain';
+            const styles = {
+                plain: "bg-white border-gray-200 shadow-sm",
+                info: "bg-blue-50 border-blue-200 text-blue-800 shadow-blue-100",
+                error: "bg-red-50 border-red-200 text-red-800 shadow-red-100",
+                warning: "bg-amber-50 border-amber-200 text-amber-800 shadow-amber-100"
+            };
+            container.className = `p-6 rounded-3xl border-2 border-solid mb-6 block transition-all ${styles[variant] || styles.plain}`;
+            
+            if (p.label) {
+                const h4 = document.createElement('h4');
+                h4.className = "text-xs uppercase font-black tracking-widest mb-4 opacity-50";
+                h4.innerText = this.interpolate(p.label, this._state);
+                container.appendChild(h4);
+            }
+        } else if (p.type === 'result') {
+            container.setAttribute('x-show', 'data');
+            container.setAttribute('x-transition', '');
+            container.className = "mb-4 p-6 bg-gray-900 rounded-3xl border border-gray-800 shadow-2xl overflow-auto max-h-80";
+            container.innerHTML = `<pre x-text="JSON.stringify(data, null, 2)" class="text-[10px] text-gray-400 font-mono leading-relaxed"></pre>`;
+            return container; 
+        }
+
+        // Render children if they exist
         if (p.parts) {
-            if (p.type === 'row') container.className += " flex space-x-3";
             Object.entries(p.parts).forEach(([sid, sp]) => {
                 const child = this.renderPart(sid, sp);
                 if (child) container.appendChild(child);
             });
         } else if (p.type === 'text' || typeof p.value === 'string') {
-            container.className = "mb-5 text-gray-500 leading-relaxed font-semibold prose prose-sm max-w-none prose-p:my-1 prose-a:text-blue-600 prose-strong:text-gray-700";
+            // Render text as a leaf node
+            const inner = document.createElement('div');
+            inner.className = "text-gray-500 leading-relaxed font-semibold prose prose-sm max-w-none prose-p:my-1 prose-a:text-blue-600 prose-strong:text-gray-700";
             let html = "";
             try {
                 html = marked.parse(p.value || "");
             } catch (_e) {
                 html = p.value || "";
             }
-            // Support deep paths reactively - IMPORTANT: use values.path
-            container.innerHTML = html.replace(/(?:\${(this\.)?(values\.)?(.+?)}|\{\{\s*(?:this\.)?(?:values\.)?(.+?)\s*\}\})/g, (_, _p1, _p2, k1, k2) => {
-                const key = k1 || k2;
-                return `<span x-text="typeof values.${key} === 'object' ? JSON.stringify(values.${key}, null, 2) : (values.${key} || '')" class="text-blue-600 font-bold whitespace-pre-wrap font-mono"></span>`;
+            inner.innerHTML = html.replace(/(?:\${(this\.)?(values\.)?(.+?)}|\{\{\s*(?:this\.)?(?:values\.)?(.+?)\s*\}\})/g, (_, _p1, _p2, k1, k2) => {
+                const expr = k1 || k2;
+                // Reconstruct the expression with proper prefixing
+                const finalExpr = (_p1 || "") + (_p2 || (expr.startsWith('values') ? "" : "values.")) + expr;
+                return `<span x-text="((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))(${finalExpr})" class="text-blue-600 font-bold whitespace-pre-wrap font-mono"></span>`;
             });
-        } else if (p.type === 'result') {
-            container.setAttribute('x-show', 'data');
-            container.setAttribute('x-transition', '');
-            container.className = "mb-4 p-6 bg-gray-900 rounded-3xl border border-gray-800 shadow-2xl overflow-auto max-h-80";
-            container.innerHTML = `<pre x-text="JSON.stringify(data, null, 2)" class="text-[10px] text-gray-400 font-mono leading-relaxed"></pre>`;
-        } else {
-            return null;
+            container.appendChild(inner);
         }
 
         if (p.guard) {

@@ -61,10 +61,12 @@ export class AtomicComponentBase extends HTMLElement {
      * Bridges an action event to the orchestrator.
      */
     triggerAction(actionId, params = {}) {
-        const action = {
-            call: actionId,
+        // Support for both legacy 'call' property and new 'action' object
+        const action = this._spec.action ? { ...this._spec.action } : {
+            call: actionId || this._spec.call || "default",
             params: { ...this._spec.params, ...params }
         };
+        
         this.dispatchEvent(new CustomEvent('atomic-action', {
             bubbles: true,
             composed: true,

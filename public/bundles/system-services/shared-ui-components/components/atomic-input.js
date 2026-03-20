@@ -13,27 +13,27 @@ class AtomicInput extends AtomicComponentBase {
         const id = this._spec.id;
         const value = (id && this.resolve(id) !== undefined) ? this.resolve(id) : (this._spec.value || "");
 
-        this.innerHTML = `
-            <div class="mb-5">
-                <sl-input 
-                    label="${label}" 
-                    placeholder="${placeholder}" 
-                    value="${value}"
-                    size="medium"
-                    pill
-                ></sl-input>
-            </div>
-        `;
+        let input = this.querySelector('sl-input');
+        if (!input) {
+            this.innerHTML = `
+                <div class="mb-5">
+                    <sl-input size="medium" pill></sl-input>
+                </div>
+            `;
+            input = this.querySelector('sl-input');
+            input.addEventListener('sl-input', (e) => {
+                this.dispatchEvent(new CustomEvent('atomic-change', {
+                    bubbles: true,
+                    composed: true,
+                    detail: { id, value: e.target.value }
+                }));
+            });
+        }
 
-        const input = this.querySelector('sl-input');
-        input.addEventListener('sl-input', (e) => {
-            // Bridge to the global factory state
-            this.dispatchEvent(new CustomEvent('atomic-change', {
-                bubbles: true,
-                composed: true,
-                detail: { id, value: e.target.value }
-            }));
-        });
+        // Non-destructive updates to preserve focus
+        if (input.label !== label) input.label = label;
+        if (input.placeholder !== placeholder) input.placeholder = placeholder;
+        if (input.value !== value) input.value = value;
     }
 }
 

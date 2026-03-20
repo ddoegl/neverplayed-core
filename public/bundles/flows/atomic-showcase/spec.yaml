@@ -1,0 +1,235 @@
+id: atomic-showcase
+lable: "Atomic UIFactory Showcase"
+version: 1.1.0
+
+domainObject:
+  strategyId: LOCAL_STRATEGY
+  label: "Atomic Showcase"
+  limesPrefix: ATOM
+  actions:
+    - id: view
+      label: "Showcase"
+      icon: "fas fa-atom"
+
+ui:
+  initialStep: intro
+  steps:
+    intro:
+      title: "Welcome to Atomic Showcase"
+      parts:
+        welcome_card:
+          type: card
+          variant: info
+          label: "Getting Started"
+          parts:
+            welcome_text:
+              type: text
+              value: |
+                # The Power of Declarative UI
+                Welcome to the **Atomic Showcase**. This bundle demonstrates the full spectrum of components and logic supported by the `UIFactory`.
+
+                Every section of this flow is defined purely in **YAML**, including the navigation logic you are about to see.
+            start_button:
+              kind: command-button
+              label: "Begin Feature Tour"
+              icon: "fas fa-rocket"
+              action:
+                call: step.navigate
+                params:
+                  target: inputs_basic
+
+    inputs_basic:
+      title: "Standard Inputs"
+      parts:
+        explainer:
+          type: card
+          label: "Feature: Standard Controls"
+          parts:
+            desc:
+              type: text
+              value: "Standard atomic inputs support full reactivity and data binding."
+            code:
+              type: text
+              value: |
+                ```yaml
+                name:
+                  kind: text-input
+                  label: "Your Full Name"
+                role:
+                  kind: select-input
+                  label: "Primary Role"
+                  options:
+                    - { label: "Developer", value: "dev" }
+                    - { label: "Designer", value: "dsn" }
+                ```
+        demo_card:
+          type: card
+          label: "Basic Inputs Demo"
+          parts:
+            name:
+              kind: text-input
+              label: "Your Full Name"
+              placeholder: "e.g. Daniela"
+            role:
+              kind: select-input
+              label: "Primary Role"
+              options:
+                - { label: "Developer", value: "dev" }
+                - { label: "Designer", value: "dsn" }
+                - { label: "Architect", value: "arc" }
+        nav:
+          type: row
+          parts:
+            next:
+              kind: command-button
+              label: "Next: Modern Inputs"
+              action:
+                call: step.navigate
+                params:
+                  target: inputs_modern
+
+    inputs_modern:
+      title: "Modern Selective Inputs"
+      parts:
+        explainer:
+          type: card
+          variant: info
+          label: "Feature: Radios & Checkboxes"
+          parts:
+            desc:
+              type: text
+              value: "New components added to the library: `radio-input` and `checkbox-input`."
+            code:
+              type: text
+              value: |
+                ```yaml
+                preference:
+                  kind: radio-input
+                  label: "Coffee Preference"
+                  options:
+                    - { label: "Black", value: "black" }
+                    - { label: "Latte", value: "latte" }
+                terms:
+                  kind: checkbox-input
+                  label: "Accept Reality"
+                ```
+        demo_card:
+          type: card
+          label: "Modern Selective Demo"
+          parts:
+            preference:
+              kind: radio-input
+              label: "Coffee Preference"
+              options:
+                - { label: "Black", value: "black" }
+                - { label: "Latte", value: "latte" }
+                - { label: "Cappuccino", value: "cap" }
+            terms:
+              kind: checkbox-input
+              label: "I accept the simulation parameters"
+        nav:
+          type: row
+          parts:
+            next:
+              kind: command-button
+              label: "Next: Styled Containers"
+              action:
+                call: step.navigate
+                params:
+                  target: layout_cards
+
+    layout_cards:
+      title: "Layouts & Specialized Cards"
+      parts:
+        explainer:
+          type: card
+          label: "Feature: Semantic Containers"
+          parts:
+            desc:
+              type: text
+              value: "Cards support variants (`plain`, `info`, `error`, `warning`) to provide immediate visual context."
+            variants_row:
+              type: row
+              parts:
+                err:
+                  type: card
+                  variant: error
+                  label: "Danger Zone"
+                  parts:
+                    t: { type: text, value: "Something went wrong!" }
+                warn:
+                  type: card
+                  variant: warning
+                  label: "System Warning"
+                  parts:
+                    t: { type: text, value: "Resource limits reached." }
+                info_box:
+                  type: card
+                  variant: info
+                  label: "Knowledge Item"
+                  parts:
+                    t: {
+                      type: text,
+                      value: "UIFactory is now fully generalized and decoupling and discovery patterns are enforced.",
+                    }
+        nav:
+          type: row
+          parts:
+            next:
+              kind: command-button
+              label: "Next: Logic & Jumps"
+              action:
+                call: step.navigate
+                params:
+                  target: logic_jumps
+
+    logic_jumps:
+      title: "Reactivity & Global Jumps"
+      parts:
+        reactivity_card:
+          type: card
+          variant: info
+          label: "Live Reactivity"
+          parts:
+            hello:
+              type: text
+              value: |
+                # Hello, ${values.name || 'Stranger'}!
+
+                You preferred **${values.preference || 'nothing'}** and terms are **${values.terms ? 'ACCEPTED' : 'PENDING'}**.
+
+        nav_card:
+          type: card
+          label: "Navigation Demo"
+          parts:
+            desc:
+              type: text
+              value: "Buttons can trigger intra-flow jumps or redirect to entirely different flows using the common event bus."
+            jump_back:
+              kind: command-button
+              label: "Intra-Flow Jump: Start Over"
+              variant: secondary
+              action:
+                call: step.navigate
+                params:
+                  target: intro
+            external_jump:
+              kind: command-button
+              label: "External Jump: DO Dashboard"
+              icon: "fas fa-external-link-alt"
+              action:
+                call: synthetic.case.create
+                params:
+                  caseTypeId: "GENERIC_TASK"
+                  title: "Showcase Completion"
+                  linkToProperty: "completionCaseId"
+                  onSuccess: "REDIRECT"
+                  redirectFlowId: "do-dashboard"
+                  successMessage: "Showcase complete! Redirecting to Dashboard..."
+
+guards:
+  # Examples of guards (could be used in a real flow)
+  - id: HAS_NAME
+    matchers:
+      - type: matchPropertyNotEmpty
+        key: name
