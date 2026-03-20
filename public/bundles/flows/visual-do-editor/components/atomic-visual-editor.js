@@ -5,6 +5,14 @@ import { YAML_SERVICE } from "../../../../shared-types.js";
  * atomic-visual-editor: The core WYSIWYG builder for Atomic Flows.
  * Kind: visual-editor
  */
+const PART_TEMPLATES = {
+    'text': { type: 'text', label: 'Text Block', value: '## New Text\nAdd your content here.' },
+    'text-input': { kind: 'text-input', label: 'Text Input', placeholder: 'Enter value...' },
+    'select-input': { kind: 'select-input', label: 'Select Input', optionSource: '${this.items}' },
+    'command-button': { kind: 'command-button', label: 'Action Button', variant: 'primary', action: { call: 'NEXT_STEP' } },
+    'row': { type: 'row', label: 'Button Row', parts: {} }
+};
+
 export default class AtomicVisualEditor extends AtomicComponentBase {
     constructor() {
         super();
@@ -12,6 +20,7 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         this._handleDefaultAction = this.handleDefaultAction.bind(this);
         this._initialized = false;
         this._activeStepId = null;
+        this._activePartId = null;
     }
 
     connectedCallback() {
@@ -213,38 +222,218 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         if (currentId !== sid || fields.innerHTML === "") {
             fields.setAttribute('data-active-sid', sid);
             panel.classList.remove('hidden');
-            fields.innerHTML = `
-                <div>
-                    <sl-input label="Step Title" value="${step.title || ''}" id="step-title-input" size="small"></sl-input>
-                </div>
-                <div class="space-y-2">
-                    <label class="text-[10px] font-bold uppercase text-gray-400">Parts</label>
-                    <div id="parts-list" class="space-y-1"></div>
-                    <sl-button size="small" class="w-full mt-2" variant="neutral">
-                        <i class="fas fa-plus mr-2"></i> Add Part
-                    </sl-button>
-                </div>
-            `;
+            this.renderStepProperties(sid, step, fields);
+        }
 
-            const titleInput = fields.querySelector('#step-title-input');
-            titleInput.addEventListener('sl-input', (e) => {
-                step.title = e.target.value;
+        this.renderPartsList(sid, step);
+        this.renderPartProperties(sid, step);
+    }
+
+    renderStepProperties(sid, step, container) {
+        container.innerHTML = `
+            <div class="space-y-4">
+                <sl-input label="Step Title" value="${step.title || ''}" id="step-title-input" size="small"></sl-input>
+                
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] font-bold uppercase text-gray-400">Parts</label>
+                        <sl-dropdown id="add-part-dropdown" placement="bottom-end">
+                            <sl-button slot="trigger" size="small" caret variant="neutral">
+                                <i class="fas fa-plus mr-2"></i> Add Part
+                            </sl-button>
+                            <sl-menu id="add-part-menu">
+                                <sl-menu-item value="text"><i class="fas fa-font mr-2 text-blue-500"></i> Text Block</sl-menu-item>
+                                <sl-menu-item value="text-input"><i class="fas fa-keyboard mr-2 text-emerald-500"></i> Text Input</sl-menu-item>
+                                <sl-menu-item value="select-input"><i class="fas fa-list mr-2 text-indigo-500"></i> Select Input</sl-menu-item>
+                                <sl-menu-item value="command-button"><i class="fas fa-toggle-on mr-2 text-pink-500"></i> Action Button</sl-menu-item>
+                                <sl-divider></sl-divider>
+                                <sl-menu-item value="row"><i class="fas fa-columns mr-2 text-gray-500"></i> Button Row</sl-menu-item>
+                            </sl-menu>
+                        </sl-dropdown>
+                    </div>
+                    <div id="parts-list" class="space-y-1"></div>
+                </div>
+
+                <div id="part-properties" class="mt-4 pt-4 border-t border-gray-100 hidden">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-[10px] font-bold uppercase text-indigo-500" id="part-prop-title">Part Properties</h4>
+                        <sl-button size="extra-small" variant="danger" id="delete-part-btn" circle outline>
+                            <i class="fas fa-trash"></i>
+                        </sl-button>
+                    </div>
+                    <div id="part-fields" class="space-y-3"></div>
+                </div>
+            </div>
+        `;
+
+        const titleInput = container.querySelector('#step-title-input');
+        titleInput.addEventListener('sl-input', (e) => {
+            step.title = e.target.value;
+            this.saveToState();
+            this.updatePreview();
+            this.setupVisualEditor();
+        });
+
+        const addMenu = container.querySelector('#add-part-menu');
+        addMenu.addEventListener('sl-select', (e) => {
+            this.addPart(sid, e.detail.item.value);
+        });
+    }
+
+    renderPartsList(sid, step) {
+        const partsList = this.querySelector('#parts-list');
+        if (!partsList) return;
+
+        partsList.innerHTML = Object.entries(step.parts || {}).map(([pid, part]) => `
+            <div class="flex justify-between items-center p-2 rounded-lg text-[10px] font-mono border cursor-pointer transition-all ${this._activePartId === pid ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold' : 'bg-gray-50 border-gray-100 text-gray-400'}"
+                 data-part-id="${pid}">
+                <div class="flex items-center">
+                    <i class="fas ${part.type ? 'fa-square' : 'fa-puzzle-piece'} mr-2 opacity-50"></i>
+                    <span>${pid}</span>
+                </div>
+                <i class="fas fa-chevron-right text-[8px] opacity-30"></i>
+            </div>
+        `).join('');
+
+        partsList.querySelectorAll('[data-part-id]').forEach(el => {
+            el.onclick = () => {
+                this._activePartId = el.getAttribute('data-part-id');
+                this.editStep(sid);
+            };
+        });
+    }
+
+    renderPartProperties(sid, step) {
+        const partPanel = this.querySelector('#part-properties');
+        const partFields = this.querySelector('#part-fields');
+        const deleteBtn = this.querySelector('#delete-part-btn');
+        
+        if (!this._activePartId || !step.parts[this._activePartId]) {
+            partPanel.classList.add('hidden');
+            return;
+        }
+
+        const pid = this._activePartId;
+        const part = step.parts[pid];
+        partPanel.classList.remove('hidden');
+        this.querySelector('#part-prop-title').textContent = `${pid} properties`;
+
+        // Render fields based on type/kind
+        let html = `
+            <sl-input label="Part ID" value="${pid}" id="part-id-input" size="small"></sl-input>
+        `;
+
+        if (part.type === 'text') {
+            html += `<sl-textarea label="Content (Markdown)" value="${part.value || ''}" id="part-value-input" size="small" resize="auto"></sl-textarea>`;
+        } else if (part.kind === 'text-input') {
+            html += `
+                <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
+                <sl-input label="Placeholder" value="${part.placeholder || ''}" id="part-placeholder-input" size="small"></sl-input>
+            `;
+        } else if (part.kind === 'select-input') {
+            html += `
+                <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
+                <sl-input label="Option Source" value="${part.optionSource || ''}" id="part-source-input" size="small" help-text="e.g. \${this.items}"></sl-input>
+            `;
+        } else if (part.kind === 'command-button') {
+            html += `
+                <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
+                <sl-input label="Action Call" value="${part.action?.call || ''}" id="part-call-input" size="small"></sl-input>
+                <sl-select label="Variant" value="${part.variant || 'default'}" id="part-variant-input" size="small">
+                    <sl-option value="default">Default</sl-option>
+                    <sl-option value="primary">Primary</sl-option>
+                    <sl-option value="success">Success</sl-option>
+                    <sl-option value="danger">Danger</sl-option>
+                </sl-select>
+            `;
+        }
+
+        partFields.innerHTML = html;
+
+        // Bind events
+        const bind = (selector, key, path = null) => {
+            const el = partFields.querySelector(selector);
+            if (!el) return;
+            el.addEventListener('sl-input', (e) => {
+                if (path) {
+                    if (!part[path]) part[path] = {};
+                    part[path][key] = e.target.value;
+                }
+                else part[key] = e.target.value;
                 this.saveToState();
                 this.updatePreview();
-                this.setupVisualEditor(); // Refresh YAML and list
+                this.setupVisualEditor();
             });
+            if (el.tagName === 'SL-SELECT') {
+                 el.addEventListener('sl-change', (e) => {
+                    if (path) {
+                        if (!part[path]) part[path] = {};
+                        part[path][key] = e.target.value;
+                    }
+                    else part[key] = e.target.value;
+                    this.saveToState();
+                    this.updatePreview();
+                    this.setupVisualEditor();
+                });
+            }
+        };
+
+        bind('#part-label-input', 'label');
+        bind('#part-value-input', 'value');
+        bind('#part-placeholder-input', 'placeholder');
+        bind('#part-source-input', 'optionSource');
+        bind('#part-call-input', 'call', 'action');
+        bind('#part-variant-input', 'variant');
+
+        // ID Change (Special handling)
+        const idInput = partFields.querySelector('#part-id-input');
+        idInput.addEventListener('sl-change', (e) => {
+            const newId = e.target.value;
+            if (newId && newId !== pid) {
+                step.parts[newId] = step.parts[pid];
+                delete step.parts[pid];
+                this._activePartId = newId;
+                this.saveToState();
+                this.updatePreview();
+                this.setupVisualEditor();
+                this.editStep(sid);
+            }
+        });
+
+        // Delete handling
+        deleteBtn.onclick = () => {
+            if (confirm(`Delete part ${pid}?`)) {
+                delete step.parts[pid];
+                this._activePartId = null;
+                this.saveToState();
+                this.updatePreview();
+                this.setupVisualEditor();
+                this.editStep(sid);
+            }
+        };
+    }
+
+    addPart(sid, type) {
+        const step = this._draftSpec.ui.steps[sid];
+        const template = PART_TEMPLATES[type];
+        if (!template) return;
+
+        const baseId = type.replace('-', '_');
+        let idCount = 1;
+        let pid = `${baseId}_${idCount}`;
+        while (step.parts[pid]) {
+            idCount++;
+            pid = `${baseId}_${idCount}`;
         }
 
-        // Target-specifically update parts list (less destructive)
-        const partsList = fields.querySelector('#parts-list');
-        if (partsList) {
-            partsList.innerHTML = Object.keys(step.parts || {}).map(pid => `
-                <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg text-[10px] font-mono border">
-                    <span>${pid}</span>
-                    <i class="fas fa-cog text-gray-300"></i>
-                </div>
-            `).join('');
-        }
+        step.parts[pid] = JSON.parse(JSON.stringify(template));
+        if (step.parts[pid].id) delete step.parts[pid].id; // We use map keys for ID
+        
+        this._activePartId = pid;
+        this.saveToState();
+        this.updatePreview();
+        this.setupVisualEditor();
+        this.editStep(sid);
     }
 
     saveToState() {

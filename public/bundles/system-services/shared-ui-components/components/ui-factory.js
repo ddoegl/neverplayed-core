@@ -391,6 +391,7 @@ class UIFactory extends HTMLElement {
             _registryReady: false,
             stepKeys: Object.keys(ui.steps || {}),
             instanceId: instanceId,
+            resolve: (path) => this.resolveValue(path, this._state),
             init() {
                 console.log(`UIFactory [${this.instanceId}] connected to Alpine Data`);
                 
@@ -1000,11 +1001,9 @@ class UIFactory extends HTMLElement {
             } catch (_e) {
                 html = p.value || "";
             }
-            inner.innerHTML = html.replace(/(?:\${(this\.)?(values\.)?(.+?)}|\{\{\s*(?:this\.)?(?:values\.)?(.+?)\s*\}\})/g, (_, _p1, _p2, k1, k2) => {
-                const expr = k1 || k2;
-                // Reconstruct the expression with proper prefixing
-                const finalExpr = (_p1 || "") + (_p2 || (expr.startsWith('values') ? "" : "values.")) + expr;
-                return `<span x-text="((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))(${finalExpr})" class="text-blue-600 font-bold whitespace-pre-wrap font-mono"></span>`;
+            inner.innerHTML = html.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
+                const path = k1 || k2;
+                return `<span x-text="((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))(resolve('${path}'))" class="text-blue-600 font-bold whitespace-pre-wrap font-mono"></span>`;
             });
             container.appendChild(inner);
         }
