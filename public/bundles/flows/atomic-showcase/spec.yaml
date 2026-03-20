@@ -1,5 +1,5 @@
 id: atomic-showcase
-lable: "Atomic UIFactory Showcase"
+label: "Atomic UIFactory Showcase"
 version: 1.1.0
 
 domainObject:

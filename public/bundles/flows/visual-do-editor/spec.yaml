@@ -1,0 +1,112 @@
+id: visual-do-editor
+label: "Visual DO Editor"
+version: 1.0.0
+
+domainObject:
+  strategyId: LOCAL_STRATEGY
+  label: "Visual DO Editor"
+  limesPrefix: VDE
+  actions:
+    - id: view
+      label: "Open Editor"
+      icon: "fas fa-edit"
+
+metadata:
+  name: "Visual DO Editor"
+  description: "Meta-application for building Atomic Flow blueprints."
+
+ui:
+  initialStep: welcome
+  steps:
+    welcome:
+      title: "Welcome to Visual DO Creator"
+      parts:
+        intro_card:
+          type: card
+          variant: info
+          label: "Getting Started"
+          parts:
+            intro_text:
+              type: text
+              value: |
+                Welcome! This tool allows you to build **Atomic Flows** visually.
+                You can define your metadata, layout steps, and add components from the library.
+
+                Click **Start New Blueprint** to begin.
+        start_btn:
+          kind: action
+          label: "Start New Blueprint"
+          variant: primary
+          action: 
+            call: step.navigate
+            params: { step: metadata_edit }
+
+    metadata_edit:
+      title: "1. Basic Metadata"
+      parts:
+        meta_card:
+          type: card
+          parts:
+            name:
+              kind: text-input
+              label: "Flow Name"
+              placeholder: "e.g. My New Flow"
+            symbolic_name:
+              kind: text-input
+              label: "Symbolic Name"
+              placeholder: "e.g. prototyper.flow.my-flow"
+            description:
+              kind: text-input
+              label: "Description"
+              placeholder: "What does this flow do?"
+        nav_row:
+          type: row
+          parts:
+            back_btn:
+              kind: action
+              label: "Back"
+              action: 
+                call: step.navigate
+                params: { step: welcome }
+            next_btn:
+              kind: action
+              label: "Next: UI Builder"
+              variant: primary
+              action: 
+                call: step.navigate
+                params: { step: ui_builder }
+
+    ui_builder:
+      title: "2. UI & Flow Builder"
+      parts:
+        builder_info:
+          type: text
+          value: |
+            This is where the magic happens. You'll soon see the **Tri-View** here:
+            - **Visual Pane** for dragging components.
+            - **Live Preview** to see it in action.
+            - **Code View** for raw YAML editing.
+        placeholder_card:
+          type: card
+          variant: warning
+          label: "Work in Progress"
+          parts:
+            status:
+              type: text
+              value: "The visual building components are currently being scaffolded."
+        nav_row:
+          type: row
+          parts:
+            back_btn:
+              kind: action
+              label: "Back"
+              action: 
+                call: step.navigate
+                params: { step: metadata_edit }
+            save_btn:
+              kind: action
+              label: "Save & Register"
+              variant: primary
+              action: 
+                call: default
+                params: { action: 'blueprint.save' }

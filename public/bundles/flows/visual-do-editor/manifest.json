@@ -1,0 +1,10 @@
+{
+    "Bundle-SymbolicName": "flows.visual-do-editor",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "X-Atomic-Bundle": "true",
+    "Configuration": {
+        "channels": ["business-channel-web"]
+    },
+    "description": "A meta-flow for building and exporting Atomic Flow blueprints."
+}
