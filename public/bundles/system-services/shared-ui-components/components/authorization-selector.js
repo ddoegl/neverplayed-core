@@ -3,25 +3,10 @@ class AuthorizationSelector extends HTMLElement {
         super();
         this._authorizations = [];
         this._value = 'NONE';
-        
-        // Shadow DOM? No, styling is easier in Light DOM with Tailwind.
-        // But true web components often use Shadow DOM. 
-        // Let's use Light DOM to inherit global styles easily.
     }
 
     connectedCallback() {
         this.render();
-    }
-
-    static get observedAttributes() {
-        return ['value'];
-    }
-
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (name === 'value' && oldValue !== newValue) {
-            this._value = newValue;
-            this.updateSelect();
-        }
     }
 
     get authorizations() {
@@ -29,7 +14,8 @@ class AuthorizationSelector extends HTMLElement {
     }
 
     set authorizations(val) {
-        this._authorizations = val;
+        if (JSON.stringify(this._authorizations) === JSON.stringify(val)) return;
+        this._authorizations = val || [];
         this.render();
     }
     
@@ -38,38 +24,48 @@ class AuthorizationSelector extends HTMLElement {
     }
 
     set value(val) {
+        if (this._value === val) return;
         this._value = val;
-        // Do NOT set attribute to avoid loop if framework does it
-        // this.setAttribute('value', val);
-        const select = this.querySelector('select');
+        const select = this.querySelector('sl-select');
         if (select) {
             select.value = val;
         }
     }
 
     render() {
-        // Simple diff: if select exists, just update options? 
-        // For now, full re-render is safer for valid options
-        this.innerHTML = `
-            <select class="bg-white text-black p-2 rounded border w-full">
-                <option value="NONE">Add Authorization</option>
-                ${this._authorizations.map(authorization => `
-                    <option value="${authorization.id}">\u2714 ${authorization.name}</option>
-                `).join('')}
-            </select>
-        `;
-
-        const select = this.querySelector('select');
-        if (select) {
-            select.value = this._value;
+        let select = this.querySelector('sl-select');
+        if (!select) {
+            this.innerHTML = `
+                <sl-select size="medium" pill placeholder="Add Authorization">
+                </sl-select>
+            `;
+            select = this.querySelector('sl-select');
             
-            select.addEventListener('change', (e) => {
+            select.addEventListener('sl-change', (e) => {
                 this._value = e.target.value;
+                // Bridge to standard events for x-model
                 this.dispatchEvent(new Event('input', { bubbles: true }));
                 this.dispatchEvent(new Event('change', { bubbles: true }));
             });
         }
+
+        const optionsHtml = this._authorizations.map(auth => `
+            <sl-option value="${auth.id}">\u2714 ${auth.name}</sl-option>
+        `).join('');
+
+        const finalHtml = `<sl-option value="NONE">Add Authorization</sl-option>${optionsHtml}`;
+
+        if (select.innerHTML !== finalHtml) {
+            select.innerHTML = finalHtml;
+        }
+
+        if (select.value !== this._value) {
+            select.value = this._value;
+        }
     }
 }
 
-customElements.define('authorization-selector', AuthorizationSelector);
+if (!customElements.get('authorization-selector')) {
+    customElements.define('authorization-selector', AuthorizationSelector);
+}
+

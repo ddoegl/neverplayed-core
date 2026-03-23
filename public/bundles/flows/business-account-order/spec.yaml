@@ -200,6 +200,10 @@ ui:
                 linkToProperty: "myCaseId"
                 onSuccess: "WAIT_FOR_CASE"
                 successMessage: "Your order has been placed! A signing case has been created for ${selectedMemberId}. ✅"
+                #onSuccess: "REDIRECT"
+                #redirectFlowId: "cases"
+                #redirectParams:
+                #  companyId: "${selectedMemberId}"
               guard: BUSINESS_CAN_CREATE
 
 caseTypes:
