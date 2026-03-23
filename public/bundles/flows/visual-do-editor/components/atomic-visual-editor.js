@@ -12,7 +12,8 @@ const PART_TEMPLATES = {
     'checkbox-input': { kind: 'checkbox-input', label: 'Checkbox Label', id: 'check_1' },
     'radio-input': { kind: 'radio-input', label: 'Radio Group', id: 'radio_1', options: [{label: 'Option 1', value: '1'}, {label: 'Option 2', value: '2'}] },
     'command-button': { kind: 'command-button', label: 'Action Button', variant: 'primary', action: { call: 'NEXT_STEP' } },
-    'row': { type: 'row', label: 'Button Row', parts: {} }
+    'row': { type: 'row', label: 'Button Row', parts: {} },
+    'card': { type: 'card', label: 'Card', variant: 'plain', parts: {} }
 };
 
 /**
@@ -407,6 +408,7 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                                 <sl-menu-item value="command-button"><i class="fas fa-toggle-on mr-2 text-pink-500"></i> Action Button</sl-menu-item>
                                 <sl-divider></sl-divider>
                                 <sl-menu-item value="row"><i class="fas fa-columns mr-2 text-gray-500"></i> Button Row</sl-menu-item>
+                                <sl-menu-item value="card"><i class="fas fa-window-maximize mr-2 text-amber-500"></i> Semantic Card</sl-menu-item>
                             </sl-menu>
                         </sl-dropdown>
                     </div>
@@ -414,6 +416,7 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 </div>
 
                 <div id="part-properties" class="mt-4 pt-4 border-t border-gray-100 hidden">
+                    <div id="breadcrumb-container"></div>
                     <div class="flex justify-between items-center mb-2">
                         <h4 class="text-[10px] font-bold uppercase text-indigo-500" id="part-prop-title">Part Properties</h4>
                         <sl-button size="extra-small" variant="danger" id="delete-part-btn" circle outline>
@@ -447,8 +450,9 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
 
         partsList.innerHTML = pids.map((pid, idx) => {
             const part = step.parts[pid];
+            const isActive = this._activePartId === pid || (this._activePartId && this._activePartId.startsWith(pid + '.'));
             return `
-                <div class="flex justify-between items-center p-2 rounded-lg text-[10px] font-mono border cursor-pointer transition-all ${this._activePartId === pid ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold' : 'bg-gray-50 border-gray-100 text-gray-400'}"
+                <div class="flex justify-between items-center p-2 rounded-lg text-[10px] font-mono border cursor-pointer transition-all ${isActive ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold' : 'bg-gray-50 border-gray-100 text-gray-400'}"
                      data-part-id="${pid}">
                     <div class="flex items-center">
                         <i class="fas ${part.type ? 'fa-square' : 'fa-puzzle-piece'} mr-2 opacity-50"></i>
@@ -494,19 +498,48 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         const partFields = this.querySelector('#part-fields');
         const deleteBtn = this.querySelector('#delete-part-btn');
         
-        if (!this._activePartId || !step.parts[this._activePartId]) {
+        const rootPid = (this._activePartId || "").split('.')[0];
+        if (!this._activePartId || !step.parts[rootPid]) {
             partPanel.classList.add('hidden');
             return;
         }
 
-        const pid = this._activePartId;
-        const part = step.parts[pid];
+        const path = this._activePartId || "";
+        const pathParts = path.split('.');
+        
+        let part = { parts: step.parts };
+        for (const p of pathParts) {
+            if (!part.parts || !part.parts[p]) {
+                this._activePartId = null; // Reset if invalid
+                partPanel.classList.add('hidden');
+                return;
+            }
+            part = part.parts[p];
+        }
+
         partPanel.classList.remove('hidden');
-        this.querySelector('#part-prop-title').textContent = `${pid} properties`;
+
+        // Breadcrumbs
+        let breadcrumbs = `<div class="flex items-center gap-1 mb-2 text-[8px] font-bold uppercase text-gray-400">
+            <span class="hover:text-indigo-500 cursor-pointer" id="bc-root">Step</span> <i class="fas fa-chevron-right text-[6px]"></i>`;
+        
+        let currentPath = "";
+        pathParts.forEach((p, idx) => {
+            currentPath += (currentPath ? "." : "") + p;
+            const isLast = idx === pathParts.length - 1;
+            breadcrumbs += `
+                <span class="${isLast ? 'text-indigo-500' : 'hover:text-indigo-400 cursor-pointer'} bc-node" data-path="${currentPath}">${p}</span>
+                ${isLast ? '' : '<i class="fas fa-chevron-right text-[6px]"></i>'}
+            `;
+        });
+        breadcrumbs += `</div>`;
+
+        const bcContainer = this.querySelector('#breadcrumb-container');
+        if (bcContainer) bcContainer.innerHTML = breadcrumbs;
 
         // Render fields based on type/kind
         let html = `
-            <sl-input label="Part ID" value="${pid}" id="part-id-input" size="small"></sl-input>
+            <sl-input label="Part ID" value="${pathParts[pathParts.length-1]}" id="part-id-input" size="small"></sl-input>
         `;
 
         if (part.type === 'text') {
@@ -535,6 +568,17 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                     </div>
                     <div id="radio-opts-list" class="space-y-2"></div>
                 </div>
+            `;
+        } else if (part.type === 'card') {
+            html += `
+                <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
+                <sl-select label="Variant" value="${part.variant || 'plain'}" id="part-variant-input" size="small">
+                    <sl-option value="plain">Plain (White)</sl-option>
+                    <sl-option value="info">Info (Blue)</sl-option>
+                    <sl-option value="success">Success (Green)</sl-option>
+                    <sl-option value="warning">Warning (Amber)</sl-option>
+                    <sl-option value="error">Error (Red)</sl-option>
+                </sl-select>
             `;
         } else if (part.kind === 'command-button') {
             const standardActions = [
@@ -585,6 +629,33 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                         <sl-button size="extra-small" variant="neutral" id="add-param-btn" outline circle><i class="fas fa-plus"></i></sl-button>
                     </div>
                     <div id="params-list" class="space-y-2"></div>
+                </div>
+            `;
+        }
+
+        // Common Nested Parts Block for structural components
+        if (part.parts) {
+            html += `
+                <div class="mt-4 pt-4 border-t border-gray-100 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] font-bold uppercase text-indigo-500">Nested Parts</label>
+                        <sl-dropdown id="add-nested-part-dropdown" placement="bottom-end">
+                            <sl-button slot="trigger" size="extra-small" caret variant="neutral" outline>
+                                <i class="fas fa-plus mr-1"></i> Add
+                            </sl-button>
+                            <sl-menu id="add-nested-part-menu">
+                                <sl-menu-item value="text">Text Block</sl-menu-item>
+                                <sl-menu-item value="text-input">Text Input</sl-menu-item>
+                                <sl-menu-item value="command-button">Action Button</sl-menu-item>
+                                <sl-menu-item value="checkbox-input">Checkbox</sl-menu-item>
+                                <sl-menu-item value="radio-input">Radio Group</sl-menu-item>
+                                <sl-divider></sl-divider>
+                                <sl-menu-item value="row">Button Row</sl-menu-item>
+                                <sl-menu-item value="card">Semantic Card</sl-menu-item>
+                            </sl-menu>
+                        </sl-dropdown>
+                    </div>
+                    <div id="nested-parts-list" class="space-y-1"></div>
                 </div>
             `;
         }
@@ -668,6 +739,80 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             };
 
             renderParams();
+        }
+
+        // Bind Breadcrumbs
+        const bcRoot = partFields.parentElement.querySelector('#bc-root');
+        if (bcRoot) bcRoot.onclick = () => { this._activePartId = null; this.editStep(sid); };
+        partFields.parentElement.querySelectorAll('.bc-node').forEach(node => {
+            node.onclick = () => { this._activePartId = node.dataset.path; this.editStep(sid); };
+        });
+
+        // Logic for Nested Parts List
+        if (part.parts) {
+            const nestedList = partFields.querySelector('#nested-parts-list');
+            const addMenu = partFields.querySelector('#add-nested-part-menu');
+
+            const renderNested = () => {
+                const subPids = Object.keys(part.parts);
+                nestedList.innerHTML = subPids.length ? subPids.map((subId, idx) => {
+                    const subPart = part.parts[subId];
+                    return `
+                        <div class="flex justify-between items-center p-1 px-2 rounded bg-indigo-50/30 border border-indigo-100/50 text-[9px] font-mono group cursor-pointer hover:bg-indigo-100/50 transition-all" data-sub-id="${subId}">
+                            <div class="flex items-center gap-1 overflow-hidden truncate pointer-events-none">
+                                <i class="fas ${subPart.type ? 'fa-square' : 'fa-puzzle-piece'} opacity-30"></i>
+                                <span class="truncate font-bold text-indigo-700/70">${subId}</span>
+                                <span class="text-gray-300">(${subPart.kind || subPart.type})</span>
+                            </div>
+                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <sl-button size="extra-small" variant="neutral" class="nested-up" circle outline data-id="${subId}" ${idx === 0 ? 'disabled' : ''}><i class="fas fa-chevron-up text-[6px]"></i></sl-button>
+                                <sl-button size="extra-small" variant="neutral" class="nested-down" circle outline data-id="${subId}" ${idx === subPids.length - 1 ? 'disabled' : ''}><i class="fas fa-chevron-down text-[6px]"></i></sl-button>
+                                <sl-button size="extra-small" variant="danger" class="nested-del" circle outline data-id="${subId}"><i class="fas fa-times text-[6px]"></i></sl-button>
+                            </div>
+                        </div>
+                    `;
+                }).join('') : `<div class="text-[9px] text-gray-300 italic p-2 text-center border border-dashed rounded">Empty. Add parts below.</div>`;
+
+                nestedList.querySelectorAll('[data-sub-id]').forEach(el => {
+                    el.onclick = (e) => {
+                        if (e.target.closest('sl-button')) return;
+                        this._activePartId = (this._activePartId ? this._activePartId + "." : "") + el.dataset.subId;
+                        this.editStep(sid);
+                    };
+                });
+
+                nestedList.querySelectorAll('.nested-up').forEach(btn => btn.onclick = (e) => {
+                   e.stopPropagation();
+                   part.parts = this.reorderKeys(part.parts, btn.dataset.id, -1);
+                   this.saveToState(); this.updatePreview(); renderNested();
+                });
+                nestedList.querySelectorAll('.nested-down').forEach(btn => btn.onclick = (e) => {
+                   e.stopPropagation();
+                   part.parts = this.reorderKeys(part.parts, btn.dataset.id, 1);
+                   this.saveToState(); this.updatePreview(); renderNested();
+                });
+                nestedList.querySelectorAll('.nested-del').forEach(btn => btn.onclick = (e) => {
+                   e.stopPropagation();
+                   if (confirm(`Delete nested part ${btn.dataset.id}?`)) {
+                       delete part.parts[btn.dataset.id];
+                       this.saveToState(); this.updatePreview(); renderNested();
+                   }
+                });
+            };
+
+            addMenu.addEventListener('sl-select', (e) => {
+                const type = e.detail.item.value;
+                const template = PART_TEMPLATES[type];
+                const baseId = type.replace('-', '_');
+                let idCount = 1;
+                let subId = `${baseId}_${idCount}`;
+                while (part.parts[subId]) { idCount++; subId = `${baseId}_${idCount}`; }
+                
+                part.parts[subId] = JSON.parse(JSON.stringify(template));
+                this.saveToState(); this.updatePreview(); renderNested();
+            });
+
+            renderNested();
         }
 
         // Specialized binding for Radio Options
@@ -789,14 +934,25 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         bind('#part-call-input', 'call', 'action');
         bind('#part-variant-input', 'variant');
 
-        // ID Change (Special handling)
+        // ID Change (Special handling for nested paths)
         const idInput = partFields.querySelector('#part-id-input');
         idInput.addEventListener('sl-change', (e) => {
-            const newId = e.target.value;
-            if (newId && newId !== pid) {
-                step.parts[newId] = step.parts[pid];
-                delete step.parts[pid];
-                this._activePartId = newId;
+            const newPid = e.target.value;
+            const oldPid = pathParts[pathParts.length - 1];
+            if (newPid && newPid !== oldPid) {
+                // Find parent container
+                let parent = step;
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                    parent = parent.parts[pathParts[i]];
+                }
+                
+                parent.parts[newPid] = parent.parts[oldPid];
+                delete parent.parts[oldPid];
+                
+                // Update active path
+                pathParts[pathParts.length - 1] = newPid;
+                this._activePartId = pathParts.join('.');
+                
                 this.saveToState();
                 this.updatePreview();
                 this.setupVisualEditor();
@@ -804,11 +960,19 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             }
         });
 
-        // Delete handling
+        // Delete handling (Special handling for nested paths)
         deleteBtn.onclick = () => {
-            if (confirm(`Delete part ${pid}?`)) {
-                delete step.parts[pid];
-                this._activePartId = null;
+            if (confirm(`Delete part ${pathParts[pathParts.length - 1]}?`)) {
+                let parent = step;
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                    parent = parent.parts[pathParts[i]];
+                }
+                delete parent.parts[pathParts[pathParts.length - 1]];
+                
+                // Go back to parent or step
+                pathParts.pop();
+                this._activePartId = pathParts.length ? pathParts.join('.') : null;
+                
                 this.saveToState();
                 this.updatePreview();
                 this.setupVisualEditor();
