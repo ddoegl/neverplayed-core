@@ -194,9 +194,9 @@ ui:
             hello:
               type: text
               value: |
-                # Hello, ${values.name || 'Stranger'}!
+                # Hello, {{name}} ${uifValues.name || 'Stranger'}!
 
-                You preferred **${values.preference || 'nothing'}** and terms are **${values.terms ? 'ACCEPTED' : 'PENDING'}**.
+                You preferred **${preference || 'nothing'}** and terms are **${terms ? 'ACCEPTED' : 'PENDING'}**.
 
         nav_card:
           type: card

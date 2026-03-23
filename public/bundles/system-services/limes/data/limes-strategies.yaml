@@ -30,3 +30,15 @@
       property: owner
     - type: matchPermission
       value: DO_TRADE_ALLOWED
+
+- id: DO_EDIT
+  operator: OR
+  matchers:
+    - type: matchAlways
+      value: true
+
+- id: DO_DELETE
+  operator: OR
+  matchers:
+    - type: matchAlways
+      value: true

@@ -442,7 +442,30 @@ class UIFactory extends HTMLElement {
             _hydrated: !!instance,
             _registryReady: false,
             instanceId: instanceId,
-            resolve: (path) => this.resolveValue(path, this._state),
+            resolve(expr) {
+                try {
+                    // 1. Direct path lookup (fastest for simple keys)
+                    const val = this._factory.resolveValue(expr, this);
+                    if (val !== undefined && val !== null) return val;
+
+                    // 2. Complex Expression Evaluation
+                    // We detect expressions by checking for operators (symbols) or spaces
+                    if (/[?|&:<>=!]/.test(expr) || expr.includes(' ')) {
+                        // Create a context where uifValues are top-level. 
+                        const scopeProxy = new Proxy(this.uifValues, {
+                            get: (target, key) => {
+                                if (key === 'uifValues' || key === 'values') return target; // Support prefixes
+                                return target[key] !== undefined ? target[key] : (this[key] !== undefined ? this[key] : undefined);
+                            },
+                            has: () => true // Force 'with' to stay within this proxy to avoid global naming collisions
+                        });
+                        return (new Function('v', `with(v) { return ${expr} }`))(scopeProxy);
+                    }
+                } catch (_e) {
+                    // console.error(`UIFactory [${this.instanceId}]: Evaluation failed for [${expr}]:`, _e);
+                }
+                return undefined;
+            },
             init() {
                 console.log(`UIFactory [${this.instanceId || 'anon'}]: Alpine Init. uifStep=${this.uifStep}, uifStepKeys=[${this.uifStepKeys.join(', ')}]`);
                 // IMPORTANT: 'this' inside Alpine init() is the Proxy. 
@@ -1041,7 +1064,8 @@ class UIFactory extends HTMLElement {
                 const wrapper = (existingEl && existingEl.classList.contains('uif-guard-wrapper')) ? existingEl : document.createElement('div');
                 wrapper.className = 'uif-guard-wrapper';
                 wrapper.setAttribute('data-part-id', _id);
-                wrapper.setAttribute('x-show', `guards['${p.guard}'] === true`);
+                const escapedGuard = p.guard.replace(/'/g, "\\\\'");
+                wrapper.setAttribute('x-show', `guards['${escapedGuard}'] === true`);
                 wrapper.setAttribute('x-cloak', '');
                 if (!wrapper.contains(el)) wrapper.appendChild(el);
                 return wrapper;
@@ -1146,19 +1170,43 @@ class UIFactory extends HTMLElement {
             } catch (_e) {
                 html = p.value || "";
             }
-            inner.innerHTML = html.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
-                const path = k1 || k2;
-                return `<span x-text="((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))(resolve('${path}'))" class="text-blue-600 font-bold whitespace-pre-wrap font-mono"></span>`;
+            // Use a temporary map to hold expressions while we set up the DOM
+            const reactiveSegments = [];
+            const maskedHtml = html.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
+                const id = `uif-r-${Math.random().toString(36).slice(2, 9)}`;
+                reactiveSegments.push({ id, path: k1 || k2 });
+                return `<span id="${id}" class="uif-reactive-placeholder"></span>`;
+            });
+
+            inner.innerHTML = maskedHtml;
+
+            // Now safely attach x-text to each placeholder using setAttribute (which is literal)
+            reactiveSegments.forEach(seg => {
+                const span = inner.querySelector(`#${seg.id}`);
+                if (span) {
+                    // We remove the ID to keep DOM clean, but keep a class for debugging if needed
+                    span.removeAttribute('id');
+                    span.className = "uif-reactive text-blue-600 font-bold whitespace-pre-wrap font-mono";
+                    
+                    // CRITICAL: Decode HTML entities (like &#39;) introduced by marked.parse
+                    const temp = document.createElement('div');
+                    temp.innerHTML = seg.path;
+                    const decodedPath = temp.textContent;
+
+                    const escapedPath = decodedPath.replace(/'/g, "\\'"); // Single backslash for setAttribute
+                    span.setAttribute('x-text', `((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))(resolve('${escapedPath}'))`);
+                }
             });
         }
 
         if (p.guard) {
+            const escapedGuard = p.guard.replace(/'/g, "\\\\'");
             const guardWrap = document.createElement('div');
             // Use both x-show and direct style binding for maximum robustness against CSS overrides
-            guardWrap.setAttribute('x-show', `guards['${p.guard}'] === true`);
-            guardWrap.setAttribute(':style', `{ display: guards['${p.guard}'] ? '' : 'none !important' }`);
+            guardWrap.setAttribute('x-show', `guards['${escapedGuard}'] === true`);
+            guardWrap.setAttribute(':style', `{ display: guards['${escapedGuard}'] ? '' : 'none !important' }`);
             guardWrap.setAttribute('x-cloak', '');
-            guardWrap.setAttribute('x-init', `console.log('UIFactory [${this._id}]: Guard ${p.guard} attached to DOM', $el)`);
+            guardWrap.setAttribute('x-init', `console.log('UIFactory [${this._id}]: Guard ${escapedGuard} attached to DOM', $el)`);
             guardWrap.appendChild(container);
             return guardWrap;
         }
