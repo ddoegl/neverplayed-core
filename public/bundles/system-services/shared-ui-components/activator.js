@@ -6,6 +6,7 @@ import "./components/atomic-input.js";
 import "./components/atomic-select.js";
 import "./components/atomic-radio.js";
 import "./components/atomic-checkbox.js";
+import "./components/atomic-master-detail.js";
 
 export default class Activator {
   start(context) {
@@ -18,7 +19,8 @@ export default class Activator {
         ['input', 'atomic-input'],
         ['select-input', 'atomic-select'],
         ['radio-input', 'atomic-radio'],
-        ['checkbox-input', 'atomic-checkbox']
+        ['checkbox-input', 'atomic-checkbox'],
+        ['master-detail', 'atomic-master-detail']
     ]);
 
     context.registerService(ATOMIC_COMPONENT_REGISTRY_SERVICE, {

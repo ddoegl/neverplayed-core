@@ -97,7 +97,9 @@ class UIFactory extends HTMLElement {
         this._yamlService = null;
         this._componentRegistry = null;
         this._rendered = false;
+        this._initialized = false;
         this._id = "uif-" + Math.random().toString(36).substring(7);
+        console.log(`UIFactory [${this._id}]: Instance created`);
         this._params = {};
         this._effects = []; // Track Alpine effects for cleanup
         this._instanceId = null;
@@ -152,6 +154,8 @@ class UIFactory extends HTMLElement {
             },
             removedService: () => { this._caseService = null; }
         }).open();
+        
+        if (this._spec) this.render();
     }
 
     _getService(id) {
@@ -185,88 +189,68 @@ class UIFactory extends HTMLElement {
     }
 
     connectedCallback() {
-        console.log(`UIFactory [${this._id}]: connected to DOM`);
-        globalThis.__UI_FACTORY_REGISTRY.set(this._id, this._state);
+        console.log(`UIFactory [${this._id}]: connectedCallback triggered`);
+        if (this._initialized) {
+            console.log(`UIFactory [${this._id}]: Re-connected to DOM. Re-triggering render if needed.`);
+            if (this._spec) this.render();
+            return;
+        }
+        this._initialized = true;
+        console.log(`UIFactory [${this._id}]: connected to DOM (Initial)`);
         
         // Listen for standard Atomic Component events
         this.addEventListener('atomic-action', (e) => {
             console.log(`UIFactory [${this._id}]: atomic-action received`, e.detail.action);
-            e.stopPropagation(); // Prevent bubbling to parent factories (e.g. Editor)
+            e.stopPropagation(); 
             this.runAction(e.detail.action, this._state);
         });
 
         this.addEventListener('atomic-change', (e) => {
             const { id, value } = e.detail;
             console.log(`UIFactory [${this._id}]: atomic-change received`, id, value);
-            e.stopPropagation(); // Prevent bubbling to parent factories (e.g. Editor)
-            this._state.values[id] = value;
-            this._state.data = null; // Clear results on input change
+            e.stopPropagation(); 
+            this._state.uifValues[id] = value;
+            this._state.data = null; 
         });
 
-        // If we already have a spec, render now
         if (this._spec) this.render();
-        else setTimeout(() => this.render(), 200);
+
+        // Force Alpine to see the new root AFTER first render
+        if (this._state && globalThis.Alpine && globalThis.Alpine.initTree) {
+            console.log(`UIFactory [${this._id}]: Forcing Alpine.initTree`);
+            globalThis.Alpine.initTree(this);
+        }
     }
 
     render(newSpec = null) {
         if (newSpec) this._spec = newSpec;
-        let spec = this._spec;
-        const script = this.querySelector('script[type="text/yaml"]');
-        if (!spec && script) {
-            const raw = script.textContent.trim();
-            try {
-                if (this._yamlService) spec = this._yamlService.load(raw);
-                else if (globalThis.YAML) spec = globalThis.YAML.parse(raw);
-            } catch (_e) { /* silent */ }
-        }
-
-        if (!spec) {
-            if (!this._rendered) {
-                this.innerHTML = `
-                    <div class="p-8 border-2 border-dashed border-gray-200 rounded-3xl text-center text-gray-400">
-                        <i class="fas fa-microchip mb-4 text-3xl animate-pulse"></i>
-                        <p class="text-xs font-mono uppercase tracking-widest">Waiting for Spec...</p>
-                    </div>
-                `;
-                this._rendered = true;
-            }
-            return;
-        }
+        const spec = this._spec;
+        if (!spec) return;
+        const ui = spec.ui || spec || {};
 
         // --- 1. IDEMPOTENT RENDER (Reuse existing root if present) ---
-        if (this._rendered && this.container && this.querySelector('.ui-f-root')) {
-            console.log(`UIFactory [${this._id}]: Reactive structure update (newSpec=${!!newSpec})`);
+        let root = this.querySelector('.ui-f-root');
+        let body = this.querySelector('#uif-body');
+
+        if (this._rendered && root && body) {
+            console.log(`UIFactory [${this._id}]: Partial update (newSpec=${!!newSpec})`);
             
-            // Clear current structure
-            this.container.innerHTML = "";
-            
-            // Update state metadata to handle new steps if they changed
-            const ui = spec.ui || spec;
-            const newKeys = Object.keys(ui.steps || {});
-            if (this._state) {
-                this._state.stepKeys = newKeys;
-                this._state.initialStep = ui.initialStep || (newKeys.length > 0 ? newKeys[0] : null);
-                
-                // --- FORCED STEP SYNC (Crucial for Live Preview) ---
-                // If a new spec was explicitly provided (e.g. from editor), 
-                // we force the current step to the new initialStep.
-                if (newSpec && this._state.initialStep) {
-                    this._state.currentStep = this._state.initialStep;
+            // Sync uifStep if new spec provides a different initialStep
+            if (this._state && newSpec) {
+                const initialStep = ui.initialStep || (Object.keys(ui.steps || {}).length > 0 ? Object.keys(ui.steps)[0] : null);
+                if (initialStep) {
+                    console.log(`UIFactory [${this._id}]: Syncing uifStep to ${initialStep} from updated spec`);
+                    this._state.uifStep = initialStep;
                 }
             }
 
-            // Re-hydrate structure into the existing container
-            this.hydrateBody(this.container, ui);
-            
-            // If we have a new spec, ensure the state knows its values might have changed
-            if (this._state && newSpec) { 
-                // We keep the old values to avoid resetting the user's progress
-                // but we could merge defaults here if needed.
-            }
+            this.hydrateBody(body, ui);
             return;
         }
 
-        this._spec = spec;
+        // --- 2. INITIAL FULL RENDER ---
+        console.log(`UIFactory [${this._id}]: Initial render. Spec ID: ${spec.id || 'N/A'}, Steps: ${Object.keys(ui.steps || {}).length}`);
+
         if (!this._state) {
             this._state = this._createState(spec);
             globalThis.__UI_FACTORY_REGISTRY.set(this._id, this._state);
@@ -274,27 +258,31 @@ class UIFactory extends HTMLElement {
 
         this.setAttribute('data-uif-id', this._id);
         
-        // --- HYDRATION ENGINE START ---
-        const root = document.createElement('div');
+        root = document.createElement('div');
         root.className = 'ui-f-root';
         root.setAttribute('x-data', `globalThis.__UI_FACTORY_REGISTRY.get('${this._id}')`);
         
-        const body = document.createElement('div');
+        body = document.createElement('div');
         body.id = 'uif-body';
         root.appendChild(body);
         
-        this.hydrateBody(body, spec.ui || spec);
+        this.innerHTML = "";
+        this.appendChild(root);
+        
+        this.container = body;
+        this.hydrateBody(body, ui);
 
-        this.innerHTML = `
-            <style>
+        // Append styles only once
+        if (!this.querySelector('style.uif-styles')) {
+            const styleEl = document.createElement('style');
+            styleEl.className = 'uif-styles';
+            styleEl.textContent = `
                 ui-factory { display: block !important; visibility: visible !important; min-height: 50px; }
                 [x-cloak] { display: none !important; }
-                .ui-f-root { opacity: 0; animation: ui-fade 0.4s forwards; }
-                @keyframes ui-fade { to { opacity: 1; } }
-            </style>
-        `;
-        this.appendChild(root);
-        this.container = body;
+                .ui-f-root { position: relative; }
+            `;
+            this.appendChild(styleEl);
+        }
         
         this._rendered = true;
         setTimeout(() => this.resolveGuards(this._state), 200);
@@ -306,46 +294,86 @@ class UIFactory extends HTMLElement {
 
         if (Object.keys(steps).length > 0) {
             Object.entries(steps).forEach(([sid, s]) => {
-                const stepWrapper = document.createElement('div');
-                stepWrapper.setAttribute('x-show', `currentStep === '${sid}'`);
-                stepWrapper.setAttribute('x-cloak', '');
-                stepWrapper.className = "p-1";
+                const lowerSid = sid.toLowerCase();
+                let stepWrapper = container.querySelector(`.uif-step-wrapper[data-sid="${lowerSid}"]`);
                 
+                if (!stepWrapper) {
+                    stepWrapper = document.createElement('div');
+                    stepWrapper.className = "uif-step-wrapper p-1";
+                    stepWrapper.setAttribute('data-sid', lowerSid);
+                    stepWrapper.setAttribute('x-show', `(typeof uifStep !== 'undefined' && uifStep) && uifStep.toLowerCase() === '${lowerSid}'`);
+                    stepWrapper.setAttribute('x-cloak', '');
+                    container.appendChild(stepWrapper);
+                }
+                
+                // Clear and re-hydrate title if needed
+                const existingH3 = stepWrapper.querySelector('h3.uif-step-title');
                 if (s.title) {
-                    const h3 = document.createElement('h3');
-                    h3.className = "text-lg font-black mb-6 text-gray-800 tracking-tight";
-                    // Interpolate title reactively - use dot notation for deep paths
-                    const titleText = s.title.replace(/\${this\.(.+?)}/g, `<span x-text="values.$1"></span>`);
-                    h3.innerHTML = titleText;
-                    stepWrapper.appendChild(h3);
+                    if (!existingH3) {
+                        const h3 = document.createElement('h3');
+                        h3.className = "uif-step-title text-lg font-black mb-6 text-gray-800 tracking-tight";
+                        const titleText = s.title.replace(/\${this\.(.+?)}/g, `<span x-text="uifValues.$1"></span>`);
+                        h3.innerHTML = titleText;
+                        stepWrapper.prepend(h3);
+                    }
+                } else if (existingH3) {
+                    existingH3.remove();
                 }
 
-                Object.entries(s.parts || {}).forEach(([pid, p]) => {
-                    const partEl = this.renderPart(pid, p);
-                    if (partEl) stepWrapper.appendChild(partEl);
+                // Hydrate Parts (Reconcile)
+                const partsContainer = stepWrapper; // or a dedicated child
+                const currentPartEls = Array.from(partsContainer.querySelectorAll('[data-part-id]'));
+                const newPartIds = Object.keys(s.parts || {});
+                
+                // Remove obsolete
+                currentPartEls.forEach(el => {
+                    if (!newPartIds.includes(el.getAttribute('data-part-id'))) el.remove();
                 });
 
-                container.appendChild(stepWrapper);
+                Object.entries(s.parts || {}).forEach(([pid, p]) => {
+                    const existing = partsContainer.querySelector(`[data-part-id="${pid}"]`);
+                    const partEl = this.renderPart(pid, p, existing);
+                    if (partEl && !existing) partsContainer.appendChild(partEl);
+                });
             });
+
+            // Reconcile Fallback banner
+            const allFallbacks = Array.from(container.querySelectorAll('.uif-fallback-banner'));
+            let fallback = allFallbacks[0];
             
-            // Fallback banner
-            const fallback = document.createElement('div');
-            // Make the banner logic case-insensitive too for robustness
-            fallback.setAttribute('x-show', "!currentStep || !stepKeys.some(k => k.toLowerCase() === currentStep.toLowerCase())");
-            fallback.className = "p-6 bg-amber-50 rounded-3xl border border-amber-100 text-amber-900 text-sm italic";
-            fallback.setAttribute('x-cloak', '');
+            // Remove any extra banners if they exist
+            if (allFallbacks.length > 1) {
+                allFallbacks.slice(1).forEach(el => el.remove());
+            }
+
+            if (!fallback) {
+                fallback = document.createElement('div');
+                fallback.className = "uif-fallback-banner p-6 bg-amber-50 rounded-3xl border border-amber-100 text-amber-900 text-sm italic";
+                fallback.setAttribute('x-cloak', '');
+                container.appendChild(fallback);
+            }
             
-            // Log for diagnostics
-            fallback.setAttribute('x-effect', `if (currentStep && !stepKeys.includes(currentStep)) { 
-                console.warn('UIFactory [' + instanceId + ']: Navigation Mismatch! currentStep=' + currentStep + ' is NOT in stepKeys:', stepKeys);
+            // Update banner attributes reactively
+            fallback.setAttribute('x-show', "typeof uifStep === 'undefined' || !uifStep || !uifStepKeys.some(k => k.toLowerCase() === uifStep.toLowerCase())");
+            
+            // Log for diagnostics only if uifStep is set
+            fallback.setAttribute('x-effect', `if (typeof uifStep !== 'undefined' && uifStep && uifStepKeys.length > 0 && !uifStepKeys.some(k => k.toLowerCase() === uifStep.toLowerCase())) { 
+                console.warn('UIFactory [' + this._id + ']: Navigation Mismatch! uifStep=' + uifStep + ' is NOT in uifStepKeys:', uifStepKeys);
             }`);
 
-            fallback.innerHTML = `State sync requested for \${currentStep}... <button @click="currentStep = initialStep" class="font-bold underline ml-1">Restart</button>`;
-            container.appendChild(fallback);
+            fallback.innerHTML = `State sync requested for \${uifStep}... <button @click="uifStep = uifInitialStep" class="font-bold underline ml-1">Restart</button>`;
         } else {
+            const currentPartEls = Array.from(container.querySelectorAll('[data-part-id]'));
+            const newPartIds = Object.keys(parts);
+            
+            currentPartEls.forEach(el => {
+                if (!newPartIds.includes(el.getAttribute('data-part-id'))) el.remove();
+            });
+
             Object.entries(parts).forEach(([pid, p]) => {
-                const partEl = this.renderPart(pid, p);
-                if (partEl) container.appendChild(partEl);
+                const existing = container.querySelector(`[data-part-id="${pid}"]`);
+                const partEl = this.renderPart(pid, p, existing);
+                if (partEl && !existing) container.appendChild(partEl);
             });
         }
     }
@@ -364,8 +392,9 @@ class UIFactory extends HTMLElement {
         };
 
         const ui = spec.ui || spec;
-        const initialStep = ui.initialStep || (Object.keys(ui.steps || {}).length > 0 ? Object.keys(ui.steps)[0] : null);
-
+        const stepKeys = Object.keys(ui.steps || {});
+        const initialStep = ui.initialStep || (stepKeys.length > 0 ? stepKeys[0] : null);
+ 
         // --- Instance Hydration ---
         let instanceData = {};
         let instanceStep = initialStep;
@@ -373,7 +402,7 @@ class UIFactory extends HTMLElement {
         let instance = null;
         this._instanceId = this._params?.instanceId;
         const instanceId = this._instanceId;
-
+ 
         if (instanceId) {
             console.log(`UIFactory [${this._id}]: Found instanceId ${instanceId}, attempting hydration...`);
             const registry = this._getService(DOMAIN_OBJECT_REGISTRY_SERVICE);
@@ -387,21 +416,22 @@ class UIFactory extends HTMLElement {
                 console.warn(`UIFactory [${this._id}]: Hydration FAILED for ${instanceId}. Instance not found in registry.`);
             }
         }
-
+ 
         const s = {
             loading: false,
             data: null,
             guards: {},
-            values: { ...baseValues, ...instanceData },
-            currentStep: instanceStep,
-            _hydrated: !!instance,
+            uifValues: { ...baseValues, ...instanceData },
+            uifStep: instanceStep || initialStep || stepKeys[0],
+            uifStepKeys: stepKeys,
+            uifInitialStep: initialStep || stepKeys[0],
             history: instanceHistory,
-            initialStep: initialStep,
+            _hydrated: !!instance,
             _registryReady: false,
-            stepKeys: Object.keys(ui.steps || {}),
             instanceId: instanceId,
             resolve: (path) => this.resolveValue(path, this._state),
             init() {
+                console.log(`UIFactory [${this.instanceId || 'anon'}]: Alpine Init. uifStep=${this.uifStep}, uifStepKeys=[${this.uifStepKeys.join(', ')}]`);
                 // IMPORTANT: 'this' inside Alpine init() is the Proxy. 
                 // We bind it back to the factory to ensure all subsequent 
                 // updates (from render or runAction) are reactive.
@@ -418,8 +448,8 @@ class UIFactory extends HTMLElement {
                     const updatedCaseId = e.detail?.id;
                     console.log(`UIFactory [${this.instanceId}]: Global Event [${e.type}] received for Case ${updatedCaseId}`);
                     // Scan all values to see if we are tracking this case
-                    for (const key in this.values) {
-                        if (this.values[key] === updatedCaseId) {
+                    for (const key in this.uifValues) {
+                        if (this.uifValues[key] === updatedCaseId) {
                             console.log(`UIFactory [${this.instanceId}]: Notched update for tracked Case ${updatedCaseId}. Syncing...`);
                             await this.syncCaseStatus(updatedCaseId);
                         }
@@ -454,8 +484,8 @@ class UIFactory extends HTMLElement {
                 // Initial Case Status Sync
                 this.resolveCaseStatuses();
 
-                // Sync currentStep back to Editor if it changes internally
-                this.$watch('currentStep', (val) => {
+                // Sync uifStep back to Editor if it changes internally
+                this.$watch('uifStep', (val) => {
                     if (val) {
                         globalThis.dispatchEvent(new CustomEvent('atomic-step-changed', { 
                             detail: { 
@@ -489,20 +519,20 @@ class UIFactory extends HTMLElement {
                     if (c) {
                         // Correctly find the property key tracking this case ID
                         let propKey = null;
-                        for (const key in this.values) {
-                            if (this.values[key] === caseId) {
+                        for (const key in this.uifValues) {
+                            if (this.uifValues[key] === caseId) {
                                 propKey = key + 'Status';
                                 break;
                             }
                         }
                         
-                        const prevStatus = propKey ? this.values[propKey] : null;
+                        const prevStatus = propKey ? this.uifValues[propKey] : null;
                         const changed = prevStatus !== c.status;
 
                         if (changed) {
                             console.log(`UIFactory [${this.instanceId}]: Fetched Case ${caseId} status: ${c.status} (Updated from: ${prevStatus})`);
                             if (propKey) {
-                                this.values[propKey] = c.status;
+                                this.uifValues[propKey] = c.status;
                                 
                                 // PERSIST: Manually trigger the factory's persistence engine
                                 const factoryEl = document.querySelector(`ui-factory[data-uif-id="${this.uifId}"]`);
@@ -523,12 +553,12 @@ class UIFactory extends HTMLElement {
 
             async resolveCaseStatuses() {
                 // Use raw values to ensure reliable iteration in Alpine proxy
-                const rawValues = globalThis.Alpine.raw(this.values);
+                const rawValues = globalThis.Alpine.raw(this.uifValues);
                 const keys = Object.keys(rawValues);
                 console.log(`UIFactory [${this.instanceId}]: Manually resolving Case Statuses for keys:`, keys);
                 
                 for (const key of keys) {
-                    const val = this.values[key];
+                    const val = this.uifValues[key];
                     console.log(`UIFactory [${this.instanceId}]: Checking key ${key}: ${val} (Type: ${typeof val})`);
                     // Generic Case ID pattern: uppercase prefix followed by hyphen and numbers (e.g., BUSI-123)
                     const isCaseId = typeof val === 'string' && /^[A-Z0-9]+-[0-9]+$/.test(val);
@@ -572,16 +602,16 @@ class UIFactory extends HTMLElement {
                 // Ensure properties mentioned in actions are initialized for reactivity & persistence
                 const params = p.params || {};
                 if (params.linkToProperty) {
-                    if (s.values[params.linkToProperty] === undefined) s.values[params.linkToProperty] = "";
-                    if (s.values[params.linkToProperty + 'Status'] === undefined) s.values[params.linkToProperty + 'Status'] = "";
+                    if (s.uifValues[params.linkToProperty] === undefined) s.uifValues[params.linkToProperty] = "";
+                    if (s.uifValues[params.linkToProperty + 'Status'] === undefined) s.uifValues[params.linkToProperty + 'Status'] = "";
                 }
-                if (params.statusProperty && s.values[params.statusProperty] === undefined) {
-                    s.values[params.statusProperty] = "";
+                if (params.statusProperty && s.uifValues[params.statusProperty] === undefined) {
+                    s.uifValues[params.statusProperty] = "";
                 }
 
                 if ((kind === 'text-input' || kind === 'input' || kind === 'select-input') && p.id) {
-                    if (s.values[p.id] === undefined) {
-                        s.values[p.id] = p.value || "";
+                    if (s.uifValues[p.id] === undefined) {
+                        s.uifValues[p.id] = p.value || "";
                     }
                 }
                 if (p.parts) collect(p.parts);
@@ -605,8 +635,8 @@ class UIFactory extends HTMLElement {
             const state = this._state;
             
             // 1. Reactive Tracking (Deep)
-            const _track = JSON.stringify(state.values);
-            const _trackStep = state.currentStep;
+            const _track = JSON.stringify(state.uifValues);
+            const _trackStep = state.uifStep;
             
             // 2. Resolve Guards immediately (Synchronous micro-update)
             this.resolveGuards(state);
@@ -621,7 +651,7 @@ class UIFactory extends HTMLElement {
 
         // --- Live Portals Sync (Dual-Portal Aware) ---
         const syncEffect = globalThis.Alpine.effect(() => {
-            const state = this._state.values;
+            const state = this._state.uifValues;
             const globalHostData = globalThis.backofficeState || globalThis.businessPortalState || {};
             const hActive = globalHostData.activeLicense || null;
             const hFellows = globalHostData.fellowsData || null;
@@ -712,7 +742,7 @@ class UIFactory extends HTMLElement {
             'currentUser', 'currentMembers', 'currentFellows', 'parsedLicenses'
         ];
 
-        const rawValues = globalThis.Alpine?.raw ? globalThis.Alpine.raw(state.values) : { ...state.values };
+        const rawValues = globalThis.Alpine?.raw ? globalThis.Alpine.raw(state.uifValues) : { ...state.uifValues };
         const capturedValues = {};
         
         Object.keys(rawValues).forEach(key => {
@@ -722,7 +752,7 @@ class UIFactory extends HTMLElement {
         });
 
         // Safety: Avoid overwriting with empty properties during initial boot
-        if (Object.keys(capturedValues).length === 0 && !state.currentStep) return;
+        if (Object.keys(capturedValues).length === 0 && !state.uifStep) return;
 
         const stratRefs = this._context.getServiceReferences("prototyper.domain.strategy") || [];
         let strategySvc = null;
@@ -737,7 +767,7 @@ class UIFactory extends HTMLElement {
         if (strategySvc?.updateInstance) {
             console.log(`UIFactory [${this._id}]: Persisting instance ${instanceId} (${Object.keys(capturedValues).length} properties)`, capturedValues);
             strategySvc.updateInstance(instanceId, (spec.id || spec.ui?.id), {
-                currentStep: state.currentStep,
+                currentStep: state.uifStep,
                 properties: capturedValues,
                 history: globalThis.Alpine?.raw ? globalThis.Alpine.raw(state.history || []) : [...(state.history || [])]
             });
@@ -749,10 +779,10 @@ class UIFactory extends HTMLElement {
 
         // Nav
         if (action.call === "NEXT_STEP" || action.type === "NEXT_STEP") {
-            const idx = scope.stepKeys.indexOf(scope.currentStep);
-            if (idx < scope.stepKeys.length - 1) {
-                scope.history.push(scope.currentStep);
-                scope.currentStep = scope.stepKeys[idx + 1];
+            const idx = scope.uifStepKeys.indexOf(scope.uifStep);
+            if (idx < scope.uifStepKeys.length - 1) {
+                scope.history.push(scope.uifStep);
+                scope.uifStep = scope.uifStepKeys[idx + 1];
                 scope.data = null;
             }
             return;
@@ -760,7 +790,7 @@ class UIFactory extends HTMLElement {
 
         if (action.call === "PREV_STEP" || action.type === "PREV_STEP") {
             if (scope.history.length > 0) {
-                scope.currentStep = scope.history.pop();
+                scope.uifStep = scope.history.pop();
                 scope.data = null;
             }
             return;
@@ -815,9 +845,9 @@ class UIFactory extends HTMLElement {
                 if (target) {
                     console.log(`UIFactory: Navigating to step ${target}`);
                     // Case-insensitive lookup for robustness
-                    const exact = scope.stepKeys.find(k => k === target);
-                    const fuzzy = scope.stepKeys.find(k => k.toLowerCase() === target.toLowerCase());
-                    scope.currentStep = exact || fuzzy || target;
+                    const exact = scope.uifStepKeys.find(k => k === target);
+                    const fuzzy = scope.uifStepKeys.find(k => k.toLowerCase() === target.toLowerCase());
+                    scope.uifStep = exact || fuzzy || target;
                 }
                 scope.loading = false;
                 return;
@@ -830,7 +860,7 @@ class UIFactory extends HTMLElement {
                         action: finalParams.action, 
                         params: finalParams,
                         spec: this._spec,
-                        values: scope.values
+                        values: scope.uifValues
                     } 
                 }));
                 scope.loading = false;
@@ -859,29 +889,29 @@ class UIFactory extends HTMLElement {
                     finalParams.html
                 );
 
-                if (newCase) {
-                    // LINKING: Store Case Metadata immediately for reactivity
-                    if (finalParams.linkToProperty) {
-                       scope.values[finalParams.linkToProperty] = newCase.id;
-                       scope.values[finalParams.linkToProperty + 'Status'] = newCase.status;
-                       
-                       // Explicitly trigger persistence now (before potential navigation)
-                       this.saveInstance(scope);
-                       
-                       // Refresh UI immediately (Show/Hide buttons)
-                       this.resolveGuards(scope);
-                    }
+                    if (newCase) {
+                        // LINKING: Store Case Metadata immediately for reactivity
+                        if (finalParams.linkToProperty) {
+                           scope.uifValues[finalParams.linkToProperty] = newCase.id;
+                           scope.uifValues[finalParams.linkToProperty + 'Status'] = newCase.status;
+                           
+                           // Explicitly trigger persistence now (before potential navigation)
+                           this.saveInstance(scope);
+                           
+                           // Refresh UI immediately (Show/Hide buttons)
+                           this.resolveGuards(scope);
+                        }
 
-                    if (finalParams.onSuccess === "WAIT_FOR_CASE" || finalParams.onSuccess === "VIEW_STATUS") {
-                       console.log(`UIFactory: Case created, staying on step to view status.`);
-                       // No reset/redirect triggered
-                    } else {
-                        alert(finalParams.successMessage || `Case ${newCase.id} created successfully!`);
-                        if (finalParams.onSuccess === "RESET") {
-                            scope.currentStep = scope.stepKeys[0];
-                            scope.history = [];
-                            scope.values = { activeLicense: scope.values.activeLicense }; 
-                        } else if (finalParams.onSuccess === "REDIRECT" && finalParams.redirectFlowId) {
+                        if (finalParams.onSuccess === "WAIT_FOR_CASE" || finalParams.onSuccess === "VIEW_STATUS") {
+                           console.log(`UIFactory: Case created, staying on step to view status.`);
+                           // No reset/redirect triggered
+                        } else {
+                            alert(finalParams.successMessage || `Case ${newCase.id} created successfully!`);
+                            if (finalParams.onSuccess === "RESET") {
+                                scope.uifStep = scope.uifStepKeys[0];
+                                scope.history = [];
+                                scope.uifValues = { activeLicense: scope.uifValues.activeLicense }; 
+                            } else if (finalParams.onSuccess === "REDIRECT" && finalParams.redirectFlowId) {
                             console.log(`UIFactory: Redirecting to flow ${finalParams.redirectFlowId} with params:`, finalParams.redirectParams);
                             
                             const isPortal = !!globalThis.businessPortalState;
@@ -928,13 +958,13 @@ class UIFactory extends HTMLElement {
         if (!str) return "";
         return str.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
             const key = k1 || k2;
-            const val = extra[key] ?? scope.values[key] ?? scope[key] ?? null;
+            const val = extra[key] ?? scope.uifValues[key] ?? scope[key] ?? null;
             if (val !== null && val !== undefined) return val;
             
             // Try deep resolution if key contains dots
             if (key.includes('.')) {
                 const parts = key.split('.');
-                const deep = parts.reduce((acc, part) => acc && acc[part], scope.values) ?? 
+                const deep = parts.reduce((acc, part) => acc && acc[part], scope.uifValues) ?? 
                              parts.reduce((acc, part) => acc && acc[part], scope);
                 if (deep !== undefined && deep !== null) return deep;
             }
@@ -953,24 +983,38 @@ class UIFactory extends HTMLElement {
         const resolvePath = (obj, p) => {
             if (!obj || !p) return undefined;
             if (p.startsWith('this.')) p = p.substring(5);
-            if (p.startsWith('values.')) p = p.substring(7);
+            if (p.startsWith('uifValues.')) p = p.substring(10);
+            if (p.startsWith('values.')) p = p.substring(7); // Compatibility
             return p.split('.').reduce((acc, part) => acc && acc[part] !== undefined ? acc[part] : undefined, obj);
         };
 
-        // 3. Try to find the value in values or root scope
-        const result = resolvePath(scope.values, path) ?? resolvePath(scope, path);
+        // 3. Try to find the value in uifValues or root scope
+        const result = resolvePath(scope.uifValues, path) ?? resolvePath(scope, path);
         if (result !== undefined) return result;
 
         // 4. If it was a literal path that failed, fallback to interpolation
         return match ? undefined : this.interpolate(expr, scope);
     }
 
-    renderPart(_id, p) {
+    renderPart(_id, p, existingEl = null) {
         const kind = p.kind || p.type;
         const tagName = this._componentRegistry ? this._componentRegistry.get(kind) : null;
+        
         if (tagName) {
-            const el = document.createElement(tagName);
+            let el = existingEl;
+            // If it's a wrapper, get the child
+            if (el && el.getAttribute('data-part-id') !== _id) {
+                el = el.querySelector(`[data-part-id="${_id}"]`);
+            }
+
+            if (!el || el.tagName.toLowerCase() !== tagName.toLowerCase()) {
+                el = document.createElement(tagName);
+                el.setAttribute('data-part-id', _id);
+            }
+
             if (el.hydrate) {
+                const isNew = !existingEl;
+                console.log(`UIFactory [${this._id}]: ${isNew ? 'Creating' : 'Reusing'} part [${_id}] (${kind})`);
                 el.hydrate(
                     { ...p, id: _id }, 
                     this._context, 
@@ -978,22 +1022,44 @@ class UIFactory extends HTMLElement {
                     (path) => this.resolveValue(path, this._state)
                 );
             }
+            
             if (p.guard) {
-                const wrapper = document.createElement('div');
+                // Return simple wrapper for guards, but keep the el inside
+                const wrapper = (existingEl && existingEl.classList.contains('uif-guard-wrapper')) ? existingEl : document.createElement('div');
+                wrapper.className = 'uif-guard-wrapper';
+                wrapper.setAttribute('data-part-id', _id);
                 wrapper.setAttribute('x-show', `guards['${p.guard}'] === true`);
                 wrapper.setAttribute('x-cloak', '');
-                wrapper.appendChild(el);
+                if (!wrapper.contains(el)) wrapper.appendChild(el);
                 return wrapper;
             }
             return el;
         }
 
         // Logic for specialized structural elements
-        const container = document.createElement('div');
-        container.className = "mb-4";
+        let container = existingEl;
+        if (!container || !container.classList.contains('uif-structural-container')) {
+            container = document.createElement('div');
+            container.setAttribute('data-part-id', _id);
+            container.classList.add('uif-structural-container');
+        }
+        
+        container.className = "uif-structural-container mb-4";
 
         if (p.type === 'row') {
-            container.className += " flex space-x-3";
+            container.classList.add("flex", "space-x-3");
+            // Hydrate children of the row
+            const currentChildren = Array.from(container.querySelectorAll(':scope > [data-part-id]'));
+            const newChildIds = Object.keys(p.parts || {});
+            currentChildren.forEach(el => {
+                if (!newChildIds.includes(el.getAttribute('data-part-id'))) el.remove();
+            });
+            Object.entries(p.parts || {}).forEach(([cid, cp]) => {
+                const existing = container.querySelector(`:scope > [data-part-id="${cid}"]`);
+                const childEl = this.renderPart(cid, cp, existing);
+                if (childEl && !existing) container.appendChild(childEl);
+            });
+            return container;
         } else if (p.type === 'card') {
             const variant = p.variant || 'plain';
             const styles = {
@@ -1002,14 +1068,33 @@ class UIFactory extends HTMLElement {
                 error: "bg-red-50 border-red-200 text-red-800 shadow-red-100",
                 warning: "bg-amber-50 border-amber-200 text-amber-800 shadow-amber-100"
             };
-            container.className = `p-6 rounded-3xl border-2 border-solid mb-6 block transition-all ${styles[variant] || styles.plain}`;
+            container.className = `uif-structural-container p-6 rounded-3xl border-2 border-solid mb-6 block transition-all ${styles[variant] || styles.plain}`;
             
+            // Reconcile label (h4)
+            let h4 = container.querySelector('h4.uif-card-label');
             if (p.label) {
-                const h4 = document.createElement('h4');
-                h4.className = "text-xs uppercase font-black tracking-widest mb-4 opacity-50";
+                if (!h4) {
+                    h4 = document.createElement('h4');
+                    h4.className = "uif-card-label text-xs uppercase font-black tracking-widest mb-4 opacity-50";
+                    container.prepend(h4);
+                }
                 h4.innerText = this.interpolate(p.label, this._state);
-                container.appendChild(h4);
+            } else if (h4) {
+                h4.remove();
             }
+
+            // Hydrate children of the card
+            const currentChildren = Array.from(container.querySelectorAll(':scope > [data-part-id]'));
+            const newChildIds = Object.keys(p.parts || {});
+            currentChildren.forEach(el => {
+                if (!newChildIds.includes(el.getAttribute('data-part-id'))) el.remove();
+            });
+            Object.entries(p.parts || {}).forEach(([cid, cp]) => {
+                const existing = container.querySelector(`:scope > [data-part-id="${cid}"]`);
+                const childEl = this.renderPart(cid, cp, existing);
+                if (childEl && !existing) container.appendChild(childEl);
+            });
+            return container;
         } else if (p.type === 'result') {
             container.setAttribute('x-show', 'data');
             container.setAttribute('x-transition', '');
@@ -1018,16 +1103,29 @@ class UIFactory extends HTMLElement {
             return container; 
         }
 
-        // Render children if they exist
+        // 3. Render children or text (Reconcile-Style)
         if (p.parts) {
+            // Cleanup orphaned sub-parts
+            const newSubIds = Object.keys(p.parts);
+            Array.from(container.children).forEach(el => {
+                const pid = el.getAttribute('data-part-id');
+                if (pid && !newSubIds.includes(pid)) el.remove();
+            });
+
             Object.entries(p.parts).forEach(([sid, sp]) => {
-                const child = this.renderPart(sid, sp);
-                if (child) container.appendChild(child);
+                const existing = container.querySelector(`:scope > [data-part-id="${sid}"]`);
+                const child = this.renderPart(sid, sp, existing);
+                if (child && !existing) container.appendChild(child);
             });
         } else if (p.type === 'text' || typeof p.value === 'string') {
-            // Render text as a leaf node
-            const inner = document.createElement('div');
-            inner.className = "text-gray-500 leading-relaxed font-semibold prose prose-sm max-w-none prose-p:my-1 prose-a:text-blue-600 prose-strong:text-gray-700";
+            // Reconcile text as a leaf leaf
+            let inner = container.querySelector('.uif-text-content');
+            if (!inner) {
+                inner = document.createElement('div');
+                inner.className = "uif-text-content text-gray-500 leading-relaxed font-semibold prose prose-sm max-w-none prose-p:my-1 prose-a:text-blue-600 prose-strong:text-gray-700";
+                container.appendChild(inner);
+            }
+            
             let html = "";
             try {
                 html = marked.parse(p.value || "");
@@ -1038,7 +1136,6 @@ class UIFactory extends HTMLElement {
                 const path = k1 || k2;
                 return `<span x-text="((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))(resolve('${path}'))" class="text-blue-600 font-bold whitespace-pre-wrap font-mono"></span>`;
             });
-            container.appendChild(inner);
         }
 
         if (p.guard) {
@@ -1066,7 +1163,7 @@ class UIFactory extends HTMLElement {
             const bp = globalThis.businessPortalState || {};
             const bo = globalThis.backofficeState || {};
             const user = bp.currentUser || bo.currentUser || this._getService(SESSION_SERVICE)?.currentUser;
-            const vals = globalThis.Alpine.raw(scope.values);
+            const vals = globalThis.Alpine.raw(scope.uifValues);
 
             for (const guardKey in scope.guards) {
                 const guardDef = this._guardConfig?.[guardKey];

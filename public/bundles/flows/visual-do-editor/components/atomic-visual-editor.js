@@ -13,7 +13,15 @@ const PART_TEMPLATES = {
     'row': { type: 'row', label: 'Button Row', parts: {} }
 };
 
+/**
+ * atomic-visual-editor: The core WYSIWYG builder for Atomic Flows.
+ */
 export default class AtomicVisualEditor extends AtomicComponentBase {
+    hydrate(spec, context, interpolator, resolver) {
+        console.log(`Visual Editor: Hydrating with context [${context ? 'OK' : 'MISSING'}]`);
+        super.hydrate(spec, context, interpolator, resolver);
+        this.render();
+    }
     constructor() {
         super();
         this._yamlService = null;
@@ -69,7 +77,8 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         }
     }
 
-    render() {
+    render(newSpec = null) {
+        if (newSpec) this._spec = newSpec;
         if (!this._spec) return;
 
         // 1. REHYDRATION (Load from shared state if we don't have a spec yet)
@@ -116,7 +125,7 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         }
         if (metaChanged) this.saveToState();
 
-        if (!this._yamlService) {
+        if (!this._yamlService && this._context) {
             const ref = this._context.getServiceReference(YAML_SERVICE);
             this._yamlService = ref ? this._context.getService(ref) : null;
         }
@@ -124,58 +133,82 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         // --- 4. IDEMPOTENT SHELL RENDERING ---
         if (!this._initialized) {
             this.innerHTML = `
-                <div class="grid grid-cols-12 gap-6 h-[700px] bg-gray-50/50 p-4 rounded-3xl border border-gray-100 shadow-inner overflow-hidden">
-                    
-                    <!-- 1. LEFT: Visual Property Editor -->
-                    <div class="col-span-4 flex flex-col space-y-4 overflow-hidden">
-                        <div class="bg-white rounded-2xl border shadow-sm p-5 flex-1 overflow-y-auto">
-                            <header class="flex justify-between items-center mb-6">
-                                <h3 class="text-sm font-black uppercase tracking-widest text-gray-400">Structure</h3>
-                                <sl-button size="small" circle variant="neutral" id="add-step-btn">
-                                    <i class="fas fa-plus"></i>
-                                </sl-button>
-                            </header>
+                <atomic-master-detail sidebar-title="Flow Structure" class="h-[750px] shadow-2xl">
+                    <!-- Sidebar Actions (Add Step) -->
+                    <div slot="sidebar-actions">
+                        <sl-button size="small" circle variant="neutral" id="add-step-btn" title="Add Step">
+                            <i class="fas fa-plus"></i>
+                        </sl-button>
+                    </div>
+
+                    <!-- Sidebar Content (Steps List) -->
+                    <div id="steps-list" class="space-y-2" slot="sidebar-content"></div>
+
+                    <!-- Header Context (Flow Info) -->
+                    <div slot="header-context" class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                            <i class="fas fa-project-diagram text-xs"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-black text-slate-800 m-0 uppercase tracking-tight">${this._draftSpec.label || 'Untitled Flow'}</h2>
+                            <p class="text-[9px] font-bold text-slate-400 m-0 font-mono italic opacity-60">${this._draftSpec.id}</p>
+                        </div>
+                    </div>
+
+                    <!-- Header Actions (YAML Source) -->
+                    <div slot="header-actions">
+                        <sl-button size="small" variant="neutral" id="view-source-btn" class="font-black text-[10px] uppercase tracking-widest">
+                            <i class="fas fa-code mr-2"></i> Source
+                        </sl-button>
+                    </div>
+
+                    <!-- Main Content (Dual Pane) -->
+                    <div id="builder-container" class="grid grid-cols-12 gap-8 h-full overflow-hidden" slot="main-content">
+                        <!-- 1. Left: Property Editor -->
+                        <div class="col-span-12 xl:col-span-5 flex flex-col space-y-4 overflow-hidden">
+                            <div id="property-panel" class="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 flex-1 overflow-y-auto hidden animate-in fade-in slide-in-from-bottom-2 custom-scroll">
+                               <header class="flex justify-between items-center mb-6 border-b border-dashed border-gray-100 pb-4">
+                                    <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Step Properties</h3>
+                                    <div id="step-id-badge" class="px-2 py-0.5 rounded bg-slate-100 text-[9px] font-mono text-slate-400"></div>
+                               </header>
+                               <div id="prop-fields" class="space-y-6"></div>
+                            </div>
                             
-                            <div id="steps-list" class="space-y-3"></div>
-
-                            <div id="property-panel" class="mt-8 pt-8 border-t border-dashed hidden animate-in fade-in slide-in-from-bottom-2">
-                               <h3 class="text-xs font-black uppercase tracking-widest text-gray-300 mb-4">Properties</h3>
-                               <div id="prop-fields" class="space-y-4"></div>
+                            <!-- Placeholder when no step selected -->
+                            <div id="no-selection-placeholder" class="flex-1 flex flex-col items-center justify-center text-slate-300 gap-4 opacity-40">
+                                <i class="fas fa-hand-pointer text-4xl"></i>
+                                <p class="text-[10px] font-black uppercase tracking-widest">Select a step to begin editing</p>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- 2. MIDDLE: Live Preview -->
-                    <div class="col-span-4 flex flex-col space-y-4 overflow-hidden">
-                        <div class="bg-white rounded-2xl border shadow-sm flex-1 flex flex-col overflow-hidden relative">
-                            <header class="bg-gray-50 border-b p-3 flex justify-between items-center px-5">
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-2 h-2 rounded-full bg-red-400"></div>
-                                    <div class="w-2 h-2 rounded-full bg-amber-400"></div>
-                                    <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-                                </div>
-                                <span class="text-[10px] font-mono text-gray-400">Live Preview</span>
-                                <div class="w-12"></div>
-                            </header>
-                            <div id="preview-container" class="flex-1 overflow-y-auto p-6 scroll-smooth"></div>
+                        <!-- 2. Right: Live Preview -->
+                        <div class="col-span-12 xl:col-span-7 flex flex-col space-y-4 overflow-hidden">
+                            <div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-xl flex-1 flex flex-col overflow-hidden relative group/preview">
+                                <header class="bg-gray-50/50 border-b border-gray-100 p-4 flex justify-between items-center px-6">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-2.5 h-2.5 rounded-full bg-red-400/80 shadow-sm"></div>
+                                        <div class="w-2.5 h-2.5 rounded-full bg-amber-400/80 shadow-sm"></div>
+                                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-400/80 shadow-sm"></div>
+                                    </div>
+                                    <span class="text-[9px] font-black uppercase tracking-[0.2em] text-gray-300">Live Preview</span>
+                                    <div class="w-12"></div>
+                                </header>
+                                <div id="preview-container" class="flex-1 overflow-y-auto p-10 scroll-smooth bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px]"></div>
+                           </div>
                         </div>
                     </div>
-
-                    <!-- 3. RIGHT: YAML Source -->
-                    <div class="col-span-4 flex flex-col space-y-4 overflow-hidden">
-                        <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl flex-1 flex flex-col overflow-hidden">
-                            <header class="bg-slate-800/50 border-b border-slate-700 p-3 px-5 flex justify-between items-center">
-                                <span class="text-[10px] font-mono text-slate-400 uppercase tracking-widest">spec.yaml</span>
-                                <i class="fas fa-code text-slate-500 text-xs text-emerald-400"></i>
-                            </header>
-                            <div class="flex-1 p-5 overflow-auto custom-scroll">
-                                <pre id="yaml-view" class="text-[11px] text-emerald-400/80 font-mono leading-relaxed whitespace-pre-wrap selection:bg-emerald-500/20"></pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                </atomic-master-detail>
             `;
             this._initialized = true;
+        }
+
+        // --- 5. INITIAL SELECTION ---
+        if (!this._activeStepId && this._draftSpec.ui?.steps) {
+            const sids = Object.keys(this._draftSpec.ui.steps);
+            if (sids.length > 0) {
+                this._activeStepId = this._draftSpec.ui.initialStep || sids[0];
+                this.editStep(this._activeStepId);
+            }
         }
 
         this.setupVisualEditor();
@@ -184,11 +217,9 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
 
     setupVisualEditor() {
         const list = this.querySelector('#steps-list');
-        const yaml = this.querySelector('#yaml-view');
-        if (!list || !yaml) return;
+        if (!list) return;
 
         list.innerHTML = "";
-        yaml.textContent = this._yamlService ? this._yamlService.dump(this._draftSpec) : JSON.stringify(this._draftSpec, null, 2);
 
         const steps = this._draftSpec.ui?.steps || {};
         const sids = Object.keys(steps);
@@ -207,6 +238,9 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                         <sl-button size="extra-small" variant="neutral" class="reorder-up" circle ${idx === 0 ? 'disabled' : ''}><i class="fas fa-chevron-up text-[8px]"></i></sl-button>
                         <sl-button size="extra-small" variant="neutral" class="reorder-down" circle ${idx === sids.length - 1 ? 'disabled' : ''}><i class="fas fa-chevron-down text-[8px]"></i></sl-button>
                     </div>
+                    <sl-button size="extra-small" variant="text" class="delete-step text-red-500 hover:text-red-700 mr-2" circle title="Delete Step">
+                        <i class="fas fa-trash text-[10px]"></i>
+                    </sl-button>
                     <i class="fas fa-chevron-right text-[10px] ${this._activeStepId === sid ? 'text-indigo-400' : 'text-gray-300'}"></i>
                 </div>
             `;
@@ -228,6 +262,14 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 this.moveStep(sid, 1);
             };
 
+            const delBtn = btn.querySelector('.delete-step');
+            if (delBtn) {
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.deleteStep(sid);
+                };
+            }
+
             list.appendChild(btn);
         });
 
@@ -243,6 +285,55 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 this.editStep(sid);
                 this.updatePreview();
             };
+        }
+
+        // View Source Button
+        const viewSourceBtn = this.querySelector('#view-source-btn');
+        if (viewSourceBtn) {
+            viewSourceBtn.onclick = () => this.openYamlEditor();
+        }
+    }
+
+    openYamlEditor() {
+        // Corrected service ID from shared-types.js
+        const yamlEditorRef = this._context.getServiceReference("prototyper.backoffice.yaml.editor");
+        const yamlEditorSvc = yamlEditorRef ? this._context.getService(yamlEditorRef) : null;
+
+        if (yamlEditorSvc) {
+            yamlEditorSvc.edit({
+                title: `Edit Blueprint: ${this._draftSpec.id}`,
+                data: this._draftSpec,
+                onSave: (updated) => {
+                    this._draftSpec = updated;
+                    this.saveToState();
+                    this.setupVisualEditor();
+                    if (this._activeStepId) this.editStep(this._activeStepId);
+                    this.updatePreview();
+                }
+            });
+        } else {
+            alert("YAML Editor Service not found.");
+        }
+    }
+
+    deleteStep(sid) {
+        if (Object.keys(this._draftSpec.ui.steps).length <= 1) {
+            alert("Cannot delete the last remaining step.");
+            return;
+        }
+
+        if (confirm(`Are you sure you want to delete step '${sid}'?`)) {
+            delete this._draftSpec.ui.steps[sid];
+            
+            // If we deleted the active step, select another one
+            if (this._activeStepId === sid) {
+                this._activeStepId = Object.keys(this._draftSpec.ui.steps)[0];
+            }
+            
+            this.saveToState();
+            this.setupVisualEditor();
+            if (this._activeStepId) this.editStep(this._activeStepId);
+            this.updatePreview();
         }
     }
 
@@ -271,13 +362,20 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         const step = this._draftSpec.ui.steps[sid];
         const panel = this.querySelector('#property-panel');
         const fields = this.querySelector('#prop-fields');
+        const placeholder = this.querySelector('#no-selection-placeholder');
         
-        // Use a more robust check to ensure we regenerate when the step identity changes
-        const currentId = fields.getAttribute('data-active-sid');
+        // Update Step ID Badge
+        const badge = this.querySelector('#step-id-badge');
+        if (badge) badge.textContent = sid;
+
+        // Toggle visibility
+        if (panel) panel.classList.remove('hidden');
+        if (placeholder) placeholder.classList.add('hidden');
         
-        if (currentId !== sid || fields.innerHTML === "") {
+        const _currentId = fields.getAttribute('data-active-sid');
+        
+        if (_currentId !== sid || fields.innerHTML === "") {
             fields.setAttribute('data-active-sid', sid);
-            panel.classList.remove('hidden');
             this.renderStepProperties(sid, step, fields);
         }
 
@@ -685,23 +783,34 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
 
     updatePreview() {
         const container = this.querySelector('#preview-container');
+        if (!container) return; // Layout not ready
+
         const factoryRef = this._context.getServiceReference("prototyper.ui.factory");
         const factory = factoryRef ? this._context.getService(factoryRef) : null;
         
         if (factory) {
-            // Force the preview to the current active step
             const previewSpec = JSON.parse(JSON.stringify(this._draftSpec));
             if (this._activeStepId) {
                 if (!previewSpec.ui) previewSpec.ui = {};
                 previewSpec.ui.initialStep = this._activeStepId;
             }
             
+            // Ensure preview element is alive and attached to current container
             if (!this._previewEl) {
+                container.innerHTML = "";
                 this._previewEl = factory.create(previewSpec, {});
                 container.appendChild(this._previewEl);
             } else {
-                // Reactive update via our new render(spec) support
-                if (this._previewEl.render) this._previewEl.render(previewSpec);
+                // Re-attach if moved/detached, but DON'T recreate
+                if (!container.contains(this._previewEl)) {
+                    container.innerHTML = "";
+                    container.appendChild(this._previewEl);
+                }
+                
+                // Reactive update
+                if (this._previewEl.render) {
+                    this._previewEl.render(previewSpec);
+                }
             }
         }
     }
