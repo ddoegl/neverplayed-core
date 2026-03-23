@@ -215,11 +215,21 @@ class UIFactory extends HTMLElement {
 
         if (this._spec) this.render();
 
-        // Force Alpine to see the new root AFTER first render
-        if (this._state && globalThis.Alpine && globalThis.Alpine.initTree) {
-            console.log(`UIFactory [${this._id}]: Forcing Alpine.initTree`);
-            globalThis.Alpine.initTree(this);
-        }
+        // Ensure Alpine discovery in complex/nested DOM insertion contexts (Delayed & Safe)
+        setTimeout(() => {
+            if (this._state && globalThis.Alpine && globalThis.Alpine.initTree) {
+                // If it already has a data stack, Alpine has already initialized it or its parent.
+                // We check _x_dataStack to avoid the $nextTick property collision.
+                if (this._x_dataStack || this.querySelector('.ui-f-root')?._x_dataStack) return;
+
+                try {
+                    globalThis.Alpine.initTree(this);
+                } catch (_e) {
+                    // Ignore redefinition errors ($nextTick etc) if Alpine already picked it up
+                    // in the 100ms window before this executed.
+                }
+            }
+        }, 100);
     }
 
     render(newSpec = null) {
@@ -241,6 +251,9 @@ class UIFactory extends HTMLElement {
                 if (initialStep) {
                     console.log(`UIFactory [${this._id}]: Syncing uifStep to ${initialStep} from updated spec`);
                     this._state.uifStep = initialStep;
+                }
+                if (ui.steps) {
+                    this._state.uifStepKeys = Object.keys(ui.steps);
                 }
             }
 
@@ -333,7 +346,7 @@ class UIFactory extends HTMLElement {
                 Object.entries(s.parts || {}).forEach(([pid, p]) => {
                     const existing = partsContainer.querySelector(`[data-part-id="${pid}"]`);
                     const partEl = this.renderPart(pid, p, existing);
-                    if (partEl && !existing) partsContainer.appendChild(partEl);
+                    if (partEl) partsContainer.appendChild(partEl); // ALWAYS append to maintain DOM order
                 });
             });
 
@@ -373,7 +386,7 @@ class UIFactory extends HTMLElement {
             Object.entries(parts).forEach(([pid, p]) => {
                 const existing = container.querySelector(`[data-part-id="${pid}"]`);
                 const partEl = this.renderPart(pid, p, existing);
-                if (partEl && !existing) container.appendChild(partEl);
+                if (partEl) container.appendChild(partEl); // ALWAY append to maintain DOM order
             });
         }
     }
@@ -1057,7 +1070,7 @@ class UIFactory extends HTMLElement {
             Object.entries(p.parts || {}).forEach(([cid, cp]) => {
                 const existing = container.querySelector(`:scope > [data-part-id="${cid}"]`);
                 const childEl = this.renderPart(cid, cp, existing);
-                if (childEl && !existing) container.appendChild(childEl);
+                if (childEl) container.appendChild(childEl); // ALWAYS append to maintain DOM order
             });
             return container;
         } else if (p.type === 'card') {
@@ -1092,7 +1105,7 @@ class UIFactory extends HTMLElement {
             Object.entries(p.parts || {}).forEach(([cid, cp]) => {
                 const existing = container.querySelector(`:scope > [data-part-id="${cid}"]`);
                 const childEl = this.renderPart(cid, cp, existing);
-                if (childEl && !existing) container.appendChild(childEl);
+                if (childEl) container.appendChild(childEl); // ALWAYS append to maintain DOM order
             });
             return container;
         } else if (p.type === 'result') {
@@ -1115,7 +1128,7 @@ class UIFactory extends HTMLElement {
             Object.entries(p.parts).forEach(([sid, sp]) => {
                 const existing = container.querySelector(`:scope > [data-part-id="${sid}"]`);
                 const child = this.renderPart(sid, sp, existing);
-                if (child && !existing) container.appendChild(child);
+                if (child) container.appendChild(child); // ALWAYS append to maintain DOM order
             });
         } else if (p.type === 'text' || typeof p.value === 'string') {
             // Reconcile text as a leaf leaf

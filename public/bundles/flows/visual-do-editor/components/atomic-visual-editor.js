@@ -207,7 +207,8 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             const sids = Object.keys(this._draftSpec.ui.steps);
             if (sids.length > 0) {
                 this._activeStepId = this._draftSpec.ui.initialStep || sids[0];
-                this.editStep(this._activeStepId);
+                // Use a small delay to ensure Master-Detail is inflated and ready for querySelection
+                setTimeout(() => this.editStep(this._activeStepId), 100);
             }
         }
 
@@ -771,48 +772,52 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
     }
 
     saveToState() {
-        this.dispatchEvent(new CustomEvent('atomic-change', {
-            bubbles: true,
-            composed: true,
-            detail: { 
-                id: 'draft_spec', 
-                value: this._draftSpec 
-            }
-        }));
+        // Debounce shell updates to avoid heavy re-renders of the editor itself
+        if (this._saveTimer) clearTimeout(this._saveTimer);
+        this._saveTimer = setTimeout(() => {
+            this.dispatchEvent(new CustomEvent('atomic-change', {
+                bubbles: true,
+                composed: true,
+                detail: { 
+                    id: 'draft_spec', 
+                    value: this._draftSpec 
+                }
+            }));
+        }, 500); // 500ms for shell sync
     }
 
     updatePreview() {
-        const container = this.querySelector('#preview-container');
-        if (!container) return; // Layout not ready
+        // Debounce preview updates (very expensive)
+        if (this._previewTimer) clearTimeout(this._previewTimer);
+        this._previewTimer = setTimeout(() => {
+            const container = this.querySelector('#preview-container');
+            if (!container) return; 
 
-        const factoryRef = this._context.getServiceReference("prototyper.ui.factory");
-        const factory = factoryRef ? this._context.getService(factoryRef) : null;
-        
-        if (factory) {
-            const previewSpec = JSON.parse(JSON.stringify(this._draftSpec));
-            if (this._activeStepId) {
-                if (!previewSpec.ui) previewSpec.ui = {};
-                previewSpec.ui.initialStep = this._activeStepId;
-            }
+            const factoryRef = this._context.getServiceReference("prototyper.ui.factory");
+            const factory = factoryRef ? this._context.getService(factoryRef) : null;
             
-            // Ensure preview element is alive and attached to current container
-            if (!this._previewEl) {
-                container.innerHTML = "";
-                this._previewEl = factory.create(previewSpec, {});
-                container.appendChild(this._previewEl);
-            } else {
-                // Re-attach if moved/detached, but DON'T recreate
-                if (!container.contains(this._previewEl)) {
-                    container.innerHTML = "";
-                    container.appendChild(this._previewEl);
+            if (factory) {
+                const previewSpec = JSON.parse(JSON.stringify(this._draftSpec));
+                if (this._activeStepId) {
+                    if (!previewSpec.ui) previewSpec.ui = {};
+                    previewSpec.ui.initialStep = this._activeStepId;
                 }
                 
-                // Reactive update
-                if (this._previewEl.render) {
-                    this._previewEl.render(previewSpec);
+                if (!this._previewEl) {
+                    container.innerHTML = "";
+                    this._previewEl = factory.create(previewSpec, {});
+                    container.appendChild(this._previewEl);
+                } else {
+                    if (!container.contains(this._previewEl)) {
+                        container.innerHTML = "";
+                        container.appendChild(this._previewEl);
+                    }
+                    if (this._previewEl.render) {
+                        this._previewEl.render(previewSpec);
+                    }
                 }
             }
-        }
+        }, 300); // 300ms for live preview refresh
     }
 }
 
