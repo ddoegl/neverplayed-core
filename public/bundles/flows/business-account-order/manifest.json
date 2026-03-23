@@ -1,9 +1,11 @@
 {
-  "Bundle-SymbolicName": "business-account-order",
-  "Bundle-Version": "1.0.0",
+  "Bundle-SymbolicName": "flows.business-account-order",
+  "Bundle-Version": "1.1.2",
   "Bundle-Activator": "activator.js",
-    "Configuration": {
-        "flowType": "order-flow",
-        "channels": ["business-channel-web"]
-    }
+  "X-Atomic-Bundle": "true",
+  "Configuration": {
+    "flowType": "order-flow",
+    "channels": ["business-channel-web"],
+    "icon": "fas fa-university"
+  }
 }

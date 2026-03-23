@@ -13,10 +13,29 @@ import {
 export default class Activator {
   constructor() {
       this.registrations = {};
+      this.specs = {}; // Store all specs for re-registration after reset
   }
 
   async start(context) {
     console.log("Atomic Orchestrator: Starting...");
+
+    // Track Security Services to re-apply configs after a reset
+    const securityServices = [
+        PERMISSION_DATA_SERVICE,
+        FEATURE_DATA_SERVICE,
+        CAPABILITIES_DATA_SERVICE,
+        LIMES_SERVICE
+    ];
+
+    securityServices.forEach(svcId => {
+        context.trackService(`(objectClass=${svcId})`, {
+            addingService: (_ref) => {
+                console.log(`Atomic Orchestrator: Security Service arrived [${svcId}]. Re-applying all known atomic security configs...`);
+                // Give the service a moment to initialize its internal defaults if necessary
+                setTimeout(() => this.reapplySecurityByService(context, svcId), 100);
+            }
+        }).open();
+    });
 
     try {
         const yamlRef = context.getServiceReference(YAML_SERVICE);
@@ -108,6 +127,81 @@ export default class Activator {
     }
   }
 
+  reapplySecurityByService(context, serviceId) {
+      Object.keys(this.specs).forEach(id => {
+          const { bundle, spec, source } = this.specs[id];
+          this.registerSecurity(context, bundle, spec, source, serviceId);
+      });
+  }
+
+  registerSecurity(context, _bundle, spec, _source, specificServiceId = null) {
+    const { id, capabilities, permissionKeys, features, guards } = spec;
+    
+    // Helper to get service reference and service
+    const getSvc = (svcId) => {
+        const ref = context.getServiceReference(svcId);
+        return ref ? context.getService(ref) : null;
+    };
+
+    // 0. Permission Keys
+    if (permissionKeys && (!specificServiceId || specificServiceId === PERMISSION_DATA_SERVICE)) {
+        const permSvc = getSvc(PERMISSION_DATA_SERVICE);
+        if (permSvc) {
+            console.log(`Atomic Orchestrator [Security]: Registering permission keys for ${id}`);
+            const current = permSvc.getPermissions() || {};
+            Object.entries(permissionKeys).forEach(([key, val]) => {
+                current[key] = { id: key, label: key.toLowerCase().replace(/_/g, ':'), value: key.toLowerCase().replace(/_/g, ':'), ...val };
+            });
+            permSvc.setPermissions(current);
+        }
+    }
+
+    // 1. Features
+    if (features && (!specificServiceId || specificServiceId === FEATURE_DATA_SERVICE)) {
+        const featSvc = getSvc(FEATURE_DATA_SERVICE);
+        if (featSvc) {
+            console.log(`Atomic Orchestrator [Security]: Registering features for ${id}`);
+            const current = featSvc.getFeatures() || {};
+            Object.entries(features).forEach(([key, val]) => {
+                current[key] = { id: key, label: key.toLowerCase().replace(/_/g, ':'), ...val };
+            });
+            featSvc.setFeatures(current);
+        }
+    }
+
+    // 2. Capability Strategies
+    if (capabilities && (!specificServiceId || specificServiceId === CAPABILITIES_DATA_SERVICE)) {
+        const capSvc = getSvc(CAPABILITIES_DATA_SERVICE);
+        if (capSvc) {
+            console.log(`Atomic Orchestrator [Security]: Registering capabilities for ${id}`);
+            const current = capSvc.getStrategies() || [];
+            capabilities.forEach(newCap => {
+                if (Array.isArray(newCap.features)) {
+                    newCap.features = newCap.features.map(f => typeof f === 'string' ? { id: f } : f);
+                }
+                const idx = current.findIndex(c => c.id === newCap.id);
+                if (idx === -1) current.push(newCap);
+                else current[idx] = newCap;
+            });
+            capSvc.setStrategies(current);
+        }
+    }
+
+    // 3. UI Guards (Limes Strategies)
+    if (guards && (!specificServiceId || specificServiceId === LIMES_SERVICE)) {
+        const limes = getSvc(LIMES_SERVICE);
+        if (limes) {
+            console.log(`Atomic Orchestrator [Security]: Registering UI guards for ${id}`);
+            guards.forEach(g => {
+                if (Array.isArray(g.features)) {
+                    g.features = g.features.map(f => typeof f === 'string' ? { id: f } : f);
+                }
+                limes.registerStrategy(g.id, g);
+            });
+        }
+    }
+  }
+
   async scanDomainObjects(context) {
     const yamlRef = context.getServiceReference(YAML_SERVICE);
     const yaml = yamlRef ? context.getService(yamlRef) : null;
@@ -115,7 +209,7 @@ export default class Activator {
 
     // In a real system, we'd fetch an index.json or scan the dir.
     // For this POC, we register the known remote-style specs.
-    const remotes = ["sample-do.yaml", "business-account-order.yaml"];
+    const remotes = ["sample-do.yaml"];//, "business-account-order.yaml"];
     
     for (const file of remotes) {
         try {
@@ -150,11 +244,14 @@ export default class Activator {
   }
 
   registerAtomicComponents(context, bundle, spec, source = "bundle") {
-    const { id, label, capabilities, permissionKeys, features, guards, ui, domainObject, actions, caseTypes } = spec;
+    const { id, label, ui, domainObject, actions, caseTypes } = spec;
     const bsn = bundle ? bundle.getSymbolicName() : `synthetic.${source}.${id}`;
     const headers = bundle ? bundle.getHeaders() : {};
     
     console.log(`Atomic Orchestrator: Registering components for ${bsn} (${id}) from ${source}`);
+
+    // Persist spec for re-registration after reset
+    this.specs[id] = { bundle, spec, source };
 
     // Cleanup previous registrations for this DO (e.g., during live-editing)
     if (this.registrations[id]) {
@@ -164,9 +261,12 @@ export default class Activator {
     this.registrations[id] = [];
     const trackReg = (reg) => { if (reg) this.registrations[id].push(reg); return reg; };
 
+    // 0. Register Security Infrastructure (Permissions, Features, Capabilities, Guards)
+    this.registerSecurity(context, bundle, spec, source);
+
     // Helper to get service reference and service
-    const getSvc = (id) => {
-        const ref = context.getServiceReference(id);
+    const getSvc = (svcId) => {
+        const ref = context.getServiceReference(svcId);
         return ref ? context.getService(ref) : null;
     };
 
@@ -186,67 +286,6 @@ export default class Activator {
 
     const flowType = manifestConfig.flowType || "atomic-flow";
     const channels = manifestConfig.channels || ["business-channel-web"];
-
-    // --- 0. Pre-register Security Infrastructure (Permissions, Features, Capabilities, Guards) ---
-    // This MUST happen before DO registration to avoid Limes evaluation race conditions.
-
-    // 0. Permission Keys
-    if (permissionKeys) {
-        const permSvc = getSvc(PERMISSION_DATA_SERVICE);
-        if (permSvc) {
-            console.log(`Atomic Orchestrator: Registering ${Object.keys(permissionKeys).length} permission keys for ${id}`);
-            const current = permSvc.getPermissions() || {};
-            Object.entries(permissionKeys).forEach(([key, val]) => {
-                current[key] = { id: key, label: key.toLowerCase().replace(/_/g, ':'), value: key.toLowerCase().replace(/_/g, ':'), ...val };
-            });
-            permSvc.setPermissions(current);
-        }
-    }
-
-    // 1. Features
-    if (features) {
-        const featSvc = getSvc(FEATURE_DATA_SERVICE);
-        if (featSvc) {
-            console.log(`Atomic Orchestrator: Registering ${Object.keys(features).length} features for ${id}`);
-            const current = featSvc.getFeatures() || {};
-            Object.entries(features).forEach(([key, val]) => {
-                current[key] = { id: key, label: key.toLowerCase().replace(/_/g, ':'), ...val };
-            });
-            featSvc.setFeatures(current);
-        }
-    }
-
-    // 2. Capability Strategies
-    if (capabilities) {
-        const capSvc = getSvc(CAPABILITIES_DATA_SERVICE);
-        if (capSvc) {
-            console.log(`Atomic Orchestrator: Registering ${capabilities.length} capabilities for ${id}`);
-            const current = capSvc.getStrategies() || [];
-            capabilities.forEach(newCap => {
-                if (Array.isArray(newCap.features)) {
-                    newCap.features = newCap.features.map(f => typeof f === 'string' ? { id: f } : f);
-                }
-                const idx = current.findIndex(c => c.id === newCap.id);
-                if (idx === -1) current.push(newCap);
-                else current[idx] = newCap;
-            });
-            capSvc.setStrategies(current);
-        }
-    }
-
-    // 3. UI Guards (Limes Strategies)
-    if (guards) {
-        const limes = getSvc(LIMES_SERVICE, SIGNING_DATA_SERVICE);
-        if (limes) {
-            console.log(`Atomic Orchestrator: Registering ${guards.length} UI guards for ${id}`);
-            guards.forEach(g => {
-                if (Array.isArray(g.features)) {
-                    g.features = g.features.map(f => typeof f === 'string' ? { id: f } : f);
-                }
-                limes.registerStrategy(g.id, g);
-            });
-        }
-    }
 
     // 4. Register Flow Service (UI-DSL)
     if (ui) {

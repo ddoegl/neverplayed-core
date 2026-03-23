@@ -752,7 +752,7 @@ class UIFactory extends HTMLElement {
             }
 
             // 2. Derive Fellows from selected Member (Reactive)
-            const selectedMemberId = state.selectedMemberId;
+            const selectedMemberId = state.selectedMember || state.selectedMemberId;
             if (selectedMemberId) {
                 const allFellows = state.fellowsData?.FELLOWS || [];
                 const filteredFellows = allFellows.filter(f => String(f.fellowOf) === String(selectedMemberId));

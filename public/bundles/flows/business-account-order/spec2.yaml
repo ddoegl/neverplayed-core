@@ -1,0 +1,69 @@
+id: business-account-order
+label: Business Account Order (Declarative)
+domainObject:
+  strategyId: LOCAL_STRATEGY
+  label: Business Account Order (Declarative)
+  properties:
+    "Product": "Premium Business Account"
+    "Status": "Draft"
+  actions:
+    - id: view
+      label: Open Flow
+      icon: fas fa-university
+ui:
+  steps:
+    start:
+      title: Welcome
+      parts:
+        license:
+          type: text
+          label: Text Block
+          value: |-
+            ## New Text
+            license ${this.license.id}
+        selectedMemberId:
+          kind: select-input
+          label: Select Member
+          optionSource: "{{ currentMembers }}"
+        selectedPerson:
+          kind: select-input
+          label: Select Input
+          optionSource: "{{ persons }}"
+        command_button_1:
+          kind: command-button
+          label: next
+          variant: primary
+          action:
+            call: NEXT_STEP
+            params: {}
+    step_2:
+      title: New Step
+      parts:
+        text_1:
+          type: text
+          label: Text Block
+          value: |
+            ## New Text
+            Member: {{selectedMemberId}}
+
+            person: {{selectedPerson}}
+
+            Fellow: {{fellowId}}
+        fellowId:
+          kind: select-input
+          label: Select Fellow
+          optionSource: "{{ currentFellows }}"
+        command_button_1:
+          kind: command-button
+          label: back
+          variant: default
+          action:
+            call: PREV_STEP
+            params: {}
+        command_button_2:
+          kind: command-button
+          label: next
+          variant: primary
+          action:
+            call: NEXT_STEP
+            params: {}
