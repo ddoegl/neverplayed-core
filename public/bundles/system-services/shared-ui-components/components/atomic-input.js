@@ -25,7 +25,7 @@ class AtomicInput extends AtomicComponentBase {
                 this.dispatchEvent(new CustomEvent('atomic-change', {
                     bubbles: true,
                     composed: true,
-                    detail: { id, value: e.target.value }
+                    detail: { id: this._spec.id, value: e.target.value }
                 }));
             });
         }

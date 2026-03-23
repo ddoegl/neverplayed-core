@@ -1005,8 +1005,8 @@ class UIFactory extends HTMLElement {
         const result = resolvePath(scope.uifValues, path) ?? resolvePath(scope, path);
         if (result !== undefined) return result;
 
-        // 4. If it was a literal path that failed, fallback to interpolation
-        return match ? undefined : this.interpolate(expr, scope);
+        // 4. If it was a literal path that failed, return undefined
+        return undefined;
     }
 
     renderPart(_id, p, existingEl = null) {

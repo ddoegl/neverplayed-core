@@ -24,7 +24,7 @@ class AtomicCheckbox extends AtomicComponentBase {
                 this.dispatchEvent(new CustomEvent('atomic-change', {
                     bubbles: true,
                     composed: true,
-                    detail: { id, value: e.target.checked }
+                    detail: { id: this._spec.id, value: e.target.checked }
                 }));
             });
         }

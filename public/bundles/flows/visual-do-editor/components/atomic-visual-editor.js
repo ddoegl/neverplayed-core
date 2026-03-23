@@ -9,6 +9,8 @@ const PART_TEMPLATES = {
     'text': { type: 'text', label: 'Text Block', value: '## New Text\nAdd your content here.' },
     'text-input': { kind: 'text-input', label: 'Text Input', placeholder: 'Enter value...' },
     'select-input': { kind: 'select-input', label: 'Select Input', optionSource: '${this.items}' },
+    'checkbox-input': { kind: 'checkbox-input', label: 'Checkbox Label', id: 'check_1' },
+    'radio-input': { kind: 'radio-input', label: 'Radio Group', id: 'radio_1', options: [{label: 'Option 1', value: '1'}, {label: 'Option 2', value: '2'}] },
     'command-button': { kind: 'command-button', label: 'Action Button', variant: 'primary', action: { call: 'NEXT_STEP' } },
     'row': { type: 'row', label: 'Button Row', parts: {} }
 };
@@ -400,6 +402,8 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                                 <sl-menu-item value="text"><i class="fas fa-font mr-2 text-blue-500"></i> Text Block</sl-menu-item>
                                 <sl-menu-item value="text-input"><i class="fas fa-keyboard mr-2 text-emerald-500"></i> Text Input</sl-menu-item>
                                 <sl-menu-item value="select-input"><i class="fas fa-list mr-2 text-indigo-500"></i> Select Input</sl-menu-item>
+                                <sl-menu-item value="checkbox-input"><i class="fas fa-check-square mr-2 text-blue-400"></i> Checkbox</sl-menu-item>
+                                <sl-menu-item value="radio-input"><i class="fas fa-dot-circle mr-2 text-orange-400"></i> Radio Group</sl-menu-item>
                                 <sl-menu-item value="command-button"><i class="fas fa-toggle-on mr-2 text-pink-500"></i> Action Button</sl-menu-item>
                                 <sl-divider></sl-divider>
                                 <sl-menu-item value="row"><i class="fas fa-columns mr-2 text-gray-500"></i> Button Row</sl-menu-item>
@@ -516,6 +520,21 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             html += `
                 <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
                 <sl-input label="Option Source" value="${part.optionSource || ''}" id="part-source-input" size="small" help-text="e.g. \${this.items}"></sl-input>
+            `;
+        } else if (part.kind === 'checkbox-input') {
+            html += `
+                <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
+            `;
+        } else if (part.kind === 'radio-input') {
+            html += `
+                <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
+                <div class="mt-2 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] font-bold uppercase text-gray-400">Options</label>
+                        <sl-button size="extra-small" variant="neutral" id="add-radio-opt-btn" outline circle><i class="fas fa-plus"></i></sl-button>
+                    </div>
+                    <div id="radio-opts-list" class="space-y-2"></div>
+                </div>
             `;
         } else if (part.kind === 'command-button') {
             const standardActions = [
@@ -651,6 +670,56 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             renderParams();
         }
 
+        // Specialized binding for Radio Options
+        if (part.kind === 'radio-input') {
+            const optsList = partFields.querySelector('#radio-opts-list');
+            const addOptBtn = partFields.querySelector('#add-radio-opt-btn');
+            
+            const renderOpts = () => {
+                if (!part.options) part.options = [];
+                optsList.innerHTML = part.options.map((opt, idx) => `
+                    <div class="flex gap-1 items-center bg-amber-50/50 p-1 rounded-lg border border-amber-100">
+                        <sl-input value="${opt.label}" class="opt-label flex-1" size="small" placeholder="Label" data-idx="${idx}"></sl-input>
+                        <sl-input value="${opt.value}" class="opt-val w-16" size="small" placeholder="Val" data-idx="${idx}"></sl-input>
+                        <sl-button size="extra-small" variant="neutral" class="del-opt-btn" outline circle data-idx="${idx}"><i class="fas fa-times"></i></sl-button>
+                    </div>
+                `).join('');
+
+                optsList.querySelectorAll('.opt-label').forEach(el => {
+                    el.addEventListener('sl-input', (e) => {
+                        part.options[el.dataset.idx].label = e.target.value;
+                        this.saveToState();
+                        this.updatePreview();
+                    });
+                });
+                optsList.querySelectorAll('.opt-val').forEach(el => {
+                    el.addEventListener('sl-input', (e) => {
+                        part.options[el.dataset.idx].value = e.target.value;
+                        this.saveToState();
+                        this.updatePreview();
+                    });
+                });
+                optsList.querySelectorAll('.del-opt-btn').forEach(el => {
+                    el.onclick = () => {
+                        part.options.splice(el.dataset.idx, 1);
+                        this.saveToState();
+                        this.updatePreview();
+                        renderOpts();
+                    };
+                });
+            };
+
+            if (addOptBtn) {
+                addOptBtn.onclick = () => {
+                    if (!part.options) part.options = [];
+                    part.options.push({ label: `Option ${part.options.length + 1}`, value: `${part.options.length + 1}` });
+                    this.saveToState();
+                    renderOpts();
+                };
+            }
+            renderOpts();
+        }
+
         // Specialized binding for Action Call Discovery
         if (part.kind === 'command-button') {
             const callSelect = partFields.querySelector('#part-call-select');
@@ -699,7 +768,7 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 this.updatePreview();
                 this.setupVisualEditor();
             });
-            if (el.tagName === 'SL-SELECT') {
+            if (el.tagName === 'SL-SELECT' || el.tagName === 'SL-CHECKBOX' || el.tagName === 'SL-RADIO-GROUP') {
                  el.addEventListener('sl-change', (e) => {
                     if (path) {
                         if (!part[path]) part[path] = {};
