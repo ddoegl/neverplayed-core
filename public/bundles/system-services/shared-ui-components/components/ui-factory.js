@@ -86,7 +86,19 @@ const startCaseUpdateBridge = (context) => {
 };
 
 if (!globalThis.__UI_FACTORY_REGISTRY) {
-    globalThis.__UI_FACTORY_REGISTRY = new Map();
+    globalThis.__UI_FACTORY_REGISTRY = {
+        _map: new Map(),
+        set(id, state) { 
+            console.log(`UIFactory Registry: Registering [${id}] (Has uifResolve: ${!!state.uifResolve})`);
+            this._map.set(id, state); 
+        },
+        get(id) { 
+            const s = this._map.get(id);
+            if (!s) console.warn(`UIFactory Registry: MISSING state for ID ${id}! Current IDs:`, Array.from(this._map.keys()));
+            return s;
+        },
+        delete(id) { this._map.delete(id); }
+    };
 }
 
 class UIFactory extends HTMLElement {
@@ -219,14 +231,15 @@ class UIFactory extends HTMLElement {
         setTimeout(() => {
             if (this._state && globalThis.Alpine && globalThis.Alpine.initTree) {
                 // If it already has a data stack, Alpine has already initialized it or its parent.
-                // We check _x_dataStack to avoid the $nextTick property collision.
-                if (this._x_dataStack || this.querySelector('.ui-f-root')?._x_dataStack) return;
-
+                if (this._x_dataStack) {
+                    console.log(`UIFactory [${this._id}]: Alpine already initialized.`);
+                    return;
+                }
+                console.log(`UIFactory [${this._id}]: Forcing Alpine init...`);
                 try {
                     globalThis.Alpine.initTree(this);
                 } catch (_e) {
-                    // Ignore redefinition errors ($nextTick etc) if Alpine already picked it up
-                    // in the 100ms window before this executed.
+                    console.warn(`UIFactory [${this._id}]: Alpine initTree failed:`, _e);
                 }
             }
         }, 100);
@@ -239,8 +252,8 @@ class UIFactory extends HTMLElement {
         const ui = spec.ui || spec || {};
 
         // --- 1. IDEMPOTENT RENDER (Reuse existing root if present) ---
-        let root = this.querySelector('.ui-f-root');
-        let body = this.querySelector('#uif-body');
+        let root = this.querySelector(':scope > .ui-f-root');
+        let body = root?.querySelector('.uif-body');
 
         if (this._rendered && root && body) {
             console.log(`UIFactory [${this._id}]: Partial update (newSpec=${!!newSpec})`);
@@ -270,13 +283,13 @@ class UIFactory extends HTMLElement {
         }
 
         this.setAttribute('data-uif-id', this._id);
+        this.setAttribute('x-data', `globalThis.__UI_FACTORY_REGISTRY.get('${this._id}')`);
         
         root = document.createElement('div');
-        root.className = 'ui-f-root';
-        root.setAttribute('x-data', `globalThis.__UI_FACTORY_REGISTRY.get('${this._id}')`);
+        root.className = 'ui-f-root relative min-h-[50px]';
         
         body = document.createElement('div');
-        body.id = 'uif-body';
+        body.className = 'uif-body flex flex-col gap-4'; 
         root.appendChild(body);
         
         this.innerHTML = "";
@@ -433,7 +446,7 @@ class UIFactory extends HTMLElement {
         const s = {
             loading: false,
             data: null,
-            guards: {},
+            uifGuards: {},
             uifValues: { ...baseValues, ...instanceData },
             uifStep: instanceStep || initialStep || stepKeys[0],
             uifStepKeys: stepKeys,
@@ -442,19 +455,22 @@ class UIFactory extends HTMLElement {
             _hydrated: !!instance,
             _registryReady: false,
             instanceId: instanceId,
-            resolve(expr) {
+            uifId: this._id,
+            uifResolve(expr) {
                 try {
                     // 1. Direct path lookup (fastest for simple keys)
-                    const val = this._factory.resolveValue(expr, this);
+                    const val = this._factory ? this._factory.resolveValue(expr, this) : undefined;
                     if (val !== undefined && val !== null) return val;
 
                     // 2. Complex Expression Evaluation
                     // We detect expressions by checking for operators (symbols) or spaces
-                    if (/[?|&:<>=!]/.test(expr) || expr.includes(' ')) {
+                    if (expr && (/[?|&:<>=!]/.test(expr) || expr.includes(' '))) {
                         // Create a context where uifValues are top-level. 
                         const scopeProxy = new Proxy(this.uifValues, {
                             get: (target, key) => {
                                 if (key === 'uifValues' || key === 'values') return target; // Support prefixes
+                                if (key === 'uifResolve' || key === 'resolve') return this.uifResolve.bind(this);
+                                if (key === 'uifGuards' || key === 'guards') return this.uifGuards;
                                 return target[key] !== undefined ? target[key] : (this[key] !== undefined ? this[key] : undefined);
                             },
                             has: () => true // Force 'with' to stay within this proxy to avoid global naming collisions
@@ -633,7 +649,7 @@ class UIFactory extends HTMLElement {
         const collect = (parts) => {
             Object.values(parts).forEach(p => {
                 const kind = p.kind || p.type;
-                if (p.guard) s.guards[p.guard] = true;
+                if (p.guard) s.uifGuards[p.guard] = true;
                 
                 // Ensure properties mentioned in actions are initialized for reactivity & persistence
                 const params = p.params || {};
@@ -1065,7 +1081,7 @@ class UIFactory extends HTMLElement {
                 wrapper.className = 'uif-guard-wrapper';
                 wrapper.setAttribute('data-part-id', _id);
                 const escapedGuard = p.guard.replace(/'/g, "\\\\'");
-                wrapper.setAttribute('x-show', `guards['${escapedGuard}'] === true`);
+                wrapper.setAttribute('x-show', `uifGuards['${escapedGuard}'] === true`);
                 wrapper.setAttribute('x-cloak', '');
                 if (!wrapper.contains(el)) wrapper.appendChild(el);
                 return wrapper;
@@ -1194,7 +1210,7 @@ class UIFactory extends HTMLElement {
                     const decodedPath = temp.textContent;
 
                     const escapedPath = decodedPath.replace(/'/g, "\\'"); // Single backslash for setAttribute
-                    span.setAttribute('x-text', `((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))(resolve('${escapedPath}'))`);
+                    span.setAttribute('x-text', `((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))(uifResolve('${escapedPath}'))`);
                 }
             });
         }
@@ -1203,8 +1219,8 @@ class UIFactory extends HTMLElement {
             const escapedGuard = p.guard.replace(/'/g, "\\\\'");
             const guardWrap = document.createElement('div');
             // Use both x-show and direct style binding for maximum robustness against CSS overrides
-            guardWrap.setAttribute('x-show', `guards['${escapedGuard}'] === true`);
-            guardWrap.setAttribute(':style', `{ display: guards['${escapedGuard}'] ? '' : 'none !important' }`);
+            guardWrap.setAttribute('x-show', `uifGuards['${escapedGuard}'] === true`);
+            guardWrap.setAttribute(':style', `{ display: uifGuards['${escapedGuard}'] ? '' : 'none !important' }`);
             guardWrap.setAttribute('x-cloak', '');
             guardWrap.setAttribute('x-init', `console.log('UIFactory [${this._id}]: Guard ${escapedGuard} attached to DOM', $el)`);
             guardWrap.appendChild(container);
@@ -1214,7 +1230,7 @@ class UIFactory extends HTMLElement {
     }
 
     async resolveGuards(scope) {
-        if (!scope || !scope.guards) return;
+        if (!scope || !scope.uifGuards) return;
         
         // Batch evaluations to a microtask if already pending, otherwise run
         if (this._pendingGuardEval) return;
@@ -1227,7 +1243,7 @@ class UIFactory extends HTMLElement {
             const user = bp.currentUser || bo.currentUser || this._getService(SESSION_SERVICE)?.currentUser;
             const vals = globalThis.Alpine.raw(scope.uifValues);
 
-            for (const guardKey in scope.guards) {
+            for (const guardKey in scope.uifGuards) {
                 const guardDef = this._guardConfig?.[guardKey];
                 let allPass = true;
 
@@ -1273,11 +1289,11 @@ class UIFactory extends HTMLElement {
                 }
 
                 // Only update if changed to minimize DOM thrashing
-                if (scope.guards[guardKey] !== allPass) {
+                if (scope.uifGuards[guardKey] !== allPass) {
                     console.log(`UIFactory [${this._id}]: Guard flipping [${guardKey}] -> ${allPass}`);
-                    scope.guards[guardKey] = allPass;
+                    scope.uifGuards[guardKey] = allPass;
                     // Trigger object-level reactivity for Alpine
-                    scope.guards = { ...scope.guards };
+                    scope.uifGuards = { ...scope.uifGuards };
                 }
             }
         } finally {

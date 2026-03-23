@@ -60,40 +60,75 @@ ui:
   steps:
     order_init:
       order: 1
-      title: "Reactive Order Demo"
+      title: "🚀 Reactive Sync Engine"
       parts:
-        intro:
-          type: "text"
-          value: |
-            ### Generic Case Sync Pattern
-            This flow is fully declarative! It uses the `spec.yaml` to define UI and behavior.
-            When you create a case, the status will update reactively below.
+        hero_card:
+          type: card
+          variant: info
+          label: "Declarative Pattern"
+          parts:
+            intro:
+              type: text
+              value: |
+                ### Zero-Code Event Sync
+                This flow provides a **Real-Time OSGi-to-DOM Bridge**. 
 
-        case_info:
-          type: "text"
-          style: "margin-top: 1rem; padding: 1rem; border-radius: 1rem; background: #f0f9ff; border: 1px solid #bae6fd;"
-          value: |
-            **Linked Case ID:** ${values.myCaseId || 'None'}
-            **Current Status:** ${values.myCaseIdStatus || 'N/A'}
+                By defining a `linkToProperty` in the action params, the system automatically:
+                1. Creates a Remote Case
+                2. Stores the ID in your local State
+                3. Subscribes to Global Change Events
+                4. Syncs the Status reactively below!
+
+        case_monitor:
+          type: card
+          variant: plain
+          label: "Live Monitor"
+          parts:
+            status_row:
+              type: row
+              parts:
+                id_badge:
+                  type: text
+                  value: "🆔 **ID:** `${values.myCaseId || '---'}`"
+                status_badge:
+                  type: text
+                  value: "📡 **Status:** `${values.myCaseIdStatus || 'OFFLINE'}`"
           guard: ORDER_VIEW_CASE
 
-        submit_btn:
-          kind: "command-button"
-          variant: "primary"
-          label: "Create Order Case"
-          call: "synthetic.case.create"
-          params:
-            caseTypeId: "business-account-order"
-            linkToProperty: "myCaseId"
-            onSuccess: "WAIT_FOR_CASE"
-            title: "Declarative Sync Demo"
-            companyId: "demo-corp"
-          guard: ORDER_CAN_CREATE
+        action_area:
+          type: card
+          parts:
+            submit_btn:
+              kind: command-button
+              variant: primary
+              label: "Initialize Order Case"
+              call: "synthetic.case.create"
+              params:
+                caseTypeId: "business-account-order"
+                linkToProperty: "myCaseId"
+                onSuccess: "WAIT_FOR_CASE"
+                title: "Declarative Sync Demo"
+                companyId: "demo-corp"
+              guard: ORDER_CAN_CREATE
+            
+            help_text:
+              type: text
+              value: "*Click above to test the OSGi event bridge initialization.*"
+              guard: ORDER_CAN_CREATE
 
     order_success:
       order: 2
-      title: "Case Finalized"
+      title: "✅ Orchestration Complete"
       parts:
-        msg:
-          type: "text"
-          value: "The case **${values.myCaseId}** has reached status **${values.myCaseIdStatus}**. Well done!"
+        success_card:
+          type: card
+          variant: success
+          label: "Mission Accomplished"
+          parts:
+            msg:
+              type: text
+              value: |
+                ## Sync Success!
+                The case **${values.myCaseId}** has reached its terminal status: **${values.myCaseIdStatus}**.
+
+                The declarative scope handled all event subscriptions and UI updates automatically.
