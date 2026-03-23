@@ -8,6 +8,8 @@ import "./components/atomic-radio.js";
 import "./components/atomic-checkbox.js";
 import "./components/atomic-master-detail.js";
 import "./components/atomic-hero.js";
+import "./components/authorization-selector.js";
+import "./components/user-selector.js";
 
 export default class Activator {
   start(context) {
