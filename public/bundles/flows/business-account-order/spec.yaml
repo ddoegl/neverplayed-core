@@ -44,6 +44,16 @@ guards:
       - id: "BUSINESS_FLOWS"
         keys:
           - BUSINESS_VIEW
+  - id: BUSINESS_VIEW_CASE
+    operator: "OR"
+    matchers:
+      - type: "matchPropertyNotEmpty"
+        key: "myCaseId"
+  - id: BUSINESS_CAN_CREATE
+    operator: "OR"
+    matchers:
+      - type: "matchPropertyEmpty"
+        key: "myCaseId"
 
 ui:
   initialStep: step_init
@@ -139,6 +149,22 @@ ui:
           title: "Confirm Details"
           subtitle: "Please verify your account configuration before placing the order."
 
+        case_monitor:
+          type: "card"
+          variant: "plain"
+          label: "Live Order Status"
+          parts:
+            status_row:
+              type: row
+              parts:
+                id_badge:
+                  type: text
+                  value: "🆔 **Case ID:** `${myCaseId || '---'}`"
+                status_badge:
+                  type: text
+                  value: "📡 **Status:** `${myCaseIdStatus || 'INITIALIZING...'}`"
+          guard: BUSINESS_VIEW_CASE
+
         summary_card:
           type: "card"
           title: "Order Details"
@@ -161,6 +187,7 @@ ui:
               variant: "default"
               label: "Back"
               call: "PREV_STEP"
+              guard: BUSINESS_CAN_CREATE
             submit_btn:
               kind: "command-button"
               variant: "success"
@@ -170,11 +197,10 @@ ui:
                 caseTypeId: "business-account-order"
                 companyId: "${selectedMemberId}"
                 targetPersonId: "${fellowId}"
+                linkToProperty: "myCaseId"
+                onSuccess: "WAIT_FOR_CASE"
                 successMessage: "Your order has been placed! A signing case has been created for ${selectedMemberId}. ✅"
-                onSuccess: "REDIRECT"
-                redirectFlowId: "cases"
-                redirectParams:
-                  companyId: "${selectedMemberId}"
+              guard: BUSINESS_CAN_CREATE
 
 caseTypes:
   business-account-order:
