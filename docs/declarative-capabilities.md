@@ -15,7 +15,7 @@ generic execution engine that hydrates its behavior from declarative manifests.
 
 In its current iteration, the system relies on **permission-keys** to guard
 specific functionalities. These keys follow a structured format:
-`subject:action:attribute` (e.g., `documents:manage:allowed`).
+`subject:verb:attribute` (e.g., `documents:manage:allowed`).
 
 **Delivery Mechanism:**
 
@@ -39,8 +39,8 @@ specific functionalities. These keys follow a structured format:
 
 **Current Limitations:**
 
-- **Cumbersome & Error-Prone**: Manually setting permissions for sub-users of
-  legal representatives is tedious and unnecessary.
+- **Cumbersome & Error-Prone**: Manually setting permissions for users of legal
+  representatives is tedious and unnecessary.
 - **Lack of Uniformity**: Automated permissioning is fragmented across different
   services without a centralized logic engine.
 - **Opaque Logic**: The "why" behind an assigned permission-key is often buried
@@ -50,28 +50,32 @@ specific functionalities. These keys follow a structured format:
 
 To overcome the limitations of the "As-Is" state, the system is evolving towards
 a uniform, declarative **Capability Manifest** model driven by a centralized
-**Global Evaluator**.
+**Permission Resolver**.
 
 #### 2.2.1 The Capability Manifest
 
-Instead of hardcoding logic triggers, each component or feature defines its
-access rules in a structured YAML/JSON manifest:
+Instead of hardcoding logic triggers, each functional **Feature** defines its
+access rules in a structured **Capability Manifest**. A manifest defines a
+**Capability**—a cohesive set of **Permission Keys** and the rules that govern
+them.
 
-- **Keys**: Standardized `subject:action:attribute` identifiers.
+- **Capability**: A logical grouping of related permissions (e.g., "Messenger").
+- **Keys**: Standardized `subject:verb:attribute` identifiers belonging to the
+  capability.
 - **Rules**: A hierarchy of logical operators (`AND`, `OR`, `NOT`) that evaluate
-  conditions.
+  conditions, often starting with a **Feature Availability** check.
 - **Contextual Attributes**: Rules can reference user attributes (e.g.,
   `isLegalRep`), resource attributes (e.g., `ownerId`), or environmental state
   (e.g., `timeOfDay`).
 
-#### 2.2.2 The Global Evaluator
+#### 2.2.2 The Permission Resolver
 
-The Evaluator is a generic engine that resolves access in real-time:
+The Resolver is a generic engine that resolves access:
 
-1. **Ingestion**: Loads all registered Capability Manifests from a decentralized
-   Topic Registry or Config Service.
-2. **Resolution**: Given a `Capability Key` and a `User Context`, it traverses
-   the rule graph to return a boolean result.
+1. **Ingestion**: Loads all registered Capability Manifests from a Config
+   Service.
+2. **Resolution**: Given a `User Context`, it traverses the rule graph to derive
+   a set of `Permission Key`s.
 3. **Traceability**: Unlike hidden provider-side code, the decision logic is
    fully inspectable and auditable within the manifest itself.
 
@@ -80,8 +84,24 @@ The Evaluator is a generic engine that resolves access in real-time:
 - **Zero-Code Updates**: Changing a business rule for "Legal Representatives"
   only requires a manifest update, not a code change or manual admin
   intervention.
-- **Uniformity**: All services use the same evaluator, ensuring consistent
+- **Uniformity**: All services use the same Resolver, ensuring consistent
   behavior across the entire ecosystem.
+
+### 2.3 Manifest Granularity Strategies
+
+Breaking down the "scope to be guarded" requires balancing developer autonomy
+with system-wide observability.
+
+| Strategy                 | Approach                          | Pros                                         | Cons                                         |
+| :----------------------- | :-------------------------------- | :------------------------------------------- | :------------------------------------------- |
+| **Feature-Based**        | One manifest per feature/product. | High cohesion; local ownership; easy gating. | Potential logic duplication across features. |
+| **Domain-Based**         | One manifest per subject/entity.  | Clear entity boundaries; predictable CRUD.   | Features cross-cut multiple entities.        |
+| **Global Monolith**      | One large manifest for everything. | Full observability; no ingestion issues.     | Merge conflicts; hard to manage lifecycle.   |
+| **Package-Based**        | Tied to technical bundles.        | Aligns with deployment units.                | technical boundaries != business boundaries. |
+
+**Recommended Strategy**: **Feature-Based** manifests are preferred. This allows
+individual product teams to evolve their capabilities independently while using
+`matchFeature` as a global master switch.
 
 ---
 
@@ -103,12 +123,57 @@ between the subject and the object(s):
 
 ### 3.2 Dynamic Context Resolution
 
-The **Global Evaluator** uses these relations to filter the returned scope:
+The **Permission Resolver** uses these relations to filter the returned scope:
 
 - `matchRelation`: A Layer 1 primitive that verifies the specific bond (e.g.,
   `isLegalRepFor(customer_id)`).
-- `filterScope`: In addition to a boolean "yes/no," the evaluator can return a
+- `filterScope`: In addition to a boolean "yes/no," the Resolver can return a
   list of IDs to which the capability applies.
+
+### 3.3 Defining the Scope in the Manifest
+
+The scope of a capability is a first-class citizen in the declarative manifest:
+
+- **`scope: relational`**: The permission-key is restricted to specific
+  customers. This is the default for most business-sensitive capabilities.
+- **`scope: license-holder`**: The permission-key is scoped to the **main
+  contractor** (License Holder). This allows both the contractor and privileged
+  representatives (e.g., accountants) to access the same member context.
+- **`scope: license-wide`**: The permission-key applies to the entire license.
+  Consuming services distinguish two modes here:
+  - **Mode `ALL` (Default)**: Explicitly lists every license member in the
+    returned `filterScope`. This ensures consuming systems have a declarative
+    list available by default.
+  - **Mode `ANY`**: Implicitly covers any member associated with the license
+    without naming them explicitly. This is used as a **shortcut** when no
+    consumer requires the explicit list.
+
+### 3.4 How `filterScope` is Determined
+
+The **Permission Resolver** calculates the `filterScope` dynamically during the
+resolution phase:
+
+1. **Relation Collection**: The Resolver scans the `User Context` for all active
+   relations (e.g., `Relation(Type: LegalRep, Target: Customer_A)`).
+2. **Matcher Evaluation**: When a rule encounters a `matchRelation: legal_rep`
+   primitive, it identifies not just _if_ there is a match, but _which_ targets
+   caused the match.
+3. **ID Extraction**: The Resolver pulls the unique identifiers (e.g.,
+   `Customer_A`) from the successful relations.
+4. **Resolution**: The resulting `filterScope` is the intersection of the
+   permitted scope defined in the manifest and the active relations found in the
+   user's context.
+
+### 3.5 Tenant Aggregation
+
+A **License** acts as a cross-tenant aggregator. It can contain **License
+Members** (Customers) belonging to different **Tenants**.
+
+- **Shared Capabilities**: Capabilities are defined at the License level and
+  apply across all members, regardless of their tenant.
+- **Tenant Context**: While access is granted at the license level, the **Tenant
+  Context** of each individual member is preserved for downstream routing and
+  configuration (e.g., specific subjects or localized rules).
 
 ---
 
@@ -120,17 +185,23 @@ and distribution.
 ### 3.1 Layer 1: Rule Strategies
 
 These are the **core matching primitives** used to evaluate business intent.
-Strategies are atomic, reusable logic units that the Global Evaluator uses to
+Strategies are atomic, reusable logic units that the Permission Resolver uses to
 determine if a condition is met.
 
 **Supported Primitives:**
 
 - `matchAlways`: Evaluates to `true` in all contexts.
 - `matchFeature`: Matches if a specific feature flag is currently enabled.
-- `matchLicenseholder`: Matches if the subject is the main license-holder.
+- `matchLicensemember`: Matches if the owner of the user-id is themselves a
+  member of the license (e.g., a self-employed person).
 - `matchRelation`: Matches if the user has a specific relation (e.g.,
   Organizational Role, Legal Representative, Authorized Delegate) with a given
   scope.
+  - **Specifying Level**: Can be extended with specific sub-roles:
+    - `legal_rep`: `liable_owner`, `managing_partner`, `managing_director`,
+      `authorized_signatory`.
+    - `authorized_delegate`: `general`, `cardadministration`, `guarantee`,
+      `letter_of_credit`.
 - `matchProperty`: Matches if a given context property matches a required value.
 
 - **Purpose**: To provide a standardized set of logic blocks that can be
@@ -141,6 +212,9 @@ determine if a condition is met.
 In this layer, the strategy terms (matchers) defined in Layer 1 are **composed
 into rules** and associated with specific **assignment outcomes**.
 
+- **Feature Guarding**: A capability strategy typically uses the `matchFeature`
+  primitive at its root. If the feature is not active for the license, the
+  entire capability and its keys are skipped.
 - **Composition**: Combines multiple Rule Strategies using logical operators
   (`AND`, `OR`, `NOT`).
 - **Outcome**: Maps the result of the rule evaluation to the actual granting or
@@ -152,8 +226,8 @@ Layer 3 consists of the **well-known permission-keys** themselves. These keys
 are the elements of the assignment outcomes defined in Layer 2.
 
 - **Role**: They serve as the "output" of the evaluation process.
-- **Format**: Standardized `subject:action:attribute` strings that the rest of
-  the system understands.
+- **Format**: Standardized `subject:verb:attribute` strings that the rest of the
+  system understands.
 
 ---
 
@@ -166,8 +240,8 @@ The evaluation flow supports both **Pull** (on-demand requests) and **Push**
 
 1. **Context Injection**: The system is provided with a **User Context**
    (attributes, roles, ownership, etc.).
-2. **Rule Evaluation (Layers 1 & 2)**: The Global Evaluator applies the defined
-   capability rules. It evaluates the **composed matchers** (Layer 2) by
+2. **Rule Evaluation (Layers 1 & 2)**: The Permission Resolver applies the
+   defined capability rules. It evaluates the **composed matchers** (Layer 2) by
    checking the **rule primitives** (Layer 1) against the provided context.
 3. **Key Extraction (Layer 3)**: For every rule that evaluates to `true`, the
    corresponding **permission-keys** are added to the result set.
@@ -199,8 +273,8 @@ existing mechanisms through a **Layered Precedence Model**.
 
 ### 5.1 The Source Hierarchy
 
-The Global Evaluator aggregates inputs from multiple sources, applying them in
-the following order of priority (highest at the top):
+The Permission Resolver aggregates inputs from multiple sources, applying them
+in the following order of priority (highest at the top):
 
 1. **Customer Administrator Overrides**: Explicitly assigned permission-keys set
    by the customer's admin. This is the **"Last Say"** and overrules all
@@ -212,9 +286,9 @@ the following order of priority (highest at the top):
 
 ### 5.2 Conflict Resolution: The Merge Policy
 
-The Evaluator applies a **Refined Union with Override** strategy:
+The Resolver applies a **Refined Union with Override** strategy:
 
-- **Discovery**: The Evaluator collects all potential permission-keys from all
+- **Discovery**: The Resolver collects all potential permission-keys from all
   three sources.
 - **Additive Merging**: By default, the result is the union of all granted keys.
 - **Conditional Overrides**:
@@ -253,6 +327,8 @@ current manual approach to the proposed declarative model.
    given customer scope.
 3. **`messenger:manage:light_conversations`**: Manage public conversations open
    to all customers in the license.
+4. **`messenger:view:targeted_messages`**: View personal messages explicitly
+   targeted at the current user as the "Owner" or "Signatory".
 
 ### 6.2 Comparison: As-Is vs. Target State
 
@@ -277,28 +353,44 @@ automatically receive `view` and `manage` permissions for that customer.
 
 #### Target Implementation (Declarative Manifest)
 
-The feature defines a manifest that the **Global Evaluator** interprets:
+The feature `messenger` defines the `Messenger` Capability in a manifest:
 
 ```yaml
 # messenger-capabilities.yaml
+capability: "Messenger"
+guard:
+  matchFeature: "messenger" # The "Master Switch" for this set of keys
+
 capabilities:
   - key: "messenger:manage:conversations"
+    scope: relational # Restricted to specific customers
     rule:
       OR:
         - matchRelation: "owner"
         - matchRelation: "legal_rep"
-        - matchRelation: "admin_override" # L1 Override
+        - matchRelation: "admin_override"
 
   - key: "messenger:view:conversations"
+    scope: relational
     rule:
       OR:
         - matchRelation: "legal_rep"
         - matchRelation: "authorized_delegate"
+
+  - key: "messenger:view:targeted_messages"
+    scope: relational
+    rule:
+      matchRelation: "owner" # Exclusive to the owner of the user
+
+  - key: "messenger:manage:light_conversations"
+    scope: license-wide
+    mode: ALL # Returns an explicit list of all customer IDs in the license
+    rule: matchAlways
 ```
 
-**Outcome**: When the user logs in, the Evaluator sees the "legal_rep" relation
-in the context and **immediately grants** the keys. No admin intervention
-required.
+**Outcome**: When the user logs in, the Resolver sees the "legal_rep" relation
+in the context and **immediately grants** the keys scoped to that specific
+customer. No admin intervention required.
 
 ### 6.4 Message Topic Governance
 
@@ -310,27 +402,120 @@ manifest, ensuring that sensitive routing rules are always followed.
 | **`support`**         | **All Users**                               | Public `light_conversation` primitive.          |
 | **`account_manager`** | Users with `messenger:manage:conversations` | Requires specific license-member assignment.    |
 | **`privileged`**      | **Legal Representatives** only              | Automatically granted based on `matchRelation`. |
+| **`targeted`**        | **Owner** of the user                       | Exclusive to the Signatory.                     |
+
+- **Note on Subjects**: Subjects are the granular "reasons" for a conversation.
+  They are **not** defined within the Capability Manifest.
+  - **Tenant-Specific Mapping**: The mapping of **Subjects to Topics** is
+    managed in a separate **Tenant Configuration**. This allows different
+    tenants to have a unique set of subjects (with their own routing) for the
+    same shared topic (e.g., `support`).
+  - **Resolver's Role**: The **Permission Resolver** only manages the "Who can
+    access which Topic" boundary. The actual subjects available to a user are
+    resolved by intersecting the permitted topics with the tenant's specific
+    mapping.
 
 #### Manifest Representation (Granular Topics)
 
 ```yaml
 # messenger-topics.yaml
+# The 'subjects' listed here are foreign keys to the Routing Service.
 topics:
   - id: "support"
-    rule: matchAlways # Open to all
+    scope: license-wide
+    mode: ALL # Available to all member in the license
+    rule: matchAlways
 
   - id: "account_manager"
+    scope: relational # Scoped to the customer the user manages
     rule:
       HAS_CAPABILITY: "messenger:manage:conversations"
 
   - id: "privileged"
+    scope: relational
     rule:
       AND:
         - matchRelation: "legal_rep"
         - HAS_CAPABILITY: "messenger:manage:conversations"
+
+  - id: "targeted"
+    scope: relational
+    rule:
+      matchRelation: "owner"
 ```
 
 In this model, a Legal Representative doesn't just get the "manage" capability;
-the **Global Evaluator** ensures they also have access to the `privileged`
+the **Permission Resolver** ensures they also have access to the `privileged`
 topics necessitated by their role, while a regular staff member with "manage"
 permissions is restricted to standard `account_manager` topics.
+
+---
+
+## 7. Illustrative Example: Campaign Orchestrator
+
+The **Campaign Orchestrator** leverages the Permission Resolver to deliver
+targeted content (Promotions, News, and Alerts) based on the subject's
+real-time context.
+
+### 7.1 The Goal: Contextual Delivery
+
+Unlike static permissions, **Campaigns** are dynamic. A user should only see a
+"Platinum Upgrade" promotion if they meet specific criteria (e.g., they have a
+high transaction volume or a specific relation).
+
+### 7.2 Manifest Representation (Promotions)
+
+Promotions are treated as a specialized type of **Capability**. The Resolver
+returns `campaign:view:ID` keys for every eligible promotion.
+
+```yaml
+# promotions-manifest.yaml
+capability: "Promotions"
+guard:
+  matchFeature: "campaign_engine"
+
+capabilities:
+  - key: "campaign:view:platinum_upgrade"
+    scope: license-wide
+    rule:
+      AND:
+        - matchProperty: { path: "user.segment", operator: "==", value: "high_value" }
+        - matchRelation: "liable_owner"
+
+  - key: "campaign:view:new_feature_onboarding"
+    scope: license-wide
+    rule:
+      AND:
+        - matchFeature: "advanced_analytics"
+        - NOT:
+            matchProperty: { path: "user.onboarding_completed", operator: "==", value: true }
+
+  - key: "campaign:view:loyalty_discount"
+    scope: relational
+    rule:
+      matchRelation: "legal_rep" # Only shown for customers where user is Legal Rep
+
+  - key: "campaign:view:enterprise_upsell"
+    scope: license-wide
+    rule:
+      AND:
+        - matchRelation: "admin"
+        - matchProperty: { path: "license.member_count", operator: ">", value: 3 }
+        - matchProperty: { path: "license.user_count", operator: ">", value: 5 }
+```
+
+### 7.3 Processing Flow
+
+1. **Context Hydration**: The system injects the full user profile (segment,
+   onboarding status, license metrics) into the Resolver.
+2. **Rule Evaluation**: The Resolver evaluates each promotion rule to identify
+   the set of eligible `campaign:view:ID` keys.
+3. **Backend Hydration**: A dedicated **Promotion Service** intercepts the
+   Resolver's output and fetches the creative content (images, localized text,
+   deep links) from the CMS for the identified IDs.
+4. **Consolidate & Deliver**: The backend delivers the **fully hydrated
+   promotion objects** to the Frontend.
+
+**Outcome**: The Frontend remains a "thin" consumer of pre-processed,
+pre-hydrated content, while all business logic and content assembly are
+centralized in the Backend infrastructure.
