@@ -1,4 +1,4 @@
-import { FLOW_SERVICE } from "../../../shared-types.js";
+import { FLOW_SERVICE, SELECTION_SERVICE } from "../../../shared-types.js";
 import { sendInvitationRequest } from "../../../auth-shield.js";
 
 export default class Activator {
@@ -29,26 +29,30 @@ export default class Activator {
             }
         });
 
-        // Define the scope factory for the Shell UI
-        globalThis.getShellScope = () => {
-            return {
-                get history() { return state.history; },
-                get currentCommand() { return state.currentCommand; },
-                set currentCommand(val) { state.currentCommand = val; },
+        // Define a stable scope for the Shell UI
+        const shellScope = {
+            get history() { return state.history; },
+            get currentCommand() { return state.currentCommand; },
+            set currentCommand(val) { state.currentCommand = val; },
+            
+            async executeCommand() {
+                const cmd = state.currentCommand.trim();
+                if (!cmd) return;
                 
-                executeCommand() {
-                    const cmd = state.currentCommand.trim();
-                    if (!cmd) return;
-                    
-                    state.addLog(cmd, 'input');
-                    state.commandHistory.push(cmd);
-                    state.historyIndex = state.commandHistory.length;
-                    state.currentCommand = "";
-                    
-                    this.processCommand(cmd);
-                },
+                state.addLog(cmd, 'input');
+                state.commandHistory.push(cmd);
+                state.historyIndex = state.commandHistory.length;
+                state.currentCommand = "";
                 
-                async processCommand(input) {
+                try {
+                    await this.processCommand(cmd);
+                } catch (err) {
+                    state.addLog(`Execution error: ${err.message}`, 'error');
+                    console.error("Shell Execution Error:", err);
+                }
+            },
+            
+            async processCommand(input) {
                     const parts = input.split(' ');
                     const command = parts[0].toLowerCase();
                     const args = parts.slice(1);
@@ -61,6 +65,10 @@ export default class Activator {
                                     <div><span class="text-yellow-400">/invite [email]</span> - Send fellowship invitation</div>
                                     <div><span class="text-yellow-400">/clear</span> - Clear terminal history</div>
                                     <div><span class="text-yellow-400">/whoami</span> - Show current session info</div>
+                                    <div><span class="text-yellow-400">/vars [category] [id]</span> - List and drill down flow variables</div>
+                                    <div><span class="text-yellow-400">/services [filter]</span> - List all registered service IDs</div>
+                                    <div><span class="text-yellow-400">/bundles [filter|ldap]</span> - List bundles (e.g. (Bundle-Name=*))</div>
+                                    <div><span class="text-yellow-400">/methods [serviceId]</span> - List methods on a service</div>
                                     <div><span class="text-yellow-400">/help</span> - Show this help message</div>
                                 </div>
                             `);
@@ -78,6 +86,343 @@ export default class Activator {
                                 state.addLog(`Active User: <span class="text-white">${user.alias || user.email || user.firstname}</span> (ID: ${user.id})`);
                             } else {
                                 state.addLog("No active session found.", 'error');
+                            }
+                            break;
+                        }
+                            
+                        case '/vars': {
+                            const boState = globalThis.backofficeState;
+                            if (!boState) {
+                                state.addLog("Backoffice state not found.", 'error');
+                                return;
+                            }
+
+                            const categoryArg = args[0];
+                            let targetArg = args[1]; // Can be ID or ID.PATH
+
+                            const categories = {
+                                people: { data: boState.persons, label: "Persons" },
+                                companies: { data: boState.companies, label: "Companies" },
+                                cases: { data: boState.parsedDOInstances?.['backoffice-cases'] || [], label: "Cases" },
+                                caseTypes: { data: boState.parsedCaseTypes || [], label: "Case Types" },
+                                licenses: { data: boState.parsedLicenses?.LICENSES || [], label: "Licenses" },
+                                selection: { 
+                                    data: context.getService(context.getServiceReference(SELECTION_SERVICE)) || {}, 
+                                    label: "Current Selection"
+                                }
+                            };
+
+                            if (!categoryArg) {
+                                state.addLog(`<div class="text-white font-bold">Variable Categories:</div>`);
+                                Object.keys(categories).forEach(cat => {
+                                    state.addLog(` - <span class="text-yellow-400">${cat}</span> (${categories[cat].data?.length || 0} items)`);
+                                });
+                                state.addLog(`<div class="opacity-50 text-[10px]">Usage: /vars [category|serviceId] [id][.path]</div>`);
+                                return;
+                            }
+
+                            // 1. Resolve Data Source
+                            let explicitMethodUsed = false;
+                            let items = categories[categoryArg.toLowerCase()]?.data;
+                            let label = categories[categoryArg.toLowerCase()]?.label || categoryArg;
+
+                            if (items === undefined) {
+                                // Try dynamic service lookup
+                                const ref = context.getServiceReference(categoryArg);
+                                if (ref) {
+                                    const svc = context.getService(ref);
+                                    
+                                    // 1. EXPLICIT SELECTION: If targetArg is a method on the service
+                                    if (targetArg && typeof svc[targetArg] === 'function') {
+                                        try {
+                                            const result = svc[targetArg]();
+                                            if (Array.isArray(result)) {
+                                                items = result;
+                                                label = `${categoryArg}.${targetArg}()`;
+                                                explicitMethodUsed = true;
+                                                // Shift the "next" argument to be the new target (ID or Path)
+                                                targetArg = args[2]; // The original targetArg was the method, so the next arg is the actual ID/Path
+                                            }
+                                        } catch (_e) {
+                                            // Ignore evaluation errors
+                                        }
+                                    }
+
+                                    // 2. REFINED HEURISTIC: Look for any "get*" that returns an array recursively
+                                    if (!items) {
+                                        let getter;
+                                        let current = svc;
+                                        while (current && current !== Object.prototype && !getter) {
+                                            // Priority 1: Match the last part of service ID (e.g. getRules for rules.data)
+                                            const targetBase = categoryArg.split('.').reverse().find(p => p !== 'data');
+                                            const bestMatch = `get${targetBase?.charAt(0).toUpperCase()}${targetBase?.slice(1)}`;
+
+                                            const allProps = Object.getOwnPropertyNames(current);
+                                            if (allProps.includes(bestMatch) && typeof svc[bestMatch] === 'function') {
+                                                getter = bestMatch;
+                                            } else {
+                                                getter = allProps.find(m => {
+                                                    try {
+                                                        return m.startsWith('get') && Array.isArray(svc[m]());
+                                                    } catch (_e) { return false; }
+                                                });
+                                            }
+                                            current = Object.getPrototypeOf(current);
+                                        }
+                                        
+                                        if (getter) {
+                                            items = svc[getter]();
+                                            label = `${categoryArg}.${getter}()`;
+                                        } else {
+                                            items = [svc];
+                                            label = `Service: ${categoryArg}`;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (items === undefined) {
+                                state.addLog(`No data source found for: ${categoryArg}`, 'error');
+                                return;
+                            }
+
+                            // 2. Handle Listing
+                            if (!targetArg) {
+                                state.addLog(`<div class="text-white font-bold">${label}:</div>`);
+                                if (items.length === 1 && items[0]?.id === undefined) {
+                                    // Single service inspection
+                                    state.addLog(`<pre class="text-[10px] text-emerald-400">${JSON.stringify(items[0], null, 2)}</pre>`);
+                                } else {
+                                    (items || []).forEach(item => {
+                                        const methodSuffix = explicitMethodUsed ? ` ${args[1]}` : ""; // Use original args[1] for method name
+                                        state.addLog(` - <span class="text-yellow-400 cursor-pointer" onclick="getShellScope().currentCommand='/vars ${categoryArg}${methodSuffix} ${item.id || ''}'; document.querySelector('[x-ref=\\'commandInput\\']').focus()">${item.id || '[no-id]'}</span>: ${item.name || item.label || item.firstname || '...'}`);
+                                    });
+                                }
+                                return;
+                            }
+
+                            // 3. Resolve Target and Path (Dot Notation)
+                            const [id, ...pathParts] = targetArg.split('.');
+                            const path = pathParts.join('.');
+
+                            const item = Array.isArray(items) 
+                                ? items.find(i => String(i.id) === String(id) || (items.length === 1 && !i.id))
+                                : items;
+
+                            if (!item) {
+                                state.addLog(`Item not found: ${id}`, 'error');
+                                return;
+                            }
+
+                            let result = item;
+                            if (path) {
+                                result = path.split('.').reduce((obj, p) => obj?.[p], item);
+                            }
+
+                            if (result === undefined) {
+                                state.addLog(`Path not found: ${path}`, 'error');
+                                return;
+                            }
+
+                            state.addLog(`<div class="text-white font-bold">Inspect: ${label} / ${targetArg}</div>`);
+                            state.addLog(`<pre class="text-[10px] text-emerald-400 overflow-x-auto">${JSON.stringify(result, null, 2)}</pre>`);
+                            break;
+                        }
+
+                        case '/services': {
+                            const filter = args[0]?.toLowerCase();
+                            // Standard OSGi: getServiceReferences returns all if no filter
+                            const refs = context.getServiceReferences?.(null, null) || [];
+                            
+                            const serviceIds = new Set();
+                            const detailedInfo = [];
+
+                            refs.forEach(ref => {
+                                const ocs = ref.getProperty("objectClass");
+                                (Array.isArray(ocs) ? ocs : [ocs]).forEach(id => {
+                                    if (!filter || id.toLowerCase().includes(filter)) {
+                                        serviceIds.add(id);
+                                        detailedInfo.push({ id, ref });
+                                    }
+                                });
+                            });
+
+                            const sortedIds = Array.from(serviceIds).sort();
+
+                            if (sortedIds.length === 0) {
+                                state.addLog(`No services found matching: ${filter || '*'}`, 'error');
+                                return;
+                            }
+
+                            if (sortedIds.length === 1 && filter) {
+                                // Show details if only one was found and a filter was provided
+                                const id = sortedIds[0];
+                                const match = detailedInfo.find(d => d.id === id);
+                                const bundle = match.ref.bundle;
+                                const stateMap = { 1: 'UNINSTALLED', 2: 'INSTALLED', 4: 'RESOLVED', 8: 'STARTING', 16: 'STOPPING', 32: 'ACTIVE' };
+                                
+                                state.addLog(`<div class="text-white font-bold">Service Detail: ${id}</div>`);
+                                state.addLog(`<div class="text-blue-200">Bundle: <span class="text-white">${bundle.getSymbolicName()}</span> (#${bundle.id}) [${stateMap[bundle.getState()] || bundle.getState()}]</div>`);
+                                
+                                const props = {};
+                                match.ref.getPropertyKeys().forEach(k => {
+                                    props[k] = match.ref.getProperty(k);
+                                });
+                                state.addLog(`<pre class="text-[10px] text-cyan-400">${JSON.stringify(props, null, 2)}</pre>`);
+                            } else {
+                                state.addLog(`<div class="text-white font-bold">Registered Services (${sortedIds.length}):</div>`);
+                                sortedIds.forEach(id => {
+                                    state.addLog(` - <span class="text-yellow-400 cursor-pointer" onclick="getShellScope().currentCommand='/services ${id}'; document.querySelector('[x-ref=\\'commandInput\\']').focus()">${id}</span>`);
+                                });
+                            }
+                            break;
+                        }
+
+                        case '/bundles': {
+                            const filterStr = args[0];
+                            const bundles = (context.getBundles?.() || []).sort((a,b) => a.id - b.id);
+                            const stateMap = { 1: 'UNINSTALLED', 2: 'INSTALLED', 4: 'RESOLVED', 8: 'STARTING', 16: 'STOPPING', 32: 'ACTIVE' };
+                            
+                            let matched = bundles;
+                            if (filterStr) {
+                                if (filterStr.startsWith('(')) {
+                                    // 1. LDAP FILTER (Full evaluator if available)
+                                    let filterObj;
+                                    try {
+                                        const f = context.createFilter?.(filterStr);
+                                        const matchFn = f?.matches || f?.match;
+                                        if (typeof matchFn === 'function') {
+                                            filterObj = f;
+                                            matched = bundles.filter(b => matchFn.call(f, b.getHeaders()));
+                                        }
+                                    } catch (err) {
+                                        state.addLog(`Framework filter error: ${err.message}`, 'error');
+                                        return;
+                                    }
+
+                                    // 2. Fallback Manual Matcher (if createFilter is missing or failed)
+                                    if (!filterObj) {
+                                        const match = filterStr.match(/\(([^=]+)=([^)]+)\)/);
+                                        if (match) {
+                                            const [_, keyPath, valStr] = match;
+                                            matched = bundles.filter(b => {
+                                                const headers = b.getHeaders();
+                                                const headerValRaw = keyPath.split('.').reduce((o, k) => o?.[k], headers);
+                                                const headerVal = String(headerValRaw !== undefined ? headerValRaw : "");
+                                                
+                                                if (valStr === '*') return headerValRaw !== undefined;
+                                                if (valStr.startsWith('*') && valStr.endsWith('*')) return headerVal.includes(valStr.slice(1, -1));
+                                                if (valStr.startsWith('*')) return headerVal.endsWith(valStr.slice(1));
+                                                if (valStr.endsWith('*')) return headerVal.startsWith(valStr.slice(0, -1));
+                                                return headerVal === valStr;
+                                            });
+                                        } else {
+                                            state.addLog(`LDAP filter support limited. Try: (key=val), (key=val*), or (key=*).`, 'error');
+                                            return;
+                                        }
+                                    }
+                                } else {
+                                    // 2. Simple text filter
+                                    const fs = filterStr.toLowerCase();
+                                    matched = bundles.filter(b => 
+                                        String(b.id) === fs || 
+                                        b.getSymbolicName().toLowerCase().includes(fs)
+                                    );
+                                }
+                            }
+
+                            if (matched.length === 0) {
+                                state.addLog(`No bundles found matching: ${filterStr || '*'}`, 'error');
+                                return;
+                            }
+
+                            if (matched.length === 1 && filterStr) {
+                                const b = matched[0];
+                                state.addLog(`<div class="text-white font-bold">Bundle Detail: ${b.getSymbolicName()} (#${b.id})</div>`);
+                                state.addLog(`<div class="text-blue-200">State: <span class="text-white font-bold">${stateMap[b.getState()] || b.getState()}</span></div>`);
+                                state.addLog(`<div class="text-white font-bold mt-2 underline">Manifest Headers:</div>`);
+                                state.addLog(`<pre class="text-[10px] text-cyan-400">${JSON.stringify(b.getHeaders(), null, 2)}</pre>`);
+                                
+                                // 1. Provided Services
+                                try {
+                                    const refs = b.getRegisteredServices?.() || [];
+                                    if (refs.length > 0) {
+                                        state.addLog(`<div class="text-white font-bold mt-2 underline">Provided Services:</div>`);
+                                        refs.forEach(r => {
+                                            state.addLog(` - ${r.getProperty('objectClass')}`);
+                                        });
+                                    }
+                                } catch (_e) {
+                                    // siliently ignore if not implemented
+                                }
+
+                                // 2. Consumed Services
+                                try {
+                                    const usedRefs = b.getServicesInUse?.() || [];
+                                    if (usedRefs.length > 0) {
+                                        state.addLog(`<div class="text-white font-bold mt-2 underline">Consumed Services:</div>`);
+                                        usedRefs.forEach(r => {
+                                            state.addLog(` - ${r.getProperty('objectClass')}`);
+                                        });
+                                    }
+                                } catch (_e) {
+                                    // silently ignore if not implemented
+                                }
+                            } else {
+                                state.addLog(`<div class="text-white font-bold">Universe Bundles (${matched.length}):</div>`);
+                                matched.forEach(b => {
+                                    const stateStr = stateMap[b.getState()] || b.getState();
+                                    const colorClass = stateStr === 'ACTIVE' ? 'text-emerald-400' : 'text-yellow-400';
+                                    state.addLog(` #${b.id} [<span class="${colorClass}">${stateStr}</span>] <span class="text-blue-400 cursor-pointer" onclick="getShellScope().currentCommand='/bundles ${b.id}'; document.querySelector('[x-ref=\\'commandInput\\']').focus()">${b.getSymbolicName()}</span>`);
+                                });
+                                state.addLog(`<div class="opacity-50 text-[10px]">Usage: /bundles [id|bsn|ldap] for details</div>`);
+                            }
+                            break;
+                        }
+
+                        case '/methods': {
+                            const serviceId = args[0];
+                            if (!serviceId) {
+                                state.addLog("Usage: /methods [serviceId]", 'error');
+                                return;
+                            }
+
+                            const ref = context.getServiceReference(serviceId);
+                            if (!ref) {
+                                state.addLog(`Service not found: ${serviceId}`, 'error');
+                                return;
+                            }
+
+                            const svc = context.getService(ref);
+                            if (!svc) {
+                                state.addLog(`Could not retrieve service: ${serviceId}`, 'error');
+                                return;
+                            }
+
+                            // Collect ALL methods from the whole prototype chain
+                            const methods = new Set();
+                            let current = svc;
+                            const standardProto = Object.getOwnPropertyNames(Object.prototype);
+                            
+                            while (current && current !== Object.prototype) {
+                                Object.getOwnPropertyNames(current).forEach(m => {
+                                    if (typeof svc[m] === 'function' && m !== 'constructor' && !standardProto.includes(m)) {
+                                        methods.add(m);
+                                    }
+                                });
+                                current = Object.getPrototypeOf(current);
+                            }
+
+                            const sortedMethods = Array.from(methods).sort();
+
+                            state.addLog(`<div class="text-white font-bold">Methods for: ${serviceId}</div>`);
+                            if (sortedMethods.length === 0) {
+                                state.addLog("No direct methods found (might be a plain object).");
+                                state.addLog(`<pre class="text-[10px] text-emerald-400">${JSON.stringify(svc, null, 2)}</pre>`);
+                            } else {
+                                sortedMethods.forEach(m => {
+                                    state.addLog(` - <span class="text-yellow-400 cursor-pointer" onclick="getShellScope().currentCommand='/vars ${serviceId} '; document.querySelector('[x-ref=\\'commandInput\\']').focus()">${m}()</span>`);
+                                });
                             }
                             break;
                         }
@@ -107,13 +452,14 @@ export default class Activator {
                     }
                 },
                 
-                navigateHistory(dir) {
-                    if (state.commandHistory.length === 0) return;
-                    state.historyIndex = Math.max(0, Math.min(state.commandHistory.length - 1, state.historyIndex + dir));
-                    state.currentCommand = state.commandHistory[state.historyIndex] || "";
-                }
-            };
+            navigateHistory(dir) {
+                if (state.commandHistory.length === 0) return;
+                state.historyIndex = Math.max(0, Math.min(state.commandHistory.length - 1, state.historyIndex + dir));
+                state.currentCommand = state.commandHistory[state.historyIndex] || "";
+            }
         };
+
+        globalThis.getShellScope = () => shellScope;
 
         // Register the Flow Service
         context.registerService(FLOW_SERVICE, {
@@ -124,7 +470,7 @@ export default class Activator {
                     <div id="shell-container" class="h-full w-full">
                         <div class="h-full border border-blue-900 shadow-2xl rounded-xl overflow-hidden">
                             <div id="shell-content-wrapper" class="h-full">
-                                <div x-html="await (await fetch('./bundles/system-clients/shell-cli/templates/shell.html')).text()"></div>
+                                <div class="h-full" x-html="await (await fetch('./bundles/system-clients/shell-cli/templates/shell.html')).text()"></div>
                             </div>
                         </div>
                     </div>
