@@ -72,6 +72,14 @@ the targeting, you simply define the rule:
 The system automatically resolves who meets these criteria and delivers the
 content instantly.
 
+### 2.4 AI-Assisted Configuration: Your "Configuration Partner"
+You don't even need to learn the technical format (YAML). An **AI Configuration
+Agent** acts as your partner. You describe what you want in plain English, and
+the agent:
+- Writes the configuration for you.
+- Scrutinizes your idea for potential risks or edge cases you might have missed.
+- Shows you exactly how your change will affect real users before you hit "Launch."
+
 ---
 
 ## 3. The Future of Agile Business

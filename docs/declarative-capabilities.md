@@ -566,3 +566,38 @@ Before deploying a manifest change, Experts can trigger a **Dry Run**:
 Manifest updates can be integrated into CI/CD pipelines. If a change causes a
 regression in a "Critical Path" test context (e.g., a Legal Rep loses access to
 privileged topics), the deployment is automatically blocked.
+
+---
+
+## 9. Agent-Supported Orchestration
+
+To further lower the barrier to entry, the system includes an **AI Configuration
+Agent** that assists Subject Matter Experts in creating and maintaining
+manifests.
+
+### 9.1 Conversational Intent Capture
+
+Experts do not need to write YAML by hand. They can describe their intent in
+natural language (e.g., *"I want to show the 'Platinum' campaign to all company
+directors who have been with us for more than 2 years"*).
+
+### 9.2 Scrutiny & Edge-Case Analysis
+
+The Agent does more than just translate text to YAML; it actively scrutinizes
+the request for pitfalls:
+
+- **Security Checks**: Identifying if a rule inadvertently grants broad access.
+- **Conflict Detection**: Checking if the new rule overlaps or conflicts with
+  existing manifest entries.
+- **Edge-Case Proposing**: Suggesting "jagged" contexts the Expert might have
+  overlooked (e.g., *"What should happen if the user is a director but their
+  license has been suspended?"*).
+
+### 9.3 Integrated Validation Loop
+
+The Agent is directly connected to the **Dry Run Service**. It automatically:
+
+1. Generates the YAML.
+2. Runs the simulation against the Test Harness.
+3. Explains the projected outcomes back to the Expert in plain language.
+4. Requests final approval before committing the change.
