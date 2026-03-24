@@ -92,12 +92,12 @@ The Resolver is a generic engine that resolves access:
 Breaking down the "scope to be guarded" requires balancing developer autonomy
 with system-wide observability.
 
-| Strategy                 | Approach                          | Pros                                         | Cons                                         |
-| :----------------------- | :-------------------------------- | :------------------------------------------- | :------------------------------------------- |
-| **Feature-Based**        | One manifest per feature/product. | High cohesion; local ownership; easy gating. | Potential logic duplication across features. |
-| **Domain-Based**         | One manifest per subject/entity.  | Clear entity boundaries; predictable CRUD.   | Features cross-cut multiple entities.        |
-| **Global Monolith**      | One large manifest for everything. | Full observability; no ingestion issues.     | Merge conflicts; hard to manage lifecycle.   |
-| **Package-Based**        | Tied to technical bundles.        | Aligns with deployment units.                | technical boundaries != business boundaries. |
+| Strategy            | Approach                           | Pros                                         | Cons                                         |
+| :------------------ | :--------------------------------- | :------------------------------------------- | :------------------------------------------- |
+| **Feature-Based**   | One manifest per feature/product.  | High cohesion; local ownership; easy gating. | Potential logic duplication across features. |
+| **Domain-Based**    | One manifest per subject/entity.   | Clear entity boundaries; predictable CRUD.   | Features cross-cut multiple entities.        |
+| **Global Monolith** | One large manifest for everything. | Full observability; no ingestion issues.     | Merge conflicts; hard to manage lifecycle.   |
+| **Package-Based**   | Tied to technical bundles.         | Aligns with deployment units.                | technical boundaries != business boundaries. |
 
 **Recommended Strategy**: **Feature-Based** manifests are preferred. This allows
 individual product teams to evolve their capabilities independently while using
@@ -454,8 +454,8 @@ permissions is restricted to standard `account_manager` topics.
 ## 7. Illustrative Example: Campaign Orchestrator
 
 The **Campaign Orchestrator** leverages the Permission Resolver to deliver
-targeted content (Promotions, News, and Alerts) based on the subject's
-real-time context.
+targeted content (Promotions, News, and Alerts) based on the subject's real-time
+context.
 
 ### 7.1 The Goal: Contextual Delivery
 
@@ -479,7 +479,11 @@ capabilities:
     scope: license-wide
     rule:
       AND:
-        - matchProperty: { path: "user.segment", operator: "==", value: "high_value" }
+        - matchProperty: {
+            path: "user.segment",
+            operator: "==",
+            value: "high_value",
+          }
         - matchRelation: "liable_owner"
 
   - key: "campaign:view:new_feature_onboarding"
@@ -488,7 +492,11 @@ capabilities:
       AND:
         - matchFeature: "advanced_analytics"
         - NOT:
-            matchProperty: { path: "user.onboarding_completed", operator: "==", value: true }
+            matchProperty: {
+              path: "user.onboarding_completed",
+              operator: "==",
+              value: true,
+            }
 
   - key: "campaign:view:loyalty_discount"
     scope: relational
@@ -500,7 +508,11 @@ capabilities:
     rule:
       AND:
         - matchRelation: "admin"
-        - matchProperty: { path: "license.member_count", operator: ">", value: 3 }
+        - matchProperty: {
+            path: "license.member_count",
+            operator: ">",
+            value: 3,
+          }
         - matchProperty: { path: "license.user_count", operator: ">", value: 5 }
 ```
 
@@ -519,3 +531,38 @@ capabilities:
 **Outcome**: The Frontend remains a "thin" consumer of pre-processed,
 pre-hydrated content, while all business logic and content assembly are
 centralized in the Backend infrastructure.
+
+---
+
+## 8. Validation & Simulation (Dry Runs)
+
+As the complexity of Capability Manifests grows, the risk of unintended
+consequences increases. To ensure a "flawless configuration," the system
+supports a robust **Validation & Simulation** harness.
+
+### 8.1 Pre-Fabricated User Contexts
+
+The system maintains a library of **Test Contexts**—pre-fabricated sets of user
+attributes, relations, and license metrics.
+
+- **"Jagged" Contexts**: A collection of atypical user scenarios (e.g., a
+  self-employed user who is also a Legal Rep for another license and has a high
+  transaction volume).
+- **Growth**: This harness grows over time as new edge cases are discovered in
+  production, creating a safety net for future manifest updates.
+
+### 8.2 The Dry Run Service
+
+Before deploying a manifest change, Experts can trigger a **Dry Run**:
+
+1. **Input**: A proposed manifest update + a selection of Test Contexts.
+2. **Execution**: The Permission Resolver evaluates the proposed rules against
+   the contexts in a sandboxed environment.
+3. **Outcome Projection**: The service returns a diff showing exactly how
+   permissions and campaigns would change for those specific users.
+
+### 8.3 Automated Regression Testing
+
+Manifest updates can be integrated into CI/CD pipelines. If a change causes a
+regression in a "Critical Path" test context (e.g., a Legal Rep loses access to
+privileged topics), the deployment is automatically blocked.
