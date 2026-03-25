@@ -8,7 +8,7 @@ import { YAML_SERVICE } from "../../../../shared-types.js";
 const PART_TEMPLATES = {
     'text': { type: 'text', label: 'Text Block', value: '## New Text\nAdd your content here.' },
     'text-input': { kind: 'text-input', label: 'Text Input', placeholder: 'Enter value...' },
-    'select-input': { kind: 'select-input', label: 'Select Input', optionSource: '${this.items}' },
+    'select-input': { kind: 'select-input', label: 'Select Input', options: [{label: 'Option 1', value: '1'}] },
     'checkbox-input': { kind: 'checkbox-input', label: 'Checkbox Label', id: 'check_1' },
     'radio-input': { kind: 'radio-input', label: 'Radio Group', id: 'radio_1', options: [{label: 'Option 1', value: '1'}, {label: 'Option 2', value: '2'}] },
     'command-button': { kind: 'command-button', label: 'Action Button', variant: 'primary', action: { call: 'NEXT_STEP' } },
@@ -553,6 +553,13 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             html += `
                 <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
                 <sl-input label="Option Source" value="${part.optionSource || ''}" id="part-source-input" size="small" help-text="e.g. \${this.items}"></sl-input>
+                <div class="mt-2 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] font-bold uppercase text-gray-400">Options (Static)</label>
+                        <sl-button size="extra-small" variant="neutral" id="add-select-opt-btn" outline circle><i class="fas fa-plus"></i></sl-button>
+                    </div>
+                    <div id="select-opts-list" class="space-y-2"></div>
+                </div>
             `;
         } else if (part.kind === 'checkbox-input') {
             html += `
@@ -813,6 +820,56 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             });
 
             renderNested();
+        }
+
+        // Specialized binding for Select Options (same as Radio)
+        if (part.kind === 'select-input') {
+            const optsList = partFields.querySelector('#select-opts-list');
+            const addOptBtn = partFields.querySelector('#add-select-opt-btn');
+            
+            const renderOpts = () => {
+                if (!part.options) part.options = [];
+                optsList.innerHTML = part.options.map((opt, idx) => `
+                    <div class="flex gap-1 items-center bg-indigo-50/50 p-1 rounded-lg border border-indigo-100">
+                        <sl-input value="${opt.label}" class="opt-label flex-1" size="small" placeholder="Label" data-idx="${idx}"></sl-input>
+                        <sl-input value="${opt.value}" class="opt-val w-16" size="small" placeholder="Val" data-idx="${idx}"></sl-input>
+                        <sl-button size="extra-small" variant="neutral" class="del-opt-btn" outline circle data-idx="${idx}"><i class="fas fa-times"></i></sl-button>
+                    </div>
+                `).join('');
+
+                optsList.querySelectorAll('.opt-label').forEach(el => {
+                    el.addEventListener('sl-input', (e) => {
+                        part.options[el.dataset.idx].label = e.target.value;
+                        this.saveToState();
+                        this.updatePreview();
+                    });
+                });
+                optsList.querySelectorAll('.opt-val').forEach(el => {
+                    el.addEventListener('sl-input', (e) => {
+                        part.options[el.dataset.idx].value = e.target.value;
+                        this.saveToState();
+                        this.updatePreview();
+                    });
+                });
+                optsList.querySelectorAll('.del-opt-btn').forEach(el => {
+                    el.onclick = () => {
+                        part.options.splice(el.dataset.idx, 1);
+                        this.saveToState();
+                        this.updatePreview();
+                        renderOpts();
+                    };
+                });
+            };
+
+            if (addOptBtn) {
+                addOptBtn.onclick = () => {
+                    if (!part.options) part.options = [];
+                    part.options.push({ label: `Option ${part.options.length + 1}`, value: `${part.options.length + 1}` });
+                    this.saveToState();
+                    renderOpts();
+                };
+            }
+            renderOpts();
         }
 
         // Specialized binding for Radio Options
