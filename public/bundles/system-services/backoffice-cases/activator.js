@@ -1,5 +1,5 @@
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
-import { CASE_SERVICE, YAML_SERVICE, FELLOWS_SERVICE, SIGNING_DATA_SERVICE, COMPANIES_SERVICE, PERSONS_SERVICE, SESSION_SERVICE, LICENSE_DATA_SERVICE } from "../../../shared-types.js";
+import { CASE_SERVICE, YAML_SERVICE, FELLOWS_SERVICE, SIGNING_DATA_SERVICE, COMPANIES_SERVICE, PERSONS_SERVICE, SESSION_SERVICE, LICENSE_DATA_SERVICE, ACTION_REGISTRY_SERVICE } from "../../../shared-types.js";
 
 export default class Activator {
   start(context) {
@@ -358,5 +358,44 @@ export default class Activator {
 
     context.registerService(CASE_SERVICE, caseService);
     console.log("BO Cases: Service registered as:", CASE_SERVICE);
+
+    // Register as a generic Action Service
+    context.registerService("prototyper.action.service", {
+        execute: (params) => {
+            return caseService.createCase(
+                params.caseTypeId,
+                {
+                    companyId: params.companyId,
+                    targetPersonId: params.targetPersonId,
+                    title: params.title || `Case for ${params.companyId || params.targetPersonId || 'Atomic Flow'}`,
+                    description: params.description || `Created via Atomic Flow`
+                },
+                params.html
+            );
+        }
+    }, {
+        "action.id": "synthetic.case.create"
+    });
+
+    // Self-register metadata for documentation
+    context.trackService(`(objectClass=${ACTION_REGISTRY_SERVICE})`, {
+        addingService: (ref) => {
+            const registry = context.getService(ref);
+            registry.register({
+                id: 'synthetic.case.create',
+                label: '📁 Create Case',
+                description: 'Creates a new case in the backoffice system.',
+                params: {
+                    caseTypeId: 'The type ID of the case to create.',
+                    companyId: 'The company ID to link (optional).',
+                    targetPersonId: 'The target person ID to link (optional).',
+                    title: 'Custom title for the case.',
+                    description: 'Detailed description for the case.',
+                    html: 'Raw HTML content for the document.',
+                    linkToProperty: 'UI variable to store the new Case ID in.'
+                }
+            });
+        }
+    }).open();
   }
 }

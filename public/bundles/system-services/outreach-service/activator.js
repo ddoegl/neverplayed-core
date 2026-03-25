@@ -1,3 +1,5 @@
+import { ACTION_REGISTRY_SERVICE } from "../../../shared-types.js";
+
 export default class Activator {
   start(context) {
     console.log("Outreach Service started.");
@@ -35,6 +37,24 @@ export default class Activator {
     }, {
       "action.id": "apiService"
     });
+
+    // Self-register metadata for documentation
+    context.trackService(`(objectClass=${ACTION_REGISTRY_SERVICE})`, {
+        addingService: (ref) => {
+            const registry = context.getService(ref);
+            registry.register({
+                id: 'apiService',
+                label: '🧩 Call API Service',
+                description: 'Performs a generic API call via the APIService.',
+                params: {
+                    method: 'HTTP method (GET, POST, etc.)',
+                    endpoint: 'API endpoint path.',
+                    body: 'Data to send (if POST/PUT).',
+                    headers: 'Custom headers object.'
+                }
+            });
+        }
+    }).open();
 
     // Also register in globalThis for backward compatibility/quick access if needed by legacy parts
     if (!globalThis.Services) globalThis.Services = {};

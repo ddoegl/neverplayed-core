@@ -849,12 +849,10 @@ class UIFactory extends HTMLElement {
         }
 
         if (!action.call) return;
-
         // Exec
         scope.loading = true;
         try {
             // 1. Resolve Action Handler
-            let svc = null;
             let finalParams = JSON.parse(JSON.stringify(action.params || {}));
 
             // Check if action is defined in local SPEC first
@@ -919,85 +917,70 @@ class UIFactory extends HTMLElement {
                 return;
             }
 
-            if (action.call === 'synthetic.client.summary-alert') {
-                alert(finalParams.message || "Action Completed!");
-                scope.loading = false;
-                return;
-            }
-
-            if (action.call === 'synthetic.case.create') {
-                const caseSvc = this._getService(CASE_SERVICE);
-                if (!caseSvc) throw new Error("Case Service not available.");
-
-                console.log(`UIFactory: Creating case of type ${finalParams.caseTypeId}`, finalParams);
-                const newCase = await caseSvc.createCase(
-                    finalParams.caseTypeId, 
-                    {
-                        companyId: finalParams.companyId,
-                        targetPersonId: finalParams.targetPersonId,
-                        title: finalParams.title || `Case for ${finalParams.companyId || finalParams.targetPersonId || 'Atomic Flow'}`,
-                        description: finalParams.description || `Created via Atomic Flow`
-                    },
-                    finalParams.html
-                );
-
-                    if (newCase) {
-                        // LINKING: Store Case Metadata immediately for reactivity
-                        if (finalParams.linkToProperty) {
-                           scope.uifValues[finalParams.linkToProperty] = newCase.id;
-                           scope.uifValues[finalParams.linkToProperty + 'Status'] = newCase.status;
-                           
-                           // Explicitly trigger persistence now (before potential navigation)
-                           this.saveInstance(scope);
-                           
-                           // Refresh UI immediately (Show/Hide buttons)
-                           this.resolveGuards(scope);
-                        }
-
-                        if (finalParams.onSuccess === "WAIT_FOR_CASE" || finalParams.onSuccess === "VIEW_STATUS") {
-                           console.log(`UIFactory: Case created, staying on step to view status.`);
-                           // No reset/redirect triggered
-                        } else {
-                            alert(finalParams.successMessage || `Case ${newCase.id} created successfully!`);
-                            if (finalParams.onSuccess === "RESET") {
-                                scope.uifStep = scope.uifStepKeys[0];
-                                scope.history = [];
-                                scope.uifValues = { activeLicense: scope.uifValues.activeLicense }; 
-                            } else if (finalParams.onSuccess === "REDIRECT" && finalParams.redirectFlowId) {
-                            console.log(`UIFactory: Redirecting to flow ${finalParams.redirectFlowId} with params:`, finalParams.redirectParams);
-                            
-                            const isPortal = !!globalThis.businessPortalState;
-                            const isSubflow = !!document.getElementById('business-subflow-container');
-                            const eventName = isPortal ? 'business-portal-launch' : (isSubflow ? 'business-launch-flow' : 'shell-launch-flow');
-                            
-                            console.log(`UIFactory: Dispatching redirect event: ${eventName}`);
-                            globalThis.dispatchEvent(new CustomEvent(eventName, { 
-                                detail: { 
-                                    id: finalParams.redirectFlowId, 
-                                    params: finalParams.redirectParams 
-                                } 
-                            }));
-                        }
-                    }
-                }
-                scope.loading = false;
-                return;
-            }
-
-            // 2. Lookup Service
+            // --- DECENTRALIZED OSGi ACTION LOOKUP ---
+            let res = null;
             if (this._context) {
                 const refs = this._context.getServiceReferences("prototyper.action.service", `(action.id=${action.call})`);
                 if (refs?.[0]) {
-                    svc = this._context.getService(refs[0]);
-                    if (svc.execute) svc = svc.execute.bind(svc);
+                    const svcObj = this._context.getService(refs[0]);
+                    const execFn = typeof svcObj === 'function' ? svcObj : svcObj.execute;
+                    if (execFn) {
+                        console.log(`UIFactory: Executing decentralized action: ${action.call}`, finalParams);
+                        res = await execFn.apply(svcObj, [finalParams]);
+                    }
                 }
             }
-            if (!svc && globalThis.Services?.[action.call]) svc = globalThis.Services[action.call];
-            
-            if (!svc) throw new Error(`Action ${action.call} not found`);
 
-            const res = await (typeof svc === "function" ? svc(finalParams) : svc.execute(finalParams));
-            scope.data = res;
+            // Fallback to global Service Registry for backward compatibility
+            if (!res && globalThis.Services?.[action.call]) {
+                const svc = globalThis.Services[action.call];
+                res = await (typeof svc === "function" ? svc(finalParams) : svc.execute(finalParams));
+            }
+
+            if (!res && action.call !== 'step.navigate' && !action.call.includes('STEP')) {
+                throw new Error(`Action ${action.call} not found or failed to return result`);
+            }
+
+            // --- GENERIC POST-EXECUTION HOOKS (Linking, Redirection, Success Messaging) ---
+            if (res) {
+                scope.data = res;
+
+                // 1. LINKING: Store result ID in UI state if requested
+                if (finalParams.linkToProperty && (res.id || typeof res === 'string')) {
+                    const targetId = res.id || res;
+                    scope.uifValues[finalParams.linkToProperty] = targetId;
+                    if (res.status) scope.uifValues[finalParams.linkToProperty + 'Status'] = res.status;
+                    
+                    console.log(`UIFactory: Action result linked to property [${finalParams.linkToProperty}]: ${targetId}`);
+                    this.saveInstance(scope);
+                    this.resolveGuards(scope);
+                }
+
+                // 2. SUCCESS MESSAGING
+                if (finalParams.successMessage) {
+                    alert(this.interpolate(finalParams.successMessage, scope));
+                }
+
+                // 3. FLOW REDIRECTION / RESET
+                if (finalParams.onSuccess === "RESET") {
+                    scope.uifStep = scope.uifStepKeys[0];
+                    scope.history = [];
+                    scope.uifValues = { activeLicense: scope.uifValues.activeLicense }; 
+                    this.saveInstance(scope);
+                } else if (finalParams.onSuccess === "REDIRECT" && finalParams.redirectFlowId) {
+                    const isPortal = !!globalThis.businessPortalState;
+                    const isSubflow = !!document.getElementById('business-subflow-container');
+                    const eventName = isPortal ? 'business-portal-launch' : (isSubflow ? 'business-launch-flow' : 'shell-launch-flow');
+                    
+                    globalThis.dispatchEvent(new CustomEvent(eventName, { 
+                        detail: { 
+                            id: finalParams.redirectFlowId, 
+                            params: finalParams.redirectParams 
+                        } 
+                    }));
+                }
+            }
+
         } catch (e) {
             console.error(e);
             scope.data = { error: e.message };

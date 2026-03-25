@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE } from "../../../shared-types.js";
+import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE } from "../../../shared-types.js";
 import { sendInvitationRequest } from "../../../auth-shield.js";
 
 // Using globalThis.Alpine as guaranteed by index.html loader
@@ -92,6 +92,7 @@ export default class Activator {
                                     <div><span class="text-yellow-400">/diag-manifest [id|url]</span> - Direct fetch manifest (bypass kernel cache)</div>
                                     <div><span class="text-yellow-400">/reload-ui</span> - Hard refresh the browser window</div>
                                     <div><span class="text-yellow-400">/methods [serviceId]</span> - List methods on a service</div>
+                                    <div><span class="text-yellow-400">/actions [filter]</span> - List registered OSGi actions & params</div>
                                     <div><span class="text-yellow-400">/help</span> - Show this help message</div>
                                 </div>
                             `);
@@ -443,6 +444,52 @@ export default class Activator {
                                     state.addLog(` - <span class="text-yellow-400 cursor-pointer" onclick="getShellScope().currentCommand='/vars ${serviceId} '; document.querySelector('[x-ref=\\'commandInput\\']').focus()">${m}()</span>`);
                                 });
                             }
+                            break;
+                        }
+
+                        case '/actions': {
+                            const filter = args[0]?.toLowerCase();
+                            const regRef = context.getServiceReference(ACTION_REGISTRY_SERVICE);
+                            const registry = regRef ? context.getService(regRef) : null;
+                            
+                            if (!registry) {
+                                state.addLog("Action Registry service not available.", 'error');
+                                return;
+                            }
+
+                            const actions = registry.getActions().filter(a => !filter || a.id.toLowerCase().includes(filter));
+
+                            if (actions.length === 0) {
+                                state.addLog(`No actions found matching: ${filter || '*'}`, 'error');
+                                return;
+                            }
+
+                            state.addLog(`<div class="text-white font-bold mb-2 underline">Action Registry (${actions.length} items):</div>`);
+                            
+                            actions.forEach(a => {
+                                let paramDoc = "";
+                                if (a.params && Object.keys(a.params).length > 0) {
+                                    paramDoc = `<div class="ml-4 mt-1 space-y-1 opacity-75">
+                                        ${Object.entries(a.params).map(([k, v]) => `
+                                            <div class="flex gap-2">
+                                                <span class="text-cyan-300 min-w-[100px] font-mono">${k}:</span>
+                                                <span class="text-gray-300 italic">${v}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>`;
+                                }
+
+                                state.addLog(`
+                                    <div class="mb-3">
+                                        <div class="flex gap-2 items-baseline">
+                                            <span class="text-yellow-400 font-bold font-mono text-[11px]">${a.id}</span>
+                                            <span class="text-white text-[10px] opacity-70">| ${a.label}</span>
+                                        </div>
+                                        <div class="text-[10px] text-gray-400 ml-4">${a.description}</div>
+                                        ${paramDoc}
+                                    </div>
+                                `);
+                            });
                             break;
                         }
 

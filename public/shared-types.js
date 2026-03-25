@@ -33,6 +33,7 @@ export const DOMAIN_OBJECT_REGISTRY_SERVICE = "backoffice.domain.object.registry
 export const EVENT_ADMIN_SERVICE = "@pandino/event-admin/EventAdmin";
 export const EVENT_FACTORY_SERVICE = "@pandino/event-admin/EventFactory";
 export const LOG_SERVICE = "system.logger";
+export const ACTION_REGISTRY_SERVICE = "prototyper.action.registry";
 
 // Bundle Types for Governance
 export const BUNDLE_TYPE_ORDER = "order-flow";

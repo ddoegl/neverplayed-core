@@ -23,6 +23,21 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
     hydrate(spec, context, interpolator, resolver) {
         console.log(`Visual Editor: Hydrating with context [${context ? 'OK' : 'MISSING'}]`);
         super.hydrate(spec, context, interpolator, resolver);
+        
+        // Ensure ActionRegistry is tracked for live updates in the editor
+        if (this._context) {
+            this._registry = null;
+            const ACTION_REGISTRY_SERVICE = "prototyper.action.registry";
+            this._context.trackService(`(objectClass=${ACTION_REGISTRY_SERVICE})`, {
+                addingService: (ref) => { 
+                    this._registry = this._context.getService(ref);
+                    // Re-render if property panel is open
+                    if (this._activePartId) this.editPart(this._activeStepId, this._activePartId);
+                },
+                removedService: () => { this._registry = null; }
+            }).open();
+        }
+
         this.render();
     }
     constructor() {
@@ -1013,35 +1028,75 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
     }
 
     renderActionProperties(target, prefix = 'part') {
-        const standardActions = [
-            { id: 'NEXT_STEP', label: '🚶 Next Step' },
-            { id: 'PREV_STEP', label: '🔙 Previous Step' },
-            { id: 'step.navigate', label: '🚀 Jump to Step...' },
-            { id: 'default', label: '⚡ Trigger Default Action' },
-            { id: 'synthetic.case.create', label: '📁 Create Case' },
-            { id: 'synthetic.client.summary-alert', label: '🔔 Show Alert' },
-            { id: 'apiService', label: '🧩 Call API Service' }
+        const builtInActions = [
+            { id: 'NEXT_STEP', label: '🚶 Next Step', group: 'Navigation' },
+            { id: 'PREV_STEP', label: '🔙 Previous Step', group: 'Navigation' }
         ];
 
+        // Fetch actions from Registry
+        const registeredActions = this._registry ? this._registry.getActions() : [];
+        const allActions = [...builtInActions, ...registeredActions];
+
         const currentCall = target.action?.call || '';
-        const isCustom = currentCall && !standardActions.some(a => a.id === currentCall);
+        const isCustom = currentCall && !allActions.some(a => a.id === currentCall);
+        const selectedAction = allActions.find(a => a.id === currentCall);
+
+        // Group actions
+        const groups = {
+            'Navigation': allActions.filter(a => a.group === 'Navigation' || a.id.includes('step.navigate') || a.id.includes('STEP')),
+            'Side Effects': allActions.filter(a => !a.group && (a.id.includes('synthetic') || a.id.includes('Service') || a.id.includes('case'))),
+            'Other': allActions.filter(a => !a.group && !a.id.includes('synthetic') && !a.id.includes('Service') && !a.id.includes('STEP') && !a.id.includes('navigate'))
+        };
+
+        const renderOptions = () => {
+            let html = '';
+            for (const [group, actions] of Object.entries(groups)) {
+                if (actions.length === 0) continue;
+                html += `<sl-menu-label>${group}</sl-menu-label>`;
+                actions.forEach(a => {
+                    html += `<sl-option value="${a.id}">${a.label || a.id}</sl-option>`;
+                });
+            }
+            return html;
+        };
+
+        const renderDocs = () => {
+            if (!selectedAction || !selectedAction.description) return '';
+            
+            let paramList = '';
+            if (selectedAction.params) {
+                paramList = `
+                    <div class="mt-2 space-y-1">
+                        <div class="text-[9px] font-black uppercase text-slate-400 opacity-70">Expected Parameters:</div>
+                        ${Object.entries(selectedAction.params).map(([k, v]) => `
+                            <div class="flex gap-2 text-[10px]">
+                                <span class="text-indigo-400 font-mono font-bold">${k}:</span>
+                                <span class="text-slate-500 italic">${v}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50 animate-in fade-in slide-in-from-top-1">
+                    <div class="text-[10px] text-indigo-700 leading-relaxed font-medium">${selectedAction.description}</div>
+                    ${paramList}
+                </div>
+            `;
+        };
 
         return `
             <sl-select label="Action Call" value="${isCustom ? 'CUSTOM' : currentCall}" id="${prefix}-call-select" size="small" help-text="Action triggered on selection change or click.">
-                <sl-menu-label>Navigation</sl-menu-label>
-                <sl-option value="NEXT_STEP">🚶 Next Step</sl-option>
-                <sl-option value="PREV_STEP">🔙 Previous Step</sl-option>
-                <sl-option value="step.navigate">🚀 Jump to Step...</sl-option>
-                
-                <sl-menu-label>Logic</sl-menu-label>
-                <sl-option value="default">⚡ Trigger Default Action</sl-option>
-                <sl-option value="synthetic.case.create">📁 Create Case</sl-option>
-                <sl-option value="synthetic.client.summary-alert">🔔 Show Alert</sl-option>
-                <sl-option value="apiService">🧩 Call API Service</sl-option>
-                
+                ${renderOptions()}
                 <sl-divider></sl-divider>
                 <sl-option value="CUSTOM">🛠️ Custom Action ID...</sl-option>
+                <sl-option value="">🚫 No Action</sl-option>
             </sl-select>
+
+            <div id="${prefix}-action-docs-container">
+                ${renderDocs()}
+            </div>
 
             <div id="${prefix}-custom-action-container" class="${isCustom ? '' : 'hidden'} mt-1">
                 <sl-input placeholder="Enter Action ID (e.g. myService.do)" value="${isCustom ? currentCall : ''}" id="${prefix}-call-input-custom" size="small"></sl-input>
@@ -1121,17 +1176,47 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         if (callSelect) {
             callSelect.addEventListener('sl-change', (e) => {
                 const val = e.target.value;
+                if (!target.action) target.action = { call: '', params: {} };
+                
                 if (val === 'CUSTOM') {
                     customContainer.classList.remove('hidden');
                 } else {
                     customContainer.classList.add('hidden');
-                    if (!target.action) target.action = { call: '', params: {} };
                     target.action.call = val;
-                    this.saveToState();
-                    this.updatePreview();
-                    this.setupVisualEditor();
-                    renderParams();
                 }
+
+                // Update Documentation Live
+                const docsContainer = container.querySelector(`#${prefix}-action-docs-container`);
+                if (docsContainer) {
+                    const builtIn = [{ id: 'NEXT_STEP', label: '🚶 Next Step', description: 'Moves to the next step.' }, { id: 'PREV_STEP', label: '🔙 Previous Step' }];
+                    const allActions = [...builtIn, ...(this._registry ? this._registry.getActions() : [])];
+                    const selected = allActions.find(a => a.id === (val === 'CUSTOM' ? customInput?.value : val));
+                    
+                    if (selected && selected.description) {
+                        docsContainer.innerHTML = `
+                            <div class="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50 animate-in fade-in slide-in-from-top-1">
+                                <div class="text-[10px] text-indigo-700 leading-relaxed font-medium">${selected.description}</div>
+                                ${selected.params ? `
+                                    <div class="mt-2 space-y-1">
+                                        <div class="text-[9px] font-black uppercase text-slate-400 opacity-70">Expected Parameters:</div>
+                                        ${Object.entries(selected.params).map(([k, v]) => `
+                                            <div class="flex gap-2 text-[10px]">
+                                                <span class="text-indigo-400 font-mono font-bold">${k}:</span>
+                                                <span class="text-slate-500 italic">${v}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    } else {
+                        docsContainer.innerHTML = '';
+                    }
+                }
+
+                this.saveToState();
+                this.updatePreview();
+                renderParams();
             });
         }
         if (customInput) {

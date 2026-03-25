@@ -1,4 +1,4 @@
-import { ATOMIC_COMPONENT_REGISTRY_SERVICE } from "../../../shared-types.js";
+import { ATOMIC_COMPONENT_REGISTRY_SERVICE, ACTION_REGISTRY_SERVICE } from "../../../shared-types.js";
 import "./components/ui-factory.js";
 import "./components/atomic-component-base.js";
 import "./components/atomic-button.js";
@@ -55,6 +55,43 @@ export default class Activator {
     });
 
     context.registerService("prototyper.ui.components", { loaded: true });
+
+    // Register generic Action Services for internal shell functions
+    context.registerService("prototyper.action.service", {
+        execute: (params) => {
+            alert(params.message || "Action Completed!");
+            return { success: true };
+        }
+    }, {
+        "action.id": "synthetic.client.summary-alert"
+    });
+
+    // Register built-in actions in the registry for documentation
+    context.trackService(`(objectClass=${ACTION_REGISTRY_SERVICE})`, {
+        addingService: (ref) => {
+            const registry = context.getService(ref);
+            
+            registry.register({
+                id: 'step.navigate',
+                label: '🚀 Jump to Step',
+                description: 'Navigates to a specific step within the current flow.',
+                params: {
+                    target: 'The ID of the step to navigate to (e.g. "step2").',
+                    step: 'Alias for target.'
+                }
+            });
+
+            registry.register({
+                id: 'synthetic.client.summary-alert',
+                label: '🔔 Show Alert',
+                description: 'Displays a notification alert to the user.',
+                params: {
+                    message: 'The text message to display.',
+                    title: 'The title of the alert box.'
+                }
+            });
+        }
+    }).open();
   }
 
   stop(_context) {

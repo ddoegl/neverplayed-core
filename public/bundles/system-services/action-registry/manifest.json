@@ -1,0 +1,6 @@
+{
+    "Bundle-SymbolicName": "prototyper.action-registry",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "./activator.js",
+    "Bundle-Description": "Central registry for OSGi actions and their metadata."
+}
