@@ -552,13 +552,24 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         } else if (part.kind === 'select-input') {
             html += `
                 <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
-                <sl-input label="Option Source" value="${part.optionSource || ''}" id="part-source-input" size="small" help-text="e.g. \${this.items}"></sl-input>
-                <div class="mt-2 space-y-2">
+                <sl-input label="Dynamic Source" value="${part.optionSource || ''}" id="part-source-input" size="small" help-text="e.g. \${this.items}"></sl-input>
+                <div class="flex gap-1 mt-1 flex-wrap">
+                    <sl-button size="extra-small" variant="neutral" outline class="quick-bind-btn" data-val="\${this.authorizations}">Auths</sl-button>
+                    <sl-button size="extra-small" variant="neutral" outline class="quick-bind-btn" data-val="\${this.users}">Users</sl-button>
+                    <sl-button size="extra-small" variant="neutral" outline class="quick-bind-btn" data-val="\${this.companies}">Companies</sl-button>
+                </div>
+
+                <div class="mt-4 space-y-2">
                     <div class="flex justify-between items-center">
-                        <label class="text-[10px] font-bold uppercase text-gray-400">Options (Static)</label>
+                        <label class="text-[10px] font-bold uppercase text-gray-400">Static Header/Options</label>
                         <sl-button size="extra-small" variant="neutral" id="add-select-opt-btn" outline circle><i class="fas fa-plus"></i></sl-button>
                     </div>
                     <div id="select-opts-list" class="space-y-2"></div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <label class="text-[10px] font-bold uppercase text-indigo-500 mb-2 block">Action on Change</label>
+                    ${this.renderActionProperties(part)}
                 </div>
             `;
         } else if (part.kind === 'checkbox-input') {
@@ -669,84 +680,6 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
 
         partFields.innerHTML = html;
 
-        // Render Parameters if it's a command button
-        if (part.kind === 'command-button') {
-            const paramsList = partFields.querySelector('#params-list');
-            const addParamBtn = partFields.querySelector('#add-param-btn');
-            const params = part.action?.params || {};
-            if (!part.action) part.action = { call: '' };
-            if (!part.action.params) part.action.params = params;
-
-            const renderParams = () => {
-                const sids = Object.keys(this._draftSpec.ui?.steps || {});
-
-                paramsList.innerHTML = Object.entries(part.action.params).map(([pk, pv]) => {
-                    const isNavTarget = (pk === 'target' || pk === 'step') && part.action.call === 'step.navigate';
-                    
-                    let valInput = `<sl-input value="${pv}" class="param-val flex-1" size="small" placeholder="Value"></sl-input>`;
-                    if (isNavTarget) {
-                        valInput = `
-                            <sl-select value="${pv}" class="param-val flex-1" size="small" placeholder="Select Step">
-                                ${sids.map(sid => `<sl-option value="${sid}">${sid}</sl-option>`).join('')}
-                            </sl-select>
-                        `;
-                    }
-
-                    return `
-                        <div class="flex gap-1 items-center bg-gray-50 p-1 rounded-lg border border-gray-100">
-                            <sl-input value="${pk}" class="param-key w-24" size="small" placeholder="Key" data-old-key="${pk}"></sl-input>
-                            ${valInput}
-                            <sl-button size="extra-small" variant="danger" class="del-param-btn" circle outline data-key="${pk}"><i class="fas fa-times text-[8px]"></i></sl-button>
-                        </div>
-                    `;
-                }).join('');
-
-                paramsList.querySelectorAll('.param-key').forEach(el => {
-                    el.addEventListener('sl-change', (e) => {
-                        const oldKey = el.getAttribute('data-old-key');
-                        const newKey = e.target.value;
-                        if (newKey && newKey !== oldKey) {
-                            part.action.params[newKey] = part.action.params[oldKey];
-                            delete part.action.params[oldKey];
-                            this.saveToState();
-                            this.setupVisualEditor();
-                            renderParams();
-                        }
-                    });
-                });
-
-                paramsList.querySelectorAll('.param-val').forEach(el => {
-                    const update = (e) => {
-                        const key = el.closest('div').querySelector('.param-key').value;
-                        part.action.params[key] = e.target.value;
-                        this.saveToState();
-                        this.updatePreview();
-                        this.setupVisualEditor();
-                    };
-                    el.addEventListener('sl-input', update);
-                    el.addEventListener('sl-change', update);
-                });
-
-                paramsList.querySelectorAll('.del-param-btn').forEach(el => {
-                    el.onclick = () => {
-                        delete part.action.params[el.getAttribute('data-key')];
-                        this.saveToState();
-                        this.updatePreview();
-                        this.setupVisualEditor();
-                        renderParams();
-                    };
-                });
-            };
-
-            addParamBtn.onclick = () => {
-                const newKey = `param_${Object.keys(part.action.params).length + 1}`;
-                part.action.params[newKey] = "";
-                this.saveToState();
-                renderParams();
-            };
-
-            renderParams();
-        }
 
         // Bind Breadcrumbs
         const bcRoot = partFields.parentElement.querySelector('#bc-root');
@@ -822,20 +755,49 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             renderNested();
         }
 
-        // Specialized binding for Select Options (same as Radio)
         if (part.kind === 'select-input') {
+            const sourceInput = partFields.querySelector('#part-source-input');
+            const quickBtns = partFields.querySelectorAll('.quick-bind-btn');
+            
+            if (sourceInput) {
+                sourceInput.addEventListener('sl-input', (e) => {
+                    part.optionSource = e.target.value;
+                    this.saveToState();
+                    this.updatePreview();
+                });
+            }
+
+            quickBtns.forEach(btn => {
+                btn.onclick = () => {
+                    part.optionSource = btn.dataset.val;
+                    if (sourceInput) sourceInput.value = part.optionSource;
+                    this.saveToState();
+                    this.updatePreview();
+                };
+            });
+
             const optsList = partFields.querySelector('#select-opts-list');
             const addOptBtn = partFields.querySelector('#add-select-opt-btn');
             
             const renderOpts = () => {
                 if (!part.options) part.options = [];
-                optsList.innerHTML = part.options.map((opt, idx) => `
-                    <div class="flex gap-1 items-center bg-indigo-50/50 p-1 rounded-lg border border-indigo-100">
-                        <sl-input value="${opt.label}" class="opt-label flex-1" size="small" placeholder="Label" data-idx="${idx}"></sl-input>
-                        <sl-input value="${opt.value}" class="opt-val w-16" size="small" placeholder="Val" data-idx="${idx}"></sl-input>
-                        <sl-button size="extra-small" variant="neutral" class="del-opt-btn" outline circle data-idx="${idx}"><i class="fas fa-times"></i></sl-button>
-                    </div>
-                `).join('');
+                optsList.innerHTML = part.options.map((opt, idx) => {
+                    const isEditingAction = this._editingOptIdx === idx;
+                    return `
+                        <div class="space-y-1 bg-indigo-50/50 p-1 rounded-lg border border-indigo-100 mb-2">
+                            <div class="flex gap-1 items-center">
+                                <sl-input value="${opt.label}" class="opt-label flex-1" size="small" placeholder="Label" data-idx="${idx}"></sl-input>
+                                <sl-input value="${opt.value}" class="opt-val w-16" size="small" placeholder="Val" data-idx="${idx}"></sl-input>
+                                <sl-button size="extra-small" variant="${opt.action?.call ? 'primary' : 'neutral'}" class="opt-action-btn" outline circle data-idx="${idx}"><i class="fas fa-bolt"></i></sl-button>
+                                <sl-button size="extra-small" variant="neutral" class="del-opt-btn" outline circle data-idx="${idx}"><i class="fas fa-times"></i></sl-button>
+                            </div>
+                            <div class="opt-action-panel ${isEditingAction ? '' : 'hidden'} mt-2 pt-2 border-t border-indigo-200/50">
+                                <label class="text-[9px] font-bold uppercase text-indigo-400 mb-1 block">Option Action</label>
+                                ${isEditingAction ? this.renderActionProperties(opt, `opt-${idx}`) : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
 
                 optsList.querySelectorAll('.opt-label').forEach(el => {
                     el.addEventListener('sl-input', (e) => {
@@ -851,6 +813,13 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                         this.updatePreview();
                     });
                 });
+                optsList.querySelectorAll('.opt-action-btn').forEach(el => {
+                    el.onclick = () => {
+                        const idx = parseInt(el.dataset.idx);
+                        this._editingOptIdx = (this._editingOptIdx === idx) ? null : idx;
+                        renderOpts();
+                    };
+                });
                 optsList.querySelectorAll('.del-opt-btn').forEach(el => {
                     el.onclick = () => {
                         part.options.splice(el.dataset.idx, 1);
@@ -859,6 +828,10 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                         renderOpts();
                     };
                 });
+
+                if (this._editingOptIdx !== null && part.options[this._editingOptIdx]) {
+                    this.bindActionProperties(part.options[this._editingOptIdx], optsList, `opt-${this._editingOptIdx}`);
+                }
             };
 
             if (addOptBtn) {
@@ -870,90 +843,19 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 };
             }
             renderOpts();
+            this.bindActionProperties(part, partFields);
         }
 
-        // Specialized binding for Radio Options
-        if (part.kind === 'radio-input') {
-            const optsList = partFields.querySelector('#radio-opts-list');
-            const addOptBtn = partFields.querySelector('#add-radio-opt-btn');
-            
-            const renderOpts = () => {
-                if (!part.options) part.options = [];
-                optsList.innerHTML = part.options.map((opt, idx) => `
-                    <div class="flex gap-1 items-center bg-amber-50/50 p-1 rounded-lg border border-amber-100">
-                        <sl-input value="${opt.label}" class="opt-label flex-1" size="small" placeholder="Label" data-idx="${idx}"></sl-input>
-                        <sl-input value="${opt.value}" class="opt-val w-16" size="small" placeholder="Val" data-idx="${idx}"></sl-input>
-                        <sl-button size="extra-small" variant="neutral" class="del-opt-btn" outline circle data-idx="${idx}"><i class="fas fa-times"></i></sl-button>
-                    </div>
-                `).join('');
-
-                optsList.querySelectorAll('.opt-label').forEach(el => {
-                    el.addEventListener('sl-input', (e) => {
-                        part.options[el.dataset.idx].label = e.target.value;
-                        this.saveToState();
-                        this.updatePreview();
-                    });
-                });
-                optsList.querySelectorAll('.opt-val').forEach(el => {
-                    el.addEventListener('sl-input', (e) => {
-                        part.options[el.dataset.idx].value = e.target.value;
-                        this.saveToState();
-                        this.updatePreview();
-                    });
-                });
-                optsList.querySelectorAll('.del-opt-btn').forEach(el => {
-                    el.onclick = () => {
-                        part.options.splice(el.dataset.idx, 1);
-                        this.saveToState();
-                        this.updatePreview();
-                        renderOpts();
-                    };
-                });
-            };
-
-            if (addOptBtn) {
-                addOptBtn.onclick = () => {
-                    if (!part.options) part.options = [];
-                    part.options.push({ label: `Option ${part.options.length + 1}`, value: `${part.options.length + 1}` });
-                    this.saveToState();
-                    renderOpts();
-                };
-            }
-            renderOpts();
-        }
-
-        // Specialized binding for Action Call Discovery
         if (part.kind === 'command-button') {
-            const callSelect = partFields.querySelector('#part-call-select');
-            const customContainer = partFields.querySelector('#custom-action-container');
-            const customInput = partFields.querySelector('#part-call-input-custom');
-
-            if (callSelect) {
-                callSelect.addEventListener('sl-change', (e) => {
-                    const val = e.target.value;
-                    if (val === 'CUSTOM') {
-                        customContainer.classList.remove('hidden');
-                        part.action.call = customInput.value;
-                    } else {
-                        customContainer.classList.add('hidden');
-                        part.action.call = val;
-                    }
+            const variantInput = partFields.querySelector('#part-variant-input');
+            if (variantInput) {
+                variantInput.addEventListener('sl-change', (e) => {
+                    part.variant = e.target.value;
                     this.saveToState();
                     this.updatePreview();
-                    this.setupVisualEditor();
-                    // Re-render to update parameter picker (e.g. if we switched to step.navigate)
-                    this.renderPartProperties(sid, step);
                 });
             }
-
-            if (customInput) {
-                customInput.addEventListener('sl-input', (e) => {
-                    part.action.call = e.target.value;
-                    this.saveToState();
-                    this.updatePreview();
-                    this.setupVisualEditor();
-                });
-            }
+            this.bindActionProperties(part, partFields);
         }
 
         // Bind events
@@ -1108,6 +1010,148 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 }
             }
         }, 300); // 300ms for live preview refresh
+    }
+
+    renderActionProperties(target, prefix = 'part') {
+        const standardActions = [
+            { id: 'NEXT_STEP', label: '🚶 Next Step' },
+            { id: 'PREV_STEP', label: '🔙 Previous Step' },
+            { id: 'step.navigate', label: '🚀 Jump to Step...' },
+            { id: 'default', label: '⚡ Trigger Default Action' },
+            { id: 'synthetic.case.create', label: '📁 Create Case' },
+            { id: 'synthetic.client.summary-alert', label: '🔔 Show Alert' },
+            { id: 'apiService', label: '🧩 Call API Service' }
+        ];
+
+        const currentCall = target.action?.call || '';
+        const isCustom = currentCall && !standardActions.some(a => a.id === currentCall);
+
+        return `
+            <sl-select label="Action Call" value="${isCustom ? 'CUSTOM' : currentCall}" id="${prefix}-call-select" size="small" help-text="Action triggered on selection change or click.">
+                <sl-menu-label>Navigation</sl-menu-label>
+                <sl-option value="NEXT_STEP">🚶 Next Step</sl-option>
+                <sl-option value="PREV_STEP">🔙 Previous Step</sl-option>
+                <sl-option value="step.navigate">🚀 Jump to Step...</sl-option>
+                
+                <sl-menu-label>Logic</sl-menu-label>
+                <sl-option value="default">⚡ Trigger Default Action</sl-option>
+                <sl-option value="synthetic.case.create">📁 Create Case</sl-option>
+                <sl-option value="synthetic.client.summary-alert">🔔 Show Alert</sl-option>
+                <sl-option value="apiService">🧩 Call API Service</sl-option>
+                
+                <sl-divider></sl-divider>
+                <sl-option value="CUSTOM">🛠️ Custom Action ID...</sl-option>
+            </sl-select>
+
+            <div id="${prefix}-custom-action-container" class="${isCustom ? '' : 'hidden'} mt-1">
+                <sl-input placeholder="Enter Action ID (e.g. myService.do)" value="${isCustom ? currentCall : ''}" id="${prefix}-call-input-custom" size="small"></sl-input>
+            </div>
+
+            <div class="mt-2 space-y-2">
+                <div class="flex justify-between items-center">
+                    <label class="text-[10px] font-bold uppercase text-gray-400">Action Parameters</label>
+                    <sl-button size="extra-small" variant="neutral" id="${prefix}-add-param-btn" outline circle><i class="fas fa-plus"></i></sl-button>
+                </div>
+                <div id="${prefix}-params-list" class="space-y-2"></div>
+            </div>
+        `;
+    }
+
+    bindActionProperties(target, container, prefix = 'part') {
+        const callSelect = container.querySelector(`#${prefix}-call-select`);
+        const customInput = container.querySelector(`#${prefix}-call-input-custom`);
+        const customContainer = container.querySelector(`#${prefix}-custom-action-container`);
+        const paramsList = container.querySelector(`#${prefix}-params-list`);
+        const addParamBtn = container.querySelector(`#${prefix}-add-param-btn`);
+
+        const renderParams = () => {
+            if (!target.action) target.action = { call: '', params: {} };
+            const params = target.action.params || {};
+            const sids = Object.keys(this._draftSpec.ui?.steps || {});
+
+            paramsList.innerHTML = Object.entries(params).map(([key, val], _idx) => {
+                const isNavTarget = (key === 'target' || key === 'step') && target.action.call === 'step.navigate';
+                let valInput = `<sl-input value="${val}" class="param-val flex-1" size="small" placeholder="Value" data-key="${key}"></sl-input>`;
+                if (isNavTarget) {
+                    valInput = `
+                        <sl-select value="${val}" class="param-val flex-1" size="small" placeholder="Select Step" data-key="${key}">
+                            ${sids.map(sid => `<sl-option value="${sid}">${sid}</sl-option>`).join('')}
+                        </sl-select>
+                    `;
+                }
+
+                return `
+                    <div class="flex gap-1 items-center bg-gray-50 p-1 rounded border border-gray-100">
+                        <sl-input value="${key}" class="param-key w-20" size="small" placeholder="Key" data-old-key="${key}"></sl-input>
+                        ${valInput}
+                        <sl-button size="extra-small" variant="neutral" class="del-param-btn" outline circle data-key="${key}"><i class="fas fa-times"></i></sl-button>
+                    </div>
+                `;
+            }).join('');
+
+            paramsList.querySelectorAll('.param-key').forEach(el => {
+                el.addEventListener('sl-change', (e) => {
+                    const oldKey = el.dataset.oldKey;
+                    const newKey = e.target.value;
+                    const val = target.action.params[oldKey];
+                    delete target.action.params[oldKey];
+                    target.action.params[newKey] = val;
+                    this.saveToState();
+                    renderParams();
+                });
+            });
+            paramsList.querySelectorAll('.param-val').forEach(el => {
+                const update = (e) => {
+                    target.action.params[el.dataset.key] = e.target.value;
+                    this.saveToState();
+                    this.updatePreview();
+                };
+                el.addEventListener('sl-input', update);
+                el.addEventListener('sl-change', update);
+            });
+            paramsList.querySelectorAll('.del-param-btn').forEach(el => {
+                el.onclick = () => {
+                    delete target.action.params[el.dataset.key];
+                    this.saveToState();
+                    renderParams();
+                };
+            });
+        };
+
+        if (callSelect) {
+            callSelect.addEventListener('sl-change', (e) => {
+                const val = e.target.value;
+                if (val === 'CUSTOM') {
+                    customContainer.classList.remove('hidden');
+                } else {
+                    customContainer.classList.add('hidden');
+                    if (!target.action) target.action = { call: '', params: {} };
+                    target.action.call = val;
+                    this.saveToState();
+                    this.updatePreview();
+                    this.setupVisualEditor();
+                    renderParams();
+                }
+            });
+        }
+        if (customInput) {
+            customInput.addEventListener('sl-input', (e) => {
+                if (!target.action) target.action = { call: '', params: {} };
+                target.action.call = e.target.value;
+                this.saveToState();
+                this.updatePreview();
+            });
+        }
+        if (addParamBtn) {
+            addParamBtn.onclick = () => {
+                if (!target.action) target.action = { call: '', params: {} };
+                if (!target.action.params) target.action.params = {};
+                target.action.params['key_' + Object.keys(target.action.params).length] = '';
+                this.saveToState();
+                renderParams();
+            };
+        }
+        renderParams();
     }
 }
 

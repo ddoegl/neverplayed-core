@@ -22,14 +22,7 @@ class AtomicSelect extends AtomicComponentBase {
                 </div>
             `;
             select = this.querySelector('sl-select');
-            select.addEventListener('sl-change', (e) => {
-                const val = e.target.value;
-                this.dispatchEvent(new CustomEvent('atomic-change', {
-                    bubbles: true,
-                    composed: true,
-                    detail: { id, value: val }
-                }));
-            });
+            select.addEventListener('sl-change', (e) => this._handleSelectChange(e));
         }
 
         // Non-destructive updates
@@ -38,15 +31,21 @@ class AtomicSelect extends AtomicComponentBase {
         if (select.value !== value) select.value = value;
 
         // Efficiently update options
-        let options = this._spec.options || [];
+        const staticOptions = this._spec.options || [];
+        let dynamicOptions = [];
+        
         if (this._spec.optionSource) {
             const resolved = this.resolve(this._spec.optionSource);
-            if (Array.isArray(resolved)) options = resolved;
+            if (Array.isArray(resolved)) dynamicOptions = resolved;
             else if (resolved && typeof resolved === 'object' && !Array.isArray(resolved)) {
                 // If it's an object (like a map), convert to array of {id, label}
-                options = Object.entries(resolved).map(([k, v]) => ({ id: k, label: v }));
+                dynamicOptions = Object.entries(resolved).map(([k, v]) => ({ id: k, label: v }));
             }
         }
+
+        // UNIFIED SOURCE: Concatenate static (headers) with dynamic (data)
+        const options = [...staticOptions, ...dynamicOptions];
+        this._lastOptions = options; // Store for lookup in event listener
 
         const newOptionsHtml = options.map(opt => {
             const optValue = String(opt?.id ?? opt?.value ?? opt ?? "");
@@ -55,14 +54,39 @@ class AtomicSelect extends AtomicComponentBase {
         }).join('');
 
         if (select.innerHTML !== newOptionsHtml) {
-            // Shoelace-safe update: clear then append or just update innerHTML
-            // The crash "reading length of null" often happens if SlSelect 
-            // tries to find a selected option among nulls.
+            // Shoelace-safe update
             select.innerHTML = newOptionsHtml;
-            // Restore selection after innerHTML change
             select.value = String(value ?? "");
         } else if (select.value !== String(value ?? "")) {
             select.value = String(value ?? "");
+        }
+    }
+
+    _handleSelectChange(e) {
+        const val = e.target.value;
+        const id = this._spec.id;
+
+        this.dispatchEvent(new CustomEvent('atomic-change', {
+            bubbles: true,
+            composed: true,
+            detail: { id, value: val }
+        }));
+
+        // Lookup the selected option object
+        const selectedOption = this._lastOptions?.find(opt => {
+            const optValue = String(opt?.id ?? opt?.value ?? opt ?? "");
+            return optValue === val;
+        });
+
+        // 1. OPTION-SPECIFIC ACTION (Highest priority)
+        if (selectedOption?.action?.call) {
+            console.log(`[AtomicSelect] Triggering OPTION action: ${selectedOption.action.call}`, selectedOption.action.params);
+            this.triggerAction(selectedOption.action.call, { ...selectedOption.action.params, value: val });
+        } 
+        // 2. COMPONENT-LEVEL ACTION (Fallback)
+        else if (this._spec.action?.call) {
+            console.log(`[AtomicSelect] Triggering COMPONENT action: ${this._spec.action.call}`);
+            this.triggerAction(this._spec.action.call, { value: val });
         }
     }
 }
