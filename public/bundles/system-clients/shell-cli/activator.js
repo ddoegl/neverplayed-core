@@ -82,6 +82,7 @@ export default class Activator {
                                     <div><span class="text-yellow-400">/vars [category] [id]</span> - List and drill down flow variables</div>
                                     <div><span class="text-yellow-400">/services [filter]</span> - List all registered service IDs</div>
                                     <div><span class="text-yellow-400">/bundles [filter|ldap]</span> - List bundles (e.g. (Bundle-Name=*))</div>
+                                    <div><span class="text-yellow-400">/loglevel [level] [ids]</span> - Set log level (e.g. DEBUG 1,2)</div>
                                     <div><span class="text-yellow-400">/start [id|bsn]</span> - Start a bundle</div>
                                     <div><span class="text-yellow-400">/stop [id|bsn]</span> - Stop a bundle</div>
                                     <div><span class="text-yellow-400">/update [id|bsn]</span> - Update a bundle</div>
@@ -671,6 +672,54 @@ export default class Activator {
                             break;
                         }
                             
+                        case '/loglevel': {
+                            const level = args[0]?.toUpperCase();
+                            const targetStr = args[1];
+                            const validLevels = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE'];
+
+                            if (!level || !targetStr) {
+                                state.addLog("Usage: /loglevel [level] [id,bsn,...]", 'error');
+                                state.addLog("Example: /loglevel DEBUG 1,2,prototyper.limes");
+                                return;
+                            }
+
+                            if (!validLevels.includes(level)) {
+                                state.addLog(`Invalid level: ${level}. Use: ${validLevels.join(', ')}`, 'error');
+                                return;
+                            }
+
+                            const caRef = context.getServiceReference(CONFIG_ADMIN_SERVICE);
+                            const ca = caRef ? context.getService(caRef) : null;
+                            if (!ca) {
+                                state.addLog("ConfigAdmin service not found!", 'error');
+                                return;
+                            }
+
+                            const ids = targetStr.split(',');
+                            let updatedCount = 0;
+
+                            for (const id of ids) {
+                                const target = id.trim();
+                                // Resolve to PID (BSN)
+                                const bundle = context.getBundles().find(b => 
+                                    String(b.id) === target || b.getSymbolicName() === target
+                                );
+                                
+                                const pid = bundle ? bundle.getSymbolicName() : target;
+                                
+                                try {
+                                    const cfg = ca.getConfiguration(pid);
+                                    cfg.update({ "log-level": level });
+                                    state.addLog(`Set log-level: <span class="text-white font-bold">${level}</span> for <span class="text-yellow-400">${pid}</span>`);
+                                    updatedCount++;
+                                } catch (err) {
+                                    state.addLog(`Failed to update ${pid}: ${err.message}`, 'error');
+                                }
+                            }
+                            state.addLog(`<div class="text-white font-bold mt-1">Status: ${updatedCount} log levels updated.</div>`);
+                            break;
+                        }
+
                         default:
                             state.addLog(`Unknown command: ${command}. Type /help for assistance.`, 'error');
                     }

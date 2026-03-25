@@ -218,6 +218,11 @@ export default class Activator {
                         }
                         cfg.update({ ...props, channels: nextChannels });
                         this.init(); // Refresh local list
+                    },
+                    setLogLevel(pid, level) {
+                        const cfg = service.getConfiguration(pid);
+                        cfg.update({ "log-level": level });
+                        this.init();
                     }
                 });
 

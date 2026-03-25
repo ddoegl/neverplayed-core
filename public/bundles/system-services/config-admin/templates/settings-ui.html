@@ -114,6 +114,11 @@
             <th
               class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
             >
+              Log Level
+            </th>
+            <th
+              class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
+            >
               Biz Web
             </th>
             <th
@@ -190,6 +195,24 @@
                         }"
                     x-text="category.type.replace('-flow', '').replace('component', 'tool')"
                   ></span>
+                </td>
+                <td class="px-4 py-4 text-center">
+                  <select
+                    @change="setLogLevel(cfg.pid, $event.target.value)"
+                    :class="{
+                        'text-emerald-600 bg-emerald-50 border-emerald-200': cfg.properties['log-level'] === 'DEBUG' || cfg.properties['log-level'] === 'TRACE',
+                        'text-blue-600 bg-blue-50 border-blue-200': cfg.properties['log-level'] === 'INFO' || !cfg.properties['log-level'],
+                        'text-orange-600 bg-orange-50 border-orange-200': cfg.properties['log-level'] === 'WARN',
+                        'text-red-600 bg-red-50 border-red-200': cfg.properties['log-level'] === 'ERROR',
+                        'text-slate-400 bg-slate-50 border-slate-200': cfg.properties['log-level'] === 'NONE'
+                    }"
+                    class="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border outline-none transition-all focus:ring-2 focus:ring-blue-400/20"
+                  >
+                    <template x-for="lvl in ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE']">
+                      <option :value="lvl" x-text="lvl" :selected="cfg.properties['log-level'] === lvl"></option>
+                    </template>
+                    <option value="" :selected="!cfg.properties['log-level']">Default (INFO)</option>
+                  </select>
                 </td>
                 <template
                   x-for="channel in ['business-channel-web', 'business-channel-app', 'retail-channel-web', 'retail-channel-app', 'real-life']"

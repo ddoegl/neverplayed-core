@@ -1,8 +1,21 @@
-import { FLOW_SERVICE, YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, LIMES_SERVICE, PLEXUS_ENGINE_SERVICE as _PLEXUS_ENGINE_SERVICE } from "../../../shared-types.js";
+import { FLOW_SERVICE, YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, LIMES_SERVICE, LOG_SERVICE, PLEXUS_ENGINE_SERVICE as _PLEXUS_ENGINE_SERVICE } from "../../../shared-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
     async start(context) {
+        this.logger = console; // Fallback to console initially
+        
+        context.trackService(`(objectClass=${LOG_SERVICE})`, {
+            addingService: (ref) => {
+                const svc = context.getService(ref);
+                this.logger = svc.getLogger ? svc.getLogger("prototyper.limes") : svc;
+                this.logger.info("Limes: Connected to System Logger.");
+            },
+            removedService: () => {
+                this.logger = console;
+            }
+        }).open();
+
         const yamlRef = context.getServiceReference(YAML_SERVICE);
         const yaml = context.getService(yamlRef);
 
@@ -13,7 +26,7 @@ export default class Activator {
         const flowRegistry = new Map(); // flowId -> { requiredPermissions: [] }
 
         // 1. Manage Strategies Registry
-        console.log("Limes: Loading strategies from YAML...");
+        this.logger.log("Limes: Loading strategies from YAML...");
         const res = await fetch("./bundles/system-services/limes/data/limes-strategies.yaml");
         const text = await res.text();
         const yamlStrategies = yaml.load(text) || [];
@@ -89,14 +102,14 @@ export default class Activator {
                 strategyRegistry.set(id, { ...definition, id });
                 const all = Array.from(strategyRegistry.values());
                 pm.store(STRATEGIES_PID, all);
-                console.log("Limes: Strategy updated and persisted:", id);
+                this.logger.log(`Limes: Strategy updated and persisted: ${id}`);
             },
 
             deleteStrategy: (id) => {
                 strategyRegistry.delete(id);
                 const all = Array.from(strategyRegistry.values());
                 pm.store(STRATEGIES_PID, all);
-                console.log("Limes: Strategy deleted and persisted:", id);
+                this.logger.log(`Limes: Strategy deleted and persisted: ${id}`);
             },
 
             isAllowed: (userOrId, strategyId, runtimeContext = {}) => {
@@ -109,12 +122,12 @@ export default class Activator {
 
                 if (!userCap) {
                     if (typeof userOrId !== 'object') {
-                        console.debug(`Limes: Unknown user evaluation for ${userOrId}`);
+                        this.logger.debug(`Limes: Unknown user evaluation for ${userOrId}`);
                     }
                     return false;
                 }
 
-                console.debug(`Limes: [isAllowed] user=${userCap.user}, strategy=${strategyId}`, runtimeContext);
+                this.logger.debug(`Limes: [isAllowed] user=${userCap.user}, strategy=${strategyId}`, runtimeContext);
 
                 let strategy = strategyRegistry.get(strategyId);
                 
@@ -135,14 +148,14 @@ export default class Activator {
                         if (strategy.matchers.length === 0) {
                             strategy.matchers.push({ type: 'matchAlways', value: true });
                         }
-                        console.debug(`Limes: Resolved dynamic strategy for ${strategyId} (fallback)`, strategy);
+                        this.logger.debug(`Limes: Resolved dynamic strategy for ${strategyId} (fallback)`, strategy);
                     } else {
-                        console.warn(`Limes: No strategy nor flowRegistry entry for ${strategyId}`);
+                        this.logger.warn(`Limes: No strategy nor flowRegistry entry for ${strategyId}`);
                     }
                 }
 
                 if (!strategy) {
-                    console.debug(`Limes: Unknown strategy ${strategyId}`);
+                    this.logger.debug(`Limes: Unknown strategy ${strategyId}`);
                     return false;
                 }
 
@@ -156,7 +169,7 @@ export default class Activator {
                         case 'matchScopeIntersection': {
                             const permKey = m.permission || m.value;
                             if (!permKey) {
-                                console.warn(`Limes: matchScopeIntersection in strategy ${strategyId} missing permission key`, m);
+                                this.logger.warn(`Limes: matchScopeIntersection in strategy ${strategyId} missing permission key`, m);
                             }
                             return this.evaluateScopeIntersection(userCap, permKey, m.property, runtimeContext);
                         }
@@ -171,19 +184,19 @@ export default class Activator {
                         case 'matchNever':
                             return false;
                         default:
-                            console.warn(`Limes: Unknown matcher type ${m.type} in strategy ${strategyId}`);
+                            this.logger.warn(`Limes: Unknown matcher type ${m.type} in strategy ${strategyId}`);
                             return false;
                     }
                 });
 
                 if (operator === 'AND') {
                     const ok = results.every(r => r === true);
-                    console.debug(`Limes: [isAllowed] -> result: ${ok} (AND) ids: ${results}`);
+                    this.logger.debug(`Limes: [isAllowed] -> result: ${ok} (AND) ids: ${results}`);
                     return ok;
                 }
                 if (operator === 'OR') {
                     const ok = results.some(r => r === true);
-                    console.debug(`Limes: [isAllowed] -> result: ${ok} (OR) ids: ${results}`);
+                    this.logger.debug(`Limes: [isAllowed] -> result: ${ok} (OR) ids: ${results}`);
                     return ok;
                 }
                 return false;
@@ -262,7 +275,7 @@ export default class Activator {
         if (!userCap.grantedKeys) return false;
         const normalized = String(key).toLowerCase().replace(/:/g, '_');
         const allowed = Object.keys(userCap.grantedKeys).some(k => k.toLowerCase().replace(/:/g, '_') === normalized);
-        console.debug(`Limes: [evaluatePermission] key=${key} (${normalized}) -> allowed=${allowed}`);
+        this.logger.debug(`Limes: [evaluatePermission] key=${key} (${normalized}) -> allowed=${allowed}`);
         return allowed;
     }
 
@@ -271,7 +284,7 @@ export default class Activator {
      */
     evaluateScopeIntersection(userCap, permissionKey, contextProperty, runtimeContext) {
         if (!permissionKey) {
-            console.warn("Limes: evaluateScopeIntersection called without permissionKey");
+            this.logger.warn("Limes: evaluateScopeIntersection called without permissionKey");
             return false;
         }
         const normalizedKey = String(permissionKey).toLowerCase();
@@ -287,7 +300,7 @@ export default class Activator {
         }
 
         if (permissionsFound.length === 0) {
-            console.log(`Limes: [evaluateScopeIntersection] key=${permissionKey} -> false (no perm found)`);
+            this.logger.debug(`Limes: [evaluateScopeIntersection] key=${permissionKey} -> false (no perm found)`);
             return false;
         }
 
@@ -310,7 +323,7 @@ export default class Activator {
             return foundPerm.customers.includes(requiredScope);
         });
 
-        console.debug(`Limes: [evaluateScopeIntersection] key=${permissionKey}, prop=${contextProperty}, ctxVal=${runtimeContext[contextProperty]} -> match=${match}`);
+        this.logger.debug(`Limes: [evaluateScopeIntersection] key=${permissionKey}, prop=${contextProperty}, ctxVal=${runtimeContext[contextProperty]} -> match=${match}`);
         return match;
     }
 
