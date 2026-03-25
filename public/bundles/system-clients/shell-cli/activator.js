@@ -1,48 +1,61 @@
-import { FLOW_SERVICE, SELECTION_SERVICE } from "../../../shared-types.js";
+import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE } from "../../../shared-types.js";
 import { sendInvitationRequest } from "../../../auth-shield.js";
+
+// Using globalThis.Alpine as guaranteed by index.html loader
+const Alpine = globalThis.Alpine;
 
 export default class Activator {
     start(context) {
-        // Initial state for the shell
-        const state = Alpine.reactive({
-            history: [],
-            currentCommand: "",
-            historyIndex: -1,
-            commandHistory: [],
-            
-            addLog(content, type = 'output') {
-                this.history.push({
-                    timestamp: Date.now() + Math.random(), // Make key unique
-                    time: new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-                    content,
-                    type
-                });
+        // Initialize Global Shell State if not already present (Persistent across bundle updates)
+        if (!Alpine.store('shell')) {
+            Alpine.store('shell', {
+                history: [],
+                commandHistory: [],
+                historyIndex: -1,
                 
-                // Keep history manageable
-                if (this.history.length > 100) this.history.shift();
-                
-                // Auto-scroll
-                setTimeout(() => {
-                    const el = document.querySelector('[x-ref="outputArea"]');
-                    if (el) el.scrollTop = el.scrollHeight;
-                }, 10);
-            }
-        });
+                addLog(content, type = 'output') {
+                    const now = new Date();
+                    const time = now.getHours().toString().padStart(2, '0') + ':' + 
+                                now.getMinutes().toString().padStart(2, '0') + ':' + 
+                                now.getSeconds().toString().padStart(2, '0');
+                    
+                    this.history.push({
+                        timestamp: now.getTime() + Math.random(),
+                        time,
+                        type,
+                        content
+                    });
+                    
+                    // Auto-scroll logic
+                    setTimeout(() => {
+                        const el = document.querySelector('[x-ref="outputArea"]');
+                        if (el) el.scrollTop = el.scrollHeight;
+                    }, 10);
+                }
+            });
+        } else {
+            // Migration for legacy state without timestamps
+            const s = Alpine.store('shell');
+            s.history?.forEach(log => {
+                if (!log.timestamp) log.timestamp = Date.now() + Math.random();
+            });
+        }
+        
+        const state = Alpine.store('shell');
 
-        // Define a stable scope for the Shell UI
-        const shellScope = {
+        // Define the scope for the Shell UI component (factory)
+        globalThis.getShellScope = () => ({
+            currentCommand: "",
             get history() { return state.history; },
-            get currentCommand() { return state.currentCommand; },
-            set currentCommand(val) { state.currentCommand = val; },
             
             async executeCommand() {
-                const cmd = state.currentCommand.trim();
+                const cmd = this.currentCommand.trim();
                 if (!cmd) return;
                 
                 state.addLog(cmd, 'input');
                 state.commandHistory.push(cmd);
                 state.historyIndex = state.commandHistory.length;
-                state.currentCommand = "";
+                this.currentCommand = "";
                 
                 try {
                     await this.processCommand(cmd);
@@ -57,7 +70,8 @@ export default class Activator {
                     const command = parts[0].toLowerCase();
                     const args = parts.slice(1);
                     
-                    switch(command) {
+                    try {
+                        switch(command) {
                         case '/help':
                             state.addLog(`
                                 <div class="space-y-1">
@@ -68,6 +82,15 @@ export default class Activator {
                                     <div><span class="text-yellow-400">/vars [category] [id]</span> - List and drill down flow variables</div>
                                     <div><span class="text-yellow-400">/services [filter]</span> - List all registered service IDs</div>
                                     <div><span class="text-yellow-400">/bundles [filter|ldap]</span> - List bundles (e.g. (Bundle-Name=*))</div>
+                                    <div><span class="text-yellow-400">/start [id|bsn]</span> - Start a bundle</div>
+                                    <div><span class="text-yellow-400">/stop [id|bsn]</span> - Stop a bundle</div>
+                                    <div><span class="text-yellow-400">/update [id|bsn]</span> - Update a bundle</div>
+                                    <div><span class="text-yellow-400">/uninstall [id|bsn]</span> - Uninstall a bundle</div>
+                                    <div><span class="text-yellow-400">/install [url]</span> - Install a new bundle</div>
+                                    <div><span class="text-yellow-400">/reset-config [pid]</span> - Clear persistent config & force manifest seed</div>
+                                    <div><span class="text-yellow-400">/prime-all [id|bsn]</span> - Sync manifest config to ConfigAdmin (hot-reload)</div>
+                                    <div><span class="text-yellow-400">/diag-manifest [id|url]</span> - Direct fetch manifest (bypass kernel cache)</div>
+                                    <div><span class="text-yellow-400">/reload-ui</span> - Hard refresh the browser window</div>
                                     <div><span class="text-yellow-400">/methods [serviceId]</span> - List methods on a service</div>
                                     <div><span class="text-yellow-400">/help</span> - Show this help message</div>
                                 </div>
@@ -76,6 +99,11 @@ export default class Activator {
                             
                         case '/clear':
                             state.history = [];
+                            break;
+                            
+                        case '/reload-ui':
+                            state.addLog("Forcing UI Reload...");
+                            location.reload();
                             break;
                             
                         case '/whoami': {
@@ -280,66 +308,58 @@ export default class Activator {
 
                         case '/bundles': {
                             const filterStr = args[0];
-                            const bundles = (context.getBundles?.() || []).sort((a,b) => a.id - b.id);
+                            const allBundles = (context.getBundles?.() || []).sort((a,b) => b.id - a.id); // Newest first
                             const stateMap = { 1: 'UNINSTALLED', 2: 'INSTALLED', 4: 'RESOLVED', 8: 'STARTING', 16: 'STOPPING', 32: 'ACTIVE' };
                             
-                            let matched = bundles;
+                            let matched = allBundles;
                             if (filterStr) {
                                 if (filterStr.startsWith('(')) {
                                     // 1. LDAP FILTER (Full evaluator if available)
-                                    let filterObj;
                                     try {
                                         const f = context.createFilter?.(filterStr);
                                         const matchFn = f?.matches || f?.match;
                                         if (typeof matchFn === 'function') {
-                                            filterObj = f;
-                                            matched = bundles.filter(b => matchFn.call(f, b.getHeaders()));
+                                           const _filterObj = f;
+                                        matched = allBundles.filter(b => matchFn.call(f, b.getHeaders()));
                                         }
                                     } catch (err) {
                                         state.addLog(`Framework filter error: ${err.message}`, 'error');
                                         return;
                                     }
-
-                                    // 2. Fallback Manual Matcher (if createFilter is missing or failed)
-                                    if (!filterObj) {
-                                        const match = filterStr.match(/\(([^=]+)=([^)]+)\)/);
-                                        if (match) {
-                                            const [_, keyPath, valStr] = match;
-                                            matched = bundles.filter(b => {
-                                                const headers = b.getHeaders();
-                                                const headerValRaw = keyPath.split('.').reduce((o, k) => o?.[k], headers);
-                                                const headerVal = String(headerValRaw !== undefined ? headerValRaw : "");
-                                                
-                                                if (valStr === '*') return headerValRaw !== undefined;
-                                                if (valStr.startsWith('*') && valStr.endsWith('*')) return headerVal.includes(valStr.slice(1, -1));
-                                                if (valStr.startsWith('*')) return headerVal.endsWith(valStr.slice(1));
-                                                if (valStr.endsWith('*')) return headerVal.startsWith(valStr.slice(0, -1));
-                                                return headerVal === valStr;
-                                            });
-                                        } else {
-                                            state.addLog(`LDAP filter support limited. Try: (key=val), (key=val*), or (key=*).`, 'error');
-                                            return;
-                                        }
-                                    }
                                 } else {
                                     // 2. Simple text filter
                                     const fs = filterStr.toLowerCase();
-                                    matched = bundles.filter(b => 
+                                    matched = allBundles.filter(b => 
                                         String(b.id) === fs || 
                                         b.getSymbolicName().toLowerCase().includes(fs)
                                     );
                                 }
+                            } else {
+                                // Default: Hide UNINSTALLED unless explicitly requested
+                                matched = allBundles.filter(b => b.getState() !== 1);
                             }
 
                             if (matched.length === 0) {
-                                state.addLog(`No bundles found matching: ${filterStr || '*'}`, 'error');
+                                state.addLog(`No active bundles found matching: ${filterStr || '*'}`, 'error');
                                 return;
                             }
 
-                            if (matched.length === 1 && filterStr) {
-                                const b = matched[0];
-                                state.addLog(`<div class="text-white font-bold">Bundle Detail: ${b.getSymbolicName()} (#${b.id})</div>`);
-                                state.addLog(`<div class="text-blue-200">State: <span class="text-white font-bold">${stateMap[b.getState()] || b.getState()}</span></div>`);
+                            if (matched.length === 1 || (filterStr && matched.length > 0 && !isNaN(filterStr))) {
+                                const b = matched[0]; // If filter was an ID, take the first one (highest ID as per sort)
+                                state.addLog(`<div class="text-white font-bold">Bundle Detail: ${b.getSymbolicName() || 'unnamed'} (#${b.id})</div>`);
+                                state.addLog(`<div class="text-blue-200">State: <span class="text-white font-bold">${stateMap[b.state] || b.state}</span></div>`);
+                                
+                                // Inspect all bundle properties (recursive prototype traversal for getters)
+                                const bProps = [];
+                                for (let obj = b; obj && obj !== Object.prototype; obj = Object.getPrototypeOf(obj)) {
+                                    Object.getOwnPropertyNames(obj).forEach(k => {
+                                        if (typeof b[k] !== 'function' && !bProps.includes(k)) bProps.push(k);
+                                    });
+                                }
+                                bProps.forEach(k => {
+                                    state.addLog(`<div class="text-blue-200">${k}: <span class="text-white text-[10px] break-all">${b[k]}</span></div>`);
+                                });
+                                
                                 state.addLog(`<div class="text-white font-bold mt-2 underline">Manifest Headers:</div>`);
                                 state.addLog(`<pre class="text-[10px] text-cyan-400">${JSON.stringify(b.getHeaders(), null, 2)}</pre>`);
                                 
@@ -353,9 +373,8 @@ export default class Activator {
                                         });
                                     }
                                 } catch (_e) {
-                                    // siliently ignore if not implemented
+                                    // Ignored
                                 }
-
                                 // 2. Consumed Services
                                 try {
                                     const usedRefs = b.getServicesInUse?.() || [];
@@ -366,7 +385,7 @@ export default class Activator {
                                         });
                                     }
                                 } catch (_e) {
-                                    // silently ignore if not implemented
+                                    // Ignored
                                 }
                             } else {
                                 state.addLog(`<div class="text-white font-bold">Universe Bundles (${matched.length}):</div>`);
@@ -426,6 +445,164 @@ export default class Activator {
                             }
                             break;
                         }
+
+                        case '/start':
+                        case '/stop':
+                        case '/update':
+                        case '/uninstall': {
+                            const target = args[0];
+                            if (!target) {
+                                state.addLog(`Usage: ${command} [id|bsn]`, 'error');
+                                return;
+                            }
+
+                            const targets = context.getBundles().filter(b => 
+                                String(b.id) === target || b.getSymbolicName() === target
+                            );
+
+                            if (targets.length === 0) {
+                                state.addLog(`Bundle not found: ${target}`, 'error');
+                                return;
+                            }
+
+                            const action = command.slice(1); // 'start', 'stop', etc.
+                            
+                            for (const b of targets) {
+                                try {
+                                    state.addLog(`${action.charAt(0).toUpperCase() + action.slice(1)}ing bundle ${b.getSymbolicName()} (#${b.id})...`);
+                                    
+                                    // Perform OSGi lifecycle action with timeout protection
+                                    const timeoutPromise = new Promise((_, reject) => 
+                                        setTimeout(() => reject(new Error(`${action} timed out after 5s`)), 5000)
+                                    );
+
+                                    if (action === 'start') await Promise.race([b.start(), timeoutPromise]);
+                                    else if (action === 'stop') await Promise.race([b.stop(), timeoutPromise]);
+                                    else if (action === 'update') await Promise.race([b.update(), timeoutPromise]);
+                                    else if (action === 'uninstall') await Promise.race([b.uninstall(), timeoutPromise]);
+                                    
+                                    state.addLog(`Success: Bundle ${b.getSymbolicName()} (#${b.id}) shifted to desired state.`);
+                                } catch (err) {
+                                    state.addLog(`Action failed for #${b.id}: ${err.message}`, 'error');
+                                }
+                            }
+                            break;
+                        }
+
+                        case '/install': {
+                            const url = args[0];
+                            if (!url) {
+                                state.addLog("Usage: /install [url]", 'error');
+                                return;
+                            }
+                            // Add cache-buster to ensure we don't pick up stale manifest/activator
+                            const separator = url.includes('?') ? '&' : '?';
+                            const bustedUrl = `${url}${separator}cb=${Date.now()}`;
+
+                            state.addLog(`Installing bundle from: <span class="text-white">${url}</span>...`);
+                            try {
+                                const b = await context.installBundle(bustedUrl);
+                                state.addLog(`Success: Installed bundle #${b.id} (${b.getSymbolicName()})`);
+                                state.addLog(`<div class="opacity-50 text-[10px]">Note: Use /start ${b.id} to activate it.</div>`);
+                            } catch (err) {
+                                state.addLog(`Installation failed: ${err.message}`, 'error');
+                            }
+                            break;
+                        }
+                            
+                        case '/prime-all': {
+                            const target = args[0];
+                            state.addLog(`Forcing manifest re-prime for: ${target || 'all active bundles'}...`);
+                            
+                            const caRef = context.getServiceReference(CONFIG_ADMIN_SERVICE);
+                            const ca = caRef ? context.getService(caRef) : null;
+                            if (!ca) {
+                                state.addLog("ConfigAdmin service not found!", 'error');
+                                return;
+                            }
+
+                            const bundles = context.getBundles().filter(b => {
+                                const isActive = b.state === 32 || b.state === "ACTIVE";
+                                if (!target) return isActive;
+                                return isActive && (String(b.id) === target || b.getSymbolicName() === target);
+                            });
+                            
+                            let count = 0;
+                            for (const b of bundles) {
+                                // Pandino uses various properties for the source location
+                                const url = b.manifestLocation || b.manifesLocation || b.bundleLocation || b.location || b.url;
+                                const bsn = b.getSymbolicName();
+                                
+                                if (!url) {
+                                    state.addLog(`<span class="opacity-50">[Skip] ${bsn}: No source URL found.</span>`);
+                                    continue;
+                                }
+                                
+                                try {
+                                    const bustedUrl = `${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+                                    const response = await fetch(bustedUrl, { cache: 'reload' });
+                                    if (response.ok) {
+                                        const manifest = await response.json();
+                                        const configData = manifest.Configuration;
+                                        if (configData) {
+                                            const cfg = ca.getConfiguration(bsn);
+                                            cfg.update(configData);
+                                            state.addLog(`Re-primed config for: <span class="text-emerald-400 font-bold">${bsn}</span>`);
+                                            count++;
+                                        }
+                                    } else {
+                                        state.addLog(`<span class="opacity-50 text-red-400">[Fail] ${bsn}: HTTP ${response.status} at ${url}</span>`);
+                                    }
+                                } catch (err) {
+                                    state.addLog(`<span class="opacity-50 text-red-400">[Error] ${bsn}: ${err.message}</span>`);
+                                }
+                            }
+                            state.addLog(`<div class="text-white font-bold mt-2">Final: Re-primed ${count} bundles.</div>`);
+                            break;
+                        }
+
+                        case '/diag-manifest': {
+                            const target = args[0];
+                            if (!target) {
+                                state.addLog("Usage: /diag-manifest [id|bsn|url]", 'error');
+                                return;
+                            }
+                            
+                            let url = target;
+                            const b = context.getBundles().find(b => String(b.id) === target || b.getSymbolicName() === target);
+                            if (b) {
+                                url = b.location || b.bundleLocation || b.manifestLocation || b.url || target;
+                            }
+                            
+                            // Add forced cache-buster
+                            const separator = url.includes('?') ? '&' : '?';
+                            const bustedUrl = `${url}${separator}cb=${Date.now()}`;
+                            
+                            state.addLog(`Performing direct manifest fetch for: <span class="text-white">${url}</span>...`);
+                            try {
+                                const response = await fetch(bustedUrl, { cache: 'reload' });
+                                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                const text = await response.text();
+                                state.addLog(`<div class="text-white font-bold underline mt-2">Remote Manifest (Direct Fetch):</div>`);
+                                state.addLog(`<pre class="text-[10px] text-cyan-400 overflow-x-auto">${text}</pre>`);
+                            } catch (err) {
+                                state.addLog(`Fetch failed: ${err.message}`, 'error');
+                            }
+                            break;
+                        }
+                            
+                        case '/reset-config': {
+                            const pid = args[0];
+                            if (!pid) {
+                                state.addLog("Usage: /reset-config [pid|bsn]", 'error');
+                                return;
+                            }
+                            state.addLog(`Resetting configuration for: <span class="text-white">${pid}</span>...`);
+                            // ConfigAdmin uses 'config.' prefix in PersistenceManager (which uses localStorage)
+                            localStorage.removeItem(`config.${pid}`);
+                            state.addLog(`Success: Persistent configuration cleared. <div class="opacity-50 text-[10px]">Note: You may need to /update or /start the bundle to re-prime from manifest.</div>`);
+                            break;
+                        }
                             
                         case '/invite': {
                             if (!args[0]) {
@@ -450,16 +627,18 @@ export default class Activator {
                         default:
                             state.addLog(`Unknown command: ${command}. Type /help for assistance.`, 'error');
                     }
-                },
+                } catch (pErr) {
+                    state.addLog(`Command Processing Error: ${pErr.message}`, 'error');
+                    console.error("Shell CLI Error:", pErr);
+                }
+            },
                 
             navigateHistory(dir) {
                 if (state.commandHistory.length === 0) return;
                 state.historyIndex = Math.max(0, Math.min(state.commandHistory.length - 1, state.historyIndex + dir));
-                state.currentCommand = state.commandHistory[state.historyIndex] || "";
+                this.currentCommand = state.commandHistory[state.historyIndex] || "";
             }
-        };
-
-        globalThis.getShellScope = () => shellScope;
+        });
 
         // Register the Flow Service
         context.registerService(FLOW_SERVICE, {

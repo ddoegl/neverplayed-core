@@ -1,6 +1,11 @@
 {
   "tasks": {
     "start": "deno run -A ./serve.ts",
-    "kill-deno": "lsof -ti:8008 | xargs kill -9"
+    "start-exp": "deno run -A ./serve-experiments.ts",
+    "kill-deno": "lsof -ti:8008 | xargs kill -9",
+    "kill-deno-exp": "lsof -ti:8009 | xargs kill -9"
+  },
+  "imports": {
+    "shared-types": "./public/shared-types.js"
   }
 }

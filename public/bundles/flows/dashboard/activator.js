@@ -1,6 +1,6 @@
-import { FLOW_SERVICE, SESSION_SERVICE } from "shared-types";
+import { FLOW_SERVICE, SESSION_SERVICE } from "../../../shared-types.js";
 export default class Activator {
-    async start(context) {
+    start(context) {
         const flowMetadata = {
             id: 'dashboard',
             title: 'Dashboard',
@@ -13,6 +13,10 @@ export default class Activator {
         };
 
         // Register this flow so the "Main Menu" or "Router" can find it
-        context.registerService(FLOW_SERVICE, flowMetadata, { 'flow.id': 'dashboard' });
+        context.registerService(FLOW_SERVICE, flowMetadata, {
+            "flow.id": "dashboard",
+            "flowType": "service-flow", // Visible in sidebar; channel visibility controlled by configAdmin
+            "channels": ["business-channel-web", "retail-channel-app"]
+        });
     }
 }

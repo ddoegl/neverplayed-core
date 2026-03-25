@@ -1,0 +1,13 @@
+
+{
+  "Bundle-ManifestVersion": "1",
+  "Bundle-SymbolicName": "@neverplayed/dashboard-flow2",
+  "Bundle-Name": "Dashboard Flow2",
+  "Bundle-Version": "0.1.0",
+  "Bundle-Activator": "./activator.js",
+  "Provide-Capability": "org.neverplayed.FlowService;version=\"0.1.0\";flow.id=\"dashboard2\"",
+  "Configuration": {
+    "flowType": "service-flow",
+    "channels": ["business-channel-web", "real-life"]
+  }
+}

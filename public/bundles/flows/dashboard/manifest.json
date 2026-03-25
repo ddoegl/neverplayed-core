@@ -6,7 +6,8 @@
   "Bundle-Version": "0.1.0",
   "Bundle-Activator": "./activator.js",
   "Provide-Capability": "org.neverplayed.FlowService;version=\"0.1.0\";flow.id=\"dashboard\"",
-  "config": {
-    "template": "http://localhost:8008/flows/dashboard/templates/view.html"
+  "Configuration": {
+    "flowType": "service-flow",
+    "channels": []
   }
 }

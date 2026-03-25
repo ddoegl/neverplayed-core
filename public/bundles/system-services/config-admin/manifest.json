@@ -1,5 +1,11 @@
 {
   "Bundle-SymbolicName": "config-admin",
   "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "activator.js"
+  "Bundle-Activator": "activator.js",
+  "Configuration": {
+    "flowType": "system-flow",
+    "channels": [
+      "business-channel-web", "retail-channel-app"
+    ]
+  }
 }
