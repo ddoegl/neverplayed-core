@@ -675,6 +675,72 @@ render() {
 
 **Where it is used:**
 
-- `ui-factory.js` (Atomic component updates)
-- `atomic-visual-editor.js` (Tri-view synchronization)
 - `atomic-input.js` / `atomic-select.js` (Direct property updates)
+- `atomic-visual-editor.js` (Tri-view synchronization)
+- `ui-factory.js` (Atomic component updates)
+
+---
+
+## 18. Decentralized Action Registration (Action Registry)
+
+To ensure that UI actions (like "Order New User" or "Create Case") are discoverable and reusable across different contexts (CLI, UI Factory, Visual Editor), bundles must register their capabilities via the `ACTION_REGISTRY_SERVICE`.
+
+### The Pattern
+
+Instead of hardcoding action logic into specific buttons, bundles register "Action Definitions" that include metadata (label, description) and parameter requirements.
+
+**Example: Registration in `activator.js`**
+
+```javascript
+const registry = context.getService(context.getServiceReference(ACTION_REGISTRY_SERVICE));
+registry.registerAction({
+  id: "flows.order.newUser",
+  label: "Order New User",
+  description: "Initiates the onboarding flow for a new user.",
+  params: {
+    targetSpace: "The space ID where the user should be added"
+  },
+  handler: (params) => {
+    /* logic */
+  }
+});
+```
+
+### Benefits
+
+- **Self-Documentation**: Automatically populated in `/actions` CLI command.
+- **Visual Editing**: Allows the `visual-do-editor` to provide dropdowns of available system actions.
+- **Decoupling**: The UI Factory can trigger actions by ID without importing the providing bundle's code.
+
+---
+
+## 19. Standardized Logging & Dynamic Filtering
+
+To maintain a clean console while allowing for deep debugging, all bundles must move away from `console.log` and adopt the standardized `@pandino/log-service`.
+
+### The Pattern
+
+Bundles track the `LOG_SERVICE` and retrieve a tagged logger instance specifically for their symbolic name.
+
+**Example: Standard Activator Logging**
+
+```javascript
+// In addingService(ref):
+this.logger = context.getService(ref).getLogger("my.bundle.bsn");
+
+// Usage:
+this.logger.debug("Processing entity...", { id: 123 });
+```
+
+### Dynamic Configuration
+
+The logging infrastructure is integrated with `ConfigAdmin`. Log levels can be adjusted in real-time via:
+1. **Manifest**: `Configuration: { "log-level": "WARN" }` for defaults.
+2. **Universe Settings UI**: Using the "Log Level" column dropdown.
+3. **Shell CLI**: `/loglevel DEBUG [ids]`.
+
+### Benefits
+
+- **Granular Filtering**: Change the verbosity of a single bundle without affecting others.
+- **Production Safety**: Defaults can be set to `WARN` or `ERROR` to avoid leaking sensitive data in logs.
+- **Tagging**: Every log message is automatically prefixed with the bundle's name for easier tracing.
