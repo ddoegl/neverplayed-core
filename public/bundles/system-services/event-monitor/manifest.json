@@ -4,7 +4,7 @@
   "Bundle-Activator": "activator.js",
   "Configuration": {
     "flowType": "system-flow",
-    "channels": ["real-life"],
+    "channels": ["real-life", "business-channel-web"],
     "level": "INFO",
     "topics": ["backoffice/invitations/*"]
   },

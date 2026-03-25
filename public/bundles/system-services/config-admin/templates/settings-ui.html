@@ -1,6 +1,6 @@
 <div class="w-full h-full bg-slate-50 flex flex-col overflow-auto">
   <!-- Content -->
-  <div class="flex-1 p-8 space-y-12 max-w-5xl mx-auto w-full">
+  <div class="flex-1 p-8 space-y-12 max-w-6xl mx-auto w-full">
     <!-- Global Governance Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Sidebar Toggle -->
@@ -208,10 +208,19 @@
                     }"
                     class="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border outline-none transition-all focus:ring-2 focus:ring-blue-400/20"
                   >
-                    <template x-for="lvl in ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE']">
-                      <option :value="lvl" x-text="lvl" :selected="cfg.properties['log-level'] === lvl"></option>
+                    <template
+                      x-for="lvl in ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE']"
+                    >
+                      <option
+                        :value="lvl"
+                        x-text="lvl"
+                        :selected="cfg.properties['log-level'] === lvl"
+                      >
+                      </option>
                     </template>
-                    <option value="" :selected="!cfg.properties['log-level']">Default (INFO)</option>
+                    <option value="" :selected="!cfg.properties['log-level']">
+                      Default (INFO)
+                    </option>
                   </select>
                 </td>
                 <template
