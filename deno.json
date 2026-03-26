@@ -16,6 +16,7 @@
     }
   },
   "imports": {
-    "shared-types": "./public/shared-types.js"
+    "shared-types": "./public/shared-types.js",
+    "core-types": "./public/core-types.js"
   }
 }

@@ -1,8 +1,7 @@
 import { 
     FLOW_SERVICE, 
-    SHELL_HOST_SERVICE,
     SESSION_SERVICE
-} from "shared-types";
+} from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 const Alpine = globalThis.Alpine;
@@ -11,16 +10,22 @@ export default class Activator {
     start(context) {
         console.log("Shell Host: Starting...");
 
+        // Pull dynamic configuration for the "Realm" (embedded in manifest headers)
+        const headers = context.getBundle().getHeaders();
+        const config = headers.Configuration || {};
+        const bootCapability = config.bootCapability || "sys:cli";
+        const mountPoint = config.mountPoint || "#flow-content";
+
         // Register the Alpine Component
-        Alpine.data("shellHost", (options = {}) => ({
+        Alpine.data("shellHost", () => ({
             ready: false,
             status: "Orchestrator Active",
             activeFlowId: null,
-            bootCapability: options.bootCapability || "sys:cli",
-            mountPoint: options.mountPoint || "#flow-content",
+            bootCapability,
+            mountPoint,
 
             init() {
-                console.log(`Shell Host: Initializing for capability: ${this.bootCapability}`);
+                console.log(`Shell Host: Initializing Realm for capability: ${this.bootCapability}`);
                 
                 // Minimal Session Mock if not already registered
                 const sessionRef = context.getServiceReference(SESSION_SERVICE);
@@ -54,12 +59,12 @@ export default class Activator {
             },
 
             launch(id, flow) {
-                console.log(`Shell Host: Launching ${id}`);
+                console.log(`Shell Host: Launching ${id} into Realm`);
                 
                 // Use the mount point from config or fallback to ref
                 const container = document.querySelector(this.mountPoint) || this.$refs.flowContent;
                 if (!container) {
-                    console.error(`Shell Host: Mount point not found!`);
+                    console.error(`Shell Host: Mount point ${this.mountPoint} not found!`);
                     return;
                 }
                 
@@ -67,12 +72,12 @@ export default class Activator {
                 this.activeFlowId = id;
                 flow.launch(container);
                 this.ready = true; // Mark as ready once first flow is launched
-                this.status = `Running: ${id}`;
+                this.status = `Realm Active: ${id}`;
             }
         }));
 
         // Register the Host Service itself
-        context.registerService(SHELL_HOST_SERVICE, {
+        context.registerService("@neverplayed/shell-host-service", {
             getAlpineDataName: () => "shellHost"
         });
     }

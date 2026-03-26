@@ -13,7 +13,8 @@
           "@pandino/event-api": "https://esm.sh/@pandino/event-api@0.8.33",
           "@pandino/log-api": "https://esm.sh/@pandino/log-api@0.8.33",
           "alpinejs": "https://esm.sh/alpinejs@3.13.5",
-          "shared-types": "./shared-types.js"
+          "shared-types": "./shared-types.js",
+          "core-types": "./core-types.js"
         }
       }
     </script>
@@ -498,17 +499,17 @@
         CONFIG_ADMIN_UI_FLOW,
         ENV_SERVICE,
         FLOW_SERVICE,
+        LICENSE_DATA_SERVICE,
+        LOG_SERVICE,
+        MOBILE_LAUNCHER_FLOW,
         NAV_SERVICE,
+        REALLIFE_FLOW,
+        SELECTION_SERVICE,
         SESSION_SERVICE,
+        SHELL_CLI_SERVICE,
         SHELL_CONFIG_PID,
         SYSTEM_READY_SERVICE,
         SYSTEM_RESET_SERVICE,
-        LICENSE_DATA_SERVICE,
-        SELECTION_SERVICE,
-        REALLIFE_FLOW,
-        MOBILE_LAUNCHER_FLOW,
-        LOG_SERVICE,
-        SHELL_CLI_SERVICE,
       } from "shared-types";
       import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
@@ -705,8 +706,9 @@
           },
 
           goHome() {
-            if (this.logger) this.logger.info("Shell: Navigating home...");
-            else console.log("Shell: Navigating home...");
+            if (this.logger) {
+              this.logger.info("Shell: Navigating home...");
+            } else console.log("Shell: Navigating home...");
             if (this.session && this.session.scopedUsers) {
               delete this.session.scopedUsers["global"];
             }
@@ -989,13 +991,19 @@
               return "CLI service not available.";
             }
             try {
-              const result = await this.shellCliService.processCommand(command);
+              const result = await this.shellCliService.processCommand(
+                command,
+              );
               return result;
             } catch (error) {
               if (this.logger) {
-                this.logger.error(`Shell: CLI command error: ${error.message}`);
+                this.logger.error(
+                  `Shell: CLI command error: ${error.message}`,
+                );
               } else {
-                console.error(`Shell: CLI command error: ${error.message}`);
+                console.error(
+                  `Shell: CLI command error: ${error.message}`,
+                );
               }
               return `Error: ${error.message}`;
             }
@@ -1069,14 +1077,16 @@
             }
 
             if (!el) {
-              const msg = `Shell: Target container ${containerId} not found!`;
+              const msg =
+                `Shell: Target container ${containerId} not found!`;
               if (this.logger) this.logger.error(msg);
               else console.error(msg);
               return;
             }
 
             if (targetFlow.launch) {
-              const msg = `Shell: Calling flow.launch() on [${containerId}] for: ${id}`;
+              const msg =
+                `Shell: Calling flow.launch() on [${containerId}] for: ${id}`;
               if (this.logger) this.logger.info(msg);
               else console.log(msg);
               el.innerHTML = ""; // Clear previous flow content

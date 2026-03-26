@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE, LOG_SERVICE, SESSION_SERVICE, BUNDLE_TYPE_SERVICE, LOG_LEVEL_PROP, NEVERPLAYED_PREFIX, SHELL_CLI_PID, SHELL_CLI_SERVICE } from "shared-types";
+import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE, LOG_SERVICE, SESSION_SERVICE, BUNDLE_TYPE_SERVICE, LOG_LEVEL_PROP, NEVERPLAYED_PREFIX, SHELL_CLI_PID, SHELL_CLI_SERVICE } from "core-types";
 import { sendInvitationRequest } from "../../auth-shield.js";
 
 // Using globalThis.Alpine as guaranteed by index.html loader
@@ -106,7 +106,8 @@ export default class Activator {
                                     <div><span class="text-yellow-400">/diag-manifest [id|url]</span> - Direct fetch manifest (bypass kernel cache)</div>
                                     <div><span class="text-yellow-400">/reload-ui</span> - Hard refresh the browser window</div>
                                     <div><span class="text-yellow-400">/methods [serviceId]</span> - List methods on a service</div>
-                                    <div><span class="text-yellow-400">/actions [filter]</span> - List registered OSGi actions & params</div>
+                                    <div><span class="text-yellow-400">/flows [filter]</span> - List all registered flows</div>
+                                    <div><span class="text-yellow-400">/caps [filter]</span> - List all unique capabilities</div>
                                     <div><span class="text-yellow-400">/help</span> - Show this help message</div>
                                 </div>
                             `);
@@ -503,6 +504,39 @@ export default class Activator {
                                         ${paramDoc}
                                     </div>
                                 `);
+                            });
+                            break;
+                        }
+
+                        case '/flows': {
+                            const filter = args[0]?.toLowerCase();
+                            const refs = context.getServiceReferences(FLOW_SERVICE, null) || [];
+                            state.addLog(`<div class="text-white font-bold mb-2 underline">Registered Flows (${refs.length}):</div>`);
+                            refs.forEach(ref => {
+                                const id = ref.getProperty("flow.id") || "unknown";
+                                const cap = ref.getProperty("capability") || "none";
+                                if (!filter || id.toLowerCase().includes(filter) || cap.toLowerCase().includes(filter)) {
+                                    state.addLog(` - <span class="text-yellow-400">${id}</span> <span class="text-gray-400 text-[10px]">[Cap: ${cap}]</span>`);
+                                }
+                            });
+                            break;
+                        }
+
+                        case '/caps': {
+                            const filter = args[0]?.toLowerCase();
+                            const refs = context.getServiceReferences(FLOW_SERVICE, null) || [];
+                            const caps = new Set();
+                            refs.forEach(ref => {
+                                const cap = ref.getProperty("capability");
+                                if (cap) caps.add(cap);
+                            });
+                            
+                            const sortedCaps = Array.from(caps).sort();
+                            state.addLog(`<div class="text-white font-bold mb-2 underline">Global Capabilities (${sortedCaps.length}):</div>`);
+                            sortedCaps.forEach(cap => {
+                                if (!filter || cap.toLowerCase().includes(filter)) {
+                                    state.addLog(` - <span class="text-cyan-400">${cap}</span>`);
+                                }
                             });
                             break;
                         }
