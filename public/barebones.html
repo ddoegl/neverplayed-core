@@ -81,9 +81,9 @@
                 const coreBundles = [
                     "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
                     "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
-                    "./bundles/system-services/system-logger/manifest.json",
-                    "./bundles/system-services/config-admin/manifest.json",
-                    "./bundles/system-clients/shell-cli/manifest.json"
+                    "./bundles/org.neverplayed.system-logger/manifest.json",
+                    "./bundles/org.neverplayed.config-admin/manifest.json",
+                    "./bundles/org.neverplayed.shell-cli/manifest.json"
                 ];
 
                 for (const url of coreBundles) {
@@ -111,7 +111,7 @@
                         console.log(`Barebones: Flow discovered: ${id}`);
                         
                         // Auto-launch Shell CLI immediately on arrival
-                        if (id === "shell-cli") {
+                        if (id === "@neverplayed/shell-cli") {
                             this.launch(id, svc);
                         }
                         return svc;

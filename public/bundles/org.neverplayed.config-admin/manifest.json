@@ -1,5 +1,5 @@
 {
-  "Bundle-SymbolicName": "config-admin",
+  "Bundle-SymbolicName": "@neverplayed/config-admin",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
   "Configuration": {

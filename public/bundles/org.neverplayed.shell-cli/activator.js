@@ -1,5 +1,5 @@
 import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE, LOG_SERVICE, SESSION_SERVICE, BUNDLE_TYPE_SERVICE } from "shared-types";
-import { sendInvitationRequest } from "../../../auth-shield.js";
+import { sendInvitationRequest } from "../../auth-shield.js";
 
 // Using globalThis.Alpine as guaranteed by index.html loader
 const Alpine = globalThis.Alpine;
@@ -12,7 +12,7 @@ export default class Activator {
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const logAdmin = context.getService(ref);
-                logger = logAdmin.getLogger("shell-cli");
+                logger = logAdmin.getLogger(context.getBundle().getSymbolicName());
                 logger.info("Log Service connected");
             },
             removedService: () => { logger = null; }
@@ -752,21 +752,21 @@ export default class Activator {
 
         // Register the Flow Service
         context.registerService(FLOW_SERVICE, {
-            id: "shell-cli",
+            id: "@neverplayed/shell-cli",
             title: "Shell CLI",
             launch: (targetElement) => {
                 targetElement.innerHTML = `
                     <div id="shell-container" class="h-full w-full">
                         <div class="h-full border border-blue-900 shadow-2xl rounded-xl overflow-hidden">
                             <div id="shell-content-wrapper" class="h-full">
-                                <div class="h-full" x-html="await (await fetch('./bundles/system-clients/shell-cli/templates/shell.html')).text()"></div>
+                                <div class="h-full" x-html="await (await fetch('./bundles/org.neverplayed.shell-cli/templates/shell.html')).text()"></div>
                             </div>
                         </div>
                     </div>
                 `;
             }
         }, {
-            "flow.id": "shell-cli",
+            "flow.id": "@neverplayed/shell-cli",
             "flowType": BUNDLE_TYPE_SERVICE,
             "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
         });

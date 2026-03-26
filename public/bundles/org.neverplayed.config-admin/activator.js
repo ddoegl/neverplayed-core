@@ -26,7 +26,7 @@ export default class Activator {
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const logAdmin = context.getService(ref);
-                logger = logAdmin.getLogger("config-admin");
+                logger = logAdmin.getLogger(context.getBundle().getSymbolicName());
                 logger.info("Log Service connected");
             },
             removedService: () => { logger = null; }
@@ -240,7 +240,7 @@ export default class Activator {
                 });
 
                 targetElement._x_dataStack = [state];
-                const response = await fetch("./bundles/system-services/config-admin/templates/settings-ui.html");
+                const response = await fetch("./bundles/org.neverplayed.config-admin/templates/settings-ui.html");
                 targetElement.innerHTML = await response.text();
                 state.init();
 

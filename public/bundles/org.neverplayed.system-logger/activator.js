@@ -76,7 +76,7 @@ export default class Activator {
             removedService: () => { configAdmin = null; }
         }).open();
 
-        const logger = logService.getLogger("system-logger");
+        const logger = logService.getLogger(context.getBundle().getSymbolicName());
         logger.info(`Registering ${LOG_SERVICE} service...`);
         this.registration = context.registerService(LOG_SERVICE, logService);
         

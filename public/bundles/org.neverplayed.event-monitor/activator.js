@@ -24,7 +24,7 @@ export default class Activator {
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => { 
                 const logAdmin = context.getService(ref);
-                logger = logAdmin.getLogger("event-monitor");
+                logger = logAdmin.getLogger(context.getBundle().getSymbolicName());
                 logger.info("Log Service connected");
             },
             removedService: (ref) => { logger = null; context.ungetService(ref); }
@@ -88,7 +88,7 @@ export default class Activator {
 
         // Register as a FLOW_SERVICE so it can be governed
         const flowMetadata = {
-            id: "event-monitor",
+            id: "@neverplayed/event-monitor",
             title: "Event Monitor",
             icon: "fas fa-terminal",
             launch: (target) => {
@@ -105,7 +105,7 @@ export default class Activator {
                 `;
             }
         };
-        context.registerService(FLOW_SERVICE, flowMetadata, { "flow.id": "event-monitor" });
+        context.registerService(FLOW_SERVICE, flowMetadata, { "flow.id": "@neverplayed/event-monitor" });
 
         if (logger) logger.info("Event Monitor started and subscribed to topics");
     }
