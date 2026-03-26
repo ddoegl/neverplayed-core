@@ -4,12 +4,13 @@
   "Bundle-Activator": "activator.js",
   "Configuration": {
     "flowType": "system-flow",
-    "channels": ["real-life", "business-channel-web"],
+    "channels": [
+      "real-life",
+      "business-channel-web"
+    ],
     "level": "INFO",
-    "topics": ["backoffice/invitations/*"]
-  },
-  "Require-Capability": [
-    "osgi.service; filter=\"(objectClass=pandino.config.admin.ConfigAdmin)\"",
-    "osgi.service; filter=\"(objectClass=@pandino/log-service)\""
-  ]
+    "topics": [
+      "backoffice/invitations/*"
+    ]
+  }
 }
