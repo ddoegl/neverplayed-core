@@ -2,6 +2,7 @@
 export const FLOW_SERVICE = "@neverplayed/flow-service";
 export const SESSION_SERVICE = "@neverplayed/session-service";
 export const NAV_SERVICE = "@neverplayed/nav-service";
+export const SHELL_HOST_SERVICE = "@neverplayed/shell-host-service";
 export const YAML_SERVICE = "@neverplayed/yaml-service";
 export const NEVERPLAYED_PREFIX = "@neverplayed/";
 export const SYSTEM_RESET_SERVICE = "@neverplayed/system-reset-service";

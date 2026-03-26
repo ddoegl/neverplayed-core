@@ -1,0 +1,11 @@
+{
+    "Bundle-SymbolicName": "@neverplayed/shell-host",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Shell Host Orchestrator",
+    "Bundle-Description": "Manages flow discovery and UI mounting for the Never Played platform.",
+    "Bundle-Activator": "activator.js",
+    "Configuration": {
+        "bootCapability": "sys:cli",
+        "mountPoint": "#flow-content"
+    }
+}

@@ -115,16 +115,26 @@ launch: (async (targetElement) => {
 
 ## 3. Mandatory Architectural Constant Compliance
 
-To prevent "magic string" fragmentation, broken service trackers, and runtime `null` pointer exceptions, **all** OSGi service interfaces, configuration PIDs, and global Event Topics **must** be centralized in `public/shared-types.js`.
+To prevent "magic string" fragmentation, broken service trackers, and runtime
+`null` pointer exceptions, **all** OSGi service interfaces, configuration PIDs,
+and global Event Topics **must** be centralized in `public/shared-types.js`.
 
 ### The Compliance Rule
-1. **Registration**: Never hardcode a service name in `registerService`. Import and use the constant.
-2. **Consumption/Tracking**: Use the constant in LDAP filters (e.g., `(objectClass=${LOG_SERVICE})`) and when retrieving services.
-3. **Alpine Injections**: When injecting constants into reactive Alpine strings (e.g., in `x-effect`), use template literals: `globalThis.Services['${LOG_SERVICE}'].info(...)`.
+
+1. **Registration**: Never hardcode a service name in `registerService`. Import
+   and use the constant.
+2. **Consumption/Tracking**: Use the constant in LDAP filters (e.g.,
+   `(objectClass=${LOG_SERVICE})`) and when retrieving services.
+3. **Alpine Injections**: When injecting constants into reactive Alpine strings
+   (e.g., in `x-effect`), use template literals:
+   `globalThis.Services['${LOG_SERVICE}'].info(...)`.
 
 ### Benefits
-- **Refactor Safety**: Changing a service ID in one place updates the entire system.
-- **Discovery Integrity**: Prevents subtle typos from breaking service trackers or event listeners.
+
+- **Refactor Safety**: Changing a service ID in one place updates the entire
+  system.
+- **Discovery Integrity**: Prevents subtle typos from breaking service trackers
+  or event listeners.
 
 ---
 
@@ -544,28 +554,35 @@ const allowed = limes.isAllowed(user, "MY_STRATEGY", myContext);
 
 ## 15. Navigation Stability & Partial Shell Updates
 
-To prevent flickering and preserve UI state (like open dialogs) during background service refreshes, shell clients must use defensive partial update logic.
+To prevent flickering and preserve UI state (like open dialogs) during
+background service refreshes, shell clients must use defensive partial update
+logic.
 
 ### The Problem
 
-If a shell activator re-renders the entire main content area (`innerHTML = ""`) whenever it receives a navigation request or a "step updated" signal, it destroys all active DOM nodes, including Alpine components and their local states (dialogs, form inputs).
+If a shell activator re-renders the entire main content area (`innerHTML = ""`)
+whenever it receives a navigation request or a "step updated" signal, it
+destroys all active DOM nodes, including Alpine components and their local
+states (dialogs, form inputs).
 
 ### The Solution: `data-active-step` Tracking
 
-Instead of just checking if the `stepId` is the same, shells should track the **rendered** state using a data attribute on the content container.
+Instead of just checking if the `stepId` is the same, shells should track the
+**rendered** state using a data attribute on the content container.
 
 **Correct "Stable" Implementation:**
 
 ```javascript
 const contentArea = document.getElementById("content-area");
 const isSameStep = this.currentStep === targetId;
-const isAlreadyRendered = contentArea && contentArea.dataset.activeStep === targetId;
+const isAlreadyRendered = contentArea &&
+  contentArea.dataset.activeStep === targetId;
 
 if (isSameStep && isAlreadyRendered) {
-    // Skip DOM destruction! 
-    // Just trigger child activation logic if needed.
-    if (extension.onActivate) extension.onActivate(this);
-    return;
+  // Skip DOM destruction!
+  // Just trigger child activation logic if needed.
+  if (extension.onActivate) extension.onActivate(this);
+  return;
 }
 
 // Perform update and tag the container
@@ -577,54 +594,64 @@ contentArea.dataset.activeStep = targetId;
 
 - **Zero Flickering**: Seamless transitions for background updates.
 - **State Preservation**: Dialogs and overlays remain active.
-- **Performance**: Skips expensive DOM parsing and Alpine initialization for redundant calls.
+- **Performance**: Skips expensive DOM parsing and Alpine initialization for
+  redundant calls.
 
 ---
 
 ## 16. Reactive Lifecycle & Zombie Guards (Persistence Safety)
 
-When building complex, long-lived components like the `ui-factory` that use `Alpine.effect` to sync with global states, we must defensively manage their lifecycle to prevent "Zombie Effects" from corrupting data.
+When building complex, long-lived components like the `ui-factory` that use
+`Alpine.effect` to sync with global states, we must defensively manage their
+lifecycle to prevent "Zombie Effects" from corrupting data.
 
 ### The Problem: Ghost Overwrites
 
-If a component registers global effects (e.g., watching `globalThis.backofficeState`) but is not explicitly cleaned up when the DOM node is removed, the effects stay active in memory. When the global state updates, multiple instances of the component (old sessions) may wake up simultaneously and "Auto-Save" their stale local data, effectively overwriting the user's latest changes.
+If a component registers global effects (e.g., watching
+`globalThis.backofficeState`) but is not explicitly cleaned up when the DOM node
+is removed, the effects stay active in memory. When the global state updates,
+multiple instances of the component (old sessions) may wake up simultaneously
+and "Auto-Save" their stale local data, effectively overwriting the user's
+latest changes.
 
 ### The Solution: The "Double-Guard" Pattern
 
-1. **Zombie Guard**: Always check if the component is still connected to the DOM at the start of an effect.
-2. **Hydration Guard**: Ensure persistence only happens *after* the component has successfully synchronized with its source of truth.
+1. **Zombie Guard**: Always check if the component is still connected to the DOM
+   at the start of an effect.
+2. **Hydration Guard**: Ensure persistence only happens _after_ the component
+   has successfully synchronized with its source of truth.
 
 **Example: Robust Lifecycle Management**
 
 ```javascript
 class MyComponent extends HTMLElement {
-    constructor() {
-        super();
-        this._effects = [];
-        this._isDisconnected = false;
-    }
+  constructor() {
+    super();
+    this._effects = [];
+    this._isDisconnected = false;
+  }
 
-    disconnectedCallback() {
-        this._isDisconnected = true;
-        this._effects.forEach(cleanup => cleanup());
-    }
+  disconnectedCallback() {
+    this._isDisconnected = true;
+    this._effects.forEach((cleanup) => cleanup());
+  }
 
-    _createState() {
-        const effect = Alpine.effect(() => {
-            // 1. Exit immediately if zombie
-            if (this._isDisconnected) return;
-            
-            // 2. Hydration Guard (Logic)
-            if (!this.state.hydrated) {
-                this.hydrate();
-                return;
-            }
-            
-            // 3. Perform Persistence
-            pm.store(ID, this.state.values);
-        });
-        this._effects.push(effect);
-    }
+  _createState() {
+    const effect = Alpine.effect(() => {
+      // 1. Exit immediately if zombie
+      if (this._isDisconnected) return;
+
+      // 2. Hydration Guard (Logic)
+      if (!this.state.hydrated) {
+        this.hydrate();
+        return;
+      }
+
+      // 3. Perform Persistence
+      pm.store(ID, this.state.values);
+    });
+    this._effects.push(effect);
+  }
 }
 ```
 
@@ -632,23 +659,32 @@ class MyComponent extends HTMLElement {
 
 - **Data Integrity**: Prevents stale sessions from winning race conditions.
 - **Memory Efficiency**: Explicitly destroys reactive computations.
-- **Predictability**: Ensures the "Last Save Wins" only applies to the active UI.
+- **Predictability**: Ensures the "Last Save Wins" only applies to the active
+  UI.
 
 ---
 
 ## 17. Non-Destructive Reactive Rendering (The Focus Guard)
 
-When building Custom Elements that use `Alpine.effect` or other reactive triggers to re-render, we must avoid destructive `innerHTML` updates that cause user focus loss in input fields.
+When building Custom Elements that use `Alpine.effect` or other reactive
+triggers to re-render, we must avoid destructive `innerHTML` updates that cause
+user focus loss in input fields.
 
 ### The Problem
 
-A standard `render()` method that sets `this.innerHTML = template` every time a value changes will destroy all active DOM nodes. If the user is currently typing in an `<sl-input>` inside that template, the element is removed and recreated, causing the cursor to vanish.
+A standard `render()` method that sets `this.innerHTML = template` every time a
+value changes will destroy all active DOM nodes. If the user is currently typing
+in an `<sl-input>` inside that template, the element is removed and recreated,
+causing the cursor to vanish.
 
 ### The Solution: Idempotent Shell + Targeted Updates
 
-1. **Idempotent Shell**: Use an `_initialized` flag to ensure the main layout is only set once.
-2. **Targeted Sub-updates**: In the `render()` loop, use `this.querySelector()` to update specific text nodes, attributes, or sub-containers.
-3. **Contextual Regeneration**: Only blow away sub-containers (like a property panel) if the *context* (e.g., the selected ID) actually changed.
+1. **Idempotent Shell**: Use an `_initialized` flag to ensure the main layout is
+   only set once.
+2. **Targeted Sub-updates**: In the `render()` loop, use `this.querySelector()`
+   to update specific text nodes, attributes, or sub-containers.
+3. **Contextual Regeneration**: Only blow away sub-containers (like a property
+   panel) if the _context_ (e.g., the selected ID) actually changed.
 
 **Example Pattern**:
 
@@ -686,59 +722,75 @@ render() {
 
 ## 18. Decentralized Action Registration (Action Registry)
 
-To ensure that UI actions (like "Order New User" or "Create Case") are discoverable and reusable across different contexts (CLI, UI Factory, Visual Editor), bundles must register their capabilities via the `ACTION_REGISTRY_SERVICE`.
+To ensure that UI actions (like "Order New User" or "Create Case") are
+discoverable and reusable across different contexts (CLI, UI Factory, Visual
+Editor), bundles must register their capabilities via the
+`ACTION_REGISTRY_SERVICE`.
 
 ### The Pattern
 
-Instead of hardcoding action logic into specific buttons, bundles register "Action Definitions" that include metadata (label, description) and parameter requirements.
+Instead of hardcoding action logic into specific buttons, bundles register
+"Action Definitions" that include metadata (label, description) and parameter
+requirements.
 
 **Example: Registration in `activator.js`**
 
 ```javascript
-const registry = context.getService(context.getServiceReference(ACTION_REGISTRY_SERVICE));
+const registry = context.getService(
+  context.getServiceReference(ACTION_REGISTRY_SERVICE),
+);
 registry.registerAction({
   id: "flows.order.newUser",
   label: "Order New User",
   description: "Initiates the onboarding flow for a new user.",
   params: {
-    targetSpace: "The space ID where the user should be added"
+    targetSpace: "The space ID where the user should be added",
   },
   handler: (params) => {
     /* logic */
-  }
+  },
 });
 ```
 
 ### Benefits
 
 - **Self-Documentation**: Automatically populated in `/actions` CLI command.
-- **Visual Editing**: Allows the `visual-do-editor` to provide dropdowns of available system actions.
-- **Decoupling**: The UI Factory can trigger actions by ID without importing the providing bundle's code.
+- **Visual Editing**: Allows the `visual-do-editor` to provide dropdowns of
+  available system actions.
+- **Decoupling**: The UI Factory can trigger actions by ID without importing the
+  providing bundle's code.
 
 ---
 
 ## 19. Standardized Logging & Balanced Observability
 
-To maintain a clean console while allowing for deep debugging, all bundles must move away from `console.log` and adopt the standardized `@pandino/log-service`.
+To maintain a clean console while allowing for deep debugging, all bundles must
+move away from `console.log` and adopt the standardized `@pandino/log-service`.
 
 ### The Pattern
-Bundles track the `LOG_SERVICE` and retrieve a tagged logger instance specifically for their symbolic name.
+
+Bundles track the `LOG_SERVICE` and retrieve a tagged logger instance
+specifically for their symbolic name.
 
 ### The "Balanced Zero-Console" Strategy (Recommended)
-While the goal is a silent console ("Zero-Console") for foundation noise, we must avoid "flying blind" during the earliest system initialization phases.
+
+While the goal is a silent console ("Zero-Console") for foundation noise, we
+must avoid "flying blind" during the earliest system initialization phases.
 
 **Pattern: Safe Early-Boot Fallback**
+
 ```javascript
 // Attempt to get a logger early (fallback to console for boot observability)
-let logger = console; 
+let logger = console;
 const logRef = context.getServiceReference(LOG_SERVICE);
 if (logRef) {
-    logger = context.getService(logRef).getLogger("my.bundle.id");
+  logger = context.getService(logRef).getLogger("my.bundle.id");
 }
 logger.info("Initializing bundle...");
 ```
 
 **Pattern: Lazy Getter Fallback**
+
 ```javascript
 get logger() {
     if (this._logger) return this._logger; // Set via ServiceTracker
@@ -750,12 +802,97 @@ get logger() {
 ```
 
 ### Dynamic Configuration
-The logging infrastructure is integrated with `ConfigAdmin`. Log levels can be adjusted in real-time via:
+
+The logging infrastructure is integrated with `ConfigAdmin`. Log levels can be
+adjusted in real-time via:
+
 1. **Manifest**: `Configuration: { "log-level": "WARN" }` for defaults.
 2. **Universe Settings UI**: Using the "Log Level" column dropdown.
 3. **Shell CLI**: `/loglevel DEBUG [ids]`.
 
 ### Benefits
-- **Granular Filtering**: Change the verbosity of a single bundle without affecting others.
-- **Production Safety**: Defaults can be set to `WARN` or `ERROR` to avoid leaking sensitive data in logs.
-- **Tagging**: Every log message is automatically prefixed with the bundle's name for easier tracing.
+
+- **Granular Filtering**: Change the verbosity of a single bundle without
+  affecting others.
+- **Production Safety**: Defaults can be set to `WARN` or `ERROR` to avoid
+  leaking sensitive data in logs.
+- **Tagging**: Every log message is automatically prefixed with the bundle's
+  name for easier tracing.
+
+---
+
+## 20. Capability-Based Discovery (Handle Pattern)
+
+To achieve maximum modularity and decouple the Shell (and other consumers) from
+hardcoded bundle IDs, we use **Capability-Based Discovery**.
+
+### The Pattern
+
+Instead of a consumer (like the Shell Host) tracking a specific bundle PID, it
+tracks a generic interface (like `FLOW_SERVICE`) and filters by a `capability`
+property.
+
+**Provider (e.g., `shell-cli`)**:
+
+```javascript
+context.registerService(FLOW_SERVICE, flowSvc, {
+  "capability": "sys:cli",
+  "flow.id": "@neverplayed/shell-cli", // Legacy fallback
+});
+```
+
+**Consumer (e.g., `shell-host`)**:
+
+```javascript
+context.trackService(`(&(objectClass=${FLOW_SERVICE})(capability=sys:cli))`, {
+  addingService: (ref) => {
+    const flow = context.getService(ref);
+    flow.launch(container);
+  },
+});
+```
+
+### Benefits
+
+- **Interchangeability**: You can swap the Shell CLI bundle with a different
+  implementation without updating the Shell Host.
+- **Discovery Simplicity**: Consumers don't need to import internal PID
+  constants; they only need to know the name of the "Capability" they require.
+
+---
+
+## 21. Standardized Service Identifiers (Hierarchy)
+
+To ensure a predictable registry across the platform, we follow a strict naming
+hierarchy for service identifiers.
+
+### 1. Global Interfaces
+
+Common contracts shared by many bundles. These are defined as top-level
+constants.
+
+- `@neverplayed/flow-service`
+- `@pandino/log-service`
+
+### 2. Private Bundle Services
+
+Specific APIs provided by a single bundle for other bundles to consume directly.
+
+- Pattern: `@neverplayed/<simple-name>/service`
+- Example: `@neverplayed/shell-cli/service`
+
+### 3. Capability Namespaces
+
+When defining capabilities (Handle Pattern), use a colon-separated namespace.
+
+- **`sys:`**: System infrastructure (e.g., `sys:cli`, `sys:logging`).
+- **`auth:`**: Security domain (e.g., `auth:login`).
+- **`biz:`**: Business domain flows (e.g., `biz:dashboard`).
+- **`cap:`**: Generic UI capabilities (e.g., `cap:yaml-editor`).
+
+### Benefits
+
+- **Conflict Avoidance**: Namespaces prevent collisions between "Login" in the
+  Backoffice vs. "Login" in a Retail App.
+- **Scannability**: Service Registry dumps become easier to read when names
+  follow a logical hierarchy. Vinc999

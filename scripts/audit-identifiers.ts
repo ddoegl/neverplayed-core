@@ -3,6 +3,9 @@ import { walk } from "https://deno.land/std@0.224.0/fs/mod.ts";
 
 const ROOT = "./public/bundles";
 const PATTERN = /@neverplayed\/|@pandino\//g;
+// Only match if the value is a string literal (starts with a quote)
+const FLOW_PATTERN = /(selectFlow|isFlowEnabled|launchFlow)\(["']|["']flow\.id["']\s*:\s*["']|getProperty\(["']flow\.id["']\)\s*===\s*["']|["']flowType["']\s*:\s*["']/g;
+
 const EXCLUDED_DIRS = ["system-services/backoffice-licenses/lib"];
 const EXCLUDED_FILES = ["manifest.json"];
 
@@ -21,17 +24,29 @@ for await (const entry of walk(ROOT, {
     const lines = content.split("\n");
 
     lines.forEach((line, index) => {
-        // Simple heuristic: if the line contains a problematic pattern in a string literal
-        // but it's NOT an import statement (which is allowed for packages but not for service IDs)
-        // AND it's NOT in shared-types.js itself (which we are not auditing here as it's the source)
+        // Detect problematic patterns
+        const hasNamespacePattern = PATTERN.test(line);
+        const hasFlowPattern = FLOW_PATTERN.test(line);
         
-        // Detect problematic patterns in string literals, ignoring ES imports/exports
-        // Pattern matches strings starting with @neverplayed or @pandino
-        const hasPattern = PATTERN.test(line);
-        if (hasPattern) {
+        if (hasNamespacePattern || hasFlowPattern) {
+            // Ignore ES imports/exports
             const isImport = /import .* from ["']/.test(line) || /export .* from ["']/.test(line) || /import\(["']/.test(line);
             if (isImport) return;
-            
+
+            // ALLOWance: If the string is "Structured" (contains colon or internal slash), it's not a Magic String
+            // Heuristic: Must be inside quotes and contain : or / (but not just @neverplayed/ prefix)
+            const stringMatches = line.match(/["'](.*?)["']/g);
+            if (stringMatches) {
+                const isStructured = stringMatches.some(s => {
+                    const inner = s.slice(1, -1);
+                    // Allow if it contains a namespace colon or a path slash (and isn't just the package prefix)
+                    return (inner.includes(':') || (inner.includes('/') && !inner.startsWith('@'))) 
+                        && !inner.startsWith('@neverplayed/') 
+                        && !inner.startsWith('@pandino/');
+                });
+                if (isStructured) return;
+            }
+
             violationCount++;
             console.log(`%c[VIOLATION]%c ${entry.path}:${index + 1} - Magic String detected: %c${line.trim()}`, "color: red; font-weight: bold;", "color: reset;", "color: yellow;");
         }
@@ -40,7 +55,7 @@ for await (const entry of walk(ROOT, {
 
 if (violationCount > 0) {
     console.log(`\n%c Total Violations Found: ${violationCount}`, "color: red; font-weight: bold;");
-    console.log("%c Please migrate these identifiers to public/shared-types.js", "color: gray;");
+    console.log("%c Please migrate these identifiers to public/shared-types.js or use Namespaced Identifiers (e.g. 'pkg:id')", "color: gray;");
     Deno.exit(1);
 } else {
     console.log("\n%c Architectural Audit: PASSED ✅", "color: green; font-weight: bold;");

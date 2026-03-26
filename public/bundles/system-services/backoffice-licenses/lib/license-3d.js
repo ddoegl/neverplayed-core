@@ -3,13 +3,13 @@
  * Logic externalized from licenses.html
  */
 
-window.License3D = {
+globalThis.License3D = {
     state: null,
 
-    init(container, parsedLicenses, onRebuildRequest) {
+    init(container, parsedLicenses, _onRebuildRequest) {
         console.log('3D Init triggered');
         
-        this.state = window.__threeExperimentState = window.__threeExperimentState || {
+        this.state = globalThis.__threeExperimentState = globalThis.__threeExperimentState || {
             renderer: null,
             scene: null,
             camera: null,
@@ -41,8 +41,8 @@ window.License3D = {
         state.scene = new THREE.Scene();
         state.scene.background = new THREE.Color(0x0a0a1a);
         
-        let width = container.clientWidth || 1000;
-        let height = container.clientHeight || 600;
+        const width = container.clientWidth || 1000;
+        const height = container.clientHeight || 600;
         
         state.camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
         state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -171,14 +171,14 @@ window.License3D = {
         };
         state.onKeyDown = (e) => {
             if (e.key === 'Escape') {
-                window.dispatchEvent(new CustomEvent('exit-3d-fullscreen'));
+                globalThis.dispatchEvent(new CustomEvent('exit-3d-fullscreen'));
             }
         };
 
         container.addEventListener('mousedown', state.onMouseDown);
-        window.addEventListener('mousemove', state.onMouseMove);
-        window.addEventListener('mouseup', state.onMouseUp);
-        window.addEventListener('keydown', state.onKeyDown);
+        globalThis.addEventListener('mousemove', state.onMouseMove);
+        globalThis.addEventListener('mouseup', state.onMouseUp);
+        globalThis.addEventListener('keydown', state.onKeyDown);
         container.addEventListener('wheel', state.onWheel);
 
         this.rebuild(parsedLicenses);
@@ -217,12 +217,12 @@ window.License3D = {
             state.camera.updateProjectionMatrix();
             state.renderer.setSize(container.clientWidth, container.clientHeight);
         };
-        window.addEventListener('resize', state.onResize);
+        globalThis.addEventListener('resize', state.onResize);
     },
 
     rebuild(parsedLicenses) {
         console.log('3D Rebuild triggered');
-        const state = this.state || window.__threeExperimentState;
+        const state = this.state || globalThis.__threeExperimentState;
         if (!state || !state.scene) return;
         
         while(state.scene.children.length > 2) {
@@ -267,7 +267,7 @@ window.License3D = {
     },
 
     cleanup() {
-        const state = this.state || window.__threeExperimentState;
+        const state = this.state || globalThis.__threeExperimentState;
         if (!state) return;
 
         if (state.animationId) {
@@ -280,11 +280,11 @@ window.License3D = {
             container.removeEventListener('mousedown', state.onMouseDown);
             container.removeEventListener('wheel', state.onWheel);
         }
-        window.removeEventListener('mousemove', state.onMouseMove);
-        window.removeEventListener('mouseup', state.onMouseUp);
-        window.removeEventListener('resize', state.onResize);
+        globalThis.removeEventListener('mousemove', state.onMouseMove);
+        globalThis.removeEventListener('mouseup', state.onMouseUp);
+        globalThis.removeEventListener('resize', state.onResize);
         if (state.onKeyDown) {
-            window.removeEventListener('keydown', state.onKeyDown);
+            globalThis.removeEventListener('keydown', state.onKeyDown);
         }
 
         if (state.renderer) {

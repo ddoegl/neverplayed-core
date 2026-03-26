@@ -781,7 +781,7 @@ export default class Activator {
                 return ["/invite", "/clear", "/whoami", "/vars", "/services", "/bundles", "/loglevel", "/start", "/stop", "/update", "/uninstall", "/install", "/reset-config", "/prime-all", "/diag-manifest", "/reload-ui", "/methods", "/actions", "/help"];
             }
         }, {
-            "flow.id": SHELL_CLI_PID,
+            "capability": "sys:cli", "flow.id": SHELL_CLI_PID,
             "flowType": BUNDLE_TYPE_SERVICE,
             "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
         });

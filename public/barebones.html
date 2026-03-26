@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Barebones Shell | Never Played</title>
-    
+
     <script type="importmap">
       {
         "imports": {
@@ -20,121 +20,129 @@
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace-autoloader.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace-autoloader.js"
+    ></script>
 
     <style>
-        [x-cloak] { display: none !important; }
-        body { background: #f8fafc; }
+      [x-cloak] {
+        display: none !important;
+      }
+      body {
+        background: #f8fafc;
+      }
     </style>
-</head>
-<body x-data="shellHost" class="h-screen flex flex-col overflow-hidden sl-theme-light">
-
+  </head>
+  <body
+    x-data="shellLoader"
+    class="h-screen flex flex-col overflow-hidden sl-theme-light"
+  >
     <!-- Minimal Header -->
-    <header class="h-12 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-20 shrink-0">
-        <div class="flex items-center space-x-3">
-            <img src="branding.svg" class="w-6 h-6" />
-            <span class="font-bold text-sm tracking-tight">neverplayed <span class="text-blue-400">barebones</span></span>
-        </div>
-        <div id="boot-status" class="text-[10px] font-mono text-slate-400">
-            Initializing Kernel...
-        </div>
+    <header
+      class="h-12 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-20 shrink-0"
+    >
+      <div class="flex items-center space-x-3">
+        <img src="branding.svg" class="w-6 h-6" />
+        <span class="font-bold text-sm tracking-tight">neverplayed <span
+            class="text-blue-400"
+          >barebones</span></span>
+      </div>
+      <div id="boot-status" class="text-[10px] font-mono text-slate-400">
+        <span x-show="!kernelReady">Initializing Kernel...</span>
+        <span x-show="kernelReady">System Active</span>
+      </div>
     </header>
 
-    <!-- Main Viewport -->
+    <!-- Main Viewport (Managed by shell-host bundle) -->
     <main class="flex-1 overflow-hidden relative bg-slate-50">
-        <div id="flow-container" class="h-full w-full relative">
-            <!-- OSGi Flows will be launched here -->
-            <div x-show="!ready" class="h-full flex flex-col items-center justify-center space-y-4">
-                <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
-                <span class="text-slate-400 text-xs font-mono uppercase tracking-widest" x-text="status"></span>
-            </div>
+      <template x-if="kernelReady">
+        <div
+          id="shell-host-root"
+          class="h-full w-full relative"
+          x-data="shellHost"
+        >
+          <!-- Flow Content Area -->
+          <div id="flow-content" x-ref="flowContent" class="h-full w-full">
+          </div>
+
+          <!-- Shell Overlays (Spinner while flow is launching) -->
+          <div
+            x-show="!ready"
+            class="absolute inset-0 bg-slate-50 flex flex-col items-center justify-center space-y-4"
+          >
+            <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+            <span
+              class="text-slate-400 text-xs font-mono uppercase tracking-widest"
+              x-text="status"
+            ></span>
+          </div>
         </div>
+      </template>
+
+      <!-- Boot Loader UI -->
+      <div
+        x-show="!kernelReady"
+        class="h-full flex flex-col items-center justify-center space-y-4"
+      >
+        <i class="fas fa-circle-notch fa-spin text-blue-400 text-2xl"></i>
+        <span
+          class="text-slate-400 text-[10px] font-mono uppercase tracking-widest"
+          x-text="bootStatus"
+        ></span>
+      </div>
     </main>
 
     <script type="module">
-        import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
-        import Pandino from "https://esm.sh/@pandino/pandino@0.8.33";
-        import Alpine from "https://esm.sh/alpinejs@3.13.5";
-        import { 
-            FLOW_SERVICE,
-            SESSION_SERVICE 
-        } from "shared-types";
-        import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
+      import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
+      import Pandino from "https://esm.sh/@pandino/pandino@0.8.33";
+      import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
-        Alpine.data('shellHost', () => ({
-            ready: false,
-            status: "Initializing Pandino...",
-            activeFlowId: null,
+      Alpine.data("shellLoader", () => ({
+        kernelReady: false,
+        bootStatus: "Starting Kernel...",
 
-            async init() {
-                const pandino = new Pandino({ ...loaderConfiguration });
-                await pandino.init();
-                await pandino.start();
+        init() {
+          this.boot();
+        },
+        async boot() {
+          const pandino = new Pandino({ ...loaderConfiguration });
+          await pandino.init();
+          await pandino.start();
 
-                const context = pandino.getBundleContext();
-                globalThis.Alpine = Alpine;
-                globalThis.pandinoContext = context;
+          const context = pandino.getBundleContext();
+          globalThis.Alpine = Alpine;
+          globalThis.pandinoContext = context;
 
-                // Core Bundles (The minimal set)
-                const coreBundles = [
-                    "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
-                    "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
-                    "./bundles/org.neverplayed.system-logger/manifest.json",
-                    "./bundles/org.neverplayed.config-admin/manifest.json",
-                    "./bundles/org.neverplayed.shell-cli/manifest.json"
-                ];
+          // Core Bundles (Orchestrator first)
+          const coreBundles = [
+            "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
+            "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
+            "./bundles/org.neverplayed.system-logger/manifest.json",
+            "./bundles/org.neverplayed.config-admin/manifest.json",
+            "./bundles/org.neverplayed.shell-host/manifest.json",
+            "./bundles/org.neverplayed.shell-cli/manifest.json",
+          ];
 
-                for (const url of coreBundles) {
-                    this.status = `Loading: ${url.split('/').pop()}...`;
-                    const b = await context.installBundle(url);
-                    if (b.state === 2 || b.state === 4) await b.start();
-                }
+          for (const url of coreBundles) {
+            this.bootStatus = `Loading: ${url.split("/").pop()}...`;
+            const b = await context.installBundle(url);
+            if (b.state === 2 || b.state === 4) await b.start();
+          }
 
-                // Minimal Session Mock (Required by many services)
-                const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
-                const pm = context.getService(pmRef);
-                const session = Alpine.reactive({
-                    environment: "desktop",
-                    scopedUsers: { "global": { id: "guest", alias: "Guest" } },
-                    activeFlowId: null
-                });
-                context.registerService(SESSION_SERVICE, session);
+          this.kernelReady = true;
+        },
+      }));
 
-                // Flow Discovery & Auto-Launch
-                context.trackService(`(objectClass=${FLOW_SERVICE})`, {
-                    addingService: (ref) => {
-                        const svc = context.getService(ref);
-                        const id = svc.id || ref.getProperty("flow.id");
-                        
-                        console.log(`Barebones: Flow discovered: ${id}`);
-                        
-                        // Auto-launch Shell CLI immediately on arrival
-                        if (id === "@neverplayed/shell-cli") {
-                            this.launch(id, svc);
-                        }
-                        return svc;
-                    }
-                }).open();
-
-                this.ready = true;
-                this.status = "Kernel Ready";
-                document.getElementById('boot-status').innerText = "System Active";
-            },
-
-            async launch(id, flow) {
-                console.log(`Barebones: Launching ${id}`);
-                const container = document.getElementById('flow-container');
-                if (!container) return;
-                
-                container.innerHTML = "";
-                this.activeFlowId = id;
-                flow.launch(container);
-            }
-        }));
-
-        Alpine.start();
+      Alpine.start();
     </script>
-</body>
+  </body>
 </html>
