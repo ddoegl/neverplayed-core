@@ -8,30 +8,22 @@ import {
     BUNDLE_TYPE_ADMIN,
     SHELL_CONFIG_PID,
     BUNDLE_TYPE_REGISTRY,
-    LOG_SERVICE,
     LOG_LEVEL_PROP
 } from "shared-types";
+import { BaseActivator } from "osgi-base";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
-export default class Activator {
-    start(context) {
-        let logger = null;
+export default class Activator extends BaseActivator {
+    onStart(context) {
+        const logger = this.logger;
         const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
         const pm = context.getService(pmRef);
+
 
         const configs = new Map();
         const flowMetadataCache = new Map(); // Map PID/BSN -> { title, icon, flowType }
 
-        // Track LogService for standardized logging
-        context.trackService(`(objectClass=${LOG_SERVICE})`, {
-            addingService: (ref) => {
-                const logAdmin = context.getService(ref);
-                logger = logAdmin.getLogger(context.getBundle().getSymbolicName());
-                logger.info("Log Service connected");
-            },
-            removedService: () => { logger = null; }
-        }).open();
 
         // Helper to get well-known bundle types
         const getBundleType = (pid, meta, props) => {
@@ -252,8 +244,10 @@ export default class Activator {
                 });
             }
         };
-        const bundleConfig = context.getBundle().getHeaders().Configuration || {};
-        context.registerService(FLOW_SERVICE, flowMetadata, { ...bundleConfig, "flow.id": CONFIG_ADMIN_UI_FLOW });
+        context.registerService(FLOW_SERVICE, flowMetadata, { 
+            ...this.config, 
+            "flow.id": CONFIG_ADMIN_UI_FLOW 
+        });
 
         if (logger) logger.info("Service registered successfully");
 

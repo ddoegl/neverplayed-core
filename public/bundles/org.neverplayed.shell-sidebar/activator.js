@@ -1,27 +1,20 @@
-import { FLOW_SERVICE, LOG_SERVICE } from "core-types";
+import { FLOW_SERVICE } from "core-types";
+import { BaseActivator } from "osgi-base";
 
 const _Alpine = globalThis.Alpine;
 
-export default class Activator {
-    start(context) {
-        // 1. Setup Early Logging (Rule 19)
-        let logger = console;
-        const logRef = context.getServiceReference(LOG_SERVICE);
-        if (logRef) {
-            logger = context.getService(logRef).getLogger("@neverplayed/shell-sidebar");
-        }
-        logger.info("Shell Sidebar: Starting...");
-
-        const headers = context.getBundle().getHeaders();
-        const config = headers.Configuration || {};
-        const mountPoint = config.mountPoint || "#shell-sidebar-root";
+export default class Activator extends BaseActivator {
+    onStart(context) {
+        const mountPoint = this.config.mountPoint || "#shell-sidebar-root";
         
-        const discoveryFilter = config.discoveryFilter || "";
+        const discoveryFilter = this.config.discoveryFilter || "";
         const combinedFilter = discoveryFilter 
             ? `(&(objectClass=${FLOW_SERVICE})${discoveryFilter})`
             : `(objectClass=${FLOW_SERVICE})`;
 
+        const logger = this.logger;
         logger.info(`Shell Sidebar: Using Discovery Filter: ${combinedFilter}`);
+
 
         // 2. Register "Fresh Factory" Scope (Pattern 2)
         globalThis.getShellSidebarScope = () => ({
@@ -76,7 +69,7 @@ export default class Activator {
                 // Key should be unique per registration instance
                 const key = `${bundleId}:${flowId}`;
                 
-                const classes = ref.getProperty("objectClass");
+                const _classes = ref.getProperty("objectClass");
                 const title = svc.title || ref.getProperty("flow.name") || ref.getProperty("flow.title") || flowId;
                 const icon = ref.getProperty("icon") || ref.getProperty("flow.icon") || "fas fa-cube";
 
@@ -145,6 +138,4 @@ export default class Activator {
         // initialize this injected content automatically.
         el.innerHTML = `<div x-data="globalThis.getShellSidebarScope()" class="h-full w-full">${html}</div>`;
     }
-
-    stop(_context) {}
 }

@@ -1,47 +1,17 @@
 import { 
-    CONFIG_ADMIN_SERVICE, 
     FLOW_SERVICE, 
-    LOG_SERVICE, 
     EVENT_HANDLER_INTERFACE,
     EVENT_TOPIC,
     EVENT_MONITOR_PID,
     LOG_LEVEL_PROP
 } from "shared-types";
+import { BaseActivator } from "osgi-base";
 
-export default class Activator {
-    start(context) {
-        let logger = null;
-        let configAdmin = null;
-        let verbosity = "INFO"; // Default
-
-        const updateConfig = (conf) => {
-            const properties = conf?.getProperties() || {};
-            if (properties[LOG_LEVEL_PROP]) {
-                verbosity = properties[LOG_LEVEL_PROP];
-                if (logger) logger.info(`Verbosity updated to: ${verbosity}`);
-            }
-        };
-
-        // Track LogAdmin
-        context.trackService(`(objectClass=${LOG_SERVICE})`, {
-            addingService: (ref) => { 
-                const logAdmin = context.getService(ref);
-                logger = logAdmin.getLogger(context.getBundle().getSymbolicName());
-                logger.info("Log Service connected");
-            },
-            removedService: (ref) => { logger = null; context.ungetService(ref); }
-        }).open();
-
-        // Track ConfigAdmin
-        context.trackService(`(objectClass=${CONFIG_ADMIN_SERVICE})`, {
-            addingService: (ref) => {
-                configAdmin = context.getService(ref);
-                const config = configAdmin.getConfiguration(EVENT_MONITOR_PID);
-                updateConfig(config);
-            },
-            removedService: () => { configAdmin = null; }
-        }).open();
-
+export default class Activator extends BaseActivator {
+    onStart(context) {
+        const logger = this.logger;
+        const config = this.config;
+        const verbosity = config[LOG_LEVEL_PROP] || "INFO";
 
         // Register Event Handler for ALL topics
         const eventHandler = {
@@ -72,14 +42,10 @@ export default class Activator {
                 
                 const logMsg = `Topic: ${topic} | Data: ${safeJson(data)}`;
 
-                if (logger) {
-                    if (verbosity === "DEBUG") {
-                        logger.debug(logMsg);
-                    } else {
-                        logger.info(logMsg);
-                    }
+                if (verbosity === "DEBUG") {
+                    logger.debug(logMsg);
                 } else {
-                    console.warn(`[EventMonitor][FALLBACK] ${logMsg}`);
+                    logger.info(logMsg);
                 }
             }
         };
@@ -107,12 +73,11 @@ export default class Activator {
                 `;
             }
         };
-        context.registerService(FLOW_SERVICE, flowMetadata, { "flow.id": EVENT_MONITOR_PID });
+        context.registerService(FLOW_SERVICE, flowMetadata, { 
+            ...config,
+            "flow.id": EVENT_MONITOR_PID 
+        });
 
-        if (logger) logger.info("Event Monitor started and subscribed to topics");
-    }
-
-    async stop(_context) {
-        
+        logger.info("Event Monitor started and subscribed to topics");
     }
 }

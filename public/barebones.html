@@ -15,7 +15,8 @@
           "@pandino/log-api": "https://esm.sh/@pandino/log-api@0.8.33",
           "alpinejs": "https://esm.sh/alpinejs@3.13.5",
           "shared-types": "./shared-types.js",
-          "core-types": "./core-types.js"
+          "core-types": "./core-types.js",
+          "osgi-base": "./osgi-base.js"
         }
       }
     </script>
@@ -35,9 +36,15 @@
     ></script>
 
     <style>
-      [x-cloak] { display: none !important; }
-      body { background: #f8fafc; }
-      .sidebar-transition { transition: width 0.3s ease; }
+      [x-cloak] {
+        display: none !important;
+      }
+      body {
+        background: #f8fafc;
+      }
+      .sidebar-transition {
+        transition: width 0.3s ease;
+      }
     </style>
   </head>
   <body
@@ -45,10 +52,14 @@
     class="h-screen flex flex-col overflow-hidden sl-theme-light"
   >
     <!-- Global Header -->
-    <header class="h-12 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-30 shrink-0">
+    <header
+      class="h-12 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-30 shrink-0"
+    >
       <div class="flex items-center space-x-3">
         <img src="branding.svg" class="w-6 h-6" />
-        <span class="font-bold text-sm tracking-tight text-slate-200">neverplayed <span class="text-blue-400">barebones</span></span>
+        <span
+          class="font-bold text-sm tracking-tight text-slate-200"
+        >neverplayed <span class="text-blue-400">barebones</span></span>
       </div>
       <div id="boot-status" class="text-[10px] font-mono text-slate-500">
         <span x-show="!kernelReady">Initializing...</span>
@@ -59,26 +70,47 @@
     <!-- App Container -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Sidebar Slot (Managed by org.neverplayed.shell-sidebar) -->
-      <aside id="shell-sidebar-root" class="w-auto bg-white z-20 overflow-hidden flex flex-col"></aside>
+      <aside
+        id="shell-sidebar-root"
+        class="w-auto bg-white z-20 overflow-hidden flex flex-col"
+      >
+      </aside>
 
       <!-- Main Content (Managed by org.neverplayed.shell-host) -->
       <main class="flex-1 overflow-hidden relative bg-slate-50">
         <template x-if="kernelReady">
-          <div id="shell-host-root" class="h-full w-full relative" x-data="shellHost">
-            <div id="flow-content" x-ref="flowContent" class="h-full w-full"></div>
-            
+          <div
+            id="shell-host-root"
+            class="h-full w-full relative"
+            x-data="shellHost"
+          >
+            <div id="flow-content" x-ref="flowContent" class="h-full w-full">
+            </div>
+
             <!-- Global Overlay (Loader) -->
-            <div x-show="!ready" class="absolute inset-0 bg-slate-50/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 z-50">
+            <div
+              x-show="!ready"
+              class="absolute inset-0 bg-slate-50/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 z-50"
+            >
               <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
-              <span class="text-slate-400 text-[10px] font-mono uppercase tracking-widest" x-text="status"></span>
+              <span
+                class="text-slate-400 text-[10px] font-mono uppercase tracking-widest"
+                x-text="status"
+              ></span>
             </div>
           </div>
         </template>
 
         <!-- Kernel Boot Progress -->
-        <div x-show="!kernelReady" class="h-full flex flex-col items-center justify-center space-y-4">
+        <div
+          x-show="!kernelReady"
+          class="h-full flex flex-col items-center justify-center space-y-4"
+        >
           <i class="fas fa-circle-notch fa-spin text-blue-400 text-2xl"></i>
-          <span class="text-slate-400 text-[10px] font-mono uppercase tracking-widest" x-text="bootStatus"></span>
+          <span
+            class="text-slate-400 text-[10px] font-mono uppercase tracking-widest"
+            x-text="bootStatus"
+          ></span>
         </div>
       </main>
     </div>
@@ -92,7 +124,9 @@
         kernelReady: false,
         bootStatus: "Starting Kernel...",
 
-        init() { this.boot(); },
+        init() {
+          this.boot();
+        },
         async boot() {
           const pandino = new Pandino({ ...loaderConfiguration });
           await pandino.init();
@@ -110,6 +144,7 @@
             "./bundles/org.neverplayed.config-admin/manifest.json",
             "./bundles/org.neverplayed.shell-host/manifest.json",
             "./bundles/org.neverplayed.shell-sidebar/manifest.json",
+            "./bundles/org.neverplayed.system-reset/manifest.json",
             "./bundles/org.neverplayed.shell-cli/manifest.json",
           ];
 

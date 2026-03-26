@@ -17,6 +17,7 @@
   },
   "imports": {
     "shared-types": "./public/shared-types.js",
-    "core-types": "./public/core-types.js"
+    "core-types": "./public/core-types.js",
+    "osgi-base": "./public/osgi-base.js"
   }
 }

@@ -1,22 +1,14 @@
-import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE, LOG_SERVICE, SESSION_SERVICE, BUNDLE_TYPE_SERVICE, LOG_LEVEL_PROP, NEVERPLAYED_PREFIX, SHELL_CLI_PID, SHELL_CLI_SERVICE } from "core-types";
-import { sendInvitationRequest } from "../../auth-shield.js";
+import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE, SESSION_SERVICE, BUNDLE_TYPE_SERVICE, NEVERPLAYED_PREFIX, SHELL_CLI_PID, SHELL_CLI_SERVICE } from "core-types";
+import { BaseActivator } from "osgi-base";
+import { sendInvitationRequest as _sendInvitationRequest } from "../../auth-shield.js";
 
 // Using globalThis.Alpine as guaranteed by index.html loader
 const Alpine = globalThis.Alpine;
 
-export default class Activator {
-    start(context) {
-        let logger = null;
-        
-        // Track LogService for standardized logging
-        context.trackService(`(objectClass=${LOG_SERVICE})`, {
-            addingService: (ref) => {
-                const logAdmin = context.getService(ref);
-                logger = logAdmin.getLogger(context.getBundle().getSymbolicName());
-                logger.info("Log Service connected");
-            },
-            removedService: () => { logger = null; }
-        }).open();
+export default class Activator extends BaseActivator {
+    onStart(context) {
+        const logger = this.logger;
+
 
         // Initialize Global Shell State if not already present (Persistent across bundle updates)
         if (!Alpine.store('shell')) {
@@ -102,6 +94,7 @@ export default class Activator {
                                     <div><span class="text-yellow-400">/methods [serviceId]</span> - List methods on a service</div>
                                     <div><span class="text-yellow-400">/flows [filter]</span> - List all registered flows</div>
                                     <div><span class="text-yellow-400">/caps [filter]</span> - List all unique capabilities</div>
+                                    <div><span class="text-yellow-400">/sidebar [id|bsn]</span> - Show sidebar</div>
                                     <div><span class="text-yellow-400">/help</span> - Show this help message</div>
                                 </div>
                             `);
@@ -535,7 +528,31 @@ export default class Activator {
                             break;
                         }
 
+                        case '/sidebar': {
+                            const target = args[0];
+                            const caRef = context.getServiceReference(CONFIG_ADMIN_SERVICE);
+                            const ca = caRef ? context.getService(caRef) : null;
+                            if (!ca) {
+                                state.addLog("Config Admin service not available.", 'error');
+                                return;
+                            }
+                            const bundle = context.getBundles().find(b => String(b.id) === target || b.getSymbolicName() === target);
+                            if (!bundle) {
+                                state.addLog(`Bundle/Flow not found: ${target}`, 'error');
+                                return;
+                            }
+                            const bsn = bundle.getSymbolicName();
+                            const config = ca.getConfiguration(bsn);
+                            const currentProps = config.getProperties() || {};
+                            const newState = !currentProps.sidebar;
+                            config.update({ ...currentProps, sidebar: newState });
+                            state.addLog(`Sidebar visibility for ${bsn} set to: <b>${newState}</b>`);
+                            state.addLog(`<span class="text-gray-400 italic">Hint: You may need to restart the bundle to apply changes.</span>`);
+                            break;
+                        }
+
                         case '/install': {
+
                             let url = args[0];
                             if (!url) {
                                 state.addLog(`Usage: /install [url|${NEVERPLAYED_PREFIX}name]`, 'error');
@@ -574,7 +591,9 @@ export default class Activator {
                                 try {
                                     const manifest = await (await fetch(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`)).json();
                                     if (manifest.Configuration) ca.getConfiguration(b.getSymbolicName()).update(manifest.Configuration);
-                                } catch (_e) {}
+                                } catch (_e) {
+                                    // Ignore failed unregistration
+                                }
                             }
                             state.addLog(`Re-primed configurations.`);
                             break;
@@ -597,9 +616,11 @@ export default class Activator {
 
         // Register the Flow Service
         context.registerService([FLOW_SERVICE, SHELL_CLI_SERVICE], {
+            ...this.config,
             id: SHELL_CLI_PID,
             title: "Shell CLI",
             launch: (targetElement) => {
+
                 targetElement.innerHTML = `
                     <div id="shell-container" class="h-full w-full">
                         <div class="h-full border border-blue-900 shadow-2xl rounded-xl overflow-hidden">
