@@ -4,7 +4,7 @@ import {
     LOG_SERVICE, 
     EVENT_HANDLER_INTERFACE,
     EVENT_TOPIC
-} from "../../../shared-types.js";
+} from "shared-types";
 
 export default class Activator {
     start(context) {

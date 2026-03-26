@@ -1,4 +1,4 @@
-import { DOMAIN_OBJECT_REGISTRY_SERVICE } from "../../../shared-types.js";
+import { DOMAIN_OBJECT_REGISTRY_SERVICE } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {

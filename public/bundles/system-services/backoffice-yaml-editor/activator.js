@@ -1,4 +1,4 @@
-import { YAML_SERVICE, YAML_EDITOR_SERVICE } from "../../../shared-types.js";
+import { YAML_SERVICE, YAML_EDITOR_SERVICE } from "shared-types";
 
 export default class Activator {
   async start(context) {

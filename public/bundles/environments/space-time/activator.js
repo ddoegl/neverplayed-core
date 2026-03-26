@@ -1,4 +1,4 @@
-import { ENV_SERVICE } from "../../../shared-types.js";
+import { ENV_SERVICE } from "shared-types";
 
 export default class Activator {
   start(_context) {

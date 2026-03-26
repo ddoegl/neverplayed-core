@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, NAV_SERVICE, SESSION_SERVICE, BO_EXTENSION_SERVICE, SELECTION_SERVICE } from "../../../shared-types.js";
+import { FLOW_SERVICE, NAV_SERVICE, SESSION_SERVICE, BO_EXTENSION_SERVICE, SELECTION_SERVICE } from "shared-types";
 
 export default class Activator {
   start(context) {

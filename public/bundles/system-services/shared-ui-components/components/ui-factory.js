@@ -13,7 +13,7 @@ import {
     LOG_SERVICE,
     EVENT_HANDLER_INTERFACE,
     EVENT_TOPIC
-} from "../../../../shared-types.js";
+} from "shared-types";
 
 // --- OSGi-to-DOM Event Bridge (Dual-Bridge Pattern) ---
 // --- OSGi-to-DOM Event Bridge (Persistent & Registry-Aware) ---

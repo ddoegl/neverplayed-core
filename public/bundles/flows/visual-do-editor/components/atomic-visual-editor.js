@@ -1,5 +1,5 @@
 import { AtomicComponentBase } from "../../../system-services/shared-ui-components/components/atomic-component-base.js";
-import { YAML_SERVICE } from "../../../../shared-types.js";
+import { YAML_SERVICE } from "shared-types";
 
 /**
  * atomic-visual-editor: The core WYSIWYG builder for Atomic Flows.

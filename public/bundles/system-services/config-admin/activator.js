@@ -9,7 +9,7 @@ import {
     SHELL_CONFIG_PID,
     BUNDLE_TYPE_REGISTRY,
     LOG_SERVICE
-} from "../../../shared-types.js";
+} from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 

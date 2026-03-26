@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE, RULES_DATA_SERVICE, BIZ_FUNC_DATA_SERVICE, CAPABILITIES_DATA_SERVICE, LICENSE_DATA_SERVICE, COMPANIES_SERVICE, PLEXUS_ENGINE_SERVICE, PLEXUS_TRACING_UI } from "../../../shared-types.js";
+import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE, RULES_DATA_SERVICE, BIZ_FUNC_DATA_SERVICE, CAPABILITIES_DATA_SERVICE, LICENSE_DATA_SERVICE, COMPANIES_SERVICE, PLEXUS_ENGINE_SERVICE, PLEXUS_TRACING_UI } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 import { evaluateDynamic, evaluateCapabilitiesDynamic, SegmentationEngine } from "./evaluator.js";
 import { compileEvaluator } from "./compiler.js";

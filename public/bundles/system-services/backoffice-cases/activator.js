@@ -17,7 +17,7 @@ import {
     LOG_SERVICE,
     CASES_PID,
     INVITATIONS_PID
-} from "../../../shared-types.js";
+} from "shared-types";
 
 export default class Activator {
   start(context) {

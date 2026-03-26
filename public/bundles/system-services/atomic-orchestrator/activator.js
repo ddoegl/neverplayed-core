@@ -14,7 +14,7 @@ import {
     UI_FACTORY_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
     ACTION_SERVICE
-} from "../../../shared-types.js";
+} from "shared-types";
 
 export default class Activator {
   constructor() {

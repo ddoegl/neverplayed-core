@@ -1,5 +1,5 @@
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
-import { SELECTION_SERVICE, PLEXUS_ENGINE_SERVICE } from "../../../shared-types.js";
+import { SELECTION_SERVICE, PLEXUS_ENGINE_SERVICE } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {

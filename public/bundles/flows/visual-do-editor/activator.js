@@ -1,4 +1,4 @@
-import { ATOMIC_COMPONENT_REGISTRY_SERVICE } from "../../../shared-types.js";
+import { ATOMIC_COMPONENT_REGISTRY_SERVICE } from "shared-types";
 import "./components/atomic-visual-editor.js";
 
 export default class Activator {

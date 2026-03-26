@@ -1,4 +1,4 @@
-import { EMAIL_SERVICE } from "../../../shared-types.js";
+import { EMAIL_SERVICE } from "shared-types";
 
 export default class Activator {
     start(context) {

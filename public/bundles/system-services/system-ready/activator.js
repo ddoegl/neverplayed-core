@@ -8,7 +8,7 @@ import {
     CAPABILITIES_DATA_SERVICE, 
     BIZ_FUNC_DATA_SERVICE,
     PLEXUS_ENGINE_SERVICE
-} from "../../../shared-types.js";
+} from "shared-types";
 
 export default class Activator {
     start(context) {

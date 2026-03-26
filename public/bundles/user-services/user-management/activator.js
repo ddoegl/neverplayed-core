@@ -2,7 +2,7 @@ import {
   FLOW_SERVICE,
   LICENSE_DATA_SERVICE,
   PERSONS_SERVICE 
-} from "../../../shared-types.js";
+} from "shared-types";
 
 export default class Activator {
   async start(context) {

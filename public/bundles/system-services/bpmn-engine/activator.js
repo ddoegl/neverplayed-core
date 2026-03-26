@@ -1,4 +1,4 @@
-import { BPMN_ENGINE_SERVICE } from "../../../shared-types.js";
+import { BPMN_ENGINE_SERVICE } from "shared-types";
 
 export default class Activator {
   start(context) {

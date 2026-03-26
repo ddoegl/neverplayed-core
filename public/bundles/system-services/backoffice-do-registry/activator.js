@@ -9,7 +9,7 @@ import {
     DOMAIN_STRATEGY_SERVICE,
     DO_STRATEGIES_PID,
     DO_INSTANCES_PID
-} from "../../../shared-types.js";
+} from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {

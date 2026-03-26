@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE, ENV_SERVICE, SESSION_SERVICE } from "../../../shared-types.js";
+import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE, ENV_SERVICE, SESSION_SERVICE } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {

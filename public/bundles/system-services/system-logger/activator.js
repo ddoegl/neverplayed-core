@@ -1,4 +1,4 @@
-import { LOG_SERVICE, CONFIG_ADMIN_SERVICE, SHELL_CONFIG_PID } from "../../../shared-types.js";
+import { LOG_SERVICE, CONFIG_ADMIN_SERVICE, SHELL_CONFIG_PID } from "shared-types";
 
 export default class Activator {
     start(context) {

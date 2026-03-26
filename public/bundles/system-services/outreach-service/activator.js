@@ -1,4 +1,4 @@
-import { ACTION_REGISTRY_SERVICE, ACTION_SERVICE, LOG_SERVICE } from "../../../shared-types.js";
+import { ACTION_REGISTRY_SERVICE, ACTION_SERVICE, LOG_SERVICE } from "shared-types";
 
 export default class Activator {
   start(context) {

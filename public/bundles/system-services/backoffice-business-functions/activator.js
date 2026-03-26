@@ -1,4 +1,4 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, BIZ_FUNC_DATA_SERVICE, BIZ_FUNCS_PID, LOG_SERVICE } from "../../../shared-types.js";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, BIZ_FUNC_DATA_SERVICE, BIZ_FUNCS_PID, LOG_SERVICE } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
