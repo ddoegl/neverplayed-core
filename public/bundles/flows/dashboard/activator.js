@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SESSION_SERVICE } from "shared-types";
+import { FLOW_SERVICE } from "shared-types";
 export default class Activator {
     start(context) {
         const flowMetadata = {

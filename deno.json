@@ -2,8 +2,18 @@
   "tasks": {
     "start": "deno run -A ./serve.ts",
     "start-exp": "deno run -A ./serve-experiments.ts",
+    "lint": "deno lint public/bundles/",
+    "check-types": "deno check public/shared-types.js",
+    "audit": "deno run -A scripts/audit-identifiers.ts",
+    "verify": "deno task lint && deno task check-types && deno task audit",
     "kill-deno": "lsof -ti:8008 | xargs kill -9",
     "kill-deno-exp": "lsof -ti:8009 | xargs kill -9"
+  },
+  "lint": {
+    "files": {
+      "include": ["public/bundles/"],
+      "exclude": ["public/bundles/system-services/backoffice-licenses/lib/"]
+    }
   },
   "imports": {
     "shared-types": "./public/shared-types.js"

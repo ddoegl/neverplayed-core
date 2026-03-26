@@ -1,4 +1,4 @@
-import { EMAIL_SERVICE } from "shared-types";
+import { EMAIL_SERVICE, PERSONS_SERVICE, EMAIL_DATA_SERVICE, EVENT_ADMIN_SERVICE, EVENT_HANDLER_INTERFACE } from "shared-types";
 
 export default class Activator {
     start(context) {
@@ -48,7 +48,7 @@ export default class Activator {
             };
 
             // 1. Check for already registered services
-            const refs = context.getServiceReferences("infrastructure.persons.data");
+            const refs = context.getServiceReferences(PERSONS_SERVICE);
             console.log(`Email Provider: Seeding check. Found ${refs ? refs.length : 0} existing Person Data services.`);
             if (refs) {
                 refs.forEach(ref => {
@@ -58,7 +58,7 @@ export default class Activator {
             }
 
             // 2. Track for future services (or updates)
-            context.trackService("(objectClass=infrastructure.persons.data)", {
+            context.trackService(`(objectClass=${PERSONS_SERVICE})`, {
                 addingService: (ref) => {
                     console.log("Email Provider: New Person Data service discovered. Triggering seeding...");
                     const personsSvc = context.getService(ref);
@@ -67,7 +67,7 @@ export default class Activator {
             }).open();
         };
 
-        context.trackService("(objectClass=prototyper.email.data)", {
+        context.trackService(`(objectClass=${EMAIL_DATA_SERVICE})`, {
             addingService: (ref) => {
                 console.log("Email Provider: Discovered Email Data Service.");
                 emailDataSvc = context.getService(ref);
@@ -76,11 +76,11 @@ export default class Activator {
         }).open();
 
         // Listen for Invitations via EventAdmin
-        context.trackService("(objectClass=@pandino/event-admin/EventAdmin)", {
+        context.trackService(`(objectClass=${EVENT_ADMIN_SERVICE})`, {
             addingService: (ref) => {
                 console.log("Email Provider: Discovered Event Admin Service.");
                 const _eventAdmin = context.getService(ref);
-                context.registerService("@pandino/event-admin/EventHandler", {
+                context.registerService(EVENT_HANDLER_INTERFACE, {
                     handleEvent: (event) => {
                         const topic = event.getTopic();
                         // In this OSGi implementation, properties are either accessed via getProperty(name)

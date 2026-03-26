@@ -1,8 +1,0 @@
-{
-  "Bundle-SymbolicName": "system-reset",
-  "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "activator.js",
-  "Require-Capability": [
-    "osgi.service; filter=\"(objectClass=@pandino/log-service)\""
-  ]
-}

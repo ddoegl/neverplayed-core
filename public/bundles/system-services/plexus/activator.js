@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE, RULES_DATA_SERVICE, BIZ_FUNC_DATA_SERVICE, CAPABILITIES_DATA_SERVICE, LICENSE_DATA_SERVICE, COMPANIES_SERVICE, PLEXUS_ENGINE_SERVICE, PLEXUS_TRACING_UI } from "shared-types";
+import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE, RULES_DATA_SERVICE, BIZ_FUNC_DATA_SERVICE, CAPABILITIES_DATA_SERVICE, LICENSE_DATA_SERVICE, COMPANIES_SERVICE, PLEXUS_ENGINE_SERVICE, PLEXUS_TRACING_UI, PLEXUS_PID, LOG_SERVICE, FEATURE_DATA_SERVICE, PERMISSION_DATA_SERVICE } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 import { evaluateDynamic, evaluateCapabilitiesDynamic, SegmentationEngine } from "./evaluator.js";
 import { compileEvaluator } from "./compiler.js";
@@ -6,30 +6,48 @@ import { compileEvaluator } from "./compiler.js";
 
 export default class Activator {
     start(context) {
-    const mainPid = "plexus.engine";
+    const mainPid = PLEXUS_PID;
     
     // Pandino Logger Service
-    this.loggerReference = context.getServiceReference('@pandino/pandino/Logger');
+    this.loggerReference = context.getServiceReference(LOG_SERVICE);
     this.pandinoLogger = this.loggerReference ? context.getService(this.loggerReference) : null;
 
     // Abstract logger instance for context-aware logging
     this.logger = {
         debug: (msg) => {
-            if (['DEBUG', 'TRACE'].includes(this.logLevel)) {
-                console.log(`%c[Evaluator DEBUG]%c ${msg}`, 'color: #3b82f6; font-weight: bold', 'color: inherit');
-                if (this.pandinoLogger && this.pandinoLogger.debug) this.pandinoLogger.debug(`[Evaluator DEBUG] ${msg}`);
+            if (this.pandinoLogger) {
+                this.pandinoLogger.debug(msg);
+            } else if (['DEBUG', 'TRACE'].includes(this.logLevel)) {
+                console.log(`[Plexus DEBUG] ${msg}`);
             }
         },
         trace: (msg) => {
-            if (this.logLevel === 'TRACE') {
-                console.log(`%c[Evaluator TRACE]%c ${msg}`, 'color: #8b5cf6; font-weight: bold', 'color: inherit');
-                if (this.pandinoLogger && this.pandinoLogger.trace) this.pandinoLogger.trace(`[Evaluator TRACE] ${msg}`);
+            if (this.pandinoLogger) {
+                this.pandinoLogger.trace(msg);
+            } else if (this.logLevel === 'TRACE') {
+                console.log(`[Plexus TRACE] ${msg}`);
             }
         },
         info: (msg) => {
-            if (this.pandinoLogger && this.pandinoLogger.info) this.pandinoLogger.info(`[Evaluator INFO] ${msg}`);
-            else if (this.pandinoLogger && this.pandinoLogger.log) this.pandinoLogger.log(`[Evaluator INFO] ${msg}`);
-            else console.log(`[Evaluator INFO] ${msg}`);
+            if (this.pandinoLogger) {
+                this.pandinoLogger.info(msg);
+            } else {
+                console.info(`[Plexus INFO] ${msg}`);
+            }
+        },
+        warn: (msg) => {
+            if (this.pandinoLogger) {
+                this.pandinoLogger.warn(msg);
+            } else {
+                console.warn(`[Plexus WARN] ${msg}`);
+            }
+        },
+        error: (msg) => {
+            if (this.pandinoLogger) {
+                this.pandinoLogger.error(msg);
+            } else {
+                console.error(`[Plexus ERROR] ${msg}`);
+            }
         }
     };
 
@@ -181,11 +199,11 @@ export default class Activator {
         }
     }).open();
     
-    context.trackService(`(objectClass=${"backoffice.features.data"})`, {
+    context.trackService(`(objectClass=${FEATURE_DATA_SERVICE})`, {
         addingService: (ref) => { state.featureCatalog = context.getService(ref).getFeatures() || {}; }
     }).open();
 
-    context.trackService(`(objectClass=${"backoffice.permissions.data"})`, {
+    context.trackService(`(objectClass=${PERMISSION_DATA_SERVICE})`, {
         addingService: (ref) => { state.permissionsRegistry = context.getService(ref).getPermissions() || {}; }
     }).open();
     
@@ -296,7 +314,7 @@ export default class Activator {
               
               // Safe ID extraction: ensure we have a string for IDs
               const ownerId = u.owner ? (typeof u.owner === 'object' ? u.owner.id : String(u.owner)) : "";
-              const holderId = u.holder ? (typeof u.holder === 'object' ? u.holder.id : String(u.holder)) : "";
+              const _holderId = u.holder ? (typeof u.holder === 'object' ? u.holder.id : String(u.holder)) : "";
               
               const ownerName = ownerId.toLowerCase();
               const isSelf = !!ownerId;

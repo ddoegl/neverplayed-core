@@ -2,14 +2,6 @@
   "Bundle-SymbolicName": "backoffice.licenses",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
-  "Require-Capability": [
-    "pandino.util.yaml;version=\"1.0.0\"",
-    "backoffice.shell;version=\"1.0.0\"",
-    "osgi.service; filter:=\"(objectClass=infrastructure.persons.data)\"",
-    "osgi.service; filter:=\"(objectClass=backoffice.data.tenants)\"",
-    "osgi.service; filter:=\"(objectClass=backoffice.capabilities.data)\""
-  ],
-  "Provide-Capability": "backoffice.data.licenses;version=\"1.0.0\"",
   "Configuration": {
     "flowType": "backoffice-flow",    
     "required-permissions": ["usermanagement:manage:allowed"],

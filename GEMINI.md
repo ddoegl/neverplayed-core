@@ -6,6 +6,7 @@ This document establishes the core principles and architectural guidelines for t
 
 ### 1. Architectural Consistency
 - **Rule**: Always check `docs/architecture-patterns.md` when implementing new functionality or debugging flawed logic. Adhere to the established reactive and OSGi patterns to ensure system stability.
+- **No Magic Strings**: Prohibit hardcoded strings for bundle names, service interfaces, and configuration PIDs. Centralize all identifiers in `public/shared-types.js` to ensure system-wide consistency and prevent race conditions.
 
 ### 2. Reactive State Management
 - Favor Alpine.js for UI reactivity.

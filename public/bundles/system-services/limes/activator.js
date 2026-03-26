@@ -8,7 +8,7 @@ export default class Activator {
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
-                this.logger = svc.getLogger("prototyper.limes");
+                this.logger = svc.getLogger("neverplayed.limes");
                 this.logger.info("Limes: Connected to System Logger.");
             },
             removedService: () => {

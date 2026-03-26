@@ -6,9 +6,5 @@
     "flowType": "service-flow",
     "required-permissions": ["usermanagement:manage:allowed"],
     "channels": ["business-channel-web"]
-  },
-  "Require-Capability": [
-    "osgi.service; filter=\"(objectClass=@pandino/log-service)\"",
-    "osgi.service; filter=\"(objectClass=@pandino/event-admin)\""
-  ]
+  }
 }

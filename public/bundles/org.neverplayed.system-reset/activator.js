@@ -1,3 +1,5 @@
+import { SYSTEM_RESET_SERVICE } from "shared-types";
+
 export default class Activator {
     start(_context) {
         const resetService = {
@@ -10,7 +12,7 @@ export default class Activator {
             }
         };
 
-        _context.registerService("prototyper.system.ResetService", resetService);
+        _context.registerService(SYSTEM_RESET_SERVICE, resetService);
         console.log("SystemReset: Service registered.");
     }
 

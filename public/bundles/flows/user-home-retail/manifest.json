@@ -2,7 +2,7 @@
   "Bundle-SymbolicName": "@prototyper/flow.user-home-retail",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
-  "Provide-Capability": "prototyper.flow.service;version=\"1.0.0\";flow.id=\"user-home-retail\"",
+  "Provide-Capability": "@neverplayed/flow-service;version=\"1.0.0\";flow.id=\"user-home-retail\"",
   "Configuration": {
     "flowType": "web-channel",
     "channels": ["retail-channel-app"]

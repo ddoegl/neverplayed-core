@@ -1,5 +1,5 @@
 {
-  "Bundle-SymbolicName": "system-ready",
+  "Bundle-SymbolicName": "@neverplayed/system-reset",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js"
 }

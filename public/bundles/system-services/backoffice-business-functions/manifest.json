@@ -1,11 +1,10 @@
 {
   "Bundle-ManifestVersion": "1",
-  "Bundle-SymbolicName": "backoffice.business.functions",
+  "Bundle-SymbolicName": "@neverplayed/backoffice/business/functions",
   "Bundle-Name": "Business Functions Management",
   "Bundle-Description": "Backoffice UI for Organizational Business Functions",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "./activator.js",
-  "Provide-Capability": "backoffice.business.functions;version=\"1.0.0\"",
   "Configuration": {
     "flowType": "backoffice-flow",
     "channels": [

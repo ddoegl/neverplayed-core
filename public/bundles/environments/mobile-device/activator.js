@@ -1,4 +1,4 @@
-import { ENV_SERVICE, FLOW_SERVICE, CONFIG_ADMIN_SERVICE } from "shared-types";
+import { ENV_SERVICE, FLOW_SERVICE, CONFIG_ADMIN_SERVICE, MOBILE_LAUNCHER_FLOW } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -16,7 +16,7 @@ export default class Activator {
     }, { "env.id": "mobile-device" });
 
     context.registerService(FLOW_SERVICE, {
-      id: "mobile-launcher",
+      id: MOBILE_LAUNCHER_FLOW,
       title: "Springboard",
       launch: async (targetElement) => {
         const state = Alpine.reactive({
@@ -113,7 +113,7 @@ export default class Activator {
         const response = await fetch("./bundles/environments/mobile-device/templates/dashboard.html");
         targetElement.innerHTML = await response.text();
       }
-    }, { "flow.id": "mobile-launcher" });
+    }, { "flow.id": MOBILE_LAUNCHER_FLOW });
   }
 
   stop(_context) {}

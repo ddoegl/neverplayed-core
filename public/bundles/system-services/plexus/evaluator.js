@@ -60,7 +60,13 @@ const Primitives = {
 
     matchProperty: (block, context) => {
         const val = context[block.key];
+        if (Array.isArray(val)) {
+            if (val.includes(block.value)) return [true];
+            // Also handle case-insensitive or stringified comparison for robustness
+            if (val.some(v => String(v).toLowerCase() === String(block.value).toLowerCase())) return [true];
+        }
         if (val === block.value) return [true];
+        if (String(val).toLowerCase() === String(block.value).toLowerCase()) return [true];
         return false;
     }
 };
@@ -202,19 +208,48 @@ const Domains = {
         const assigned = [];
         results.campaigns = assigned;
 
+        // Ensure we handle both array and object-based strategies
+        const findStrategy = (id) => {
+            if (Array.isArray(strategies)) return strategies.find(s => s.id === id);
+            return strategies[id];
+        };
+
+        const rawChannels = context.channels || context.channel || ['business'];
+        const userChannels = Array.isArray(rawChannels) ? rawChannels : [rawChannels];
+        log('debug', `Campaign Eval: User=${context.userId}, Channels=[${userChannels.join(', ')}], campaigns=${campaigns.length}`);
+
         campaigns.forEach(camp => {
             const strategyName = camp.strategy;
-            const strategy = Array.isArray(strategies) ? strategies.find(s => s.id === strategyName) : strategies[strategyName];
-            if (!strategy) return;
+            const strategy = findStrategy(strategyName);
+            
+            if (!strategy) {
+                log('debug', `  Campaign ${camp.id}: Strategy [${strategyName}] NOT FOUND.`);
+                return;
+            }
+
+            // Channel Filter
+            const campChannels = Array.isArray(camp.channels) ? camp.channels : (camp.channels ? [camp.channels] : ['business']);
+            const channelMatch = campChannels.some(c => userChannels.includes(c));
+            
+            log('debug', `Eval Campaign: ${camp.id} | Strategy: ${strategyName} | CampChannels: ${JSON.stringify(campChannels)} | UserChannels: ${JSON.stringify(userChannels)} | Match: ${channelMatch}`);
+
+            if (!channelMatch) {
+                log('debug', `  Campaign SKIP: ${camp.id} (Channel mismatch: User [${userChannels}] not in [${campChannels}])`);
+                return;
+            }
 
             const matchers = strategy.matchers || [];
             const operator = strategy.operator || 'AND';
             const matchedList = evaluateMatchers(matchers, operator, context, config);
             
+            log('debug', `  Strategy matchers: ${JSON.stringify(matchers)} | Result: ${JSON.stringify(matchedList)}`);
+
             if (matchedList !== false) {
                 const source = `Strategy: ${strategy.id || 'anonymous'} ([${matchers.map(m => m.type).join(', ')}])`;
                 assigned.push({ ...camp, source });
-                log('trace', `  Campaign Granted: ${camp.id} -> ${source}`);
+                log('debug', `  Campaign GRANTED: ${camp.id} -> ${source}`);
+            } else {
+                log('debug', `  Campaign SKIP: ${camp.id} (Strategy ${strategyName} failed match)`);
             }
         });
     },

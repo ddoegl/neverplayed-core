@@ -3,7 +3,9 @@ import {
     FLOW_SERVICE, 
     LOG_SERVICE, 
     EVENT_HANDLER_INTERFACE,
-    EVENT_TOPIC
+    EVENT_TOPIC,
+    EVENT_MONITOR_PID,
+    LOG_LEVEL_PROP
 } from "shared-types";
 
 export default class Activator {
@@ -14,8 +16,8 @@ export default class Activator {
 
         const updateConfig = (conf) => {
             const properties = conf?.getProperties() || {};
-            if (properties.level) {
-                verbosity = properties.level;
+            if (properties[LOG_LEVEL_PROP]) {
+                verbosity = properties[LOG_LEVEL_PROP];
                 if (logger) logger.info(`Verbosity updated to: ${verbosity}`);
             }
         };
@@ -34,7 +36,7 @@ export default class Activator {
         context.trackService(`(objectClass=${CONFIG_ADMIN_SERVICE})`, {
             addingService: (ref) => {
                 configAdmin = context.getService(ref);
-                const config = configAdmin.getConfiguration("event.monitor.config");
+                const config = configAdmin.getConfiguration(EVENT_MONITOR_PID);
                 updateConfig(config);
             },
             removedService: () => { configAdmin = null; }
@@ -88,7 +90,7 @@ export default class Activator {
 
         // Register as a FLOW_SERVICE so it can be governed
         const flowMetadata = {
-            id: "@neverplayed/event-monitor",
+            id: EVENT_MONITOR_PID,
             title: "Event Monitor",
             icon: "fas fa-terminal",
             launch: (target) => {
@@ -105,7 +107,7 @@ export default class Activator {
                 `;
             }
         };
-        context.registerService(FLOW_SERVICE, flowMetadata, { "flow.id": "@neverplayed/event-monitor" });
+        context.registerService(FLOW_SERVICE, flowMetadata, { "flow.id": EVENT_MONITOR_PID });
 
         if (logger) logger.info("Event Monitor started and subscribed to topics");
     }

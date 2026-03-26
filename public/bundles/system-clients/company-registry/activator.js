@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, YAML_SERVICE, YAML_EDITOR_SERVICE } from "shared-types";
+import { FLOW_SERVICE, YAML_SERVICE, YAML_EDITOR_SERVICE, COMPANIES_SERVICE, COMPANIES_PID, PERSONS_PID, EVENT_ADMIN_SERVICE, LOG_SERVICE } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -9,29 +9,39 @@ export default class Activator {
 
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
-    const COMPANIES_PID = "pandino.companies.data";
-    const PERSONS_PID = "pandino.persons.data";
+    const COMPANIES_PID_VAL = COMPANIES_PID;
+    const PERSONS_PID_VAL = PERSONS_PID;
+    let logger = null;
 
-    let companiesData = pm.load(COMPANIES_PID);
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger(context.getBundle().getSymbolicName());
+        },
+        removedService: () => { logger = null; }
+    }).open();
+
+    let companiesData = pm.load(COMPANIES_PID_VAL);
     if (!companiesData) {
-      console.log("Company Registry: Seeding default companies data...");
+      if (logger) logger.info("Company Registry: Seeding default companies data...");
+      else console.log("Company Registry: Seeding default companies data...");
       const res = await fetch("./bundles/system-clients/company-registry/data/companies.yaml");
       const text = await res.text();
       companiesData = yaml.load(text) || [];
-      pm.store(COMPANIES_PID, companiesData);
+      pm.store(COMPANIES_PID_VAL, companiesData);
     }
 
     const dataService = {
       getCompanies: () => companiesData,
       setCompanies: (newCompanies) => {
         companiesData = newCompanies;
-        pm.store(COMPANIES_PID, companiesData);
+        pm.store(COMPANIES_PID_VAL, companiesData);
         if (globalThis.backofficeState) {
             globalThis.backofficeState.companies = companiesData;
             globalThis.backofficeState.recompile?.();
         }
         // Emit EventAdmin event for reactive synchronization
-        const eventAdminRef = context.getServiceReference('@pandino/event-admin/EventAdmin');
+        const eventAdminRef = context.getServiceReference(EVENT_ADMIN_SERVICE);
         if (eventAdminRef) {
             const eventAdmin = context.getService(eventAdminRef);
             eventAdmin.postEvent('infrastructure/companies/updated', { companies: companiesData });
@@ -40,7 +50,7 @@ export default class Activator {
     };
     
     // Provide data as its own service
-    context.registerService("infrastructure.companies.data", dataService);
+    context.registerService(COMPANIES_SERVICE, dataService);
 
     const flowMetadata = {
       id: "company-registry",
@@ -49,7 +59,7 @@ export default class Activator {
       launch: async (targetElement) => {
         const companyFlowData = Alpine.reactive({
           companies: companiesData,
-          persons: pm.load(PERSONS_PID) || [],
+          persons: pm.load(PERSONS_PID_VAL) || [],
           editingCompany: null,
           currentStep: "dashboard",
 
@@ -84,7 +94,7 @@ export default class Activator {
             });
           },
 
-          async saveCompany() {
+          saveCompany() {
             if (!this.editingCompany.id) {
               this.editingCompany.id = "c-" + Math.random().toString(36).substr(2, 9);
               this.companies.push(this.editingCompany);

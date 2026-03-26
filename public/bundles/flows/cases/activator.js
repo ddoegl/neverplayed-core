@@ -5,7 +5,10 @@ import {
   CASE_SERVICE,
   SESSION_SERVICE,
   SIGNING_DATA_SERVICE,
-  LIMES_SERVICE
+  LIMES_SERVICE,
+  EVAL_DATA_SERVICE,
+  EVENT_HANDLER_INTERFACE,
+  EVENT_TOPIC
 } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -248,7 +251,7 @@ export default class Activator {
             removedService: () => { state.caseService = null; }
         }).open();
 
-        context.trackService(`(objectClass=backoffice.evaluator.data)`, {
+        context.trackService(`(objectClass=${EVAL_DATA_SERVICE})`, {
             addingService: (ref) => { 
                 state.evaluatorDataService = context.getService(ref); 
                 state.updateTrigger++;
@@ -264,8 +267,8 @@ export default class Activator {
                 }
             }
         };
-        context.registerService('@pandino/event-admin/EventHandler', eventHandlerObj, {
-            'event.topics': ['backoffice/cases/*']
+        context.registerService(EVENT_HANDLER_INTERFACE, eventHandlerObj, {
+            [EVENT_TOPIC]: ['backoffice/cases/*']
         });
 
         // Add canSign helper

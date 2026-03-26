@@ -8,7 +8,8 @@ import {
     BUNDLE_TYPE_ADMIN,
     SHELL_CONFIG_PID,
     BUNDLE_TYPE_REGISTRY,
-    LOG_SERVICE
+    LOG_SERVICE,
+    LOG_LEVEL_PROP
 } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
@@ -132,8 +133,6 @@ export default class Activator {
                         if (Object.keys(missingDefaults).length > 0) {
                             if (logger) logger.info(`Applying missing manifest defaults for ${pid}`);
                             config.update(missingDefaults);
-                        } else {
-                            if (logger) logger.debug(`${pid} already has configuration, skipping defaults.`);
                         }
                     };
 
@@ -234,7 +233,7 @@ export default class Activator {
                     },
                     setLogLevel(pid, level) {
                         const cfg = service.getConfiguration(pid);
-                        cfg.update({ "log-level": level });
+                        cfg.update({ [LOG_LEVEL_PROP]: level });
                         this.init();
                     }
                 });

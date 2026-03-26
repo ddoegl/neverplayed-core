@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, NAV_SERVICE, SESSION_SERVICE, SELECTION_SERVICE, LICENSE_DATA_SERVICE, CONFIG_ADMIN_SERVICE, LIMES_SERVICE } from "shared-types";
+import { FLOW_SERVICE, NAV_SERVICE, SESSION_SERVICE, SELECTION_SERVICE, LICENSE_DATA_SERVICE, CONFIG_ADMIN_SERVICE, LIMES_SERVICE, EVAL_DATA_SERVICE } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -335,7 +335,7 @@ export default class Activator {
     }).open();
 
     // 8. Track Evaluation Data
-    context.trackService(`(objectClass=backoffice.evaluator.data)`, {
+    context.trackService(`(objectClass=${EVAL_DATA_SERVICE})`, {
       addingService: (ref) => {
         state.evaluatorData = context.getService(ref);
         state.refreshSteps();

@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SESSION_SERVICE, SELECTION_SERVICE, LICENSE_DATA_SERVICE } from "shared-types";
+import { FLOW_SERVICE, SESSION_SERVICE, SELECTION_SERVICE, LICENSE_DATA_SERVICE, PERSONS_SERVICE, EVAL_DATA_SERVICE } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -11,7 +11,7 @@ export default class Activator {
         const sessionRef = context.getServiceReference(SESSION_SERVICE);
         const sessionSvc = sessionRef ? context.getService(sessionRef) : { currentUser: null };
 
-        const persRef = context.getServiceReference("infrastructure.persons.data");
+        const persRef = context.getServiceReference(PERSONS_SERVICE);
         const _persSvc = persRef ? context.getService(persRef) : { getPersons: () => [] };
 
         const licRef = context.getServiceReference(LICENSE_DATA_SERVICE);
@@ -230,7 +230,7 @@ export default class Activator {
             console.log(`Login: Session established for scope [${scope}]`);
 
             // Enrich with capabilities if available
-            const evalRef = context.getServiceReference("backoffice.evaluator.data");
+            const evalRef = context.getServiceReference(EVAL_DATA_SERVICE);
             const evalSvc = evalRef ? context.getService(evalRef) : null;
             if (evalSvc && sessionSvc.scopedUsers[scope]) {
                 const userObj = sessionSvc.scopedUsers[scope];

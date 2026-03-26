@@ -1,4 +1,4 @@
-import { LOG_SERVICE, CONFIG_ADMIN_SERVICE, SHELL_CONFIG_PID } from "shared-types";
+import { LOG_SERVICE, CONFIG_ADMIN_SERVICE, SHELL_CONFIG_PID, SYSTEM_LOGGER_PID, LOG_LEVEL_PROP } from "shared-types";
 
 export default class Activator {
     start(context) {
@@ -17,11 +17,11 @@ export default class Activator {
             
             // 1. Check bundle specific config
             const bundleCfg = configAdmin.getConfiguration(pid)?.getProperties() || {};
-            if (bundleCfg["log-level"]) return levels[bundleCfg["log-level"].toUpperCase()] ?? levels.INFO;
+            if (bundleCfg[LOG_LEVEL_PROP]) return levels[bundleCfg[LOG_LEVEL_PROP].toUpperCase()] ?? levels.INFO;
 
             // 2. Check global shell config
             const globalCfg = configAdmin.getConfiguration(SHELL_CONFIG_PID)?.getProperties() || {};
-            if (globalCfg["log-level"]) return levels[globalCfg["log-level"].toUpperCase()] ?? levels.INFO;
+            if (globalCfg[LOG_LEVEL_PROP]) return levels[globalCfg[LOG_LEVEL_PROP].toUpperCase()] ?? levels.INFO;
 
             return levels.INFO;
         };
@@ -70,19 +70,14 @@ export default class Activator {
         context.trackService(`(objectClass=${CONFIG_ADMIN_SERVICE})`, {
             addingService: (ref) => {
                 configAdmin = context.getService(ref);
-                const logger = logService.getLogger("system-logger");
+                const logger = logService.getLogger(SYSTEM_LOGGER_PID);
                 logger.info("ConfigAdmin connected, dynamic filtering enabled.");
             },
             removedService: () => { configAdmin = null; }
         }).open();
 
-        const logger = logService.getLogger(context.getBundle().getSymbolicName());
-        logger.info(`Registering ${LOG_SERVICE} service...`);
+        logService.getLogger(context.getBundle().getSymbolicName());
         this.registration = context.registerService(LOG_SERVICE, logService);
-        
-        // Backward compatibility registrations
-        context.registerService('@pandino/pandino/Logger', logService);
-        context.registerService('system.logger', logService);
     }
 
     stop(_context) {

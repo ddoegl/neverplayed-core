@@ -2,11 +2,6 @@
     "Bundle-SymbolicName": "do-dashboard",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "./activator.js",
-    "Require-Capability": [
-        "osgi.service; filter=\"(objectClass=prototyper.flow.service)\"",
-        "osgi.service; filter=\"(objectClass=prototyper.limes.service)\"",
-        "osgi.service; filter=\"(objectClass=backoffice.domain.object.registry)\""
-    ],
     "Configuration": {
         "flowType": "service-flow",
         "channels": [

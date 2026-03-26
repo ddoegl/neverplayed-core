@@ -4,5 +4,5 @@
   "Bundle-Activator": "activator.js",
   "Bundle-Assets": "templates/sca-selection.html",
   "channels": ["business-channel-web", "retail-channel-app"],
-  "Provide-Capability": "prototyper.flow.service;version=\"1.0.0\";flow.id=\"signing\""
+  "Provide-Capability": "@neverplayed/flow-service;version=\"1.0.0\";flow.id=\"signing\""
 }

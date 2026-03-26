@@ -1,5 +1,5 @@
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
-import { SELECTION_SERVICE, PLEXUS_ENGINE_SERVICE } from "shared-types";
+import { PERSONS_SERVICE, COMPANIES_SERVICE, SELECTION_SERVICE, PLEXUS_ENGINE_SERVICE, LICENSES_PID, TENANTS_PID, BO_SESSION_PID, BUSINESS_SESSION_PID, RETAIL_SESSION_PID } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -9,7 +9,6 @@ export default class Activator {
         const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
         const pm = context.getService(pmRef);
 
-        const BO_SESSION_PID = "pandino.backoffice.session";
         const sessionState = pm.load(BO_SESSION_PID) || {};
 
         // Shared Reactive Repository for all portals
@@ -21,11 +20,11 @@ export default class Activator {
         });
 
         // Hydrate Shared Repository
-        const licenseData = pm.load("pandino.backoffice.licenses");
+        const licenseData = pm.load(LICENSES_PID);
         console.log("Global State: Hydrating Licenses from Persistence Manager", licenseData ? licenseData.LICENSES?.length : "NONE");
         if (licenseData) Object.assign(sharedData.parsedLicenses, licenseData);
         
-        const tenantData = pm.load("pandino.backoffice.tenants");
+        const tenantData = pm.load(TENANTS_PID);
         console.log("Global State: Hydrating Tenants from Persistence Manager", tenantData ? tenantData.TENANTS?.length : "NONE");
         if (tenantData) Object.assign(sharedData.parsedTenants, tenantData);
 
@@ -89,14 +88,14 @@ export default class Activator {
             },
             get persons() {
                 if (sharedData.persons.length) return sharedData.persons;
-                const ref = context.getServiceReference("infrastructure.persons.data");
+                const ref = context.getServiceReference(PERSONS_SERVICE);
                 const list = ref ? context.getService(ref).getPersons() || [] : [];
                 if (list.length) sharedData.persons = list;
                 return list;
             },
             get companies() {
                 if (sharedData.companies.length) return sharedData.companies;
-                const ref = context.getServiceReference("infrastructure.companies.data");
+                const ref = context.getServiceReference(COMPANIES_SERVICE);
                 const list = ref ? context.getService(ref).getCompanies() || [] : [];
                 if (list.length) sharedData.companies = list;
                 return list;
@@ -165,7 +164,6 @@ export default class Activator {
 
         // --- Business Portal State ---
         if (!globalThis.businessPortalState) {
-            const BUSINESS_SESSION_PID = "pandino.business.session";
             const businessSession = pm.load(BUSINESS_SESSION_PID) || {};
 
             const bState = Alpine.reactive({
@@ -202,7 +200,6 @@ export default class Activator {
 
         // --- Retail Portal State ---
         if (!globalThis.retailPortalState) {
-            const RETAIL_SESSION_PID = "pandino.retail.session";
             const retailSession = pm.load(RETAIL_SESSION_PID) || {};
 
             const rState = Alpine.reactive({

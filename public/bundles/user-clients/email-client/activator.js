@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SESSION_SERVICE, EMAIL_SERVICE } from "shared-types";
+import { FLOW_SERVICE, SESSION_SERVICE, EMAIL_SERVICE, PERSONS_SERVICE } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -91,7 +91,7 @@ export default class Activator {
         });
 
         // Track Persons (for email resolution)
-        context.trackService(`(objectClass=infrastructure.persons.data)`, {
+        context.trackService(`(objectClass=${PERSONS_SERVICE})`, {
             addingService: (ref) => {
                 state.personsSvc = context.getService(ref);
                 state.refreshInbox();

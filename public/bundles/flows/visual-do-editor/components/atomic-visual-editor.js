@@ -1,5 +1,5 @@
 import { AtomicComponentBase } from "../../../system-services/shared-ui-components/components/atomic-component-base.js";
-import { YAML_SERVICE } from "shared-types";
+import { YAML_SERVICE, YAML_EDITOR_SERVICE, UI_FACTORY_SERVICE, ACTION_REGISTRY_SERVICE, ATOMIC_SPEC_INGESTION_SERVICE } from "shared-types";
 
 /**
  * atomic-visual-editor: The core WYSIWYG builder for Atomic Flows.
@@ -27,7 +27,6 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         // Ensure ActionRegistry is tracked for live updates in the editor
         if (this._context) {
             this._registry = null;
-            const ACTION_REGISTRY_SERVICE = "prototyper.action.registry";
             this._context.trackService(`(objectClass=${ACTION_REGISTRY_SERVICE})`, {
                 addingService: (ref) => { 
                     this._registry = this._context.getService(ref);
@@ -79,7 +78,8 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
            }
            console.log("Visual Editor: Saving blueprint...", this._draftSpec);
            
-           const ingestionRef = this._context.getServiceReference("prototyper.atomic.ingestion");
+           // Use centralized constants
+           const ingestionRef = this._context.getServiceReference(ATOMIC_SPEC_INGESTION_SERVICE);
            const ingestionSvc = ingestionRef ? this._context.getService(ingestionRef) : null;
            
            if (ingestionSvc) {
@@ -315,7 +315,7 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
 
     openYamlEditor() {
         // Corrected service ID from shared-types.js
-        const yamlEditorRef = this._context.getServiceReference("prototyper.backoffice.yaml.editor");
+        const yamlEditorRef = this._context.getServiceReference(YAML_EDITOR_SERVICE);
         const yamlEditorSvc = yamlEditorRef ? this._context.getService(yamlEditorRef) : null;
 
         if (yamlEditorSvc) {
@@ -1000,7 +1000,7 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
             const container = this.querySelector('#preview-container');
             if (!container) return; 
 
-            const factoryRef = this._context.getServiceReference("prototyper.ui.factory");
+            const factoryRef = this._context.getServiceReference(UI_FACTORY_SERVICE);
             const factory = factoryRef ? this._context.getService(factoryRef) : null;
             
             if (factory) {

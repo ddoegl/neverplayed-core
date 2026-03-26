@@ -1,4 +1,4 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE } from "shared-types";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, LICENSE_DATA_SERVICE, PERSONS_SERVICE, COMPANIES_SERVICE, LICENSES_PID, LOG_SERVICE } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -9,19 +9,30 @@ export default class Activator {
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
 
-    const LICENSES_PID = "pandino.backoffice.licenses";
+    const LICENSES_PID_VAL = LICENSES_PID;
+    let logger = null;
+
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger(context.getBundle().getSymbolicName());
+        },
+        removedService: () => { logger = null; }
+    }).open();
 
     // Load/Seed Data
     let licenses = null;
     try {
-        licenses = pm.load(LICENSES_PID);
+        licenses = pm.load(LICENSES_PID_VAL);
     } catch (e) {
-        console.warn("BO Licenses: Error loading persisted data, falling back to seed.", e);
+        if (logger) logger.warn("BO Licenses: Error loading persisted data, falling back to seed.", e);
+        else console.warn("BO Licenses: Error loading persisted data, falling back to seed.", e);
         licenses = null;
     }
 
     if (!licenses || typeof licenses !== "object" || !licenses.LICENSES) {
-      console.log("BO Licenses: Seeding default data...");
+      if (logger) logger.info("BO Licenses: Seeding default data...");
+      else console.log("BO Licenses: Seeding default data...");
       const res = await fetch("./bundles/system-services/backoffice-licenses/data/licenses.yaml");
       const text = await res.text();
       const loaded = yaml.load(text);
@@ -72,7 +83,7 @@ export default class Activator {
         }
       },
       setLicenses: (newData) => {
-        console.log("LicenseDataService: setLicenses called with", newData?.LICENSES?.length, "licenses");
+        if (logger) logger.info("LicenseDataService: setLicenses called with " + (newData?.LICENSES?.length || 0) + " licenses");
         // Deep sanitize and DE-DUPLICATE all data
         if (newData && Array.isArray(newData.LICENSES)) {
             newData.LICENSES.forEach(lic => {
@@ -99,8 +110,8 @@ export default class Activator {
         }
 
         licenses = newData;
-        pm.store(LICENSES_PID, licenses);
-        console.log("LicenseDataService: Persisted to PM.");
+        pm.store(LICENSES_PID_VAL, licenses);
+        if (logger) logger.info("LicenseDataService: Persisted to PM.");
         
         // Bridge to host states for global availability
         [globalThis.backofficeState, globalThis.businessPortalState].forEach(state => {
@@ -119,12 +130,12 @@ export default class Activator {
         const license = (licenses.LICENSES || []).find(l => l.id === licenseId);
         if (!license) return [];
         
-        const persRef = context.getServiceReference("infrastructure.persons.data");
+        const persRef = context.getServiceReference(PERSONS_SERVICE);
         const persons = persRef ? context.getService(persRef).getPersons() : [];
-        const compsRef = context.getServiceReference("infrastructure.companies.data");
+        const compsRef = context.getServiceReference(COMPANIES_SERVICE);
         const companies = compsRef ? context.getService(compsRef).getCompanies() : [];
         
-        console.log("LicenseDataService: getFilteredMembers for:", licenseId);
+        if (logger) logger.debug("LicenseDataService: getFilteredMembers for: " + licenseId);
         const customers = license.customers || [];
         
         const companyIds = new Set(companies.map(c => c.id));
@@ -140,11 +151,11 @@ export default class Activator {
           });
 
         // Result is empty if no formal customers are found
-        console.log("Filtered result:", result.map(r => r.id || r.displayName));
+        if (logger) logger.debug("Filtered result: " + result.map(r => r.id || r.displayName).join(", "));
         return result;
       },
       syncAllPersonUserIds: () => {
-        const personsRef = context.getServiceReference("infrastructure.persons.data");
+        const personsRef = context.getServiceReference(PERSONS_SERVICE);
         if (!personsRef) return;
         const personSvc = context.getService(personsRef);
         const personsList = personSvc.getPersons() || [];
@@ -163,7 +174,7 @@ export default class Activator {
     };
 
     // Provide data as its own service
-    context.registerService("backoffice.licenses.data", dataService);
+    context.registerService(LICENSE_DATA_SERVICE, dataService);
 
     // Register Extension Service
     context.registerService(BO_EXTENSION_SERVICE, {

@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SESSION_SERVICE, CONFIG_ADMIN_SERVICE, SELECTION_SERVICE, YAML_EDITOR_SERVICE as _YAML_EDITOR_SERVICE, ENV_SERVICE, INVITATION_SERVICE, LIMES_SERVICE } from "shared-types";
+import { FLOW_SERVICE, SESSION_SERVICE, CONFIG_ADMIN_SERVICE, SELECTION_SERVICE, YAML_EDITOR_SERVICE as _YAML_EDITOR_SERVICE, ENV_SERVICE, INVITATION_SERVICE, LIMES_SERVICE, EVAL_DATA_SERVICE, EVENT_HANDLER_INTERFACE, EVENT_TOPIC } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -10,10 +10,10 @@ export default class Activator {
       availableFlows: [],
       currentUser: null,
       get currentUserCap() {
-        if (!this.currentUser || !globalThis.backofficeState?.evaluatedData) {
-            return null;
-        }
-        const cap = globalThis.backofficeState.evaluatedData.find(e => String(e.user) === String(this.currentUser.id));
+        if (!this.currentUser) return null;
+        const allStates = [globalThis.businessPortalState, globalThis.backofficeState].filter(Boolean);
+        const evalData = allStates.flatMap(s => s.evaluatedData || []);
+        const cap = evalData.find(e => String(e.user) === String(this.currentUser.id));
         return cap;
       },
       selectionService: null,
@@ -296,7 +296,7 @@ export default class Activator {
     };
 
     // 5. Track Evaluation Data for gating
-    context.trackService(`(objectClass=backoffice.evaluator.data)`, {
+    context.trackService(`(objectClass=${EVAL_DATA_SERVICE})`, {
       addingService: (ref) => {
         state.evaluatorData = context.getService(ref);
         state.availableFlows = [...state.availableFlows];
@@ -324,11 +324,11 @@ export default class Activator {
     }).open();
     
     // 8. Listen for invitation updates via EventAdmin
-    context.registerService('@pandino/event-admin/EventHandler', {
+    context.registerService(EVENT_HANDLER_INTERFACE, {
         handleEvent: (_event) => {
             state.updateTrigger++;
         }
-    }, { 'event.topics': ['backoffice/invitations/*'] });
+    }, { [EVENT_TOPIC]: ['backoffice/invitations/*'] });
 
     // 9. Track Limes
     context.trackService(`(objectClass=${LIMES_SERVICE})`, {

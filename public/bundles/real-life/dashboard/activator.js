@@ -1,4 +1,22 @@
-import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE, ENV_SERVICE, SESSION_SERVICE } from "shared-types";
+import { 
+  FLOW_SERVICE, 
+  CONFIG_ADMIN_SERVICE, 
+  ENV_SERVICE, 
+  SESSION_SERVICE, 
+  PERSONS_SERVICE, 
+  COMPANIES_SERVICE, 
+  TENANT_DATA_SERVICE, 
+  LICENSE_DATA_SERVICE, 
+  FELLOWS_SERVICE, 
+  REALLIFE_FLOW, 
+  MOBILE_LAUNCHER_FLOW,
+  CONFIG_ADMIN_UI_FLOW,
+  COMPANY_REGISTRY_FLOW,
+  PERSON_REGISTRY_FLOW,
+  BACKOFFICE_WEB_FLOW,
+  EMAIL_MONITOR_FLOW,
+  CASE_MONITOR_FLOW
+} from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -13,6 +31,15 @@ export default class Activator {
       selectedPerson: null,
       selectedCompany: null,
       fellows: [],
+
+      // Flow constants for template usage
+      CONFIG_ADMIN_UI_FLOW,
+      COMPANY_REGISTRY_FLOW,
+      PERSON_REGISTRY_FLOW,
+      BACKOFFICE_WEB_FLOW,
+      EMAIL_MONITOR_FLOW,
+      CASE_MONITOR_FLOW,
+      REALLIFE_FLOW,
       
       // Settings (Persisted via ConfigAdmin)
       showSidebar: true,
@@ -31,10 +58,10 @@ export default class Activator {
         const storedChannels = props?.channels;
 
         // Enable by default if no channels are restricted anywhere
-        if (storedChannels === undefined && manifestChannels === undefined) return id === 'real-life';
+        if (storedChannels === undefined && manifestChannels === undefined) return id === REALLIFE_FLOW;
         
         const channels = (storedChannels !== undefined) ? storedChannels : (manifestChannels !== undefined ? manifestChannels : []);
-        return channels.includes("real-life");
+        return channels.includes(REALLIFE_FLOW);
       },
 
       async loadStep(step) {
@@ -137,7 +164,7 @@ export default class Activator {
           envSvc.onActivate(sessionSvc);
           let portalFlow = "web-springboard"; // Default for web-browser
           if (envId === "business-channel-web") portalFlow = "web-portal"; // Legacy
-          if (envId === "mobile-device") portalFlow = "mobile-launcher";
+          if (envId === "mobile-device") portalFlow = MOBILE_LAUNCHER_FLOW;
           
           this.selectFlow(portalFlow);
         } else {
@@ -173,23 +200,23 @@ export default class Activator {
     }).open();
     
     // OSGi Reactive Service Trackers (Data)
-    context.trackService(`(objectClass=infrastructure.persons.data)`, {
+    context.trackService(`(objectClass=${PERSONS_SERVICE})`, {
         addingService: (ref) => { state.persons = context.getService(ref).getPersons() || []; }
     }).open();
     
-    context.trackService(`(objectClass=infrastructure.companies.data)`, {
+    context.trackService(`(objectClass=${COMPANIES_SERVICE})`, {
         addingService: (ref) => { state.companies = context.getService(ref).getCompanies() || []; }
     }).open();
     
-    context.trackService(`(objectClass=backoffice.data.tenants)`, {
+    context.trackService(`(objectClass=${TENANT_DATA_SERVICE})`, {
         addingService: (ref) => { state.parsedTenants = context.getService(ref).getTenants() || { TENANTS: [] }; }
     }).open();
     
-    context.trackService(`(objectClass=backoffice.licenses.data)`, {
+    context.trackService(`(objectClass=${LICENSE_DATA_SERVICE})`, {
         addingService: (ref) => { state.parsedLicenses = context.getService(ref).getLicenses() || { LICENSES: [] }; }
     }).open();
 
-    context.trackService(`(objectClass=infrastructure.fellows.data)`, {
+    context.trackService(`(objectClass=${FELLOWS_SERVICE})`, {
         addingService: (ref) => { state.fellows = context.getService(ref).getFellows() || []; }
     }).open();
 
@@ -205,7 +232,7 @@ export default class Activator {
     }).open();
 
     const flowMetadata = {
-      id: "real-life",
+      id: REALLIFE_FLOW,
       title: "Real Life",
       launch: async (targetElement) => {
         state._targetElement = targetElement;
@@ -215,7 +242,7 @@ export default class Activator {
     };
 
     context.registerService(FLOW_SERVICE, flowMetadata, { 
-      "flow.id": "real-life",
+      "flow.id": REALLIFE_FLOW,
       "flowType": "admin-flow"
     });
   }

@@ -16,8 +16,9 @@ export default class Activator {
           const sessionRef = context.getServiceReference(SESSION_SERVICE);
           const session = sessionRef ? context.getService(sessionRef) : null;
           const userId = session?.currentUser?.id;
+          const allStates = [globalThis.backofficeState, globalThis.businessPortalState, globalThis.retailPortalState].filter(Boolean);
           const cap = userId
-            ? (globalThis.backofficeState?.evaluatedData || []).find(e => String(e.user) === String(userId))
+            ? allStates.flatMap(s => s.evaluatedData || []).find(e => String(e.user) === String(userId))
             : null;
           promos = (cap?.campaigns || []).filter(c => c.mode === 'modal');
           console.log("promo-flow: Resolved", promos.length, "modal campaign(s) from evaluated data.");

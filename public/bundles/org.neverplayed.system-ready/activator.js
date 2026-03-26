@@ -7,7 +7,9 @@ import {
     RULES_DATA_SERVICE, 
     CAPABILITIES_DATA_SERVICE, 
     BIZ_FUNC_DATA_SERVICE,
-    PLEXUS_ENGINE_SERVICE
+    PLEXUS_ENGINE_SERVICE,
+    TOPICS_DATA_SERVICE,
+    CAMPAIGNS_SERVICE
 } from "shared-types";
 
 export default class Activator {
@@ -20,8 +22,8 @@ export default class Activator {
             RULES_DATA_SERVICE,
             CAPABILITIES_DATA_SERVICE,
             BIZ_FUNC_DATA_SERVICE,
-            "backoffice.topics.data",
-            "backoffice.campaigns.data",
+            TOPICS_DATA_SERVICE,
+            CAMPAIGNS_SERVICE,
             PLEXUS_ENGINE_SERVICE
         ];
 

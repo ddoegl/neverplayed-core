@@ -252,7 +252,7 @@
           <!-- System Controls -->
           <div class="flex items-center space-x-2 mr-2">
             <button
-              @click="launchFlow('config-admin-ui')"
+              @click="launchFlow(CONFIG_ADMIN_UI_FLOW)"
               class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-blue-400 transition-all border border-slate-700 shadow-inner group"
               title="Universe Settings"
             >
@@ -503,6 +503,12 @@
         SHELL_CONFIG_PID,
         SYSTEM_READY_SERVICE,
         SYSTEM_RESET_SERVICE,
+        LICENSE_DATA_SERVICE,
+        SELECTION_SERVICE,
+        REALLIFE_FLOW,
+        MOBILE_LAUNCHER_FLOW,
+        LOG_SERVICE,
+        SHELL_CLI_SERVICE,
       } from "shared-types";
       import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
@@ -631,10 +637,14 @@
           session: sessionService,
           activeFlowId: null,
           sidebarOpen: false,
+          CONFIG_ADMIN_UI_FLOW,
+          REALLIFE_FLOW,
+          MOBILE_LAUNCHER_FLOW,
           configAdmin: null,
           _tracker: null,
           _navTracker: null,
           _envTracker: null,
+          logger: null,
 
           getManifestChannels(bundle) {
             if (!bundle) return undefined;
@@ -695,13 +705,14 @@
           },
 
           goHome() {
-            console.log("Shell: Navigating home...");
+            if (this.logger) this.logger.info("Shell: Navigating home...");
+            else console.log("Shell: Navigating home...");
             if (this.session && this.session.scopedUsers) {
               delete this.session.scopedUsers["global"];
             }
 
             if (this.envType === "mobile") {
-              this.launchFlow("mobile-launcher");
+              this.launchFlow(MOBILE_LAUNCHER_FLOW);
             } else {
               const spaceTimeEnv = this.envServices.find(
                 (
@@ -712,7 +723,7 @@
               if (spaceTimeEnv) {
                 spaceTimeEnv.onActivate(this.session);
               }
-              this.launchFlow("real-life");
+              this.launchFlow(REALLIFE_FLOW);
             }
             this.sidebarOpen = false;
           },
@@ -765,13 +776,19 @@
                 const service = context.getService(ref);
                 if (service) {
                   const id = service.id || ref.getProperty("flow.id");
-                  console.log(
-                    "Shell: Flow registered:",
-                    id,
-                    " (actual ID:",
-                    service.id,
-                    ")",
-                  );
+                  if (this.logger) {
+                    this.logger.info(
+                      `Shell: Flow registered: ${id} (actual ID: ${service.id})`,
+                    );
+                  } else {
+                    console.log(
+                      "Shell: Flow registered:",
+                      id,
+                      " (actual ID:",
+                      service.id,
+                      ")",
+                    );
+                  }
 
                   // Add to flows array with consistent ID
                   const flowEntry = {
@@ -792,12 +809,18 @@
                   // CRITICAL: Check if we are waiting for this flow
                   if (
                     this.activeFlowId === id ||
-                    (!this.activeFlowId && id === "real-life")
+                    (!this.activeFlowId && id === REALLIFE_FLOW)
                   ) {
-                    console.log(
-                      "Shell: Auto-launching flow arrival:",
-                      id,
-                    );
+                    if (this.logger) {
+                      this.logger.info(
+                        "Shell: Auto-launching flow arrival: " + id,
+                      );
+                    } else {
+                      console.log(
+                        "Shell: Auto-launching flow arrival:",
+                        id,
+                      );
+                    }
                     this.launchFlow(id, flowEntry);
                   }
                 }
@@ -896,6 +919,46 @@
               },
             }).open();
 
+            const logFilter = `(objectClass=${LOG_SERVICE})`;
+            this._logTracker = context.trackService(logFilter, {
+              nameMap: "shellScope",
+              addingService: (ref) => {
+                const logAdmin = context.getService(ref);
+                this.logger = logAdmin.getLogger("shell");
+                if (this.logger) {
+                  this.logger.info("Shell: Logger service available.");
+                }
+                return logAdmin;
+              },
+              removedService: (ref) => {
+                if (this.logger) {
+                  this.logger.warn("Shell: Logger service removed.");
+                }
+                this.logger = null;
+                context.ungetService(ref);
+              },
+            });
+            this._logTracker.open();
+
+            const cliFilter = `(objectClass=${SHELL_CLI_SERVICE})`;
+            this._cliTracker = context.trackService(cliFilter, {
+              addingService: (ref) => {
+                this.shellCliService = context.getService(ref);
+                if (this.logger) {
+                  this.logger.info("Shell: CLI service available.");
+                }
+                return this.shellCliService;
+              },
+              removedService: (ref) => {
+                if (this.logger) {
+                  this.logger.warn("Shell: CLI service removed.");
+                }
+                this.shellCliService = null;
+                context.ungetService(ref);
+              },
+            });
+            this._cliTracker.open();
+
             window.addEventListener("shell-launch-flow", (e) => {
               this.launchFlow(
                 e.detail.id,
@@ -907,12 +970,44 @@
 
             // DEBUGGER: Identify what is triggering reloads
             window.addEventListener("beforeunload", (e) => {
-              console.log(
-                "Shell: Page UNLOAD triggered. Check stack trace if possible or recent logs.",
-              );
+              if (this.logger) {
+                this.logger.info(
+                  "Shell: Page UNLOAD triggered. Check stack trace if possible or recent logs.",
+                );
+              } else {
+                console.log(
+                  "Shell: Page UNLOAD triggered. Check stack trace if possible or recent logs.",
+                );
+              }
               // Non-standard way to peek at who called it, but useful for manual devtools inspection
               // debugger;
             });
+          },
+
+          async processCliCommand(command) {
+            if (!this.shellCliService) {
+              return "CLI service not available.";
+            }
+            try {
+              const result = await this.shellCliService.processCommand(command);
+              return result;
+            } catch (error) {
+              if (this.logger) {
+                this.logger.error(`Shell: CLI command error: ${error.message}`);
+              } else {
+                console.error(`Shell: CLI command error: ${error.message}`);
+              }
+              return `Error: ${error.message}`;
+            }
+          },
+
+          getCliHelp() {
+            if (!this.shellCliService) {
+              return "CLI service not available.";
+            }
+            return `Available commands: ${
+              this.shellCliService.getCommands().join(", ")
+            }\nType 'help <command>' for more info.\nAdmit input: <command> [args...]`;
           },
 
           triggerSystemReset() {
@@ -936,11 +1031,11 @@
           },
 
           async launchFlow(id, flow = null, step = null, params = {}) {
-            console.log(
-              `Shell: [Mission] Launch flow: ${id} Step: ${
-                step || params?.step || "null"
-              }`,
-            );
+            const msg = `Shell: [Mission] Launch flow: ${id} Step: ${
+              step || params?.step || "null"
+            }`;
+            if (this.logger) this.logger.info(msg);
+            else console.log(msg);
 
             this.activeFlowId = id;
             if (this.session) this.session.activeFlowId = id;
@@ -952,9 +1047,9 @@
             let targetFlow = flow ||
               this.flows.find((f) => f.id === id);
             if (!targetFlow) {
-              console.warn(
-                `Shell: Flow ${id} not found yet, waiting...`,
-              );
+              const msg = `Shell: Flow ${id} not found yet, waiting...`;
+              if (this.logger) this.logger.warn(msg);
+              else console.warn(msg);
               return;
             }
 
@@ -974,16 +1069,16 @@
             }
 
             if (!el) {
-              console.error(
-                `Shell: Target container ${containerId} not found!`,
-              );
+              const msg = `Shell: Target container ${containerId} not found!`;
+              if (this.logger) this.logger.error(msg);
+              else console.error(msg);
               return;
             }
 
             if (targetFlow.launch) {
-              console.log(
-                `Shell: Calling flow.launch() on [${containerId}] for: ${id}`,
-              );
+              const msg = `Shell: Calling flow.launch() on [${containerId}] for: ${id}`;
+              if (this.logger) this.logger.info(msg);
+              else console.log(msg);
               el.innerHTML = ""; // Clear previous flow content
               this.activeFlowId = id; // Set active ID AFTER clearing the previous content to avoid teardown crashes
 
@@ -1028,7 +1123,7 @@
 
                 // Persist via LicenseDataService
                 const licRef = context.getServiceReference(
-                  "backoffice.licenses.data",
+                  LICENSE_DATA_SERVICE,
                 );
                 const licSvc = licRef
                   ? context.getService(licRef)
@@ -1058,7 +1153,7 @@
 
             // SECURITY FIX: Clear all selection contexts to prevent state leakage
             const selectionRef = context.getServiceReference(
-              "prototyper.selection.service",
+              SELECTION_SERVICE,
             );
             const selectionSvc = selectionRef
               ? context.getService(selectionRef)
@@ -1070,9 +1165,9 @@
             this.sidebarOpen = false;
 
             if (this.envType === "mobile") {
-              this.launchFlow("mobile-launcher");
+              this.launchFlow(MOBILE_LAUNCHER_FLOW);
             } else {
-              this.launchFlow("real-life"); // Redirect to home on logout
+              this.launchFlow(REALLIFE_FLOW); // Redirect to home on logout
             }
           },
 
@@ -1086,7 +1181,7 @@
 
             // SECURITY FIX: Clear all selection contexts to prevent state leakage
             const selectionRef = context.getServiceReference(
-              "prototyper.selection.service",
+              SELECTION_SERVICE,
             );
             const selectionSvc = selectionRef
               ? context.getService(selectionRef)
@@ -1098,9 +1193,9 @@
             this.sidebarOpen = false;
 
             if (this.envType === "mobile") {
-              this.launchFlow("mobile-launcher");
+              this.launchFlow(MOBILE_LAUNCHER_FLOW);
             } else {
-              this.launchFlow("real-life"); // Redirect to home
+              this.launchFlow(REALLIFE_FLOW); // Redirect to home
             }
           },
         }));
@@ -1163,7 +1258,6 @@
           "./bundles/user-clients/retail-channel-app/manifest.json",
           "./bundles/environments/space-time/manifest.json",
           "./bundles/environments/mobile-device/manifest.json",
-          "./bundles/system-services/system-reset/manifest.json",
           "./bundles/flows/user-home-business/manifest.json",
           "./bundles/flows/user-home-retail/manifest.json",
           "./bundles/flows/reactive-order-demo/manifest.json",
@@ -1173,8 +1267,9 @@
           "./bundles/user-clients/email-client/manifest.json",
           "./bundles/system-clients/case-monitor/manifest.json",
           "./bundles/system-clients/email-monitor/manifest.json",
-          "./bundles/system-services/system-ready/manifest.json",
           "./bundles/system-services/bpmn-engine/manifest.json",
+          "./bundles/org.neverplayed.system-ready/manifest.json",
+          "./bundles/org.neverplayed.system-reset/manifest.json",
           "./bundles/flows/hello-bpmn/manifest.json",
           "./bundles/system-services/outreach-service/manifest.json",
           "./bundles/system-services/atomic-orchestrator/manifest.json",

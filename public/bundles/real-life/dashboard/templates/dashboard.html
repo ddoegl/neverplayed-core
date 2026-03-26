@@ -8,7 +8,7 @@
     </div>
     <div class="absolute right-0 flex items-center gap-4">
       <button
-        @click="selectFlow('config-admin-ui')"
+        @click="selectFlow(CONFIG_ADMIN_UI_FLOW)"
         class="p-2 text-slate-400 hover:text-slate-600 transition-colors"
         title="Universe Settings"
       >
@@ -19,8 +19,8 @@
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
     <div
-      x-show="isFlowEnabled('company-registry')"
-      @click="selectFlow('company-registry')"
+      x-show="isFlowEnabled(COMPANY_REGISTRY_FLOW)"
+      @click="selectFlow(COMPANY_REGISTRY_FLOW)"
       class="p-6 rounded-lg shadow cursor-pointer hover:bg-teal-100 transition-colors flex items-center justify-between text-white border border-teal-700"
     >
       <div class="flex items-center space-x-4">
@@ -40,8 +40,8 @@
     </div>
 
     <div
-      x-show="isFlowEnabled('person-registry')"
-      @click="selectFlow('person-registry')"
+      x-show="isFlowEnabled(PERSON_REGISTRY_FLOW)"
+      @click="selectFlow(PERSON_REGISTRY_FLOW)"
       class="p-6 rounded-lg shadow cursor-pointer hover:bg-orange-100 transition-colors flex items-center justify-between text-white border border-orange-700"
     >
       <div class="flex items-center space-x-4">
@@ -62,8 +62,8 @@
 
     <a
       href="#"
-      x-show="isFlowEnabled('backoffice-web')"
-      @click.prevent="selectFlow('backoffice-web', 'tenants')"
+      x-show="isFlowEnabled(BACKOFFICE_WEB_FLOW)"
+      @click.prevent="selectFlow(BACKOFFICE_WEB_FLOW, 'tenants')"
       class="p-6 rounded-lg shadow cursor-pointer hover:bg-indigo-100 transition-colors flex items-center justify-between text-white border border-indigo-700 block text-left"
     >
       <div class="flex items-center space-x-4">
@@ -83,8 +83,8 @@
     </a>
 
     <div
-      x-show="isFlowEnabled('email-provider-ui')"
-      @click="selectFlow('email-provider-ui')"
+      x-show="isFlowEnabled(EMAIL_MONITOR_FLOW)"
+      @click="selectFlow(EMAIL_MONITOR_FLOW)"
       class="p-6 rounded-lg shadow cursor-pointer hover:bg-rose-100 transition-colors flex items-center justify-between text-white border border-rose-700"
     >
       <div class="flex items-center space-x-4">
@@ -104,8 +104,8 @@
     </div>
 
     <div
-      x-show="isFlowEnabled('case-monitor')"
-      @click="selectFlow('case-monitor')"
+      x-show="isFlowEnabled(CASE_MONITOR_FLOW)"
+      @click="selectFlow(CASE_MONITOR_FLOW)"
       class="p-6 rounded-lg shadow cursor-pointer hover:bg-slate-100 transition-colors flex items-center justify-between text-white border border-slate-700 font-sans"
     >
       <div class="flex items-center space-x-4">

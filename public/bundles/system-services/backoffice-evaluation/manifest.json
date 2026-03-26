@@ -3,11 +3,6 @@
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
   "Provide-Capability": "osgi.service; objectClass=\"backoffice.evaluation\"",
-  "Require-Capability": [
-    "osgi.service; filter=\"(objectClass=backoffice.shell)\"",
-    "osgi.service; filter=\"(objectClass=pandino.persistence.manager)\"",
-    "osgi.service; filter=\"(objectClass=backoffice.business.functions)\""
-  ],
   "Configuration": {
     "flowType": "backoffice-flow",
     "channels": [

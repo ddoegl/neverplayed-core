@@ -298,7 +298,7 @@ export default class Activator {
         const myChannel = context.bundle.getSymbolicName();
         
         // Resolve channels from service properties OR bundle configuration
-        let channels = ref.getProperty("channels") || [];
+        const channels = ref.getProperty("channels") || [];
         const bundle = ref.getBundle();
         const config = bundle.getHeaders()?.['Configuration'] || bundle.getHeaders()?.['configuration'];
         const parsedConfig = typeof config === 'string' ? JSON.parse(config) : (config || {});

@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE, LOG_SERVICE, SESSION_SERVICE, BUNDLE_TYPE_SERVICE } from "shared-types";
+import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE, LOG_SERVICE, SESSION_SERVICE, BUNDLE_TYPE_SERVICE, LOG_LEVEL_PROP, NEVERPLAYED_PREFIX, SHELL_CLI_PID, SHELL_CLI_SERVICE } from "shared-types";
 import { sendInvitationRequest } from "../../auth-shield.js";
 
 // Using globalThis.Alpine as guaranteed by index.html loader
@@ -100,7 +100,7 @@ export default class Activator {
                                     <div><span class="text-yellow-400">/stop [id|bsn]</span> - Stop a bundle</div>
                                     <div><span class="text-yellow-400">/update [id|bsn]</span> - Update a bundle</div>
                                     <div><span class="text-yellow-400">/uninstall [id|bsn]</span> - Uninstall a bundle</div>
-                                    <div><span class="text-yellow-400">/install [url]</span> - Install a new bundle</div>
+                                    <div><span class="text-yellow-400">/install [url|${NEVERPLAYED_PREFIX}name]</span> - Install a new bundle</div>
                                     <div><span class="text-yellow-400">/reset-config [pid]</span> - Clear persistent config & force manifest seed</div>
                                     <div><span class="text-yellow-400">/prime-all [id|bsn]</span> - Sync manifest config to ConfigAdmin (hot-reload)</div>
                                     <div><span class="text-yellow-400">/diag-manifest [id|url]</span> - Direct fetch manifest (bypass kernel cache)</div>
@@ -551,11 +551,18 @@ export default class Activator {
                         }
 
                         case '/install': {
-                            const url = args[0];
+                            let url = args[0];
                             if (!url) {
-                                state.addLog("Usage: /install [url]", 'error');
+                                state.addLog(`Usage: /install [url|${NEVERPLAYED_PREFIX}name]`, 'error');
                                 return;
                             }
+
+                            // Shortcut for @neverplayed bundles
+                            if (url.startsWith(NEVERPLAYED_PREFIX)) {
+                                const name = url.replace(NEVERPLAYED_PREFIX, '');
+                                url = `./bundles/org.neverplayed.${name}/manifest.json`;
+                            }
+
                             // Add cache-buster to ensure we don't pick up stale manifest/activator
                             const separator = url.includes('?') ? '&' : '?';
                             const bustedUrl = `${url}${separator}cb=${Date.now()}`;
@@ -692,7 +699,7 @@ export default class Activator {
 
                             if (!level || !targetStr) {
                                 state.addLog("Usage: /loglevel [level] [id,bsn,...]", 'error');
-                                state.addLog("Example: /loglevel DEBUG 1,2,prototyper.limes");
+                                state.addLog("Example: /loglevel DEBUG 1,2,neverplayed.limes");
                                 return;
                             }
 
@@ -722,7 +729,7 @@ export default class Activator {
                                 
                                 try {
                                     const cfg = ca.getConfiguration(pid);
-                                    cfg.update({ "log-level": level });
+                                    cfg.update({ [LOG_LEVEL_PROP]: level });
                                     state.addLog(`Set log-level: <span class="text-white font-bold">${level}</span> for <span class="text-yellow-400">${pid}</span>`);
                                     updatedCount++;
                                 } catch (err) {
@@ -751,8 +758,8 @@ export default class Activator {
         });
 
         // Register the Flow Service
-        context.registerService(FLOW_SERVICE, {
-            id: "@neverplayed/shell-cli",
+        context.registerService([FLOW_SERVICE, SHELL_CLI_SERVICE], {
+            id: SHELL_CLI_PID,
             title: "Shell CLI",
             launch: (targetElement) => {
                 targetElement.innerHTML = `
@@ -764,9 +771,17 @@ export default class Activator {
                         </div>
                     </div>
                 `;
+            },
+            processCommand: async (cmd) => {
+                const scope = globalThis.getShellScope();
+                if (scope) return await scope.processCommand(cmd);
+                return "Shell scope not initialized.";
+            },
+            getCommands: () => {
+                return ["/invite", "/clear", "/whoami", "/vars", "/services", "/bundles", "/loglevel", "/start", "/stop", "/update", "/uninstall", "/install", "/reset-config", "/prime-all", "/diag-manifest", "/reload-ui", "/methods", "/actions", "/help"];
             }
         }, {
-            "flow.id": "@neverplayed/shell-cli",
+            "flow.id": SHELL_CLI_PID,
             "flowType": BUNDLE_TYPE_SERVICE,
             "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
         });

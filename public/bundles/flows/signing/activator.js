@@ -1,4 +1,4 @@
-import { FLOW_SERVICE } from "shared-types";
+import { FLOW_SERVICE, SCA_DATA_SERVICE, SCA_METHODS_SERVICE } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -74,8 +74,8 @@ export default class Activator {
         });
 
         // Fetch SCA Data
-        const scaDataRef = context.getServiceReference("backoffice.sca.data");
-        const scaMethodsRef = context.getServiceReference("backoffice.sca.methods");
+        const scaDataRef = context.getServiceReference(SCA_DATA_SERVICE);
+        const scaMethodsRef = context.getServiceReference(SCA_METHODS_SERVICE);
 
         if (scaDataRef) {
           const strats = context.getService(scaDataRef).getSCAStrategies() || [];

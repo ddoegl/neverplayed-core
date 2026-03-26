@@ -1,4 +1,4 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, SIGNING_DATA_SERVICE } from "shared-types";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, SIGNING_DATA_SERVICE, SIGNING_STRATEGIES_PID, SIGNING_CASE_TYPES_PID } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -8,9 +8,6 @@ export default class Activator {
 
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
-
-    const STRATEGIES_PID = "pandino.backoffice.signing.strategies";
-    const CASE_TYPES_PID = "pandino.backoffice.signing.case-types";
 
     const toArray = (data) => {
       if (!data) return [];
@@ -25,24 +22,24 @@ export default class Activator {
     };
 
     // Load/Seed Data for Strategies
-    let strategies = pm.load(STRATEGIES_PID);
+    let strategies = pm.load(SIGNING_STRATEGIES_PID);
     if (!strategies) {
       console.log("BO Signing: Seeding Strategies...");
       const res = await fetch("./bundles/system-services/backoffice-signing/data/signing-strategies.yaml");
       const text = await res.text();
       strategies = yaml.load(text);
-      pm.store(STRATEGIES_PID, strategies);
+      pm.store(SIGNING_STRATEGIES_PID, strategies);
     }
     strategies = toArray(strategies);
 
     // Load/Seed Data for Case Types
-    let caseTypes = pm.load(CASE_TYPES_PID);
+    let caseTypes = pm.load(SIGNING_CASE_TYPES_PID);
     if (!caseTypes) {
       console.log("BO Signing: Seeding Case Types...");
       const res = await fetch("./bundles/system-services/backoffice-signing/data/case-types.yaml");
       const text = await res.text();
       caseTypes = yaml.load(text);
-      pm.store(CASE_TYPES_PID, caseTypes);
+      pm.store(SIGNING_CASE_TYPES_PID, caseTypes);
     }
     caseTypes = toArray(caseTypes);
 
@@ -50,7 +47,7 @@ export default class Activator {
       getStrategies: () => strategies,
       setStrategies: (newData) => {
         strategies = toArray(newData);
-        pm.store(STRATEGIES_PID, strategies);
+        pm.store(SIGNING_STRATEGIES_PID, strategies);
         if (globalThis.backofficeState?.parsedSigningStrategies) {
           globalThis.backofficeState.parsedSigningStrategies.splice(0, globalThis.backofficeState.parsedSigningStrategies.length, ...strategies);
         }
@@ -58,7 +55,7 @@ export default class Activator {
       getCaseTypes: () => caseTypes,
       setCaseTypes: (newData) => {
         caseTypes = toArray(newData);
-        pm.store(CASE_TYPES_PID, caseTypes);
+        pm.store(SIGNING_CASE_TYPES_PID, caseTypes);
         if (globalThis.backofficeState?.parsedCaseTypes) {
           globalThis.backofficeState.parsedCaseTypes.splice(0, globalThis.backofficeState.parsedCaseTypes.length, ...caseTypes);
         }

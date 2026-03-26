@@ -7,6 +7,7 @@ import {
     ATOMIC_SPEC_INGESTION_SERVICE,
     EVALUATOR_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
+    LOG_SERVICE,
     DO_STRATEGIES_PID,
     DO_INSTANCES_PID
 } from "shared-types";
@@ -14,7 +15,15 @@ import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persi
 
 export default class Activator {
   start(context) {
-    // Using constants from shared-types.js
+    let logger = console; // Fallback
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger("backoffice-do-registry");
+            logger.info("DO Registry: Bundle started.");
+        },
+        removedService: () => { logger = console; }
+    }).open();
 
     // Helper for resilient service retrieval
     const getSvc = (id) => {
@@ -22,25 +31,39 @@ export default class Activator {
         return ref ? context.getService(ref) : null;
     };
 
+    let _limesService = null;
+    let persistenceManager = null;
+
+    context.trackService(`(objectClass=${LIMES_SERVICE})`, {
+        addingService: (ref) => { _limesService = context.getService(ref); },
+        removedService: () => { _limesService = null; }
+    }).open();
+
+    context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
+        addingService: (ref) => { persistenceManager = context.getService(ref); },
+        removedService: () => { persistenceManager = null; }
+    }).open();
+
     // 1. Register Evaluator Service IMMEDIATELY (Pattern Alignment)
     // This ensure the property "domainObjects" is added at the right time in the eval chain
     context.registerService(EVALUATOR_SERVICE, {
         order: 500, // Run after roles and capabilities
         evaluate: (userCapabilities, _parsedLicenses, _hostState) => {
-            const limes = getSvc(LIMES_SERVICE);
-            const pm = getSvc(PM_INTERFACE_KEY);
+            const pm = persistenceManager || getSvc(PM_INTERFACE_KEY);
             
-            if (!limes || !pm) {
-                if (!limes) console.warn("DO Registry: Limes service NOT found during evaluation.");
-                return userCapabilities;
-            }
+            if (!pm) return userCapabilities;
 
-            const instances = pm.load(DO_INSTANCES_PID) || {};
-            const rawStrategies = pm.load(DO_STRATEGIES_PID) || {};
-            const strategiesMap = Object.values(rawStrategies).reduce((acc, s) => {
+            const instContent = pm.load(DO_INSTANCES_PID);
+            const stContent = pm.load(DO_STRATEGIES_PID);
+            
+            if (!instContent || !stContent) return userCapabilities;
+
+            const strategiesMap = Object.values(stContent).reduce((acc, s) => {
                 acc[s.id] = s;
                 return acc;
             }, {});
+
+            const instances = instContent || {};
 
             return userCapabilities.map(entry => {
                 const visibleDOs = Object.values(instances).map(inst => {
@@ -53,7 +76,7 @@ export default class Activator {
                     return { ...inst, allowedActions, strategy };
                 });
 
-                //console.log(`DO Registry: Evaluated ${entry.user} -> Showing all ${visibleDOs.length} DOs for debugging.`);
+                //logger.info(`DO Registry: Evaluated ${entry.user} -> Showing all ${visibleDOs.length} DOs for debugging.`);
                 return { 
                     ...entry, 
                     domainObjects: visibleDOs 
@@ -68,7 +91,7 @@ export default class Activator {
         const pm = getSvc(PM_INTERFACE_KEY);
 
         if (!yaml || !pm) {
-            console.warn("DO Registry: Infrastructure services not ready for seeding. Retrying in 100ms...");
+            logger.warn("DO Registry: Infrastructure services not ready for seeding. Retrying in 100ms...");
             setTimeout(initData, 100);
             return;
         }
@@ -106,7 +129,7 @@ export default class Activator {
             getInstance: (id) => {
                 const insts = pm.load(DO_INSTANCES_PID) || {};
                 const inst = insts[id];
-                console.log(`DO Registry: getInstance(${id}) -> Found: ${!!inst} (Index size: ${Object.keys(insts).length})`);
+                logger.info(`DO Registry: getInstance(${id}) -> Found: ${!!inst} (Index size: ${Object.keys(insts).length})`);
                 return inst;
             },
 
@@ -148,7 +171,7 @@ export default class Activator {
             },
 
             registerActionHandler: (handler) => {
-                console.log("DO Registry: Registering action handler", handler);
+                logger.info("DO Registry: Registering action handler " + JSON.stringify(handler));
                 if (handler._sourceFlowId) {
                     const idx = actionHandlers.findIndex(h => h.id === handler.id && h._sourceFlowId === handler._sourceFlowId);
                     if (idx !== -1) {
@@ -160,12 +183,12 @@ export default class Activator {
             },
 
             handleAction: (action, instance, host) => {
-                console.log(`DO Registry: [SERVICE] Handling action ${action.id} for instance ${instance.id}`);
+                logger.info(`DO Registry: [SERVICE] Handling action ${action.id} for instance ${instance.id}`);
                 const handler = actionHandlers.find(h => h.id === action.id && h.match(instance));
                 if (handler) {
                     handler.execute(instance, host);
                 } else {
-                    console.warn(`DO Registry: No handler found for ${action.id}`);
+                    logger.warn(`DO Registry: No handler found for ${action.id}`);
                 }
             }
         };
@@ -194,7 +217,7 @@ export default class Activator {
                 // INJECT HELPERS into all states for cross-portal consistency
                 if (!s.handleAction) {
                     s.handleAction = (action, instance) => {
-                        console.log(`DO Registry: [ACTION] Triggering ${action.id} for ${instance.id}`);
+                        logger.info(`DO Registry: [ACTION] Triggering ${action.id} for ${instance.id}`);
                         registryService.handleAction(action, instance, s);
                     };
                 }
@@ -202,7 +225,7 @@ export default class Activator {
                 if (!s.instantiateDO) {
                     s.instantiateDO = (specId) => {
                         const spec = s.domainObjectSpecs.find(sp => sp.id === specId);
-                        if (!spec) return console.error(`DO Registry: Spec ${specId} not found.`);
+                        if (!spec) return logger.error(`DO Registry: Spec ${specId} not found.`);
 
                         const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
                         
@@ -218,12 +241,12 @@ export default class Activator {
                         }
 
                         if (!strategySvc) {
-                            return console.error(`DO Registry: Strategy engine [${strategyId}] not found.`);
+                            return logger.error(`DO Registry: Strategy engine [${strategyId}] not found.`);
                         }
 
                         if (strategySvc.createInstance) {
                             const inst = strategySvc.createInstance(spec);
-                            console.log(`DO Registry: Instantiated ${specId} via ${strategyId}`);
+                            logger.info(`DO Registry: Instantiated ${specId} via ${strategyId}`);
                             if (s.recompile) s.recompile();
                             return inst;
                         }
@@ -242,12 +265,12 @@ export default class Activator {
             id: 'view',
             match: (_instance) => true,
             execute: (instance, host) => {
-                console.log(`DO Registry: [SERVICE] Handling action view for instance ${instance.id}`);
+                logger.info(`DO Registry: [SERVICE] Handling action view for instance ${instance.id}`);
                 const blueprint = (host.domainObjectSpecs || []).find(s => s.id === instance.blueprintId);
                 // Launch the flow with the specific instanceId
                 if (blueprint?.ui) {
                     const params = { instanceId: instance.id };
-                    console.log(`DO Registry: [NAVIGATE] Launching flow ${blueprint.id} for instance ${instance.id}`);
+                    logger.info(`DO Registry: [NAVIGATE] Launching flow ${blueprint.id} for instance ${instance.id}`);
                     
                     if (typeof host.launchFlow === 'function') {
                         host.launchFlow(blueprint.id, null, params);
@@ -257,7 +280,7 @@ export default class Activator {
                         globalThis.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: blueprint.id, step: null, params } }));
                     }
                 } else {
-                    console.error("DO Registry: Blueprint has no UI configuration, cannot view flow.");
+                    logger.error("DO Registry: Blueprint has no UI configuration, cannot view flow.");
                 }
             }
         });
@@ -266,7 +289,7 @@ export default class Activator {
             id: 'delete',
             match: (_instance) => true,
             execute: (instance, host) => {
-                console.log(`DO Registry: [SERVICE] Handling action delete for instance ${instance.id}`);
+                logger.info(`DO Registry: [SERVICE] Handling action delete for instance ${instance.id}`);
                 const blueprint = (host.domainObjectSpecs || []).find(s => s.id === instance.blueprintId);
                 const strategyId = instance.strategyId || blueprint?.domainObject?.strategyId || "LOCAL_STRATEGY";
                 
@@ -283,16 +306,16 @@ export default class Activator {
                 if (strategySvc?.deleteInstance) {
                     strategySvc.deleteInstance(instance.id, instance.blueprintId);
                 } else {
-                    console.error(`DO Registry: Strategy ${strategyId} does not support delete.`);
+                    logger.error(`DO Registry: Strategy ${strategyId} does not support delete.`);
                 }
             }
         });
 
         // Register Service
         context.registerService(DOMAIN_OBJECT_REGISTRY_SERVICE, registryService);
-        console.log("DO Registry Service registered.");
+        logger.info("DO Registry Service registered.");
         globalThis.dispatchEvent(new CustomEvent('do-registry-ready'));
-        console.log("DO Registry: Service Registered successfully. 🏛️✅");
+        logger.info("DO Registry: Service Registered successfully. 🏛️✅");
 
         // Register UI Extension
         context.registerService(BO_EXTENSION_SERVICE, {
@@ -472,10 +495,10 @@ export default class Activator {
                         const editor = getSvc(YAML_EDITOR_SERVICE);
                         const ingestion = getSvc(ATOMIC_SPEC_INGESTION_SERVICE);
                         
-                        if (!editor || !ingestion) return console.error("DO Registry: Editor or Ingestion service NOT found.");
+                        if (!editor || !ingestion) return logger.error("DO Registry: Editor or Ingestion service NOT found.");
 
                         const spec = hostState.domainObjectSpecs.find(s => s.id === specId);
-                        if (!spec) return console.error(`DO Registry: Spec ${specId} not found.`);
+                        if (!spec) return logger.error(`DO Registry: Spec ${specId} not found.`);
 
                         editor.edit({
                             title: `Edit DO - ${specId} (YAML)`,

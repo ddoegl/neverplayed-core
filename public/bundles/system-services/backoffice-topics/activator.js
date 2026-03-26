@@ -7,7 +7,9 @@ import {
     EVALUATOR_SERVICE,
     BIZ_FUNC_DATA_SERVICE,
     COMPANIES_SERVICE,
-    FEATURE_DATA_SERVICE
+    FEATURE_DATA_SERVICE,
+    TOPICS_PID,
+    TOPIC_STRATEGIES_PID
 } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
@@ -18,9 +20,6 @@ export default class Activator {
 
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
-
-    const TOPICS_PID = "pandino.backoffice.topics";
-    const TOPIC_STRATEGIES_PID = "pandino.backoffice.topic-strategies";
 
     const toArray = (data) => {
       if (!data) return [];

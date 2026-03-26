@@ -1,4 +1,14 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, BIZ_FUNC_DATA_SERVICE, PLEXUS_ENGINE_SERVICE } from "shared-types";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, BIZ_FUNC_DATA_SERVICE, PLEXUS_ENGINE_SERVICE, CAPABILITIES_DATA_SERVICE,
+    RULES_DATA_SERVICE,
+    PERMISSION_DATA_SERVICE,
+    FEATURE_DATA_SERVICE,
+    EVALUATOR_SERVICE,
+    LICENSE_DATA_SERVICE,
+    DOMAIN_STRATEGY_SERVICE,
+    CAPABILITIES_PID,
+    PERMISSIONS_PID,
+    FEATURES_PID
+} from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -9,9 +19,9 @@ export default class Activator {
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
 
-    const CAPABILITIES_PID = "pandino.backoffice.capabilities.strategies";
-    const PERMISSIONS_PID = "pandino.backoffice.permissions.keys";
-    const FEATURES_PID = "pandino.backoffice.features.catalog";
+    const CAPABILITIES_PID_VAL = CAPABILITIES_PID;
+    const PERMISSIONS_PID_VAL = PERMISSIONS_PID;
+    const FEATURES_PID_VAL = FEATURES_PID;
 
     // 1. Manage Capability Strategies (Layer 2)
     const loadAndSync = async (pid, path, currentData) => {
@@ -59,7 +69,7 @@ export default class Activator {
       getStrategies: () => capabilities,
       setStrategies: (newCaps) => {
         capabilities = newCaps;
-        pm.store(CAPABILITIES_PID, capabilities);
+        pm.store(CAPABILITIES_PID_VAL, capabilities);
         if (globalThis.backofficeState) {
           globalThis.backofficeState.parsedCapabilities = capabilities;
           globalThis.backofficeState.recompile?.();
@@ -71,7 +81,7 @@ export default class Activator {
       getPermissions: () => permissions,
       setPermissions: (newPerms) => {
         permissions = newPerms;
-        pm.store(PERMISSIONS_PID, permissions);
+        pm.store(PERMISSIONS_PID_VAL, permissions);
         if (globalThis.backofficeState) {
           globalThis.backofficeState.parsedPermissions = permissions;
           globalThis.backofficeState.recompile?.();
@@ -83,7 +93,7 @@ export default class Activator {
       getFeatures: () => features,
       setFeatures: (newFeatures) => {
         features = newFeatures;
-        pm.store(FEATURES_PID, features);
+        pm.store(FEATURES_PID_VAL, features);
         if (globalThis.backofficeState) {
           globalThis.backofficeState.parsedFeatures = features;
           globalThis.backofficeState.recompile?.();
@@ -92,12 +102,12 @@ export default class Activator {
     };
 
     // Provide services
-    context.registerService("backoffice.capabilities.data", capabilitiesService);
-    context.registerService("backoffice.permissions.data", permissionsService);
-    context.registerService("backoffice.features.data", featuresService);
+    context.registerService(CAPABILITIES_DATA_SERVICE, capabilitiesService);
+    context.registerService(PERMISSION_DATA_SERVICE, permissionsService);
+    context.registerService(FEATURE_DATA_SERVICE, featuresService);
 
     // 3. Register Harmonized Evaluator Plugin
-    context.registerService("backoffice.evaluator", {
+    context.registerService(EVALUATOR_SERVICE, {
         order: 200,
         evaluate: (userCapabilities, _parsedLicenses, hostState) => {
             const engineRef = context.getServiceReference(PLEXUS_ENGINE_SERVICE);
@@ -137,7 +147,7 @@ export default class Activator {
       }
     }).open();
 
-    context.trackService("backoffice.rules.data", {
+    context.trackService(RULES_DATA_SERVICE, {
       addingService: (ref) => {
         this.availablePrimitives = context.getService(ref).getStrategies() || [];
         // Available primitives are now centrally handled via poc.evaluator.engine in global-state

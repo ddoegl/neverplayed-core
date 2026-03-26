@@ -2,11 +2,6 @@
   "Bundle-SymbolicName": "backoffice.yaml.editor",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
-  "Require-Capability": [
-    "pandino.util.yaml;version=\"1.0.0\"",
-    "backoffice.shell;version=\"1.0.0\""
-  ],
-  "Provide-Capability": "backoffice.util.yaml.editor;version=\"1.0.0\"",
   "Configuration": {
     "flowType": "backoffice-flow",
     "channels": [

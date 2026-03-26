@@ -107,20 +107,36 @@ export default class Activator {
         const runtimeCampaigns = hostState.parsedCampaigns || [];
         
         if (!matcherEngine || !runtimeStrategies || !runtimeCampaigns || !userCapabilities) {
+          logger.warn(`BO Campaigns: Evaluator missing requirements. Engine: ${!!matcherEngine}, Strats: ${runtimeStrategies?.length}, Camps: ${runtimeCampaigns?.length}, Caps: ${userCapabilities?.length}`);
           return userCapabilities;
         }
 
-        return userCapabilities.map(entry => {
+        const strategiesMap = runtimeStrategies.reduce((acc, s) => {
+          if (s.id) acc[s.id] = s;
+          return acc;
+        }, {});
+
+        const result = userCapabilities.map(entry => {
           const { campaigns } = matcherEngine.evaluateDynamic({
               campaigns: runtimeCampaigns,
-              rules: { campaigns: runtimeStrategies }
-          }, entry.rawUser);
+              rules: { campaigns: strategiesMap }
+          }, { ...entry.rawUser, channels: entry.channels });
+
+          if (entry.user === '9238451' || entry.user === 'robby') {
+              logger.debug(`Evaluated ${entry.user} | Channels: ${JSON.stringify(entry.channels)} | Found Campaigns: ${campaigns?.length || 0}`);
+          }
+
+          if (campaigns && campaigns.length > 0) {
+              logger.debug(`BO Campaigns: Granted ${campaigns.length} campaigns to ${entry.user}`);
+          }
 
           return {
             ...entry,
             campaigns: [...(entry.campaigns || []), ...(campaigns || [])]
           };
         });
+
+        return result;
       }
     });
 

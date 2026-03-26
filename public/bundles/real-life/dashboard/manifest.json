@@ -6,11 +6,5 @@
   "Configuration": {
     "flowType": "system-flow",
     "channels": ["real-life"]
-  },
-  "Require-Capability": [
-    "osgi.service; filter:=\"(objectClass=infrastructure.persons.data)\"",
-    "osgi.service; filter:=\"(objectClass=infrastructure.companies.data)\"",
-    "osgi.service; filter:=\"(objectClass=backoffice.data.tenants)\""
-  ],
-  "Provide-Capability": "prototyper.flow.service;version=\"1.0.0\";flow.id=\"real-life\""
+  }
 }

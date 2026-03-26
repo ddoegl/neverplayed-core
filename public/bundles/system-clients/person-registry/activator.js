@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, YAML_SERVICE, YAML_EDITOR_SERVICE } from "shared-types";
+import { FLOW_SERVICE, YAML_SERVICE, YAML_EDITOR_SERVICE, PERSONS_SERVICE, PERSONS_PID } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -9,22 +9,22 @@ export default class Activator {
 
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
-    const PERSONS_PID = "pandino.persons.data";
+    const PERSONS_PID_VAL = PERSONS_PID;
 
-    let personsData = pm.load(PERSONS_PID);
+    let personsData = pm.load(PERSONS_PID_VAL);
     if (!personsData) {
       console.log("Person Registry: Seeding default persons data...");
       const res = await fetch("./bundles/system-clients/person-registry/data/persons.yaml");
       const text = await res.text();
       personsData = yaml.load(text) || [];
-      pm.store(PERSONS_PID, personsData);
+      pm.store(PERSONS_PID_VAL, personsData);
     }
 
     const dataService = {
       getPersons: () => personsData,
       setPersons: (newPersons) => {
         personsData = newPersons;
-        pm.store(PERSONS_PID, personsData);
+        pm.store(PERSONS_PID_VAL, personsData);
         if (globalThis.backofficeState) {
             globalThis.backofficeState.persons = personsData;
             globalThis.backofficeState.recompile?.();
@@ -33,7 +33,7 @@ export default class Activator {
     };
     
     // Provide data as its own service
-    context.registerService("infrastructure.persons.data", dataService);
+    context.registerService(PERSONS_SERVICE, dataService);
 
     const flowMetadata = {
       id: "person-registry",

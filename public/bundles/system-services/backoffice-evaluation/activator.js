@@ -14,7 +14,9 @@ import {
     PERSONS_SERVICE,
     SESSION_SERVICE,
     EVAL_DATA_SERVICE,
-    LOG_SERVICE
+    LIMES_SERVICE,
+    LOG_SERVICE,
+    LICENSES_PID
 } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
@@ -33,7 +35,7 @@ export default class Activator {
     const pm = context.getService(pmRef);
 
     const installRecompile = () => {
-      const hostState = globalThis.backofficeState || globalThis.businessPortalState;
+      const hostState = globalThis.backofficeState || globalThis.businessPortalState || globalThis.retailPortalState;
       if (!hostState) {
           setTimeout(installRecompile, 100);
           return;
@@ -58,71 +60,87 @@ export default class Activator {
             return ref ? context.getService(ref) : null;
         };
 
+        const allStates = [globalThis.backofficeState, globalThis.businessPortalState, globalThis.retailPortalState].filter(Boolean);
+
         const lSvc = getSvc(LICENSE_DATA_SERVICE);
-        const liveLicenses = (lSvc ? lSvc.getLicenses() : null) || hostState.parsedLicenses || pm.load("pandino.backoffice.licenses") || { LICENSES: [] };
+        const liveLicenses = (lSvc ? lSvc.getLicenses() : null) || hostState.parsedLicenses || pm.load(LICENSES_PID) || { LICENSES: [] };
         
         const allCustomers = [...new Set((liveLicenses.LICENSES || []).flatMap(l => l.customers || []))];
         
-        if (hostState.parsedLicenses && typeof hostState.parsedLicenses === 'object') {
-            Object.assign(hostState.parsedLicenses, liveLicenses);
-        } else {
-            hostState.parsedLicenses = liveLicenses;
-        }
+        allStates.forEach(st => {
+            if (st.parsedLicenses && typeof st.parsedLicenses === 'object') {
+                Object.assign(st.parsedLicenses, liveLicenses);
+            } else {
+                st.parsedLicenses = liveLicenses;
+            }
+        });
         
         if (!liveLicenses || !liveLicenses.LICENSES || liveLicenses.LICENSES.length === 0) {
-           hostState.evaluatedData = [];
+           allStates.forEach(st => st.evaluatedData = []);
            return;
         }
         
         const rSvc = getSvc(RULES_DATA_SERVICE);
         if (rSvc) {
             const rules = rSvc.getRules() || {};
-            if (hostState.parsedRuleStrategies && typeof hostState.parsedRuleStrategies === 'object') Object.assign(hostState.parsedRuleStrategies, rules);
-            else hostState.parsedRuleStrategies = rules;
+            allStates.forEach(st => {
+                if (st.parsedRuleStrategies && typeof st.parsedRuleStrategies === 'object') Object.assign(st.parsedRuleStrategies, rules);
+                else st.parsedRuleStrategies = rules;
+            });
         }
 
         const capSvc = getSvc(CAPABILITIES_DATA_SERVICE);
         if (capSvc) {
             const raw = capSvc.getStrategies();
-            hostState.parsedCapabilities = Array.isArray(raw) ? raw : (raw?.capabilities || []);
+            const caps = Array.isArray(raw) ? raw : (raw?.capabilities || []);
+            allStates.forEach(st => st.parsedCapabilities = caps);
         }
         
         const cSvc = getSvc(CAMPAIGNS_SERVICE);
         if (cSvc) {
             const camps = toArray(cSvc.getCampaigns());
             const strats = toArray(cSvc.getStrategies());
-            if (Array.isArray(hostState.parsedCampaigns)) hostState.parsedCampaigns.splice(0, hostState.parsedCampaigns.length, ...camps);
-            else hostState.parsedCampaigns = camps;
-            if (Array.isArray(hostState.parsedStrategies)) hostState.parsedStrategies.splice(0, hostState.parsedStrategies.length, ...strats);
-            else hostState.parsedStrategies = strats;
+            allStates.forEach(st => {
+                if (Array.isArray(st.parsedCampaigns)) st.parsedCampaigns.splice(0, st.parsedCampaigns.length, ...camps);
+                else st.parsedCampaigns = camps;
+                if (Array.isArray(st.parsedStrategies)) st.parsedStrategies.splice(0, st.parsedStrategies.length, ...strats);
+                else st.parsedStrategies = strats;
+            });
         }
 
         const tSvc = getSvc(TOPICS_DATA_SERVICE);
         if (tSvc) {
             const topics = toArray(tSvc.getTopics());
             const topicStrats = tSvc.getTopicStrategies() || {};
-            if (Array.isArray(hostState.parsedTopics)) hostState.parsedTopics.splice(0, hostState.parsedTopics.length, ...topics);
-            else hostState.parsedTopics = topics;
-            if (hostState.parsedTopicStrategies && typeof hostState.parsedTopicStrategies === 'object') Object.assign(hostState.parsedTopicStrategies, topicStrats);
-            else hostState.parsedTopicStrategies = topicStrats;
+            allStates.forEach(st => {
+                if (Array.isArray(st.parsedTopics)) st.parsedTopics.splice(0, st.parsedTopics.length, ...topics);
+                else st.parsedTopics = topics;
+                if (st.parsedTopicStrategies && typeof st.parsedTopicStrategies === 'object') Object.assign(st.parsedTopicStrategies, topicStrats);
+                else st.parsedTopicStrategies = topicStrats;
+            });
         }
 
         const bfSvc = getSvc(BIZ_FUNC_DATA_SERVICE);
         if (bfSvc) {
             const bf = toArray(bfSvc.getBusinessFunctions());
-            if (Array.isArray(hostState.parsedBusinessFunctions)) hostState.parsedBusinessFunctions.splice(0, hostState.parsedBusinessFunctions.length, ...bf);
-            else hostState.parsedBusinessFunctions = bf;
+            allStates.forEach(st => {
+                if (Array.isArray(st.parsedBusinessFunctions)) st.parsedBusinessFunctions.splice(0, st.parsedBusinessFunctions.length, ...bf);
+                else st.parsedBusinessFunctions = bf;
+            });
         }
 
         const compSvc = getSvc(COMPANIES_SERVICE);
         if (compSvc) {
-            hostState.registry = compSvc.getCompanies() || [];
+            const comps = compSvc.getCompanies() || [];
+            allStates.forEach(st => st.registry = comps);
         }
         
         // Find all Evaluator Services, sorted by their "order" property
         const evaluatorRefs = context.getServiceReferences(EVALUATOR_SERVICE) || [];
         const evaluators = evaluatorRefs.map(ref => context.getService(ref)).filter(svc => svc && typeof svc.evaluate === "function");
         evaluators.sort((a, b) => (a.order || 100) - (b.order || 100));
+        
+        logger.info(`Evaluation: Recompiling with ${evaluators.length} evaluators and ${ liveLicenses.LICENSES?.length || 0 } licenses.`);
         
         // Base user capabilities map
         let userCapabilities = [];
@@ -247,7 +265,7 @@ export default class Activator {
 
            const mappedRoles = (normalizedUser.activeBusinessFunction || []).map(bf => ({ [bf]: [] }));
 
-           return {
+           const entry = {
                user: uInfo.user.id || Object.keys(uInfo.user)[0],
                rawUser: normalizedUser,
                license: uInfo.license,
@@ -257,6 +275,12 @@ export default class Activator {
                campaigns: [],
                topics: []
            };
+           
+           if (entry.user === '9238451' || entry.user === 'robby') {
+               logger.debug(`Built entry for ${entry.user}: ` + JSON.stringify(entry));
+           }
+           
+           return entry;
         });
 
         // ensure current user is always evaluated (especially for superuser 'dd')
@@ -266,7 +290,7 @@ export default class Activator {
             const currentUserId = session.currentUser.id || session.currentUser.username;
             const alreadyPresent = userCapabilities.some(c => String(c.user) === String(currentUserId));
             if (!alreadyPresent) {
-                logger.info("Evaluation: Adding virtual entry for current user:", currentUserId);
+            if (session.currentUser) logger.info("Evaluation: Adding virtual entry for current user: " + currentUserId);
                 
                 
                 const roles = [...new Set([...(session.currentUser.roles || []), 'ADMINISTRATOR', 'LEGALREPS', 'DOSIGNEE'])];
@@ -298,10 +322,12 @@ export default class Activator {
         }
 
         // --- Reactive Update (Splice Pattern) ---
-        if (!Array.isArray(hostState.evaluatedData)) {
-            hostState.evaluatedData = Alpine.reactive([]);
-        }
-        hostState.evaluatedData.splice(0, hostState.evaluatedData.length, ...userCapabilities);
+        allStates.forEach(st => {
+            if (!Array.isArray(st.evaluatedData)) {
+                st.evaluatedData = Alpine.reactive([]);
+            }
+            st.evaluatedData.splice(0, st.evaluatedData.length, ...userCapabilities);
+        });
         
         const ddEntry = userCapabilities.find(u => u.user === 'dd');
         logger.debug(`Evaluation: Recompiled ${userCapabilities.length} users. 'dd' entry found: ${!!ddEntry} (DOs: ${ddEntry?.domainObjects?.length || 0})`);
@@ -385,7 +411,31 @@ export default class Activator {
           }
       };
       context.registerService(EVAL_DATA_SERVICE, evalDataService);
-        hostState.recompile(); // Populate data immediately
+      
+      // Dynamic synchronization: Recompile when critical data services appear
+      const criticalServices = [PLEXUS_ENGINE_SERVICE, LIMES_SERVICE, CAMPAIGNS_SERVICE, RULES_DATA_SERVICE, TOPICS_DATA_SERVICE, FELLOWS_SERVICE, BIZ_FUNC_DATA_SERVICE, EVALUATOR_SERVICE];
+      criticalServices.forEach(sId => {
+          context.trackService(`(objectClass=${sId})`, {
+              addingService: () => { 
+                logger.info(`Evaluation: Service added [${sId}], triggering recompile.`);
+                
+                // Ensure all portal states are synced
+                [globalThis.backofficeState, globalThis.businessPortalState, globalThis.retailPortalState].forEach(st => {
+                  if (st && typeof st.recompile === 'function') st.recompile();
+                });
+                
+                hostState.recompile?.(); 
+              },
+              removedService: () => {
+                [globalThis.backofficeState, globalThis.businessPortalState, globalThis.retailPortalState].forEach(st => {
+                  if (st && typeof st.recompile === 'function') st.recompile();
+                });
+                hostState.recompile?.();
+              }
+          }).open();
+      });
+
+      hostState.recompile(); // Populate data immediately
     };
 
     installRecompile();

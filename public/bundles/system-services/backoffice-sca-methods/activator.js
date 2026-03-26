@@ -1,4 +1,4 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE } from "shared-types";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, SCA_METHODS_PID, SCA_METHODS_SERVICE } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -8,8 +8,6 @@ export default class Activator {
 
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
-
-    const SCA_METHODS_PID = "pandino.backoffice.sca-methods";
 
     // Load/Seed Data for SCA Methods
     let scaMethods = pm.load(SCA_METHODS_PID);
@@ -47,7 +45,7 @@ export default class Activator {
       }
     };
 
-    context.registerService("backoffice.sca.methods", dataService);
+    context.registerService(SCA_METHODS_SERVICE, dataService);
 
     context.registerService(BO_EXTENSION_SERVICE, {
       id: "scaMethods",

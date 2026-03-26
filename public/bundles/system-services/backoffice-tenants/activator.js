@@ -1,4 +1,4 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, TENANT_DATA_SERVICE } from "shared-types";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, TENANT_DATA_SERVICE, PERSONS_SERVICE, COMPANIES_SERVICE, TENANTS_PID } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -9,16 +9,16 @@ export default class Activator {
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
 
-    const compRef = context.getServiceReference("infrastructure.companies.data");
+    const compRef = context.getServiceReference(COMPANIES_SERVICE);
     const _compSvc = context.getService(compRef);
 
-    const persRef = context.getServiceReference("infrastructure.persons.data");
+    const persRef = context.getServiceReference(PERSONS_SERVICE);
     const _persSvc = context.getService(persRef);
 
-    const TENANTS_PID = "pandino.backoffice.tenants";
+    const TENANTS_PID_VAL = TENANTS_PID;
 
     // Load/Seed Data
-    let tenants = pm.load(TENANTS_PID);
+    let tenants = pm.load(TENANTS_PID_VAL);
     if (!tenants) {
       console.log("BO Tenants: Seeding default data...");
       const res = await fetch("./bundles/system-services/backoffice-tenants/data/tenants.yaml");
@@ -43,7 +43,7 @@ export default class Activator {
       getTenants: () => tenants,
       setTenants: (newData) => {
         tenants = newData;
-        pm.store(TENANTS_PID, tenants);
+        pm.store(TENANTS_PID_VAL, tenants);
         if (globalThis.backofficeState) {
           const state = globalThis.backofficeState;
           if (state.parsedTenants && typeof state.parsedTenants === 'object') {

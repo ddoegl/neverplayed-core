@@ -44,7 +44,8 @@ export default class Activator {
           get currentUserCap() {
             const user = this.currentUser;
             if (!user) return null;
-            const evalData = (globalThis.backofficeState?.evaluatedData) || [];
+            const allStates = [globalThis.retailPortalState, globalThis.backofficeState].filter(Boolean);
+            const evalData = allStates.flatMap(s => s.evaluatedData || []);
             const userId = user.id || user.alias || user;
             return evalData.find(c => String(c.user) === String(userId) || (c.rawUser && c.rawUser.alias === user.alias)) || null;
           },

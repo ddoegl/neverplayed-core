@@ -1,4 +1,22 @@
-import { SELECTION_SERVICE, INVITATION_SERVICE, FELLOWS_SERVICE, FLOW_SERVICE, SESSION_SERVICE, YAML_SERVICE, TENANT_DATA_SERVICE, PERSONS_SERVICE, LICENSE_DATA_SERVICE, CASE_SERVICE, INVITATION_TYPE_REGISTRY } from "shared-types";
+import { 
+    SELECTION_SERVICE, 
+    INVITATION_SERVICE, 
+    FELLOWS_SERVICE, 
+    FLOW_SERVICE, 
+    SESSION_SERVICE, 
+    YAML_SERVICE, 
+    TENANT_DATA_SERVICE, 
+    PERSONS_SERVICE, 
+    LICENSE_DATA_SERVICE, 
+    CASE_SERVICE, 
+    INVITATION_TYPE_REGISTRY, 
+    INVITATIONS_PID,
+    EVENT_ADMIN_SERVICE,
+    EVENT_FACTORY_SERVICE,
+    EVENT_HANDLER_INTERFACE,
+    EVENT_TOPIC,
+    CASE_UPDATED_TOPIC
+} from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 import Handlebars from "https://esm.sh/handlebars@4.7.8";
@@ -45,8 +63,6 @@ export default class Activator {
 
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
-
-    const INVITATIONS_PID = "pandino.backoffice.invitations";
     
     // Load/Seed Data
     let data = pm.load(INVITATIONS_PID);
@@ -266,7 +282,7 @@ export default class Activator {
     context.registerService(INVITATION_SERVICE, invitationService);
     
     // Listen for case updates to conclude binding
-    context.registerService('@pandino/event-admin/EventHandler', {
+    context.registerService(EVENT_HANDLER_INTERFACE, {
         handleEvent: (event) => {
             const evData = event.getProperty('event.data') || event.getProperty('data');
             if (evData?.action === 'signed') {
@@ -277,7 +293,7 @@ export default class Activator {
                 }
             }
         }
-    }, { 'event.topics': ['backoffice/cases/updated'] });
+    }, { [EVENT_TOPIC]: [CASE_UPDATED_TOPIC] });
     
     let state = null;
 
@@ -645,13 +661,13 @@ export default class Activator {
             removedService: () => { state.tenantDataService = null; }
         }).open();
 
-        context.registerService('@pandino/event-admin/EventHandler', {
+        context.registerService(EVENT_HANDLER_INTERFACE, {
             handleEvent: (_event) => {
                 if (targetElement.isConnected) {
                     state.updateTrigger++;
                 }
             }
-        }, { 'event.topics': ['backoffice/invitations/*'] });
+        }, { [EVENT_TOPIC]: ['backoffice/invitations/*'] });
 
         targetElement._x_dataStack = [state];
         
@@ -671,8 +687,8 @@ export default class Activator {
 
   publishEvent(context, topic, data) {
     console.log(`Invitation Service: publishEvent() called for topic: ${topic}`);
-    const eventAdminRef = context.getServiceReference('@pandino/event-admin/EventAdmin');
-    const eventFactoryRef = context.getServiceReference('@pandino/event-admin/EventFactory');
+    const eventAdminRef = context.getServiceReference(EVENT_ADMIN_SERVICE);
+    const eventFactoryRef = context.getServiceReference(EVENT_FACTORY_SERVICE);
     
     if (eventAdminRef && eventFactoryRef) {
        const eventAdmin = context.getService(eventAdminRef);

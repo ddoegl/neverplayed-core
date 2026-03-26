@@ -1,4 +1,4 @@
-import { YAML_SERVICE, FELLOWS_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, COMPANIES_SERVICE } from "shared-types";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, FELLOWS_SERVICE, COMPANIES_SERVICE, FELLOWS_PID, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, EVENT_HANDLER_INTERFACE, EVENT_TOPIC } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -9,17 +9,18 @@ export default class Activator {
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
 
-    const FELLOWS_PID = "pandino.backoffice.fellows";
+    const FELLOWS_PID_VAL = FELLOWS_PID;
     let data = { FELLOWS: [], AUTHORIZATIONS: [] };
 
     const dataService = {
       getData: () => data,
       setData: (newData) => {
         data = newData;
-        pm.store(FELLOWS_PID, data);
+        pm.store(FELLOWS_PID_VAL, data);
         globalThis.dispatchEvent(new CustomEvent('fellows-updated', { detail: { action: 'setData' } }));
       },
       getFellows: (customerId) => {
+        if (!customerId) return data.FELLOWS || [];
         return (data.FELLOWS || []).filter(f => f.fellowOf === customerId);
       },
       addFellow: (fellow) => {
@@ -36,10 +37,10 @@ export default class Activator {
         delete normalized.customerId;
 
         data.FELLOWS.push(normalized);
-        pm.store(FELLOWS_PID, data);
+        pm.store(FELLOWS_PID_VAL, data);
 
-        const eventAdminRef = context.getServiceReference('@pandino/event-admin/EventAdmin');
-        const eventFactoryRef = context.getServiceReference('@pandino/event-admin/EventFactory');
+        const eventAdminRef = context.getServiceReference(EVENT_ADMIN_SERVICE);
+        const eventFactoryRef = context.getServiceReference(EVENT_FACTORY_SERVICE);
         if (eventAdminRef && eventFactoryRef) {
            const eventAdmin = context.getService(eventAdminRef);
            const eventFactory = context.getService(eventFactoryRef);
@@ -56,7 +57,7 @@ export default class Activator {
         const seedFellows = Array.isArray(seedYaml.FELLOWS) ? seedYaml.FELLOWS : [];
 
         // 2. Persisted Data
-        const persisted = pm.load(FELLOWS_PID) || { FELLOWS: [], AUTHORIZATIONS: [] };
+        const persisted = pm.load(FELLOWS_PID_VAL) || { FELLOWS: [], AUTHORIZATIONS: [] };
         
         // 3. Registry Data
         const compsRef = context.getServiceReference(COMPANIES_SERVICE);
@@ -103,7 +104,7 @@ export default class Activator {
             FELLOWS: mergedFellows,
             AUTHORIZATIONS: seedYaml.AUTHORIZATIONS || persisted.AUTHORIZATIONS || []
         };
-        pm.store(FELLOWS_PID, data);
+        pm.store(FELLOWS_PID_VAL, data);
 
         // Bridge to host states for global availability
         [globalThis.backofficeState, globalThis.businessPortalState].forEach(state => {
@@ -129,8 +130,8 @@ export default class Activator {
             }
         }
     };
-    context.registerService('@pandino/event-admin/EventHandler', eventHandlerObj, {
-        'event.topics': ['infrastructure/companies/updated']
+    context.registerService(EVENT_HANDLER_INTERFACE, eventHandlerObj, {
+        [EVENT_TOPIC]: ['infrastructure/companies/updated']
     });
 
     // Register Extension Service

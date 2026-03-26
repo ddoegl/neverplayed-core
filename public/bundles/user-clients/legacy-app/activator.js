@@ -2,7 +2,7 @@ import { FLOW_SERVICE } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
-  async start(context) {
+  start(context) {
     const flowMetadata = {
       id: "legacy-app",
       title: "Legacy Token",

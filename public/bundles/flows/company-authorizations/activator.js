@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SELECTION_SERVICE, LICENSE_DATA_SERVICE, FELLOWS_SERVICE, TENANT_DATA_SERVICE, INVITATION_SERVICE, PERSONS_SERVICE, COMPANIES_SERVICE, CASE_SERVICE, SESSION_SERVICE } from "shared-types";
+import { FLOW_SERVICE, SELECTION_SERVICE, LICENSE_DATA_SERVICE, FELLOWS_SERVICE, TENANT_DATA_SERVICE, INVITATION_SERVICE, PERSONS_SERVICE, COMPANIES_SERVICE, CASE_SERVICE, SESSION_SERVICE, BIZ_FUNC_DATA_SERVICE, EVENT_HANDLER_INTERFACE, EVENT_TOPIC } from "shared-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -619,7 +619,7 @@ export default class Activator {
             removedService: () => { state.tenantDataService = null; }
         }).open();
 
-        context.trackService(`(objectClass=backoffice.business.functions)`, {
+        context.trackService(`(objectClass=${BIZ_FUNC_DATA_SERVICE})`, {
             addingService: (ref) => { state.businessFunctionsService = context.getService(ref); },
             removedService: () => { state.businessFunctionsService = null; }
         }).open();
@@ -664,9 +664,8 @@ export default class Activator {
             }
         };
         console.log("Authorizations Dashboard: Registering EventHandler...");
-        const _eventReg = context.getServiceReference('@pandino/event-admin/EventHandler') ? "ALREADY EXISTS?" : "NEW REG";
-        context.registerService('@pandino/event-admin/EventHandler', eventHandlerObj, {
-            'event.topics': [
+        context.registerService(EVENT_HANDLER_INTERFACE, eventHandlerObj, {
+            [EVENT_TOPIC]: [
                 'backoffice/fellows/*',
                 'backoffice/invitations/*'
             ]

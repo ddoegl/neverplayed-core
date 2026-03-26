@@ -1,14 +1,7 @@
 {
-  "Bundle-SymbolicName": "backoffice.tenants",
+  "Bundle-SymbolicName": "@neverplayed/backoffice-tenants",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
-  "Require-Capability": [
-    "pandino.util.yaml;version=\"1.0.0\"",
-    "backoffice.shell;version=\"1.0.0\"",
-    "osgi.service; filter:=\"(objectClass=infrastructure.companies.data)\"",
-    "osgi.service; filter:=\"(objectClass=infrastructure.persons.data)\""
-  ],
-  "Provide-Capability": "backoffice.data.tenants;version=\"1.0.0\"",
   "Configuration": {
     "flowType": "backoffice-flow",
     "channels": [
