@@ -1,10 +1,20 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, DOMAIN_OBJECT_REGISTRY_SERVICE, LIMES_SERVICE, ATOMIC_SPEC_INGESTION_SERVICE } from "../../../shared-types.js";
+import { 
+    YAML_SERVICE, 
+    BO_EXTENSION_SERVICE, 
+    YAML_EDITOR_SERVICE, 
+    DOMAIN_OBJECT_REGISTRY_SERVICE, 
+    LIMES_SERVICE, 
+    ATOMIC_SPEC_INGESTION_SERVICE,
+    EVALUATOR_SERVICE,
+    DOMAIN_STRATEGY_SERVICE,
+    DO_STRATEGIES_PID,
+    DO_INSTANCES_PID
+} from "../../../shared-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
   start(context) {
-    const STRATEGIES_PID = "pandino.backoffice.do.strategies";
-    const INSTANCES_PID = "pandino.backoffice.do.instances";
+    // Using constants from shared-types.js
 
     // Helper for resilient service retrieval
     const getSvc = (id) => {
@@ -14,7 +24,7 @@ export default class Activator {
 
     // 1. Register Evaluator Service IMMEDIATELY (Pattern Alignment)
     // This ensure the property "domainObjects" is added at the right time in the eval chain
-    context.registerService("backoffice.evaluator", {
+    context.registerService(EVALUATOR_SERVICE, {
         order: 500, // Run after roles and capabilities
         evaluate: (userCapabilities, _parsedLicenses, _hostState) => {
             const limes = getSvc(LIMES_SERVICE);
@@ -25,8 +35,8 @@ export default class Activator {
                 return userCapabilities;
             }
 
-            const instances = pm.load(INSTANCES_PID) || {};
-            const rawStrategies = pm.load(STRATEGIES_PID) || {};
+            const instances = pm.load(DO_INSTANCES_PID) || {};
+            const rawStrategies = pm.load(DO_STRATEGIES_PID) || {};
             const strategiesMap = Object.values(rawStrategies).reduce((acc, s) => {
                 acc[s.id] = s;
                 return acc;
@@ -67,62 +77,62 @@ export default class Activator {
         const resStrats = await fetch("./bundles/system-services/backoffice-do-registry/data/strategies.yaml");
         const stratsText = await resStrats.text();
         const yamlStrats = yaml.load(stratsText) || {};
-        pm.store(STRATEGIES_PID, yamlStrats);
+        pm.store(DO_STRATEGIES_PID, yamlStrats);
 
         // Intialize empty Instances if null
-        if (!pm.load(INSTANCES_PID)) {
-            pm.store(INSTANCES_PID, {});
+        if (!pm.load(DO_INSTANCES_PID)) {
+            pm.store(DO_INSTANCES_PID, {});
         }
 
         const actionHandlers = [];
         const systemSpecs = [];
 
         const registryService = {
-            getStrategies: () => pm.load(STRATEGIES_PID),
-            getInstances: () => pm.load(INSTANCES_PID),
+            getStrategies: () => pm.load(DO_STRATEGIES_PID),
+            getInstances: () => pm.load(DO_INSTANCES_PID),
             
             setStrategies: (newStrats) => {
-                pm.store(STRATEGIES_PID, newStrats);
+                pm.store(DO_STRATEGIES_PID, newStrats);
                 syncWithHost();
                 if (globalThis.backofficeState) globalThis.backofficeState.recompile?.();
             },
             
             setInstances: (newInst) => {
-                pm.store(INSTANCES_PID, newInst);
+                pm.store(DO_INSTANCES_PID, newInst);
                 syncWithHost();
                 if (globalThis.backofficeState) globalThis.backofficeState.recompile?.();
             },
 
             getInstance: (id) => {
-                const insts = pm.load(INSTANCES_PID) || {};
+                const insts = pm.load(DO_INSTANCES_PID) || {};
                 const inst = insts[id];
                 console.log(`DO Registry: getInstance(${id}) -> Found: ${!!inst} (Index size: ${Object.keys(insts).length})`);
                 return inst;
             },
 
             getStrategy: (id) => {
-                const strats = pm.load(STRATEGIES_PID);
+                const strats = pm.load(DO_STRATEGIES_PID);
                 return Object.values(strats || {}).find(s => s.id === id);
             },
 
             addStrategy: (strategy) => {
-                const current = pm.load(STRATEGIES_PID) || {};
+                const current = pm.load(DO_STRATEGIES_PID) || {};
                 current[strategy.id] = strategy;
                 registryService.setStrategies(current);
             },
 
             addInstance: (instance) => {
-                const current = pm.load(INSTANCES_PID) || {};
+                const current = pm.load(DO_INSTANCES_PID) || {};
                 current[instance.id] = instance;
-                pm.store(INSTANCES_PID, current); // PERIST!
+                pm.store(DO_INSTANCES_PID, current); // PERIST!
                 registryService.setInstances(current);
             },
             
             removeInstance: (id) => {
-                const current = pm.load(INSTANCES_PID) || {};
+                const current = pm.load(DO_INSTANCES_PID) || {};
                 if (current[id]) {
                     delete current[id];
-                    pm.store(INSTANCES_PID, current);
+                    pm.store(DO_INSTANCES_PID, current);
                     registryService.setInstances(current);
                 }
             },
@@ -174,8 +184,8 @@ export default class Activator {
 
             states.forEach(s => {
                 s.domainObjectSpecs = mergedBlueprints;
-                s.domainObjectStrategies = pm.load(STRATEGIES_PID) || {};
-                s.domainObjectInstances = pm.load(INSTANCES_PID) || {};
+                s.domainObjectStrategies = pm.load(DO_STRATEGIES_PID) || {};
+                s.domainObjectInstances = pm.load(DO_INSTANCES_PID) || {};
                 
                 // Legacy compatibility
                 s.parsedDOStrategies = s.domainObjectStrategies;
@@ -197,7 +207,7 @@ export default class Activator {
                         const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
                         
                         // Look up strategy from OSGi
-                        const stratRefs = context.getServiceReferences("prototyper.domain.strategy") || [];
+                        const stratRefs = context.getServiceReferences(DOMAIN_STRATEGY_SERVICE) || [];
                         let strategySvc = null;
                         for (const ref of stratRefs) {
                             const svc = context.getService(ref);
@@ -230,7 +240,7 @@ export default class Activator {
         // 3. REGISTER DEFAULT HANDLERS
         registryService.registerActionHandler({
             id: 'view',
-            match: (instance) => true,
+            match: (_instance) => true,
             execute: (instance, host) => {
                 console.log(`DO Registry: [SERVICE] Handling action view for instance ${instance.id}`);
                 const blueprint = (host.domainObjectSpecs || []).find(s => s.id === instance.blueprintId);
@@ -254,13 +264,13 @@ export default class Activator {
 
         registryService.registerActionHandler({
             id: 'delete',
-            match: (instance) => true,
+            match: (_instance) => true,
             execute: (instance, host) => {
                 console.log(`DO Registry: [SERVICE] Handling action delete for instance ${instance.id}`);
                 const blueprint = (host.domainObjectSpecs || []).find(s => s.id === instance.blueprintId);
                 const strategyId = instance.strategyId || blueprint?.domainObject?.strategyId || "LOCAL_STRATEGY";
                 
-                const stratRefs = context.getServiceReferences("prototyper.domain.strategy") || [];
+                const stratRefs = context.getServiceReferences(DOMAIN_STRATEGY_SERVICE) || [];
                 let strategySvc = null;
                 for (const ref of stratRefs) {
                     const svc = context.getService(ref);

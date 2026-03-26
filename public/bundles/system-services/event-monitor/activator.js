@@ -1,4 +1,10 @@
-import { CONFIG_ADMIN_SERVICE, FLOW_SERVICE } from "../../../shared-types.js";
+import { 
+    CONFIG_ADMIN_SERVICE, 
+    FLOW_SERVICE, 
+    LOG_SERVICE, 
+    EVENT_HANDLER_INTERFACE,
+    EVENT_TOPIC
+} from "../../../shared-types.js";
 
 export default class Activator {
     start(context) {
@@ -10,15 +16,16 @@ export default class Activator {
             const properties = conf?.getProperties() || {};
             if (properties.level) {
                 verbosity = properties.level;
-                console.log(`[EventMonitor] Verbosity (level) updated to: ${verbosity}`);
+                if (logger) logger.info(`Verbosity updated to: ${verbosity}`);
             }
         };
 
         // Track LogAdmin
-        context.trackService("(objectClass=@pandino/log-service)", {
+        context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => { 
-                logger = context.getService(ref);
-                console.log("[EventMonitor] LogService joined");
+                const logAdmin = context.getService(ref);
+                logger = logAdmin.getLogger("event-monitor");
+                logger.info("Log Service connected");
             },
             removedService: (ref) => { logger = null; context.ungetService(ref); }
         }).open();
@@ -61,7 +68,7 @@ export default class Activator {
                     }, 2);
                 };
                 
-                const logMsg = `[EVENT] Topic: ${topic} | Data: ${safeJson(data)}`;
+                const logMsg = `Topic: ${topic} | Data: ${safeJson(data)}`;
 
                 if (logger) {
                     if (verbosity === "DEBUG") {
@@ -70,13 +77,13 @@ export default class Activator {
                         logger.info(logMsg);
                     }
                 } else {
-                    console.log(`[EventMonitor][FALLBACK][${verbosity}] ${logMsg}`);
+                    console.warn(`[EventMonitor][FALLBACK] ${logMsg}`);
                 }
             }
         };
 
-        context.registerService("@pandino/event-admin/EventHandler", eventHandler, {
-            "event.topics": ["backoffice/invitations/*", "backoffice/cases/*"]
+        context.registerService(EVENT_HANDLER_INTERFACE, eventHandler, {
+            [EVENT_TOPIC]: ["backoffice/invitations/*", "backoffice/cases/*"]
         });
 
         // Register as a FLOW_SERVICE so it can be governed
@@ -86,12 +93,13 @@ export default class Activator {
             icon: "fas fa-terminal",
             launch: (target) => {
                 target.innerHTML = `
-                    <div class="p-8 bg-slate-900 text-green-400 font-mono h-full overflow-auto">
-                        <div class="mb-4 border-b border-green-900/50 pb-2 flex justify-between items-center">
+                    <div class="p-8 bg-slate-900 text-green-400 font-mono h-full overflow-auto text-xs">
+                        <div class="mb-4 border-b border-green-900/50 pb-2 flex justify-between items-center text-xs uppercase tracking-widest font-bold">
                             <span>[SYSTEM] Event Monitor active...</span>
+                            <span class="text-[9px] opacity-50">Verbosity: ${verbosity}</span>
                         </div>
-                        <div id="event-log-monitor">
-                             Waiting for events... (Verbosity: ${verbosity})
+                        <div id="event-log-monitor" class="space-y-1">
+                             Waiting for events...
                         </div>
                     </div>
                 `;
@@ -99,7 +107,7 @@ export default class Activator {
         };
         context.registerService(FLOW_SERVICE, flowMetadata, { "flow.id": "event-monitor" });
 
-        console.log("[EventMonitor] Started and subscribed to backoffice/invitations/*");
+        if (logger) logger.info("Event Monitor started and subscribed to topics");
     }
 
     async stop(_context) {

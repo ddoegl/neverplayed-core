@@ -9,8 +9,7 @@
     "topics": ["backoffice/invitations/*"]
   },
   "Require-Capability": [
-    "osgi.service; filter=\"(objectClass=pandino.persistence.manager)\"",
-    "osgi.service; filter=\"(objectClass=prototyper.config.admin)\"",
+    "osgi.service; filter=\"(objectClass=pandino.config.admin.ConfigAdmin)\"",
     "osgi.service; filter=\"(objectClass=@pandino/log-service)\""
   ]
 }

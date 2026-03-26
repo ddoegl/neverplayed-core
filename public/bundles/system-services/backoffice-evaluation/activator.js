@@ -1,8 +1,34 @@
-import { BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, PLEXUS_ENGINE_SERVICE } from "../../../shared-types.js";
+import { 
+    BO_EXTENSION_SERVICE, 
+    YAML_EDITOR_SERVICE, 
+    PLEXUS_ENGINE_SERVICE,
+    LICENSE_DATA_SERVICE,
+    RULES_DATA_SERVICE,
+    CAPABILITIES_DATA_SERVICE,
+    CAMPAIGNS_SERVICE,
+    TOPICS_DATA_SERVICE,
+    BIZ_FUNC_DATA_SERVICE,
+    COMPANIES_SERVICE,
+    EVALUATOR_SERVICE,
+    FELLOWS_SERVICE,
+    PERSONS_SERVICE,
+    SESSION_SERVICE,
+    EVAL_DATA_SERVICE,
+    LOG_SERVICE
+} from "../../../shared-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
   start(context) {
+    let logger = console; // Fallback
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger("backoffice-evaluation");
+            logger.info("BO Evaluation: Bundle started.");
+        },
+        removedService: () => { logger = console; }
+    }).open();
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
 
@@ -32,7 +58,7 @@ export default class Activator {
             return ref ? context.getService(ref) : null;
         };
 
-        const lSvc = getSvc("backoffice.licenses.data");
+        const lSvc = getSvc(LICENSE_DATA_SERVICE);
         const liveLicenses = (lSvc ? lSvc.getLicenses() : null) || hostState.parsedLicenses || pm.load("pandino.backoffice.licenses") || { LICENSES: [] };
         
         const allCustomers = [...new Set((liveLicenses.LICENSES || []).flatMap(l => l.customers || []))];
@@ -48,20 +74,20 @@ export default class Activator {
            return;
         }
         
-        const rSvc = getSvc("backoffice.rules.data");
+        const rSvc = getSvc(RULES_DATA_SERVICE);
         if (rSvc) {
             const rules = rSvc.getRules() || {};
             if (hostState.parsedRuleStrategies && typeof hostState.parsedRuleStrategies === 'object') Object.assign(hostState.parsedRuleStrategies, rules);
             else hostState.parsedRuleStrategies = rules;
         }
 
-        const capSvc = getSvc("backoffice.capabilities.data");
+        const capSvc = getSvc(CAPABILITIES_DATA_SERVICE);
         if (capSvc) {
             const raw = capSvc.getStrategies();
             hostState.parsedCapabilities = Array.isArray(raw) ? raw : (raw?.capabilities || []);
         }
         
-        const cSvc = getSvc("backoffice.campaigns.data");
+        const cSvc = getSvc(CAMPAIGNS_SERVICE);
         if (cSvc) {
             const camps = toArray(cSvc.getCampaigns());
             const strats = toArray(cSvc.getStrategies());
@@ -71,7 +97,7 @@ export default class Activator {
             else hostState.parsedStrategies = strats;
         }
 
-        const tSvc = getSvc("backoffice.topics.data");
+        const tSvc = getSvc(TOPICS_DATA_SERVICE);
         if (tSvc) {
             const topics = toArray(tSvc.getTopics());
             const topicStrats = tSvc.getTopicStrategies() || {};
@@ -81,20 +107,20 @@ export default class Activator {
             else hostState.parsedTopicStrategies = topicStrats;
         }
 
-        const bfSvc = getSvc("backoffice.business.functions");
+        const bfSvc = getSvc(BIZ_FUNC_DATA_SERVICE);
         if (bfSvc) {
             const bf = toArray(bfSvc.getBusinessFunctions());
             if (Array.isArray(hostState.parsedBusinessFunctions)) hostState.parsedBusinessFunctions.splice(0, hostState.parsedBusinessFunctions.length, ...bf);
             else hostState.parsedBusinessFunctions = bf;
         }
 
-        const compSvc = getSvc("infrastructure.companies.data");
+        const compSvc = getSvc(COMPANIES_SERVICE);
         if (compSvc) {
             hostState.registry = compSvc.getCompanies() || [];
         }
         
         // Find all Evaluator Services, sorted by their "order" property
-        const evaluatorRefs = context.getServiceReferences("backoffice.evaluator") || [];
+        const evaluatorRefs = context.getServiceReferences(EVALUATOR_SERVICE) || [];
         const evaluators = evaluatorRefs.map(ref => context.getService(ref)).filter(svc => svc && typeof svc.evaluate === "function");
         evaluators.sort((a, b) => (a.order || 100) - (b.order || 100));
         
@@ -108,8 +134,8 @@ export default class Activator {
         });
         
         // Merge authorizations and roles while keeping master objects pristine
-        const fSvc = getSvc("backoffice.fellows.data");
-        const pSvc = getSvc("infrastructure.persons.data");
+        const fSvc = getSvc(FELLOWS_SERVICE);
+        const pSvc = getSvc(PERSONS_SERVICE);
         
         const evaluatedUsers = allUsers.map(uInfo => {
             // Create a runtime projection of the user to avoid "staining" the license data
@@ -234,13 +260,13 @@ export default class Activator {
         });
 
         // ensure current user is always evaluated (especially for superuser 'dd')
-        const sessionRef = context.getServiceReference("prototyper.session.service");
+        const sessionRef = context.getServiceReference(SESSION_SERVICE);
         const session = sessionRef ? context.getService(sessionRef) : null;
         if (session && session.currentUser) {
             const currentUserId = session.currentUser.id || session.currentUser.username;
             const alreadyPresent = userCapabilities.some(c => String(c.user) === String(currentUserId));
             if (!alreadyPresent) {
-                console.log("Evaluation: Adding virtual entry for current user:", currentUserId);
+                logger.info("Evaluation: Adding virtual entry for current user:", currentUserId);
                 
                 
                 const roles = [...new Set([...(session.currentUser.roles || []), 'ADMINISTRATOR', 'LEGALREPS', 'DOSIGNEE'])];
@@ -278,7 +304,7 @@ export default class Activator {
         hostState.evaluatedData.splice(0, hostState.evaluatedData.length, ...userCapabilities);
         
         const ddEntry = userCapabilities.find(u => u.user === 'dd');
-        console.debug(`Evaluation: Recompiled ${userCapabilities.length} users. 'dd' entry found: ${!!ddEntry} (DOs: ${ddEntry?.domainObjects?.length || 0})`);
+        logger.debug(`Evaluation: Recompiled ${userCapabilities.length} users. 'dd' entry found: ${!!ddEntry} (DOs: ${ddEntry?.domainObjects?.length || 0})`);
         
         if (hostState.selectedUserIndex) {
             const licList = liveLicenses.LICENSES || [];
@@ -343,7 +369,7 @@ export default class Activator {
                   const normalized = req.toLowerCase().replace(/:/g, '_');
                   // 0. Strict Bootstrap Restriction: Never allow User Management
                   if (normalized === 'usermanagement_manage_allowed' && entry.rawUser?.scaStrategy === 'bootstrap') {
-                      console.warn("Evaluation: Blocking User Management for Bootstrap User:", userId);
+                      logger.warn("Evaluation: Blocking User Management for Bootstrap User:", userId);
                       return false;
                   }
                   // 1. Check pre-calculated grantedKeys first
@@ -358,7 +384,7 @@ export default class Activator {
               });
           }
       };
-      context.registerService("backoffice.evaluator.data", evalDataService);
+      context.registerService(EVAL_DATA_SERVICE, evalDataService);
         hostState.recompile(); // Populate data immediately
     };
 
@@ -370,7 +396,7 @@ export default class Activator {
         if (hostState && typeof hostState.recompile === 'function') {
             Alpine.effect(() => {
                 const lic = hostState.currentLicense;
-                console.debug("Evaluation: Selection changed detected in hostState:", lic);
+                logger.debug("Evaluation: Selection changed detected in hostState:", lic);
                 hostState.recompile();
             });
         }

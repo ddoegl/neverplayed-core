@@ -113,15 +113,18 @@ launch: (async (targetElement) => {
 
 ---
 
-## 3. Global Service Discovery via `shared-types.js`
+## 3. Mandatory Architectural Constant Compliance
 
-To prevent "magic string" fragmentation and runtime `null` pointer exceptions,
-all OSGi service interfaces and flow IDs are centralized in
-`osgi/shared-types.js`.
+To prevent "magic string" fragmentation, broken service trackers, and runtime `null` pointer exceptions, **all** OSGi service interfaces, configuration PIDs, and global Event Topics **must** be centralized in `public/shared-types.js`.
 
-- **Registration**: Always use the constant from `shared-types.js`.
-- **Consumption**: Always use a getter/helper in your Activator that can
-  re-query the `BundleContext` if the local reference is null (Lazy Loading).
+### The Compliance Rule
+1. **Registration**: Never hardcode a service name in `registerService`. Import and use the constant.
+2. **Consumption/Tracking**: Use the constant in LDAP filters (e.g., `(objectClass=${LOG_SERVICE})`) and when retrieving services.
+3. **Alpine Injections**: When injecting constants into reactive Alpine strings (e.g., in `x-effect`), use template literals: `globalThis.Services['${LOG_SERVICE}'].info(...)`.
+
+### Benefits
+- **Refactor Safety**: Changing a service ID in one place updates the entire system.
+- **Discovery Integrity**: Prevents subtle typos from breaking service trackers or event listeners.
 
 ---
 
@@ -714,33 +717,45 @@ registry.registerAction({
 
 ---
 
-## 19. Standardized Logging & Dynamic Filtering
+## 19. Standardized Logging & Balanced Observability
 
 To maintain a clean console while allowing for deep debugging, all bundles must move away from `console.log` and adopt the standardized `@pandino/log-service`.
 
 ### The Pattern
-
 Bundles track the `LOG_SERVICE` and retrieve a tagged logger instance specifically for their symbolic name.
 
-**Example: Standard Activator Logging**
+### The "Balanced Zero-Console" Strategy (Recommended)
+While the goal is a silent console ("Zero-Console") for foundation noise, we must avoid "flying blind" during the earliest system initialization phases.
 
+**Pattern: Safe Early-Boot Fallback**
 ```javascript
-// In addingService(ref):
-this.logger = context.getService(ref).getLogger("my.bundle.bsn");
+// Attempt to get a logger early (fallback to console for boot observability)
+let logger = console; 
+const logRef = context.getServiceReference(LOG_SERVICE);
+if (logRef) {
+    logger = context.getService(logRef).getLogger("my.bundle.id");
+}
+logger.info("Initializing bundle...");
+```
 
-// Usage:
-this.logger.debug("Processing entity...", { id: 123 });
+**Pattern: Lazy Getter Fallback**
+```javascript
+get logger() {
+    if (this._logger) return this._logger; // Set via ServiceTracker
+    if (globalThis.Services?.[LOG_SERVICE]) {
+        return globalThis.Services[LOG_SERVICE].getLogger("my.bundle.id");
+    }
+    return console; // Fallback for early reactive triggers
+}
 ```
 
 ### Dynamic Configuration
-
 The logging infrastructure is integrated with `ConfigAdmin`. Log levels can be adjusted in real-time via:
 1. **Manifest**: `Configuration: { "log-level": "WARN" }` for defaults.
 2. **Universe Settings UI**: Using the "Log Level" column dropdown.
 3. **Shell CLI**: `/loglevel DEBUG [ids]`.
 
 ### Benefits
-
 - **Granular Filtering**: Change the verbosity of a single bundle without affecting others.
 - **Production Safety**: Defaults can be set to `WARN` or `ERROR` to avoid leaking sensitive data in logs.
 - **Tagging**: Every log message is automatically prefixed with the bundle's name for easier tracing.

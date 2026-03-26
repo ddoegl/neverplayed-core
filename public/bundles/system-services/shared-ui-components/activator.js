@@ -1,4 +1,11 @@
-import { ATOMIC_COMPONENT_REGISTRY_SERVICE, ACTION_REGISTRY_SERVICE } from "../../../shared-types.js";
+import { 
+    ATOMIC_COMPONENT_REGISTRY_SERVICE, 
+    ACTION_REGISTRY_SERVICE,
+    UI_FACTORY_SERVICE,
+    UI_COMPONENTS_SERVICE,
+    ACTION_SERVICE,
+    LOG_SERVICE
+} from "../../../shared-types.js";
 import "./components/ui-factory.js";
 import "./components/atomic-component-base.js";
 import "./components/atomic-button.js";
@@ -13,7 +20,15 @@ import "./components/user-selector.js";
 
 export default class Activator {
   start(context) {
-    console.log("Shared UI Components Bundle started. Custom tags registered.");
+    let logger = console; // Fallback
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger("shared-ui-components");
+            logger.info("Shared UI Components Bundle started. Custom tags registered.");
+        },
+        removedService: () => { logger = console; }
+    }).open();
 
     const componentRegistry = new Map([
         ['command-button', 'atomic-button'],
@@ -43,7 +58,7 @@ export default class Activator {
     }
 
     // Provide a service for the orchestrator to interact with the factory
-    context.registerService("prototyper.ui.factory", {
+    context.registerService(UI_FACTORY_SERVICE, {
         create: (spec, params = {}) => {
             const el = document.createElement("ui-factory");
             // We'll need a way to pass the context/service to the element
@@ -54,10 +69,10 @@ export default class Activator {
         }
     });
 
-    context.registerService("prototyper.ui.components", { loaded: true });
+    context.registerService(UI_COMPONENTS_SERVICE, { loaded: true });
 
     // Register generic Action Services for internal shell functions
-    context.registerService("prototyper.action.service", {
+    context.registerService(ACTION_SERVICE, {
         execute: (params) => {
             alert(params.message || "Action Completed!");
             return { success: true };

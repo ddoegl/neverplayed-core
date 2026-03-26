@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, LIMES_SERVICE, LOG_SERVICE, PLEXUS_ENGINE_SERVICE as _PLEXUS_ENGINE_SERVICE } from "../../../shared-types.js";
+import { FLOW_SERVICE, YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, LIMES_SERVICE, LOG_SERVICE, PLEXUS_ENGINE_SERVICE as _PLEXUS_ENGINE_SERVICE, LIMES_STRATEGIES_PID } from "../../../shared-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -8,11 +8,17 @@ export default class Activator {
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
-                this.logger = svc.getLogger ? svc.getLogger("prototyper.limes") : svc;
+                this.logger = svc.getLogger("prototyper.limes");
                 this.logger.info("Limes: Connected to System Logger.");
             },
             removedService: () => {
-                this.logger = console;
+                this.logger = { 
+                    info: console.log, 
+                    log: console.log, 
+                    debug: console.debug, 
+                    warn: console.warn, 
+                    error: console.error 
+                };
             }
         }).open();
 
@@ -21,17 +27,16 @@ export default class Activator {
 
         const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
         const pm = context.getService(pmRef);
-
-        const STRATEGIES_PID = "prototyper.limes.strategies";
+        // Using constant from shared-types.js
         const flowRegistry = new Map(); // flowId -> { requiredPermissions: [] }
 
         // 1. Manage Strategies Registry
-        this.logger.log("Limes: Loading strategies from YAML...");
+        this.logger.info("Limes: Loading strategies from YAML...");
         const res = await fetch("./bundles/system-services/limes/data/limes-strategies.yaml");
         const text = await res.text();
         const yamlStrategies = yaml.load(text) || [];
         
-        const persistentStrategies = pm.load(STRATEGIES_PID) || [];
+        const persistentStrategies = pm.load(LIMES_STRATEGIES_PID) || [];
         // Merge: Use YAML as base, but keep persistent if it's already there? 
         // No, for this PoC task, let's just make sure YAML is always in there.
         yamlStrategies.forEach(ys => {
@@ -43,7 +48,7 @@ export default class Activator {
                 persistentStrategies[idx] = ys;
             }
         });
-        pm.store(STRATEGIES_PID, persistentStrategies);
+        pm.store(LIMES_STRATEGIES_PID, persistentStrategies);
 
         const getBundleConfig = (bundle) => {
             if (!bundle) return {};
@@ -101,15 +106,15 @@ export default class Activator {
             updateStrategy: (id, definition) => {
                 strategyRegistry.set(id, { ...definition, id });
                 const all = Array.from(strategyRegistry.values());
-                pm.store(STRATEGIES_PID, all);
-                this.logger.log(`Limes: Strategy updated and persisted: ${id}`);
+                pm.store(LIMES_STRATEGIES_PID, all);
+                this.logger.info(`Limes: Strategy updated and persisted: ${id}`);
             },
 
             deleteStrategy: (id) => {
                 strategyRegistry.delete(id);
                 const all = Array.from(strategyRegistry.values());
-                pm.store(STRATEGIES_PID, all);
-                this.logger.log(`Limes: Strategy deleted and persisted: ${id}`);
+                pm.store(LIMES_STRATEGIES_PID, all);
+                this.logger.info(`Limes: Strategy deleted and persisted: ${id}`);
             },
 
             isAllowed: (userOrId, strategyId, runtimeContext = {}) => {

@@ -1,8 +1,35 @@
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
-import { CASE_SERVICE, YAML_SERVICE, FELLOWS_SERVICE, SIGNING_DATA_SERVICE, COMPANIES_SERVICE, PERSONS_SERVICE, SESSION_SERVICE, LICENSE_DATA_SERVICE, ACTION_REGISTRY_SERVICE } from "../../../shared-types.js";
+import { 
+    CASE_SERVICE, 
+    YAML_SERVICE, 
+    FELLOWS_SERVICE, 
+    SIGNING_DATA_SERVICE, 
+    COMPANIES_SERVICE, 
+    PERSONS_SERVICE, 
+    SESSION_SERVICE, 
+    LICENSE_DATA_SERVICE, 
+    ACTION_REGISTRY_SERVICE,
+    EVENT_ADMIN_SERVICE,
+    EVENT_FACTORY_SERVICE,
+    CASE_ADDED_TOPIC,
+    CASE_UPDATED_TOPIC,
+    ACTION_SERVICE,
+    LOG_SERVICE,
+    CASES_PID,
+    INVITATIONS_PID
+} from "../../../shared-types.js";
 
 export default class Activator {
   start(context) {
+    let logger = console; // Fallback
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger("backoffice-cases");
+            logger.info("BO Cases: Bundle started.");
+        },
+        removedService: () => { logger = console; }
+    }).open();
     let yamlService = null;
     context.trackService(`(objectClass=${YAML_SERVICE})`, {
         addingService: (ref) => { yamlService = context.getService(ref); },
@@ -50,7 +77,6 @@ export default class Activator {
         removedService: () => { fellowsService = null; }
     }).open();
     
-    const CASES_PID = "backoffice.cases.data";
     let data = pm?.load(CASES_PID);
 
     const seedData = async () => {
@@ -94,12 +120,12 @@ export default class Activator {
         console.log("BO Cases: Case added:", caseItem.id);
         
         // Notify via EventAdmin
-        const eventAdminRef = context.getServiceReference('@pandino/event-admin/EventAdmin');
-        const eventFactoryRef = context.getServiceReference('@pandino/event-admin/EventFactory');
+        const eventAdminRef = context.getServiceReference(EVENT_ADMIN_SERVICE);
+        const eventFactoryRef = context.getServiceReference(EVENT_FACTORY_SERVICE);
         if (eventAdminRef && eventFactoryRef) {
             const eventAdmin = context.getService(eventAdminRef);
             const eventFactory = context.getService(eventFactoryRef);
-            const event = eventFactory.build('backoffice/cases/added', { id: caseItem.id });
+            const event = eventFactory.build(CASE_ADDED_TOPIC, { id: caseItem.id });
             eventAdmin.postEvent(event);
         }
       },
@@ -325,7 +351,6 @@ export default class Activator {
                         // For now, we trust the license update is the main functional part.
                         // We also trigger a search for the invitation and update it directly via PM
                         if (pm && meta.invitationCode) {
-                            const INVITATIONS_PID = "pandino.backoffice.invitations";
                             const invData = pm.load(INVITATIONS_PID);
                             if (invData && invData.INVITATIONS) {
                                 const inv = invData.INVITATIONS.find(i => i.code?.toUpperCase() === meta.invitationCode.toUpperCase());
@@ -342,12 +367,12 @@ export default class Activator {
             }
 
             // Notify via EventAdmin
-            const eventAdminRef = context.getServiceReference('@pandino/event-admin/EventAdmin');
-            const eventFactoryRef = context.getServiceReference('@pandino/event-admin/EventFactory');
+            const eventAdminRef = context.getServiceReference(EVENT_ADMIN_SERVICE);
+            const eventFactoryRef = context.getServiceReference(EVENT_FACTORY_SERVICE);
             if (eventAdminRef && eventFactoryRef) {
                 const eventAdmin = context.getService(eventAdminRef);
                 const eventFactory = context.getService(eventFactoryRef);
-                const event = eventFactory.build('backoffice/cases/updated', { id: caseId });
+                const event = eventFactory.build(CASE_UPDATED_TOPIC, { id: caseId });
                 eventAdmin.postEvent(event);
             }
             return true;
@@ -360,7 +385,7 @@ export default class Activator {
     console.log("BO Cases: Service registered as:", CASE_SERVICE);
 
     // Register as a generic Action Service
-    context.registerService("prototyper.action.service", {
+    context.registerService(ACTION_SERVICE, {
         execute: (params) => {
             return caseService.createCase(
                 params.caseTypeId,

@@ -1,6 +1,19 @@
 import { marked } from "https://esm.sh/marked@12.0.1";
-import { DOMAIN_OBJECT_REGISTRY_SERVICE, CASE_SERVICE, YAML_SERVICE, SESSION_SERVICE, LIMES_SERVICE, ATOMIC_COMPONENT_REGISTRY_SERVICE } from "../../../../shared-types.js";
-import { EVENT_HANDLER_INTERFACE_KEY, EVENT_TOPIC } from "https://esm.sh/@pandino/event-api@0.8.33";
+import { 
+    DOMAIN_OBJECT_REGISTRY_SERVICE, 
+    CASE_SERVICE, 
+    YAML_SERVICE, 
+    SESSION_SERVICE, 
+    LIMES_SERVICE, 
+    ATOMIC_COMPONENT_REGISTRY_SERVICE,
+    DOMAIN_STRATEGY_SERVICE,
+    ACTION_SERVICE,
+    CASE_ADDED_TOPIC,
+    CASE_UPDATED_TOPIC,
+    LOG_SERVICE,
+    EVENT_HANDLER_INTERFACE,
+    EVENT_TOPIC
+} from "../../../../shared-types.js";
 
 // --- OSGi-to-DOM Event Bridge (Dual-Bridge Pattern) ---
 // --- OSGi-to-DOM Event Bridge (Persistent & Registry-Aware) ---
@@ -9,11 +22,17 @@ let _sharedCaseService = null;
 let _sharedRegistryService = null;
 
 const startCaseUpdateBridge = (context) => {
-    console.log("UIFactory: [BRIDGE] startCaseUpdateBridge called with context:", context);
-    console.log("UIFactory: [BRIDGE] caseUpdateBridgeStarted:", caseUpdateBridgeStarted);
     if (caseUpdateBridgeStarted || !context) return;
     caseUpdateBridgeStarted = true;
-    console.log("UIFactory: [BRIDGE] Starting OSGi bridge...");
+    
+    // Attempt to get a logger early (fallback to console for system boot observability)
+    let logger = console;
+    const logRef = context.getServiceReference(LOG_SERVICE);
+    if (logRef) {
+        logger = context.getService(logRef).getLogger("ui-factory-bridge");
+    }
+
+    logger.info("UIFactory: [BRIDGE] Starting OSGi bridge...");
     // Track services globally for the bridge
     context.trackService(`(objectClass=${CASE_SERVICE})`, {
         addingService: (_ref) => { _sharedCaseService = context.getService(_ref); },
@@ -25,7 +44,7 @@ const startCaseUpdateBridge = (context) => {
         removedService: () => { _sharedRegistryService = null; }
     }).open();
 
-    console.log("UIFactory: [BRIDGE] Registering persistent, registry-aware EventHandler service...");
+    logger.info("UIFactory: [BRIDGE] Registering persistent, registry-aware EventHandler service...");
     const eventHandler = {
         handleEvent: async (event) => {
             const topic = typeof event.getTopic === 'function' ? event.getTopic() : event.topic;
@@ -33,7 +52,11 @@ const startCaseUpdateBridge = (context) => {
             if (!topic || !id) return;
 
             const domTopic = topic.replaceAll('/', '-');
-            console.log(`UIFactory: [BRIDGE] Event [${topic}] received for ID ${id}. Bridge updating...`);
+            // Using globalThis.Services.log if _sharedLogger not yet set
+            if (globalThis.Services?.[LOG_SERVICE]) {
+                const l = globalThis.Services[LOG_SERVICE].getLogger("ui-factory-bridge");
+                l.info(`Event [${topic}] received for ID ${id}. Bridge updating...`);
+            }
 
             // 1. Fetch latest status from service
             let status = null;
@@ -41,9 +64,9 @@ const startCaseUpdateBridge = (context) => {
                 try {
                     const c = await _sharedCaseService.getCase(id);
                     status = c?.status;
-                } catch (e) { console.error("UIFactory [BRIDGE]: Fetch failed", e); }
+                } catch (e) { logger.error("UIFactory [BRIDGE]: Fetch failed", e); }
             }
-            console.log("UIFactory [BRIDGE]: Status", status); 
+            logger.info("UIFactory [BRIDGE]: Status", status); 
 
             // 2. DISPATCH to DOM (for mounted components)
             globalThis.dispatchEvent(new CustomEvent(domTopic, { detail: { id, status } }));
@@ -59,14 +82,14 @@ const startCaseUpdateBridge = (context) => {
                         if (inst.properties[prop] === id) {
                             const statusProp = prop + 'Status';
                             if (inst.properties[statusProp] !== status) {
-                                console.log(`UIFactory: [BRIDGE] Updating Registry instance ${inst.id}: ${statusProp} -> ${status}`);
+                                // bridge status
                                 inst.properties[statusProp] = status;
                                 changed = true;
                             }
                         }
                     }
                     if (changed && inst.strategyId) {
-                        const stratRefs = context.getServiceReferences("prototyper.domain.strategy") || [];
+                        const stratRefs = context.getServiceReferences(DOMAIN_STRATEGY_SERVICE) || [];
                         const strat = stratRefs.map(r => context.getService(r)).find(s => s.id === inst.strategyId);
                         if (strat?.updateInstance) {
                             strat.updateInstance(inst.id, inst.blueprintId, inst);
@@ -77,8 +100,8 @@ const startCaseUpdateBridge = (context) => {
         }
     };
 
-    context.registerService(EVENT_HANDLER_INTERFACE_KEY, eventHandler, {
-        [EVENT_TOPIC]: ['backoffice/cases/added', 'backoffice/cases/updated']
+    context.registerService(EVENT_HANDLER_INTERFACE, eventHandler, {
+        [EVENT_TOPIC]: [CASE_ADDED_TOPIC, CASE_UPDATED_TOPIC]
     });
 
     
@@ -89,12 +112,23 @@ if (!globalThis.__UI_FACTORY_REGISTRY) {
     globalThis.__UI_FACTORY_REGISTRY = {
         _map: new Map(),
         set(id, state) { 
-            console.log(`UIFactory Registry: Registering [${id}] (Has uifResolve: ${!!state.uifResolve})`);
+            if (globalThis.Services?.[LOG_SERVICE]) {
+                globalThis.Services[LOG_SERVICE].getLogger("ui-factory-registry").info(`Registering [${id}] (Has uifResolve: ${!!state.uifResolve})`);
+            } else {
+                console.log(`UIFactory Registry: Registering [${id}] (Has uifResolve: ${!!state.uifResolve})`);
+            }
             this._map.set(id, state); 
         },
         get(id) { 
             const s = this._map.get(id);
-            if (!s) console.warn(`UIFactory Registry: MISSING state for ID ${id}! Current IDs:`, Array.from(this._map.keys()));
+            if (!s) {
+                 const msg = `UIFactory Registry: MISSING state for ID ${id}! Current IDs: ` + Array.from(this._map.keys()).join(', ');
+                 if (globalThis.Services?.[LOG_SERVICE]) {
+                     globalThis.Services[LOG_SERVICE].getLogger("ui-factory-registry").warn(msg);
+                 } else {
+                     console.warn(msg);
+                 }
+            }
             return s;
         },
         delete(id) { this._map.delete(id); }
@@ -111,14 +145,23 @@ class UIFactory extends HTMLElement {
         this._rendered = false;
         this._initialized = false;
         this._id = "uif-" + Math.random().toString(36).substring(7);
-        console.log(`UIFactory [${this._id}]: Instance created`);
         this._params = {};
         this._effects = []; // Track Alpine effects for cleanup
         this._instanceId = null;
+        this._logger = null; 
+        this.logger.info(`UIFactory [${this._id}]: Instance created`);
+    }
+
+    get logger() {
+        if (this._logger) return this._logger;
+        if (globalThis.Services?.[LOG_SERVICE]) {
+            return globalThis.Services[LOG_SERVICE].getLogger("ui-factory");
+        }
+        return console;
     }
 
     disconnectedCallback() {
-        console.log(`UIFactory [${this._id}]: disconnected from DOM. Cleaning up ${this._effects.length} effects.`);
+        this.logger.info(`UIFactory [${this._id}]: disconnected from DOM. Cleaning up ${this._effects.length} effects.`);
         this._isDisconnected = true;
         
         // Final save on disconnection
@@ -142,10 +185,20 @@ class UIFactory extends HTMLElement {
         if (!ctx) return;
         this._context = ctx;
         
+        // Track LogService for standardized logging
+        this._context.trackService(`(objectClass=${LOG_SERVICE})`, {
+            addingService: (ref) => {
+                const logAdmin = this._context.getService(ref);
+                this._logger = logAdmin.getLogger("ui-factory");
+                this._logger.info(`Initialized (ID: ${this._id})`);
+            },
+            removedService: () => { this._logger = null; }
+        }).open();
+
         const registryRef = ctx.getServiceReference(ATOMIC_COMPONENT_REGISTRY_SERVICE);
         this._componentRegistry = registryRef ? ctx.getService(registryRef) : null;
 
-        console.log(`UIFactory [${this._id}]: Bundle Context received. Setting up service trackers...`);
+        this.logger.info(`UIFactory [${this._id}]: Bundle Context received. Setting up service trackers...`);
         
         // Track YAML Service reactively
         this._context.trackService(`(objectClass=${YAML_SERVICE})`, {
@@ -156,11 +209,11 @@ class UIFactory extends HTMLElement {
         // Track Case Service reactively
         this._context.trackService(`(objectClass=${CASE_SERVICE})`, {
             addingService: (ref) => { 
-                console.log(`UIFactory [${this._id}]: Case Service ${CASE_SERVICE} discovered via tracker.`);
+                this.logger.info(`UIFactory [${this._id}]: Case Service ${CASE_SERVICE} discovered via tracker.`);
                 this._caseService = this._context.getService(ref); 
                 // Auto-retry status resolution now that we have the service!
                 if (this._state?.resolveCaseStatuses) {
-                    console.log(`UIFactory [${this._id}]: Retrying status resolution...`);
+                    this.logger.info(`UIFactory [${this._id}]: Retrying status resolution...`);
                     this._state.resolveCaseStatuses();
                 }
             },
@@ -190,36 +243,36 @@ class UIFactory extends HTMLElement {
 
     set spec(value) { this.setSpec(value); }
     setSpec(value) {
-        console.log(`UIFactory [${this._id}]: setSpec called`, value ? "OK" : "NULL");
+        this.logger.info(`UIFactory [${this._id}]: setSpec called`, value ? "OK" : "NULL");
         this._spec = value;
         this.render();
     }
 
     setParams(value) {
-        console.log(`UIFactory [${this._id}]: setParams called`, value);
+        this.logger.info(`UIFactory [${this._id}]: setParams called`, value);
         this._params = value || {};
     }
 
     connectedCallback() {
-        console.log(`UIFactory [${this._id}]: connectedCallback triggered`);
+        this.logger.info(`UIFactory [${this._id}]: connectedCallback triggered`);
         if (this._initialized) {
-            console.log(`UIFactory [${this._id}]: Re-connected to DOM. Re-triggering render if needed.`);
+            this.logger.info(`UIFactory [${this._id}]: Re-connected to DOM. Re-triggering render if needed.`);
             if (this._spec) this.render();
             return;
         }
         this._initialized = true;
-        console.log(`UIFactory [${this._id}]: connected to DOM (Initial)`);
+        this.logger.info(`UIFactory [${this._id}]: connected to DOM (Initial)`);
         
         // Listen for standard Atomic Component events
         this.addEventListener('atomic-action', (e) => {
-            console.log(`UIFactory [${this._id}]: atomic-action received`, e.detail.action);
+            this.logger.info(`UIFactory [${this._id}]: atomic-action received`, e.detail.action);
             e.stopPropagation(); 
             this.runAction(e.detail.action, this._state);
         });
 
         this.addEventListener('atomic-change', (e) => {
             const { id, value } = e.detail;
-            console.log(`UIFactory [${this._id}]: atomic-change received`, id, value);
+            this.logger.info(`UIFactory [${this._id}]: atomic-change received`, id, value);
             e.stopPropagation(); 
             this._state.uifValues[id] = value;
             this._state.data = null; 
@@ -232,14 +285,14 @@ class UIFactory extends HTMLElement {
             if (this._state && globalThis.Alpine && globalThis.Alpine.initTree) {
                 // If it already has a data stack, Alpine has already initialized it or its parent.
                 if (this._x_dataStack) {
-                    console.log(`UIFactory [${this._id}]: Alpine already initialized.`);
+                    this.logger.info(`UIFactory [${this._id}]: Alpine already initialized.`);
                     return;
                 }
-                console.log(`UIFactory [${this._id}]: Forcing Alpine init...`);
+                this.logger.info(`UIFactory [${this._id}]: Forcing Alpine init...`);
                 try {
                     globalThis.Alpine.initTree(this);
                 } catch (_e) {
-                    console.warn(`UIFactory [${this._id}]: Alpine initTree failed:`, _e);
+                    this.logger.warn(`UIFactory [${this._id}]: Alpine initTree failed:`, _e);
                 }
             }
         }, 100);
@@ -256,13 +309,13 @@ class UIFactory extends HTMLElement {
         let body = root?.querySelector('.uif-body');
 
         if (this._rendered && root && body) {
-            console.log(`UIFactory [${this._id}]: Partial update (newSpec=${!!newSpec})`);
+            this.logger.info(`UIFactory [${this._id}]: Partial update (newSpec=${!!newSpec})`);
             
             // Sync uifStep if new spec provides a different initialStep
             if (this._state && newSpec) {
                 const initialStep = ui.initialStep || (Object.keys(ui.steps || {}).length > 0 ? Object.keys(ui.steps)[0] : null);
                 if (initialStep) {
-                    console.log(`UIFactory [${this._id}]: Syncing uifStep to ${initialStep} from updated spec`);
+                    this.logger.info(`UIFactory [${this._id}]: Syncing uifStep to ${initialStep} from updated spec`);
                     this._state.uifStep = initialStep;
                 }
                 if (ui.steps) {
@@ -275,7 +328,7 @@ class UIFactory extends HTMLElement {
         }
 
         // --- 2. INITIAL FULL RENDER ---
-        console.log(`UIFactory [${this._id}]: Initial render. Spec ID: ${spec.id || 'N/A'}, Steps: ${Object.keys(ui.steps || {}).length}`);
+        this.logger.info(`UIFactory [${this._id}]: Initial render. Spec ID: ${spec.id || 'N/A'}, Steps: ${Object.keys(ui.steps || {}).length}`);
 
         if (!this._state) {
             this._state = this._createState(spec);
@@ -384,7 +437,12 @@ class UIFactory extends HTMLElement {
             
             // Log for diagnostics only if uifStep is set
             fallback.setAttribute('x-effect', `if (typeof uifStep !== 'undefined' && uifStep && uifStepKeys.length > 0 && !uifStepKeys.some(k => k.toLowerCase() === uifStep.toLowerCase())) { 
-                console.warn('UIFactory [' + this._id + ']: Navigation Mismatch! uifStep=' + uifStep + ' is NOT in uifStepKeys:', uifStepKeys);
+                const msg = 'UIFactory [' + this._id + ']: Navigation Mismatch! uifStep=' + uifStep + ' is NOT in uifStepKeys: ' + uifStepKeys.join(', ');
+                if (globalThis.Services?.['${LOG_SERVICE}']) {
+                    globalThis.Services['${LOG_SERVICE}'].getLogger("ui-factory").warn(msg);
+                } else {
+                    console.warn(msg);
+                }
             }`);
 
             fallback.innerHTML = `State sync requested for \${uifStep}... <button @click="uifStep = uifInitialStep" class="font-bold underline ml-1">Restart</button>`;
@@ -405,6 +463,7 @@ class UIFactory extends HTMLElement {
     }
 
     _createState(spec) {
+        const logger = this.logger;
         // Bridge existing global host data if available
         const globalHostData = globalThis.backofficeState || globalThis.businessPortalState || {};
         const baseValues = {
@@ -430,16 +489,16 @@ class UIFactory extends HTMLElement {
         const instanceId = this._instanceId;
  
         if (instanceId) {
-            console.log(`UIFactory [${this._id}]: Found instanceId ${instanceId}, attempting hydration...`);
+            logger.info(`UIFactory [${this._id}]: Found instanceId ${instanceId}, attempting hydration...`);
             const registry = this._getService(DOMAIN_OBJECT_REGISTRY_SERVICE);
             instance = registry?.getInstance(instanceId);
             if (instance) {
-                console.log(`UIFactory [${this._id}]: Hydration SUCCESS for ${instanceId}. Found properties:`, Object.keys(instance.properties || {}));
+                logger.info(`UIFactory [${this._id}]: Hydration SUCCESS for ${instanceId}. Found properties:`, Object.keys(instance.properties || {}));
                 instanceData = instance.properties || {};
                 if (instance.currentStep) instanceStep = instance.currentStep;
                 if (instance.history) instanceHistory = instance.history || [];
             } else {
-                console.warn(`UIFactory [${this._id}]: Hydration FAILED for ${instanceId}. Instance not found in registry.`);
+                logger.warn(`UIFactory [${this._id}]: Hydration FAILED for ${instanceId}. Instance not found in registry.`);
             }
         }
  
@@ -478,12 +537,12 @@ class UIFactory extends HTMLElement {
                         return (new Function('v', `with(v) { return ${expr} }`))(scopeProxy);
                     }
                 } catch (_e) {
-                    // console.error(`UIFactory [${this.instanceId}]: Evaluation failed for [${expr}]:`, _e);
+                    // SILENT
                 }
                 return undefined;
             },
             init() {
-                console.log(`UIFactory [${this.instanceId || 'anon'}]: Alpine Init. uifStep=${this.uifStep}, uifStepKeys=[${this.uifStepKeys.join(', ')}]`);
+                logger.info(`UIFactory [${this.instanceId || 'anon'}]: Alpine Init. uifStep=${this.uifStep}, uifStepKeys=[${this.uifStepKeys.join(', ')}]`);
                 // IMPORTANT: 'this' inside Alpine init() is the Proxy. 
                 // We bind it back to the factory to ensure all subsequent 
                 // updates (from render or runAction) are reactive.
@@ -493,16 +552,16 @@ class UIFactory extends HTMLElement {
                     this._factory = factory;
                 }
 
-                console.log(`UIFactory [${this.instanceId}] connected to Alpine Data`);
+                logger.info(`UIFactory [${this.instanceId}] connected to Alpine Data`);
                 
                 // Track Case Updates reactively via DOM Bridge (from OSGi)
                 const caseUpdateHandler = async (e) => {
                     const updatedCaseId = e.detail?.id;
-                    console.log(`UIFactory [${this.instanceId}]: Global Event [${e.type}] received for Case ${updatedCaseId}`);
+                    logger.info(`UIFactory [${this.instanceId}]: Global Event [${e.type}] received for Case ${updatedCaseId}`);
                     // Scan all values to see if we are tracking this case
                     for (const key in this.uifValues) {
                         if (this.uifValues[key] === updatedCaseId) {
-                            console.log(`UIFactory [${this.instanceId}]: Notched update for tracked Case ${updatedCaseId}. Syncing...`);
+                            logger.info(`UIFactory [${this.instanceId}]: Notched update for tracked Case ${updatedCaseId}. Syncing...`);
                             await this.syncCaseStatus(updatedCaseId);
                         }
                     }
@@ -518,14 +577,14 @@ class UIFactory extends HTMLElement {
                 
                 // Start the OSGi bridge if we have access to context
                 if (factory?._context) {
-                    console.log(`UIFactory [${this.instanceId}]: OSGI-Context available. Starting OSGi bridge.`);
+                    logger.info(`UIFactory [${this.instanceId}]: OSGI-Context available. Starting OSGi bridge.`);
                     startCaseUpdateBridge(factory._context);
                 } else {
-                    console.log(`UIFactory [${this.instanceId}]: NO OSGI-Context available. Waiting for registry.`);
+                    logger.info(`UIFactory [${this.instanceId}]: NO OSGI-Context available. Waiting for registry.`);
                 }
                 
                 globalThis.addEventListener('do-registry-ready', () => {
-                    console.log(`UIFactory [${this.instanceId}]: Registry Ready event received, triggering re-run.`);
+                    logger.info(`UIFactory [${this.instanceId}]: Registry Ready event received, triggering re-run.`);
                     this._state._registryReady = !this._state._registryReady; 
                 });
 
@@ -554,16 +613,16 @@ class UIFactory extends HTMLElement {
                 if (!caseId) return;
                 const factory = document.querySelector(`ui-factory[data-uif-id="${this.uifId}"]`);
                 if (!factory || factory._isDisconnected) {
-                    console.warn(`UIFactory [${this.instanceId}]: syncCaseStatus skipped. Factory not found/disconnected (ID: ${this.uifId})`);
+                    logger.warn(`UIFactory [${this.instanceId}]: syncCaseStatus skipped. Factory not found/disconnected (ID: ${this.uifId})`);
                     return;
                 }
 
-                console.log(`UIFactory [${this.instanceId}]: syncCaseStatus(${caseId}) started using uifId ${this.uifId}...`);
+                logger.info(`UIFactory [${this.instanceId}]: syncCaseStatus(${caseId}) started using uifId ${this.uifId}...`);
                 try {
                     // Prefer the reactively tracked service if available
                     const caseSvc = factory?._caseService || factory?._getService(CASE_SERVICE);
                     if (!caseSvc) {
-                        console.warn(`UIFactory [${this.instanceId}]: Case Service ${CASE_SERVICE} not found! (Context: ${!!factory?._context})`);
+                        logger.warn(`UIFactory [${this.instanceId}]: Case Service ${CASE_SERVICE} not found! (Context: ${!!factory?._context})`);
                         return;
                     }
                 
@@ -582,7 +641,7 @@ class UIFactory extends HTMLElement {
                         const changed = prevStatus !== c.status;
 
                         if (changed) {
-                            console.log(`UIFactory [${this.instanceId}]: Fetched Case ${caseId} status: ${c.status} (Updated from: ${prevStatus})`);
+                            logger.info(`UIFactory [${this.instanceId}]: Fetched Case ${caseId} status: ${c.status} (Updated from: ${prevStatus})`);
                             if (propKey) {
                                 this.uifValues[propKey] = c.status;
                                 
@@ -593,13 +652,13 @@ class UIFactory extends HTMLElement {
                                 }
                             }
                         } else {
-                            console.log(`UIFactory [${this.instanceId}]: Case ${caseId} status unchanged (${c.status}).`);
+                            logger.info(`UIFactory [${this.instanceId}]: Case ${caseId} status unchanged (${c.status}).`);
                         }
                     } else {
-                        console.warn(`UIFactory [${this.instanceId}]: Case ${caseId} not found in service!`);
+                        logger.warn(`UIFactory [${this.instanceId}]: Case ${caseId} not found in service!`);
                     }
                 } catch (e) {
-                    console.error(`UIFactory [${this.instanceId}]: syncCaseStatus failed for ${caseId}:`, e);
+                    logger.error(`UIFactory [${this.instanceId}]: syncCaseStatus failed for ${caseId}:`, e);
                 }
             },
 
@@ -607,15 +666,15 @@ class UIFactory extends HTMLElement {
                 // Use raw values to ensure reliable iteration in Alpine proxy
                 const rawValues = globalThis.Alpine.raw(this.uifValues);
                 const keys = Object.keys(rawValues);
-                console.log(`UIFactory [${this.instanceId}]: Manually resolving Case Statuses for keys:`, keys);
+                logger.info(`UIFactory [${this.instanceId}]: Manually resolving Case Statuses for keys:`, keys);
                 
                 for (const key of keys) {
                     const val = this.uifValues[key];
-                    console.log(`UIFactory [${this.instanceId}]: Checking key ${key}: ${val} (Type: ${typeof val})`);
+                    logger.info(`UIFactory [${this.instanceId}]: Checking key ${key}: ${val} (Type: ${typeof val})`);
                     // Generic Case ID pattern: uppercase prefix followed by hyphen and numbers (e.g., BUSI-123)
                     const isCaseId = typeof val === 'string' && /^[A-Z0-9]+-[0-9]+$/.test(val);
                     if (isCaseId) {
-                        console.log(`UIFactory [${this.instanceId}]: Found case reference to sync: ${key}=${val}`);
+                        logger.info(`UIFactory [${this.instanceId}]: Found case reference to sync: ${key}=${val}`);
                         await this.syncCaseStatus(val);
                     }
                 }
@@ -679,7 +738,7 @@ class UIFactory extends HTMLElement {
         (Array.isArray(specGuards) ? specGuards : Object.values(specGuards)).forEach(g => {
             if (g.id) this._guardConfig[g.id] = g;
         });
-        console.log(`UIFactory [${this._id}]: Loaded ${Object.keys(this._guardConfig).length} guard configs:`, Object.keys(this._guardConfig));
+        this.logger.info(`UIFactory [${this._id}]: Loaded ${Object.keys(this._guardConfig).length} guard configs:`, Object.keys(this._guardConfig));
 
         // --- Standard Reactive Engine (Persistence & Guards) ---
         const masterEffect = globalThis.Alpine.effect(() => {
@@ -712,11 +771,11 @@ class UIFactory extends HTMLElement {
             const rCurrentUser = globalHostData.currentUser || globalHostData.currentUser || this._getService(SESSION_SERVICE)?.currentUser || {};
 
             if (hActive && hActive.id && state.activeLicense?.id !== hActive.id) {
-                console.log(`UIFactory [${this._id}]: Syncing activeLicense (New ID: ${hActive.id})`);
+                this.logger.info(`UIFactory [${this._id}]: Syncing activeLicense (New ID: ${hActive.id})`);
                 state.activeLicense = hActive;
             }
             if (hActive && hActive.id && state.activeLicenseStatus !== hActive.status) {
-                console.log(`UIFactory [${this._id}]: Syncing activeLicenseStatus (New Status: ${hActive.status})`);
+                this.logger.info(`UIFactory [${this._id}]: Syncing activeLicenseStatus (New Status: ${hActive.status})`);
                 state.activeLicenseStatus = hActive.status;
             }
             if (hFellows && state.fellowsData !== hFellows) {
@@ -806,7 +865,7 @@ class UIFactory extends HTMLElement {
         // Safety: Avoid overwriting with empty properties during initial boot
         if (Object.keys(capturedValues).length === 0 && !state.uifStep) return;
 
-        const stratRefs = this._context.getServiceReferences("prototyper.domain.strategy") || [];
+        const stratRefs = this._context.getServiceReferences(DOMAIN_STRATEGY_SERVICE) || [];
         let strategySvc = null;
         for (const ref of stratRefs) {
             const svc = this._context.getService(ref);
@@ -817,7 +876,7 @@ class UIFactory extends HTMLElement {
         }
 
         if (strategySvc?.updateInstance) {
-            console.log(`UIFactory [${this._id}]: Persisting instance ${instanceId} (${Object.keys(capturedValues).length} properties)`, capturedValues);
+            this.logger.info(`UIFactory [${this._id}]: Persisting instance ${instanceId} (${Object.keys(capturedValues).length} properties)`, capturedValues);
             strategySvc.updateInstance(instanceId, (spec.id || spec.ui?.id), {
                 currentStep: state.uifStep,
                 properties: capturedValues,
@@ -858,7 +917,7 @@ class UIFactory extends HTMLElement {
             // Check if action is defined in local SPEC first
             const localAction = this._spec.actions?.[action.call];
             if (localAction) {
-                console.log(`UIFactory: Executing local action definition for ${action.call}`);
+                this.logger.info(`UIFactory: Executing local action definition for ${action.call}`);
                 if (localAction.type === "API") {
                     // Map local action to the global apiService
                     action.call = "apiService";
@@ -893,7 +952,7 @@ class UIFactory extends HTMLElement {
             if (action.call === 'step.navigate') {
                 const target = finalParams.target || finalParams.step;
                 if (target) {
-                    console.log(`UIFactory: Navigating to step ${target}`);
+                    this.logger.info(`UIFactory: Navigating to step ${target}`);
                     // Case-insensitive lookup for robustness
                     const exact = scope.uifStepKeys.find(k => k === target);
                     const fuzzy = scope.uifStepKeys.find(k => k.toLowerCase() === target.toLowerCase());
@@ -904,7 +963,7 @@ class UIFactory extends HTMLElement {
             }
 
             if (action.call === 'default') {
-                console.log(`UIFactory: Triggering default action: ${finalParams.action}`, finalParams);
+                this.logger.info(`UIFactory: Triggering default action: ${finalParams.action}`, finalParams);
                 globalThis.dispatchEvent(new CustomEvent('atomic-default-action', { 
                     detail: { 
                         action: finalParams.action, 
@@ -920,12 +979,12 @@ class UIFactory extends HTMLElement {
             // --- DECENTRALIZED OSGi ACTION LOOKUP ---
             let res = null;
             if (this._context) {
-                const refs = this._context.getServiceReferences("prototyper.action.service", `(action.id=${action.call})`);
+                const refs = this._context.getServiceReferences(ACTION_SERVICE, `(action.id=${action.call})`);
                 if (refs?.[0]) {
                     const svcObj = this._context.getService(refs[0]);
                     const execFn = typeof svcObj === 'function' ? svcObj : svcObj.execute;
                     if (execFn) {
-                        console.log(`UIFactory: Executing decentralized action: ${action.call}`, finalParams);
+                        this.logger.info(`UIFactory: Executing decentralized action: ${action.call}`, finalParams);
                         res = await execFn.apply(svcObj, [finalParams]);
                     }
                 }
@@ -951,7 +1010,7 @@ class UIFactory extends HTMLElement {
                     scope.uifValues[finalParams.linkToProperty] = targetId;
                     if (res.status) scope.uifValues[finalParams.linkToProperty + 'Status'] = res.status;
                     
-                    console.log(`UIFactory: Action result linked to property [${finalParams.linkToProperty}]: ${targetId}`);
+                    this.logger.info(`UIFactory: Action result linked to property [${finalParams.linkToProperty}]: ${targetId}`);
                     this.saveInstance(scope);
                     this.resolveGuards(scope);
                 }
@@ -982,7 +1041,7 @@ class UIFactory extends HTMLElement {
             }
 
         } catch (e) {
-            console.error(e);
+            this.logger.error(e);
             scope.data = { error: e.message };
         } finally {
             scope.loading = false;
@@ -1049,7 +1108,7 @@ class UIFactory extends HTMLElement {
 
             if (el.hydrate) {
                 const isNew = !existingEl;
-                console.log(`UIFactory [${this._id}]: ${isNew ? 'Creating' : 'Reusing'} part [${_id}] (${kind})`);
+                this.logger.info(`UIFactory [${this._id}]: ${isNew ? 'Creating' : 'Reusing'} part [${_id}] (${kind})`);
                 el.hydrate(
                     { ...p, id: _id }, 
                     this._context, 
@@ -1205,7 +1264,14 @@ class UIFactory extends HTMLElement {
             guardWrap.setAttribute('x-show', `uifGuards['${escapedGuard}'] === true`);
             guardWrap.setAttribute(':style', `{ display: uifGuards['${escapedGuard}'] ? '' : 'none !important' }`);
             guardWrap.setAttribute('x-cloak', '');
-            guardWrap.setAttribute('x-init', `console.log('UIFactory [${this._id}]: Guard ${escapedGuard} attached to DOM', $el)`);
+            guardWrap.setAttribute('x-effect', `if (uifGuards['${escapedGuard}']) {
+                const msg = 'UIFactory [' + this._id + ']: Guard ${escapedGuard} attached/visible';
+                if (globalThis.Services?.['${LOG_SERVICE}']) {
+                    globalThis.Services['${LOG_SERVICE}'].getLogger("ui-factory").info(msg);
+                } else {
+                    console.log(msg);
+                }
+            }`);
             guardWrap.appendChild(container);
             return guardWrap;
         }
@@ -1273,7 +1339,7 @@ class UIFactory extends HTMLElement {
 
                 // Only update if changed to minimize DOM thrashing
                 if (scope.uifGuards[guardKey] !== allPass) {
-                    console.log(`UIFactory [${this._id}]: Guard flipping [${guardKey}] -> ${allPass}`);
+                    this.logger.info(`UIFactory [${this._id}]: Guard flipping [${guardKey}] -> ${allPass}`);
                     scope.uifGuards[guardKey] = allPass;
                     // Trigger object-level reactivity for Alpine
                     scope.uifGuards = { ...scope.uifGuards };

@@ -1,11 +1,19 @@
-import { ACTION_REGISTRY_SERVICE } from "../../../shared-types.js";
+import { ACTION_REGISTRY_SERVICE, ACTION_SERVICE, LOG_SERVICE } from "../../../shared-types.js";
 
 export default class Activator {
   start(context) {
-    console.log("Outreach Service started.");
+    let logger = console; // Fallback
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger("outreach-service");
+            logger.info("Outreach Service started.");
+        },
+        removedService: () => { logger = console; }
+    }).open();
 
     const apiService = async (params) => {
-      console.log("OutreachService: Calling API", params);
+      logger.info("OutreachService: Calling API", params);
       const { endpoint, method = "GET", body, headers = {} } = params;
       
       try {
@@ -23,16 +31,16 @@ export default class Activator {
         }
 
         const data = await response.json();
-        console.log("OutreachService: API Response received", data);
+        logger.info("OutreachService: API Response received", data);
         return data;
       } catch (error) {
-        console.error("OutreachService: API Call failed", error);
+        logger.error("OutreachService: API Call failed", error);
         throw error;
       }
     };
 
     // Register as an OSGi service
-    context.registerService("prototyper.action.service", {
+    context.registerService(ACTION_SERVICE, {
       execute: apiService
     }, {
       "action.id": "apiService"

@@ -1,24 +1,33 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE } from "../../../shared-types.js";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, BIZ_FUNC_DATA_SERVICE, BIZ_FUNCS_PID, LOG_SERVICE } from "../../../shared-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
   async start(context) {
+    let logger = console; // Fallback
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger("backoffice-business-functions");
+            logger.info("BO Business Functions: Bundle started.");
+        },
+        removedService: () => { logger = console; }
+    }).open();
     const yamlRef = context.getServiceReference(YAML_SERVICE);
     const yaml = context.getService(yamlRef);
 
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
 
-    const BIZ_FUNCS_PID = "pandino.backoffice.business-functions";
+    const BIZ_FUNCS_PID_VAL = BIZ_FUNCS_PID;
 
     // Load/Seed Data
-    let businessFunctions = pm.load(BIZ_FUNCS_PID);
+    let businessFunctions = pm.load(BIZ_FUNCS_PID_VAL);
     if (!businessFunctions || !Array.isArray(businessFunctions)) {
-      console.log("BO Business Functions: Seeding ...");
+      logger.info("BO Business Functions: Seeding ...");
       const res = await fetch("./bundles/system-services/backoffice-business-functions/data/business-functions.yaml");
       const text = await res.text();
       businessFunctions = yaml.load(text) || [];
-      pm.store(BIZ_FUNCS_PID, businessFunctions);
+      pm.store(BIZ_FUNCS_PID_VAL, businessFunctions);
     }
 
     if (globalThis.backofficeState) {
@@ -34,7 +43,7 @@ export default class Activator {
       getBusinessFunctions: () => businessFunctions,
       setBusinessFunctions: (newData) => {
         businessFunctions = newData;
-        pm.store(BIZ_FUNCS_PID, businessFunctions);
+        pm.store(BIZ_FUNCS_PID_VAL, businessFunctions);
         if (globalThis.backofficeState) {
           const state = globalThis.backofficeState;
           if (Array.isArray(state.parsedBusinessFunctions)) {
@@ -47,7 +56,7 @@ export default class Activator {
       }
     };
 
-    context.registerService("backoffice.business.functions", dataService);
+    context.registerService(BIZ_FUNC_DATA_SERVICE, dataService);
 
     context.registerService(BO_EXTENSION_SERVICE, {
       id: "businessFunctions",

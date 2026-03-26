@@ -1,8 +1,9 @@
-import { ACTION_REGISTRY_SERVICE } from "../../../shared-types.js";
+import { ACTION_REGISTRY_SERVICE, LOG_SERVICE } from "../../../shared-types.js";
 
 class ActionRegistry {
-    constructor() {
+    constructor(logger) {
         this._actions = new Map();
+        this._logger = logger;
     }
 
     /**
@@ -15,7 +16,7 @@ class ActionRegistry {
             ...action,
             registeredAt: new Date().toISOString()
         });
-        console.log(`Action Registry: Registered/Updated ${action.id}`);
+        if (this._logger) this._logger.info(`Registered/Updated action: ${action.id}`);
     }
 
     getActions() {
@@ -29,15 +30,37 @@ class ActionRegistry {
 
 export default class Activator {
     start(context) {
-        const registry = new ActionRegistry();
-        // ... (rest of registration logic)
+        let logger = null;
+        let registry = null;
 
+        // Track LogService for standardized logging
+        context.trackService(`(objectClass=${LOG_SERVICE})`, {
+            addingService: (ref) => {
+                const logAdmin = context.getService(ref);
+                logger = logAdmin.getLogger("action-registry");
+                logger.info("Log Service connected");
+                
+                // Initialize/Update registry with logger
+                if (!registry) {
+                    registry = new ActionRegistry(logger);
+                    context.registerService(ACTION_REGISTRY_SERVICE, registry);
+                } else {
+                    registry._logger = logger;
+                }
+            },
+            removedService: () => { 
+                logger = null; 
+                if (registry) registry._logger = null;
+            }
+        }).open();
 
-        context.registerService(ACTION_REGISTRY_SERVICE, registry);
-        console.log("Action Registry Service started.");
+        // Fallback if no logger joins quickly (unlikely but safe)
+        if (!registry) {
+            registry = new ActionRegistry(null);
+            context.registerService(ACTION_REGISTRY_SERVICE, registry);
+        }
     }
 
     stop(_context) {
-        console.log("Action Registry Service stopped.");
     }
 }

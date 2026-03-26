@@ -7,18 +7,30 @@ import {
     BUNDLE_TYPE_SYSTEM,
     BUNDLE_TYPE_ADMIN,
     SHELL_CONFIG_PID,
-    BUNDLE_TYPE_REGISTRY
+    BUNDLE_TYPE_REGISTRY,
+    LOG_SERVICE
 } from "../../../shared-types.js";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
     start(context) {
+        let logger = null;
         const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
         const pm = context.getService(pmRef);
 
         const configs = new Map();
         const flowMetadataCache = new Map(); // Map PID/BSN -> { title, icon, flowType }
+
+        // Track LogService for standardized logging
+        context.trackService(`(objectClass=${LOG_SERVICE})`, {
+            addingService: (ref) => {
+                const logAdmin = context.getService(ref);
+                logger = logAdmin.getLogger("config-admin");
+                logger.info("Log Service connected");
+            },
+            removedService: () => { logger = null; }
+        }).open();
 
         // Helper to get well-known bundle types
         const getBundleType = (pid, meta, props) => {
@@ -63,7 +75,7 @@ export default class Activator {
                             // Deep merge updates into stored config
                             deepMerge(stored, properties);
                             pm.store(`config.${pid}`, stored);
-                            console.log(`ConfigAdmin: Updated ${pid}`, stored);
+                            if (logger) logger.debug(`Updated configuration for PID: ${pid}`);
                             globalThis.dispatchEvent(new CustomEvent('config-updated', { detail: { pid, properties: stored } }));
                         }
                     };
@@ -118,10 +130,10 @@ export default class Activator {
                         }
 
                         if (Object.keys(missingDefaults).length > 0) {
-                            console.log(`ConfigAdmin: Applying missing defaults for ${pid}`, missingDefaults);
+                            if (logger) logger.info(`Applying missing manifest defaults for ${pid}`);
                             config.update(missingDefaults);
                         } else {
-                            console.log(`ConfigAdmin: ${pid} already has configuration, skipping manifest defaults.`);
+                            if (logger) logger.debug(`${pid} already has configuration, skipping defaults.`);
                         }
                     };
 
@@ -138,7 +150,8 @@ export default class Activator {
                         }
                     }
                 } catch (e) {
-                    console.error(`ConfigAdmin: Failed to parse Configuration header in bundle ${bundle.getSymbolicName()}`, e);
+                    if (logger) logger.error(`Failed to parse Configuration header in bundle ${bundle.getSymbolicName()}`, e);
+                    else console.error(`ConfigAdmin: Failed to parse Configuration header in bundle ${bundle.getSymbolicName()}`, e);
                 }
             }
         };
@@ -162,7 +175,7 @@ export default class Activator {
                     cfgs: [],
                     init() {
                         const configsList = service.listConfigurations().filter(p => typeof p === 'string');
-                        console.log("ConfigAdmin UI: Found PIDs", configsList);
+                        if (logger) logger.debug(`UI initializing with ${configsList.length} PIDs`);
 
                         this.cfgs = configsList.map(pid => {
                             const props = service.getConfiguration(pid).getProperties() || {};
@@ -242,7 +255,7 @@ export default class Activator {
         };
         context.registerService(FLOW_SERVICE, flowMetadata, { "flow.id": CONFIG_ADMIN_UI_FLOW });
 
-        console.log("ConfigAdmin: Service registered.");
+        if (logger) logger.info("Service registered successfully");
 
         // Track Flow Metadata to enrich the UI
         context.trackService(`(objectClass=${FLOW_SERVICE})`, {

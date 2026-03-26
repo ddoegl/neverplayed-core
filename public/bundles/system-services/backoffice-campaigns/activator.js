@@ -1,16 +1,38 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, PLEXUS_ENGINE_SERVICE } from "../../../shared-types.js";
+import { 
+    YAML_SERVICE, 
+    BO_EXTENSION_SERVICE, 
+    YAML_EDITOR_SERVICE, 
+    PLEXUS_ENGINE_SERVICE, 
+    CAMPAIGNS_SERVICE, 
+    EVALUATOR_SERVICE, 
+    BIZ_FUNC_DATA_SERVICE, 
+    COMPANIES_SERVICE, 
+    FEATURE_DATA_SERVICE,
+    CAMPAIGNS_PID,
+    CAMPAIGN_STRATEGIES_PID,
+    LOG_SERVICE
+} from "../../../shared-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
   async start(context) {
+    let logger = console; // Fallback
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger("backoffice-campaigns");
+            logger.info("BO Campaigns: Bundle started.");
+        },
+        removedService: () => { logger = console; }
+    }).open();
     const yamlRef = context.getServiceReference(YAML_SERVICE);
     const yaml = context.getService(yamlRef);
 
     const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
     const pm = context.getService(pmRef);
 
-    const CAMPAIGNS_PID = "pandino.backoffice.campaigns";
-    const STRATEGIES_PID = "pandino.backoffice.strategies";
+    const CAMPAIGNS_PID_VAL = CAMPAIGNS_PID;
+    const STRATEGIES_PID_VAL = CAMPAIGN_STRATEGIES_PID;
 
     const toArray = (data) => {
       if (!data) return [];
@@ -25,24 +47,24 @@ export default class Activator {
     };
 
     // Load/Seed Data for Campaigns
-    let campaigns = pm.load(CAMPAIGNS_PID);
+    let campaigns = pm.load(CAMPAIGNS_PID_VAL);
     if (!campaigns) {
-      console.log("BO Campaigns: Seeding ...")
+      logger.info("BO Campaigns: Seeding ...");
       const res = await fetch("./bundles/system-services/backoffice-campaigns/data/campaigns.yaml");
       const text = await res.text();
       campaigns = yaml.load(text);
-      pm.store(CAMPAIGNS_PID, campaigns);
+      pm.store(CAMPAIGNS_PID_VAL, campaigns);
     }
     campaigns = toArray(campaigns);
     
     // Load/Seed Data for Strategies
-    let strategies = pm.load(STRATEGIES_PID);
+    let strategies = pm.load(STRATEGIES_PID_VAL);
     if (!strategies) {
-      console.log("BO Strategies: Seeding ...")
+      logger.info("BO Strategies: Seeding ...");
       const res = await fetch("./bundles/system-services/backoffice-campaigns/data/strategies.yaml");
       const text = await res.text();
       strategies = yaml.load(text);
-      pm.store(STRATEGIES_PID, strategies);
+      pm.store(STRATEGIES_PID_VAL, strategies);
     }
     strategies = toArray(strategies);
 
@@ -50,7 +72,7 @@ export default class Activator {
       getCampaigns: () => campaigns,
       setCampaigns: (newData) => {
         campaigns = toArray(newData);
-        pm.store(CAMPAIGNS_PID, campaigns);
+        pm.store(CAMPAIGNS_PID_VAL, campaigns);
         if (globalThis.backofficeState) {
           const state = globalThis.backofficeState;
           if (Array.isArray(state.parsedCampaigns)) state.parsedCampaigns.splice(0, state.parsedCampaigns.length, ...campaigns);
@@ -61,7 +83,7 @@ export default class Activator {
       getStrategies: () => strategies,
       setStrategies: (newData) => {
         strategies = toArray(newData);
-        pm.store(STRATEGIES_PID, strategies);
+        pm.store(STRATEGIES_PID_VAL, strategies);
         if (globalThis.backofficeState) {
           const state = globalThis.backofficeState;
           if (Array.isArray(state.parsedStrategies)) state.parsedStrategies.splice(0, state.parsedStrategies.length, ...strategies);
@@ -71,10 +93,10 @@ export default class Activator {
       }
     };
 
-    context.registerService("backoffice.campaigns.data", dataService);
+    context.registerService(CAMPAIGNS_SERVICE, dataService);
 
     // Register Evaluator Plugin
-    context.registerService("backoffice.evaluator", {
+    context.registerService(EVALUATOR_SERVICE, {
       order: 20,
       evaluate: (userCapabilities, _parsedLicenses, hostState) => {
         const engineRef = context.getServiceReference(PLEXUS_ENGINE_SERVICE);
@@ -102,7 +124,7 @@ export default class Activator {
       }
     });
 
-    const bizFuncRef = context.getServiceReference("backoffice.business.functions");
+    const bizFuncRef = context.getServiceReference(BIZ_FUNC_DATA_SERVICE);
     const _bizFuncSvc = context.getService(bizFuncRef);
 
     // Common activation logic for both extensions
@@ -114,13 +136,13 @@ export default class Activator {
       else hostState.parsedStrategies = strategies;
 
       // Track and inject live data for the Matcher Engine UI (populating source data for getters)
-      const bfRef = context.getServiceReference("backoffice.business.functions");
+      const bfRef = context.getServiceReference(BIZ_FUNC_DATA_SERVICE);
       if (bfRef) hostState.parsedBusinessFunctions = context.getService(bfRef).getBusinessFunctions() || [];
       
-      const compRef = context.getServiceReference("backoffice.companies.data");
+      const compRef = context.getServiceReference(COMPANIES_SERVICE);
       if (compRef) hostState.registry = context.getService(compRef).getCompanies() || [];
       
-      const featRef = context.getServiceReference("backoffice.features.data");
+      const featRef = context.getServiceReference(FEATURE_DATA_SERVICE);
       if (featRef) hostState.parsedFeatures = context.getService(featRef).getFeatures() || {};
 
       hostState.saveCampaigns = () =>

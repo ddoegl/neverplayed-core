@@ -32,8 +32,31 @@ export const LIMES_SERVICE = "prototyper.limes.service";
 export const DOMAIN_OBJECT_REGISTRY_SERVICE = "backoffice.domain.object.registry";
 export const EVENT_ADMIN_SERVICE = "@pandino/event-admin/EventAdmin";
 export const EVENT_FACTORY_SERVICE = "@pandino/event-admin/EventFactory";
+export const EVENT_HANDLER_INTERFACE = "@pandino/event-admin/EventHandler";
+export const EVENT_TOPIC = "event.topics";
 export const LOG_SERVICE = "@pandino/log-service";
 export const ACTION_REGISTRY_SERVICE = "prototyper.action.registry";
+export const ACTION_SERVICE = "prototyper.action.service";
+export const UI_FACTORY_SERVICE = "prototyper.ui.factory";
+export const UI_COMPONENTS_SERVICE = "prototyper.ui.components";
+export const CASE_ADDED_TOPIC = "backoffice/cases/added";
+export const CASE_UPDATED_TOPIC = "backoffice/cases/updated";
+export const TOPICS_DATA_SERVICE = "backoffice.topics.data";
+export const EVALUATOR_SERVICE = "backoffice.evaluator";
+export const DOMAIN_STRATEGY_SERVICE = "prototyper.domain.strategy";
+export const CAMPAIGNS_SERVICE = "backoffice.campaigns.data";
+export const EVAL_DATA_SERVICE = "backoffice.evaluator.data";
+
+// Config PIDs
+export const DO_STRATEGIES_PID = "pandino.backoffice.do.strategies";
+export const DO_INSTANCES_PID = "pandino.backoffice.do.instances";
+export const SHELL_CONFIG_PID = "shell.config";
+export const LIMES_STRATEGIES_PID = "prototyper.limes.strategies";
+export const CASES_PID = "backoffice.cases.data";
+export const INVITATIONS_PID = "pandino.backoffice.invitations";
+export const BIZ_FUNCS_PID = "pandino.backoffice.business-functions";
+export const CAMPAIGNS_PID = "pandino.backoffice.campaigns";
+export const CAMPAIGN_STRATEGIES_PID = "pandino.backoffice.strategies";
 
 // Bundle Types for Governance
 export const BUNDLE_TYPE_ORDER = "order-flow";
@@ -49,7 +72,7 @@ export const ATOMIC_MARKER_HEADER = "X-Atomic-Bundle";
 
 export const ATOMIC_BUNDLE_SERVICE = "prototyper.atomic.bundle";
 
-export const SHELL_CONFIG_PID = "shell.config";
+// No changes needed here, just removing the old SHELL_CONFIG_PID if it was there
  
 export const BUNDLE_TYPE_REGISTRY = {
     [BUNDLE_TYPE_ORDER]: { title: "Order Flows", icon: "fas fa-shopping-cart", color: "orange" },

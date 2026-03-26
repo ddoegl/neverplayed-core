@@ -70,12 +70,14 @@ export default class Activator {
         context.trackService(`(objectClass=${CONFIG_ADMIN_SERVICE})`, {
             addingService: (ref) => {
                 configAdmin = context.getService(ref);
-                console.log("[System Logger] ConfigAdmin connected, dynamic filtering enabled.");
+                const logger = logService.getLogger("system-logger");
+                logger.info("ConfigAdmin connected, dynamic filtering enabled.");
             },
             removedService: () => { configAdmin = null; }
         }).open();
 
-        console.log(`[System Logger] Registering ${LOG_SERVICE} service...`);
+        const logger = logService.getLogger("system-logger");
+        logger.info(`Registering ${LOG_SERVICE} service...`);
         this.registration = context.registerService(LOG_SERVICE, logService);
         
         // Backward compatibility registrations
@@ -87,6 +89,5 @@ export default class Activator {
         if (this.registration) {
             this.registration.unregister();
         }
-        console.log("[System Logger] Unregistered.");
     }
 }

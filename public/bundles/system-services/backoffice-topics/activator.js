@@ -1,4 +1,14 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, PLEXUS_ENGINE_SERVICE } from "../../../shared-types.js";
+import { 
+    YAML_SERVICE, 
+    BO_EXTENSION_SERVICE, 
+    YAML_EDITOR_SERVICE, 
+    PLEXUS_ENGINE_SERVICE, 
+    TOPICS_DATA_SERVICE, 
+    EVALUATOR_SERVICE,
+    BIZ_FUNC_DATA_SERVICE,
+    COMPANIES_SERVICE,
+    FEATURE_DATA_SERVICE
+} from "../../../shared-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -71,10 +81,10 @@ export default class Activator {
       }
     };
 
-    context.registerService("backoffice.topics.data", dataService);
+    context.registerService(TOPICS_DATA_SERVICE, dataService);
 
     // Register Evaluator Plugin
-    context.registerService("backoffice.evaluator", {
+    context.registerService(EVALUATOR_SERVICE, {
       order: 30,
       evaluate: (userCapabilities, _parsedLicenses, hostState) => {
         const engineRef = context.getServiceReference(PLEXUS_ENGINE_SERVICE);
@@ -104,7 +114,7 @@ export default class Activator {
       }
     });
 
-    const bizFuncRef = context.getServiceReference("backoffice.business.functions");
+    const bizFuncRef = context.getServiceReference(BIZ_FUNC_DATA_SERVICE);
     const _bizFuncSvc = context.getService(bizFuncRef);
 
     const injectData = (hostState) => {
@@ -115,13 +125,13 @@ export default class Activator {
       else hostState.parsedTopicStrategies = topicStrategies;
 
       // Track and inject live data for the Matcher Engine UI (populating source data for getters)
-      const bfRef = context.getServiceReference("backoffice.business.functions");
+      const bfRef = context.getServiceReference(BIZ_FUNC_DATA_SERVICE);
       if (bfRef) hostState.parsedBusinessFunctions = context.getService(bfRef).getBusinessFunctions() || [];
       
-      const compRef = context.getServiceReference("backoffice.companies.data");
+      const compRef = context.getServiceReference(COMPANIES_SERVICE);
       if (compRef) hostState.registry = context.getService(compRef).getCompanies() || [];
       
-      const featRef = context.getServiceReference("backoffice.features.data");
+      const featRef = context.getServiceReference(FEATURE_DATA_SERVICE);
       if (featRef) hostState.parsedFeatures = context.getService(featRef).getFeatures() || {};
 
       hostState.saveTopics = () => dataService.setTopics(hostState.parsedTopics);

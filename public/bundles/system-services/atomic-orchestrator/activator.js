@@ -7,7 +7,13 @@ import {
     FEATURE_DATA_SERVICE,
     DOMAIN_OBJECT_REGISTRY_SERVICE, 
     BO_EXTENSION_SERVICE,
-    LIMES_SERVICE, SIGNING_DATA_SERVICE
+    LIMES_SERVICE, 
+    SIGNING_DATA_SERVICE,
+    LOG_SERVICE,
+    ATOMIC_SPEC_INGESTION_SERVICE,
+    UI_FACTORY_SERVICE,
+    DOMAIN_STRATEGY_SERVICE,
+    ACTION_SERVICE
 } from "../../../shared-types.js";
 
 export default class Activator {
@@ -17,7 +23,15 @@ export default class Activator {
   }
 
   async start(context) {
-    console.log("Atomic Orchestrator: Starting...");
+    let logger = console; // Fallback
+    context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const logAdmin = context.getService(ref);
+            logger = logAdmin.getLogger("atomic-orchestrator");
+            logger.info("Atomic Orchestrator: Starting...");
+        },
+        removedService: () => { logger = console; }
+    }).open();
 
     // Track Security Services to re-apply configs after a reset
     const securityServices = [
@@ -98,7 +112,7 @@ export default class Activator {
         this.scanDomainObjects(context);
 
         // 4. Register Ingestion Service for remote ingestion
-        context.registerService("prototyper.atomic.ingestion", {
+        context.registerService(ATOMIC_SPEC_INGESTION_SERVICE, {
             ingest: (spec, options = {}) => {
                 const { source = "remote", persist = false } = options;
                 console.log(`Atomic Orchestrator: Ingesting spec from ${source} (persist=${persist})`, spec);
@@ -294,7 +308,7 @@ export default class Activator {
             title: label || id,
             icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
             launch: (container, params = {}) => {
-                const factoryRef = context.getServiceReference("prototyper.ui.factory");
+                const factoryRef = context.getServiceReference(UI_FACTORY_SERVICE);
                 const factorySvc = factoryRef ? context.getService(factoryRef) : null;
                 if (factorySvc) {
                     const el = factorySvc.create(spec, params);
@@ -320,7 +334,7 @@ export default class Activator {
             name: label || id,
             icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
             launch: (container, params = {}) => {
-                const factoryRef = context.getServiceReference("prototyper.ui.factory");
+                const factoryRef = context.getServiceReference(UI_FACTORY_SERVICE);
                 const factorySvc = factoryRef ? context.getService(factoryRef) : null;
                 if (factorySvc) {
                     const el = factorySvc.create(spec, params);
@@ -413,7 +427,7 @@ export default class Activator {
                                 console.log(`Atomic Orchestrator: [EXECUTE] Deleting instance ${_inst.id}`);
                                 
                                 // Look up strategy
-                                const stratRefs = context.getServiceReferences("prototyper.domain.strategy") || [];
+                                const stratRefs = context.getServiceReferences(DOMAIN_STRATEGY_SERVICE) || [];
                                 let strategySvc = null;
                                 for (const ref of stratRefs) {
                                     const svc = context.getService(ref);
@@ -465,10 +479,10 @@ export default class Activator {
         Object.entries(actions).forEach(([aid, actionSpec]) => {
             console.log(`Atomic Orchestrator: Registering action service ${aid} for ${id}`);
             
-            trackReg(context.registerService("prototyper.action.service", {
+            trackReg(context.registerService(ACTION_SERVICE, {
                 execute: async (params) => {
                     // Find the underlying outreach service for API calls
-                    const outreachRef = context.getServiceReference("prototyper.action.service", "(action.id=apiService)");
+                    const outreachRef = context.getServiceReference(ACTION_SERVICE, "(action.id=apiService)");
                     const outreachSvc = outreachRef ? context.getService(outreachRef) : null;
                     
                     if (outreachSvc && actionSpec.type === "API") {

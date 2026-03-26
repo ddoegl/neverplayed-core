@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE } from "../../../shared-types.js";
+import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE, LOG_SERVICE, SESSION_SERVICE, BUNDLE_TYPE_SERVICE } from "shared-types";
 import { sendInvitationRequest } from "../../../auth-shield.js";
 
 // Using globalThis.Alpine as guaranteed by index.html loader
@@ -6,6 +6,18 @@ const Alpine = globalThis.Alpine;
 
 export default class Activator {
     start(context) {
+        let logger = null;
+        
+        // Track LogService for standardized logging
+        context.trackService(`(objectClass=${LOG_SERVICE})`, {
+            addingService: (ref) => {
+                const logAdmin = context.getService(ref);
+                logger = logAdmin.getLogger("shell-cli");
+                logger.info("Log Service connected");
+            },
+            removedService: () => { logger = null; }
+        }).open();
+
         // Initialize Global Shell State if not already present (Persistent across bundle updates)
         if (!Alpine.store('shell')) {
             Alpine.store('shell', {
@@ -61,7 +73,8 @@ export default class Activator {
                     await this.processCommand(cmd);
                 } catch (err) {
                     state.addLog(`Execution error: ${err.message}`, 'error');
-                    console.error("Shell Execution Error:", err);
+                    if (logger) logger.error(`Shell Execution Error: ${err.message}`, err);
+                    else console.error("Shell Execution Error:", err);
                 }
             },
             
@@ -109,7 +122,7 @@ export default class Activator {
                             break;
                             
                         case '/whoami': {
-                            const sessionRef = context.getServiceReference("prototyper.session.service");
+                            const sessionRef = context.getServiceReference(SESSION_SERVICE);
                             const session = sessionRef ? context.getService(sessionRef) : null;
                             const user = session?.currentUser;
                             if (user) {
@@ -725,7 +738,8 @@ export default class Activator {
                     }
                 } catch (pErr) {
                     state.addLog(`Command Processing Error: ${pErr.message}`, 'error');
-                    console.error("Shell CLI Error:", pErr);
+                    if (logger) logger.error(`Shell CLI Error: ${pErr.message}`, pErr);
+                    else console.error("Shell CLI Error:", pErr);
                 }
             },
                 
@@ -753,12 +767,12 @@ export default class Activator {
             }
         }, {
             "flow.id": "shell-cli",
-            "flowType": "service-flow",
+            "flowType": BUNDLE_TYPE_SERVICE,
             "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
         });
     }
 
     stop(_context) {
-        console.log("Shell CLI: Bundle stopped.");
+        if (logger) logger.info("Bundle stopped.");
     }
 }
