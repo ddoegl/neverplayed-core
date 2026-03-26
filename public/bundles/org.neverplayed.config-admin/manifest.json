@@ -6,6 +6,7 @@
     "flowType": "system-flow",
     "channels": [
       "business-channel-web", "retail-channel-app"
-    ]
+    ],
+    "sidebar": true
   }
 }

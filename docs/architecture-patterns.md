@@ -895,4 +895,4 @@ When defining capabilities (Handle Pattern), use a colon-separated namespace.
 - **Conflict Avoidance**: Namespaces prevent collisions between "Login" in the
   Backoffice vs. "Login" in a Retail App.
 - **Scannability**: Service Registry dumps become easier to read when names
-  follow a logical hierarchy. Vinc999
+  follow a logical hierarchy.

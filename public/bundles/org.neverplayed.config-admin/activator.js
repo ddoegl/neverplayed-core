@@ -252,7 +252,8 @@ export default class Activator {
                 });
             }
         };
-        context.registerService(FLOW_SERVICE, flowMetadata, { "flow.id": CONFIG_ADMIN_UI_FLOW });
+        const bundleConfig = context.getBundle().getHeaders().Configuration || {};
+        context.registerService(FLOW_SERVICE, flowMetadata, { ...bundleConfig, "flow.id": CONFIG_ADMIN_UI_FLOW });
 
         if (logger) logger.info("Service registered successfully");
 

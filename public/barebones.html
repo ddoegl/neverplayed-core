@@ -35,72 +35,53 @@
     ></script>
 
     <style>
-      [x-cloak] {
-        display: none !important;
-      }
-      body {
-        background: #f8fafc;
-      }
+      [x-cloak] { display: none !important; }
+      body { background: #f8fafc; }
+      .sidebar-transition { transition: width 0.3s ease; }
     </style>
   </head>
   <body
     x-data="shellLoader"
     class="h-screen flex flex-col overflow-hidden sl-theme-light"
   >
-    <!-- Minimal Header -->
-    <header
-      class="h-12 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-20 shrink-0"
-    >
+    <!-- Global Header -->
+    <header class="h-12 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-30 shrink-0">
       <div class="flex items-center space-x-3">
         <img src="branding.svg" class="w-6 h-6" />
-        <span class="font-bold text-sm tracking-tight">neverplayed <span
-            class="text-blue-400"
-          >barebones</span></span>
+        <span class="font-bold text-sm tracking-tight text-slate-200">neverplayed <span class="text-blue-400">barebones</span></span>
       </div>
-      <div id="boot-status" class="text-[10px] font-mono text-slate-400">
-        <span x-show="!kernelReady">Initializing Kernel...</span>
-        <span x-show="kernelReady">System Active</span>
+      <div id="boot-status" class="text-[10px] font-mono text-slate-500">
+        <span x-show="!kernelReady">Initializing...</span>
+        <span x-show="kernelReady">Kernel Active</span>
       </div>
     </header>
 
-    <!-- Main Viewport (Managed by shell-host bundle) -->
-    <main class="flex-1 overflow-hidden relative bg-slate-50">
-      <template x-if="kernelReady">
-        <div
-          id="shell-host-root"
-          class="h-full w-full relative"
-          x-data="shellHost"
-        >
-          <!-- Flow Content Area -->
-          <div id="flow-content" x-ref="flowContent" class="h-full w-full">
-          </div>
+    <!-- App Container -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Sidebar Slot (Managed by org.neverplayed.shell-sidebar) -->
+      <aside id="shell-sidebar-root" class="w-auto bg-white z-20 overflow-hidden flex flex-col"></aside>
 
-          <!-- Shell Overlays (Spinner while flow is launching) -->
-          <div
-            x-show="!ready"
-            class="absolute inset-0 bg-slate-50 flex flex-col items-center justify-center space-y-4"
-          >
-            <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
-            <span
-              class="text-slate-400 text-xs font-mono uppercase tracking-widest"
-              x-text="status"
-            ></span>
+      <!-- Main Content (Managed by org.neverplayed.shell-host) -->
+      <main class="flex-1 overflow-hidden relative bg-slate-50">
+        <template x-if="kernelReady">
+          <div id="shell-host-root" class="h-full w-full relative" x-data="shellHost">
+            <div id="flow-content" x-ref="flowContent" class="h-full w-full"></div>
+            
+            <!-- Global Overlay (Loader) -->
+            <div x-show="!ready" class="absolute inset-0 bg-slate-50/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 z-50">
+              <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+              <span class="text-slate-400 text-[10px] font-mono uppercase tracking-widest" x-text="status"></span>
+            </div>
           </div>
+        </template>
+
+        <!-- Kernel Boot Progress -->
+        <div x-show="!kernelReady" class="h-full flex flex-col items-center justify-center space-y-4">
+          <i class="fas fa-circle-notch fa-spin text-blue-400 text-2xl"></i>
+          <span class="text-slate-400 text-[10px] font-mono uppercase tracking-widest" x-text="bootStatus"></span>
         </div>
-      </template>
-
-      <!-- Boot Loader UI -->
-      <div
-        x-show="!kernelReady"
-        class="h-full flex flex-col items-center justify-center space-y-4"
-      >
-        <i class="fas fa-circle-notch fa-spin text-blue-400 text-2xl"></i>
-        <span
-          class="text-slate-400 text-[10px] font-mono uppercase tracking-widest"
-          x-text="bootStatus"
-        ></span>
-      </div>
-    </main>
+      </main>
+    </div>
 
     <script type="module">
       import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
@@ -111,9 +92,7 @@
         kernelReady: false,
         bootStatus: "Starting Kernel...",
 
-        init() {
-          this.boot();
-        },
+        init() { this.boot(); },
         async boot() {
           const pandino = new Pandino({ ...loaderConfiguration });
           await pandino.init();
@@ -123,20 +102,25 @@
           globalThis.Alpine = Alpine;
           globalThis.pandinoContext = context;
 
-          // Core Bundles (Orchestrator first)
+          // Sequential Core Boot (Order matters for UI injection)
           const coreBundles = [
             "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
             "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
             "./bundles/org.neverplayed.system-logger/manifest.json",
             "./bundles/org.neverplayed.config-admin/manifest.json",
             "./bundles/org.neverplayed.shell-host/manifest.json",
+            "./bundles/org.neverplayed.shell-sidebar/manifest.json",
             "./bundles/org.neverplayed.shell-cli/manifest.json",
           ];
 
           for (const url of coreBundles) {
             this.bootStatus = `Loading: ${url.split("/").pop()}...`;
-            const b = await context.installBundle(url);
-            if (b.state === 2 || b.state === 4) await b.start();
+            try {
+              const b = await context.installBundle(url);
+              if (b.state === 2 || b.state === 4) await b.start();
+            } catch (err) {
+              console.error(`Boot failed for bundle ${url}:`, err);
+            }
           }
 
           this.kernelReady = true;

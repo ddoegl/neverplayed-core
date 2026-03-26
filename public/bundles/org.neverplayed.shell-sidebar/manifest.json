@@ -1,0 +1,11 @@
+{
+    "Bundle-SymbolicName": "@neverplayed/shell-sidebar",
+    "Bundle-Name": "Never Played Shell Sidebar",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "./activator.js",
+    "Configuration": {
+        "context": "barebones",
+        "mountPoint": "#shell-sidebar-root",
+        "discoveryFilter": "(sidebar=true)"
+    }
+}
