@@ -153,6 +153,13 @@ export default class Activator extends BaseActivator {
             title: "Universe Settings",
             icon: "fas fa-cog",
             launch: async (targetElement) => {
+                const bsn = context.getBundle().getSymbolicName();
+                if (targetElement.getAttribute('data-bsn') === bsn) {
+                    if (logger) logger.debug(`UI: Already rendered ${bsn}, skipping destructive update.`);
+                    return;
+                }
+                targetElement.setAttribute('data-bsn', bsn);
+
                 const Alpine = (await import("https://esm.sh/alpinejs@3.13.5")).default;
                 const state = Alpine.reactive({
                     cfgs: [],
@@ -227,13 +234,16 @@ export default class Activator extends BaseActivator {
                 targetElement.innerHTML = await response.text();
                 state.init();
 
-                // Listen for system reset from the template
-                targetElement.addEventListener('shell-system-reset', () => {
-                   const resetRefs = context.getServiceReferences(SYSTEM_RESET_SERVICE);
-                   if (resetRefs.length > 0) {
-                       context.getService(resetRefs[0]).factoryReset();
-                   }
-                });
+                // Listen for system reset from the template (with guard to avoid accumulation during navigation)
+                if (!targetElement.hasAttribute('data-reset-listener-active')) {
+                    targetElement.addEventListener('shell-system-reset', () => {
+                        const resetRefs = context.getServiceReferences(SYSTEM_RESET_SERVICE);
+                        if (resetRefs.length > 0) {
+                            context.getService(resetRefs[0]).factoryReset();
+                        }
+                    });
+                    targetElement.setAttribute('data-reset-listener-active', 'true');
+                }
             }
         };
         context.registerService(FLOW_SERVICE, flowMetadata, { 

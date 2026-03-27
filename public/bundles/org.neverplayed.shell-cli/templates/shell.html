@@ -17,7 +17,7 @@
 
     <!-- Output Area -->
     <div class="flex-1 overflow-y-auto min-h-0 space-y-2 mb-4 scrollbar-thin scrollbar-thumb-blue-600/50" x-ref="outputArea">
-        <template x-for="log in history" :key="log.timestamp">
+        <template x-for="log in shellHistory" :key="log.timestamp">
             <div class="flex gap-3 animate-fade-in">
                 <span class="opacity-30 shrink-0" x-text="log.time"></span>
                 <div class="flex-1">

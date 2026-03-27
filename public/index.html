@@ -387,7 +387,7 @@
               x-show="activeFlowId"
             >
               <!-- Mobile target -->
-              <div id="flow-container-mobile" class="h-full w-full relative">
+              <div id="flow-container-mobile" x-ignore class="h-full w-full relative">
               </div>
             </div>
           </div>
@@ -407,7 +407,7 @@
             </div>
             <!-- Target for OSGi flows -->
             <div x-show="activeFlowId" class="h-full w-full">
-              <div id="flow-container" class="h-full w-full relative"></div>
+              <div id="flow-container" x-ignore class="h-full w-full relative"></div>
             </div>
           </div>
         </template>
@@ -1100,7 +1100,7 @@
               const effectiveParams = { ...params };
               if (step) effectiveParams.step = step;
 
-              targetFlow.launch(el, effectiveParams);
+              await targetFlow.launch(el, effectiveParams);
             } else {
               console.warn(`Shell: Flow ${id} has no launch method!`);
             }

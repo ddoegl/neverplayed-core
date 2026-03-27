@@ -45,7 +45,7 @@ globalThis.Alpine = {
   data: () => {},
   store: () => {},
   effect: () => {},
-  reactive: (obj: any) => obj,
+  reactive: <T>(obj: T): T => obj,
 };
 
 // 2. Headless Persistence Manager (In-Memory/LocalStorage)

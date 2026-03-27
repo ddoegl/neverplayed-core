@@ -97,7 +97,12 @@ Bundles will use `this.persistence.get('keys')` instead of `localStorage.getItem
   - 🌉 **Dual-Bridge Reactivity**: Implemented architectural CustomEvents (`shell:sidebar-toggle`) for cross-context synchronization between CLI and Web UI.
   - 🔉 **Log Governance**: Refined default shell verbosity (`INFO` -> `DEBUG`) for a cleaner interactive experience.
   - ✅ **Verified**: Flawless sidebar toggling and bundle installation across Terminal and Barebones UI.
-- **Commit**: `feat: Universal Architecture Phase 31 - Interactive CLI & Dual-Bridge Reactivity`
+- **v1.3.1-robust-navigation (Milestone)**:
+  - 🏗️ **3-Tier Restoration**: Successfully decoupled `@neverplayed/shell-cli` (Pure Service) from `@neverplayed/shell-cli-dom` (Web UI Adapter) to restore architectural purity.
+  - 🛡️ **Alpine Robustness**: Eliminated "after of undefined" crashes by implementing **Unique Monotonic IDs** for every log entry and the **Isolate & Initialize** pattern (`x-ignore` + `Alpine.initTree`) for flow viewports.
+  - 📉 **Navigation Guards**: Implemented **Focus Guards** (BSN checks) and **Listener Guards** (attribute-based) across `shell-host` and `config-admin` to prevent redundant DOM updates and event accumulation.
+  - ✅ **Verified**: Flawless stability for high-volume commands like `/bundles` and perfectly smooth A -> B -> A navigation transitions in `barebones.html`.
+- **Commit**: `feat: Universal Architecture Phase 34 - 3-Tier Restoration & Navigation Robustness`
 
 ---
 

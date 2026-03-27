@@ -1,7 +1,8 @@
 import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-nodejs@0.8.33";
 import Pandino from "https://esm.sh/@pandino/pandino@0.8.33/denonext/pandino.mjs";
-import { fromFileUrl, join, resolve } from "https://deno.land/std@0.221.0/path/mod.ts";
+import { join, resolve } from "https://deno.land/std@0.221.0/path/mod.ts";
 import { parseArgs } from "https://deno.land/std@0.221.0/cli/parse_args.ts";
+import process from "node:process";
 
 /**
  * Universal Terminal Bootloader 🌌📺
@@ -14,15 +15,17 @@ const REMOTE_URL = args.url;
 const BASE_URL = REMOTE_URL || `file://${Deno.cwd()}/public/`;
 
 // 1. Unified Environment Mocks
-// deno-lint-ignore no-explicit-any
-(globalThis as any).document = {
+const mockDoc = {
     createElement: () => ({ style: {}, appendChild: () => {}, addEventListener: () => {}, setAttribute: () => {}, querySelector: () => null, querySelectorAll: () => [] }),
     head: { appendChild: () => {} },
     body: { appendChild: () => {}, style: {} },
     querySelector: () => null,
     querySelectorAll: () => [],
     addEventListener: () => {},
-} as any;
+};
+
+// deno-lint-ignore no-explicit-any
+(globalThis as any).document = mockDoc as any;
 // deno-lint-ignore no-explicit-any
 (globalThis as any).window = globalThis as any;
 // deno-lint-ignore no-explicit-any
@@ -51,6 +54,7 @@ async function main() {
         ...loaderConfiguration,
         "pandino.loader.fetcher": denoFetcher,
         "pandino.base.url": BASE_URL,
+    // deno-lint-ignore no-explicit-any
     } as any);
 
     await pandino.init();
@@ -79,9 +83,10 @@ async function main() {
                 manifest["Bundle-Activator"] = join(dirPath, manifest["Bundle-Activator"].replace(/^\.\//, ""));
             }
             const bundle = await context.installBundle(manifest);
-            if (bundle && (bundle.getState() as number) < 32) {
+            if (bundle && (bundle.getState() as unknown as number) < 32) {
                 await bundle.start();
             }
+        // deno-lint-ignore no-explicit-any
         } catch (err: any) {
             console.error(`❌ [${MODE}] Failed to boot ${path}:`, err.message);
         }
@@ -89,6 +94,7 @@ async function main() {
 
     let activeBundles = [];
     for (let i = 0; i < 20; i++) {
+        // deno-lint-ignore no-explicit-any
         activeBundles = context.getBundles().filter((b: any) => {
             const s = Number(typeof b.getState === 'function' ? b.getState() : b.state);
             return s >= 32;

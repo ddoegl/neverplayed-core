@@ -84,7 +84,7 @@
             class="h-full w-full relative"
             x-data="shellHost"
           >
-            <div id="flow-content" x-ref="flowContent" class="h-full w-full">
+            <div id="flow-content" x-ref="flowContent" x-ignore class="h-full w-full">
             </div>
 
             <!-- Global Overlay (Loader) -->
@@ -146,6 +146,7 @@
             "./bundles/org.neverplayed.shell-sidebar/manifest.json",
             "./bundles/org.neverplayed.system-reset/manifest.json",
             "./bundles/org.neverplayed.shell-cli/manifest.json",
+            "./bundles/org.neverplayed.shell-cli-dom/manifest.json",
           ];
 
           for (const url of coreBundles) {

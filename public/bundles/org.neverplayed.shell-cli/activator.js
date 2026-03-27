@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, ACTION_REGISTRY_SERVICE, SESSION_SERVICE, BUNDLE_TYPE_SERVICE, NEVERPLAYED_PREFIX, SHELL_CLI_PID, SHELL_CLI_SERVICE } from "core-types";
+import { SELECTION_SERVICE, CONFIG_ADMIN_SERVICE, SESSION_SERVICE, NEVERPLAYED_PREFIX, SHELL_CLI_SERVICE } from "core-types";
 import { BaseActivator } from "osgi-base";
 import { sendInvitationRequest as _sendInvitationRequest } from "../../auth-shield.js";
 
@@ -8,6 +8,7 @@ const _Alpine = globalThis.Alpine;
 export default class Activator extends BaseActivator {
     onStart(context) {
         this.history = [];
+        this.logCounter = 0;
         this.listeners = new Set();
 
         const shellService = {
@@ -20,90 +21,25 @@ export default class Activator extends BaseActivator {
             getCommands: () => ["/invite", "/clear", "/whoami", "/vars", "/services", "/bundles", "/loglevel", "/start", "/stop", "/update", "/uninstall", "/install", "/reset-config", "/prime-all", "/diag-manifest", "/reload-ui", "/methods", "/actions", "/flows", "/caps", "/help"]
         };
 
-        if (this.isHeadless) {
-            this.logger.debug("Shell CLI: Headless mode detected. Registering core service.");
-            context.registerService(SHELL_CLI_SERVICE, shellService);
-            return;
-        }
-
-        // DOM-specific logic
-        if (!globalThis.Alpine?.store('shell')) {
-            globalThis.Alpine?.store('shell', {
-                history: [],
-                commandHistory: [],
-                historyIndex: -1,
-                addLog(content, type = 'output') {
-                    const now = new Date();
-                    const time = now.getHours().toString().padStart(2, '0') + ':' + 
-                                now.getMinutes().toString().padStart(2, '0') + ':' + 
-                                now.getSeconds().toString().padStart(2, '0');
-                    this.history.push({
-                        timestamp: now.getTime() + Math.random(),
-                        time,
-                        type,
-                        content
-                    });
-                    setTimeout(() => {
-                        const el = document.querySelector('[x-ref="outputArea"]');
-                        if (el) el.scrollTop = el.scrollHeight;
-                    }, 10);
-                }
-            });
-        }
-        
-        const state = globalThis.Alpine?.store('shell');
-        const activator = this;
-
-        globalThis.getShellScope = () => ({
-            currentCommand: "",
-            get history() { return state.history; },
-            async executeCommand() {
-                const cmd = this.currentCommand.trim();
-                if (!cmd) return;
-                state.addLog(cmd, 'input');
-                state.commandHistory.push(cmd);
-                state.historyIndex = state.commandHistory.length;
-                this.currentCommand = "";
-                await this.processCommand(cmd);
-            },
-            async processCommand(input) {
-                return await activator.handleCommand(input, context);
-            },
-            navigateHistory(dir) {
-                if (state.commandHistory.length === 0) return;
-                state.historyIndex = Math.max(0, Math.min(state.commandHistory.length - 1, state.historyIndex + dir));
-                this.currentCommand = state.commandHistory[state.historyIndex] || "";
-            }
-        });
-
-        context.registerService([FLOW_SERVICE, SHELL_CLI_SERVICE], {
-            ...this.config,
-            ...shellService,
-            id: SHELL_CLI_PID,
-            title: "Shell CLI",
-            launch: (targetElement) => {
-                targetElement.innerHTML = `
-                    <div id="shell-container" class="h-full w-full">
-                        <div class="h-full border border-blue-900 shadow-2xl rounded-xl overflow-hidden">
-                            <div id="shell-content-wrapper" class="h-full">
-                                <div class="h-full" x-html="await (await fetch('./bundles/org.neverplayed.shell-cli/templates/shell.html')).text()"></div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            },
-            processCommand: async (cmd) => await this.handleCommand(cmd, context)
-        }, {
-            "capability": "sys:cli", "flow.id": SHELL_CLI_PID,
-            "flowType": BUNDLE_TYPE_SERVICE,
-            "sidebar": true,
-            "icon": "fas fa-terminal",
-            "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
-        });
+        context.registerService(SHELL_CLI_SERVICE, shellService);
     }
 
     log(content, type = 'output') {
-        const entry = { timestamp: Date.now(), type, content };
+        let finalContent = content;
+        if (typeof content === 'object' && content !== null) {
+            try {
+                finalContent = `<pre class="text-[10px] text-emerald-400 overflow-x-auto">${JSON.stringify(content, null, 2)}</pre>`;
+            } catch (_e) {
+                finalContent = String(content);
+            }
+        }
+
+        const entry = { 
+            id: ++this.logCounter,
+            timestamp: Date.now(), 
+            type, 
+            content: finalContent 
+        };
         this.history.push(entry);
         
         // Notify subscribers (Term/DOM UI)
@@ -114,13 +50,9 @@ export default class Activator extends BaseActivator {
         });
 
         if (this.isHeadless) {
-            const cleanLog = content.replace(/<[^>]*>/g, '').trim();
+            const cleanLog = String(finalContent).replace(/<[^>]*>/g, '').trim();
             if (type === 'error') this.logger.error(`[SHELL] ${cleanLog}`);
             else this.logger.debug(`[SHELL] ${cleanLog}`);
-        } else {
-            const state = globalThis.Alpine?.store('shell');
-            if (state) state.addLog(content, type);
-            else this.logger.debug(`[SHELL] ${content.replace(/<[^>]*>/g, '').trim()}`);
         }
     }
 
@@ -193,7 +125,7 @@ export default class Activator extends BaseActivator {
                     }
 
                     const categoryArg = args[0];
-                    let targetArg = args[1]; 
+                    const targetArg = args[1]; 
 
                     const categories = {
                         people: { data: boState.persons, label: "Persons" },

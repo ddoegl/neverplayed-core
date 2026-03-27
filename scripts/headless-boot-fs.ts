@@ -34,7 +34,7 @@ globalThis.Alpine = {
   data: () => {},
   store: () => {},
   effect: () => {},
-  reactive: (obj: any) => obj,
+  reactive: <T>(obj: T): T => obj,
 };
 
 // 2. Persistence Mock
@@ -49,6 +49,7 @@ class DenoPersistenceManager {
 }
 
 // 3. Hot-Swap Registry
+// deno-lint-ignore no-explicit-any
 const activeActivators = new Map<string, any>();
 const pandino = new Pandino({ ...loaderConfiguration });
 

@@ -58,7 +58,12 @@ export default class Activator {
                 }).open();
             },
 
-            launch(id, flow) {
+            async launch(id, flow) {
+                if (this.activeFlowId === id) {
+                    console.log(`Shell Host: Flow ${id} already active, skipping clear.`);
+                    return;
+                }
+
                 console.log(`Shell Host: Launching ${id} into Realm`);
                 
                 // Use the mount point from config or fallback to ref
@@ -68,10 +73,19 @@ export default class Activator {
                     return;
                 }
                 
-                container.innerHTML = "";
+                // Non-destructive tick
                 this.activeFlowId = id;
-                flow.launch(container);
-                this.ready = true; // Mark as ready once first flow is launched
+                container.innerHTML = ""; 
+                container.removeAttribute('data-bsn'); // Clear the Focus Guard attribute to ensure the new/returning flow can render
+                
+                console.log(`[${Date.now()}] Shell Host: Container cleared, attribute removed. Waiting for nextTick...`);
+                await Alpine.nextTick();
+                
+                console.log(`[${Date.now()}] Shell Host: Calling flow.launch...`);
+                await flow.launch(container);
+                
+                console.log(`[${Date.now()}] Shell Host: flow.launch completed.`);
+                this.ready = true; 
                 this.status = `Realm Active: ${id}`;
             }
         }));
