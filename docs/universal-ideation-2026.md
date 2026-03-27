@@ -76,4 +76,22 @@ Bundles will use `this.persistence.get('keys')` instead of `localStorage.getItem
 3.  **Headless Bootloader**: Create a `scripts/headless-boot.ts` to verify service registration in Deno.
 
 ---
-_This document evolves the previous roadmap into a concrete implementation strategy for the Next Generation of Never Played._ 🛰️🏁🚀
+
+## 7. Milestones & Audit Trail 🖋️🏛️
+
+### [2026-03-27]- **v1.2.0-universal-alpha (Current)**:
+  - ✨ `scripts/headless-boot.ts`: Deno-based bootloader with local bundle server.
+  - 🧩 `osgi-base.js`: `isHeadless` detection (Deno vs Browser).
+  - 🛠️ `shell-cli/activator.js`: Command logic extracted from UI scope.
+  - ✅ **Verified**: Core services successfully register in headless Deno environment.
+- **Service Discovery**: Standardized core service IDs in `core-types.js`.
+- **Environmental Health**: Restored `index.html` and `barebones.html` with unified import maps.
+- **v1.2.1-headless-fs (Milestone)**:
+  - 🔥 `scripts/headless-boot-fs.ts`: Filesystem-native bootloader with **Hot Swap** support via `Deno.watchFs`.
+  - 🎭 **Alpine Mocks**: Integrated to allow UI-dependent services (`shell-host`) to boot in headless mode.
+  - 🏷️ **Standardized Service IDs**: Migrated all core services (Logger, ConfigAdmin, SystemReset) to namespaced `@neverplayed/` format.
+  - ✅ **Verified**: Flawless registration and real-time reloading in Deno environment.
+- **Commit**: `feat: Universal Architecture Phase 21 - Headless FS Bootloader & Namespaced Service Registry`
+
+---
+

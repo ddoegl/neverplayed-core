@@ -1,0 +1,14 @@
+{
+  "imports": {
+    "@pandino/pandino": "https://esm.sh/@pandino/pandino@0.8.33",
+    "@pandino/pandino-api": "https://esm.sh/@pandino/pandino-api@0.8.33",
+    "@pandino/persistence-manager-api": "https://esm.sh/@pandino/persistence-manager-api@0.8.33",
+    "@pandino/persistence-manager-localstorage": "https://esm.sh/@pandino/persistence-manager-localstorage@0.8.33",
+    "@pandino/event-api": "https://esm.sh/@pandino/event-api@0.8.33",
+    "@pandino/log-api": "https://esm.sh/@pandino/log-api@0.8.33",
+    "alpinejs": "https://esm.sh/alpinejs@3.13.5",
+    "shared-types": "../public/shared-types.js",
+    "core-types": "../public/core-types.js",
+    "osgi-base": "../public/osgi-base.js"
+  }
+}

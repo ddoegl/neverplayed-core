@@ -11,8 +11,8 @@ export class BaseActivator {
         this.config = {};
         this.persistence = null;
         this.bsn = "unknown";
+        this.isHeadless = !!globalThis.Deno || !globalThis.document?.body;
     }
-
 
     async start(context) {
         this.context = context;
@@ -58,7 +58,7 @@ export class BaseActivator {
         }
 
         this.logger.info(`Activator: Starting ${this.bsn}...`);
-
+        
         // 3. Optional Auto-Flow Registration (Pattern: Configuration header contains flow info)
         if (this.config.sidebar || this.config.flowId) {
             this.registerAutoFlow();

@@ -7,7 +7,9 @@
     "audit": "deno run -A scripts/audit-identifiers.ts",
     "verify": "deno task lint && deno task check-types && deno task audit",
     "kill-deno": "lsof -ti:8008 | xargs kill -9",
-    "kill-deno-exp": "lsof -ti:8009 | xargs kill -9"
+    "kill-deno-exp": "lsof -ti:8009 | xargs kill -9",
+    "headless": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/headless-boot.ts",
+    "headless-fs": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/headless-boot-fs.ts"
   },
   "lint": {
     "files": {

@@ -5,7 +5,13 @@ const _Alpine = globalThis.Alpine;
 
 export default class Activator extends BaseActivator {
     onStart(context) {
+        if (this.isHeadless) {
+            this.logger.info("Shell Sidebar: Running in headless mode, skipping UI injection.");
+            return;
+        }
+
         const mountPoint = this.config.mountPoint || "#shell-sidebar-root";
+
         
         const discoveryFilter = this.config.discoveryFilter || "";
         const combinedFilter = discoveryFilter 
@@ -112,6 +118,7 @@ export default class Activator extends BaseActivator {
                 if (flow && this.shellHost) {
                     this.activeFlowId = id;
                     const hostRoot = document.querySelector("#shell-host-root");
+
                     const hostData = hostRoot?._x_dataStack?.[0];
                     if (hostData && typeof hostData.launch === 'function') {
                         hostData.launch(id, flow.svc);

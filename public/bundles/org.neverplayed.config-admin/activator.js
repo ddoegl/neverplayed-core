@@ -11,7 +11,6 @@ import {
     LOG_LEVEL_PROP
 } from "shared-types";
 import { BaseActivator } from "osgi-base";
-import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator extends BaseActivator {
     onStart(context) {
@@ -154,6 +153,7 @@ export default class Activator extends BaseActivator {
             title: "Universe Settings",
             icon: "fas fa-cog",
             launch: async (targetElement) => {
+                const Alpine = (await import("https://esm.sh/alpinejs@3.13.5")).default;
                 const state = Alpine.reactive({
                     cfgs: [],
                     init() {
