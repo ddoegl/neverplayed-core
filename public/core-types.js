@@ -1,7 +1,9 @@
 export const FLOW_SERVICE = "@neverplayed/flow-service";
 export const SESSION_SERVICE = "@neverplayed/session-service";
-export const LOG_SERVICE = "@pandino/log-service";
-export const CONFIG_ADMIN_SERVICE = "@pandino/config-admin";
+export const LOG_SERVICE = "org.neverplayed.LogService";
+export const CONFIG_ADMIN_SERVICE = "org.neverplayed.ConfigAdmin";
+export const SYSTEM_RESET_SERVICE = "org.neverplayed.SystemReset";
+export const PERSISTENCE_MANAGER_SERVICE = "@pandino/persistence-manager/PersistenceManager";
 export const YAML_SERVICE = "@neverplayed/yaml-service";
 export const SELECTION_SERVICE = "@neverplayed/selection-service";
 export const ACTION_REGISTRY_SERVICE = "@neverplayed/action-registry";

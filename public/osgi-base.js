@@ -1,4 +1,4 @@
-import { FLOW_SERVICE as _FLOW_SERVICE, LOG_SERVICE, CONFIG_ADMIN_SERVICE } from "core-types";
+import { FLOW_SERVICE as _FLOW_SERVICE, LOG_SERVICE, CONFIG_ADMIN_SERVICE, PERSISTENCE_MANAGER_SERVICE } from "core-types";
 
 /**
  * BaseActivator
@@ -9,8 +9,10 @@ export class BaseActivator {
         this.context = null;
         this.logger = console;
         this.config = {};
+        this.persistence = null;
         this.bsn = "unknown";
     }
+
 
     async start(context) {
         this.context = context;
@@ -29,6 +31,23 @@ export class BaseActivator {
             if (persistentConfig) {
                 this.config = { ...this.config, ...persistentConfig };
             }
+        }
+
+        // 3. Setup Persistence Manager
+        const pmRef = context.getServiceReference(PERSISTENCE_MANAGER_SERVICE);
+                      
+        if (pmRef) {
+
+            this.persistence = context.getService(pmRef);
+        } else {
+            // Memory Fallback (Generic Support)
+            // Ensures bundles don't crash before the storage bundle is ready
+            const _memory = new Map();
+            this.persistence = {
+                load: (key) => _memory.get(key) || null,
+                store: (key, val) => _memory.set(key, val)
+            };
+            this.logger.warn("PersistenceManager not found, using in-memory fallback.");
         }
 
 

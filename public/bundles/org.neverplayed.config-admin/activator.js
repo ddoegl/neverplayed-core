@@ -12,13 +12,12 @@ import {
 } from "shared-types";
 import { BaseActivator } from "osgi-base";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
-import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator extends BaseActivator {
     onStart(context) {
         const logger = this.logger;
-        const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
-        const pm = context.getService(pmRef);
+        const pm = this.persistence;
+
 
 
         const configs = new Map();
@@ -77,16 +76,9 @@ export default class Activator extends BaseActivator {
                 return configs.get(pid);
             },
             listConfigurations: () => {
-                // Return all primed or stored configuration PIDs
-                const pids = new Set(configs.keys());
-                // Also scan localStorage for any stored configs not yet loaded
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    if (key.startsWith('config.')) {
-                        pids.add(key.replace('config.', ''));
-                    }
-                }
-                 return Array.from(pids).filter(p => typeof p === 'string');
+                // Return all primed or currently active configuration PIDs
+                // (Manifest-priming ensures all known PIDs are in the 'configs' map at least once)
+                return Array.from(configs.keys()).filter(p => typeof p === 'string');
             }
         };
 
