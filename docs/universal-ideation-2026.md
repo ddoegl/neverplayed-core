@@ -91,7 +91,13 @@ Bundles will use `this.persistence.get('keys')` instead of `localStorage.getItem
   - 🎭 **Alpine Mocks**: Integrated to allow UI-dependent services (`shell-host`) to boot in headless mode.
   - 🏷️ **Standardized Service IDs**: Migrated all core services (Logger, ConfigAdmin, SystemReset) to namespaced `@neverplayed/` format.
   - ✅ **Verified**: Flawless registration and real-time reloading in Deno environment.
-- **Commit**: `feat: Universal Architecture Phase 21 - Headless FS Bootloader & Namespaced Service Registry`
+- **v1.3.0-interactive-cli (Milestone)**:
+  - 🛰️ **Interactive Shell**: Integrated `node:readline` for history navigation (Up/Down) and line editing.
+  - 📂 **Universal FS Resolution**: Refactored `/install` to resolve local relative paths against `deploymentRoot` for 100% parity with bootloader.
+  - 🌉 **Dual-Bridge Reactivity**: Implemented architectural CustomEvents (`shell:sidebar-toggle`) for cross-context synchronization between CLI and Web UI.
+  - 🔉 **Log Governance**: Refined default shell verbosity (`INFO` -> `DEBUG`) for a cleaner interactive experience.
+  - ✅ **Verified**: Flawless sidebar toggling and bundle installation across Terminal and Barebones UI.
+- **Commit**: `feat: Universal Architecture Phase 31 - Interactive CLI & Dual-Bridge Reactivity`
 
 ---
 

@@ -1,0 +1,8 @@
+{
+    "Bundle-SymbolicName": "@neverplayed/shell-cli-term",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Import-Service": [
+        "@neverplayed/shell-cli/service"
+    ]
+}

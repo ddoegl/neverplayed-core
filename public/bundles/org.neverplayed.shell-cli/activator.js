@@ -7,16 +7,26 @@ const _Alpine = globalThis.Alpine;
 
 export default class Activator extends BaseActivator {
     onStart(context) {
+        this.history = [];
+        this.listeners = new Set();
+
+        const shellService = {
+            execute: (input) => this.handleCommand(input, context),
+            subscribe: (listener) => {
+                this.listeners.add(listener);
+                return () => this.listeners.delete(listener);
+            },
+            getHistory: () => [...this.history],
+            getCommands: () => ["/invite", "/clear", "/whoami", "/vars", "/services", "/bundles", "/loglevel", "/start", "/stop", "/update", "/uninstall", "/install", "/reset-config", "/prime-all", "/diag-manifest", "/reload-ui", "/methods", "/actions", "/flows", "/caps", "/help"]
+        };
+
         if (this.isHeadless) {
-            this.logger.info("Shell CLI: Headless mode detected. Registering service without UI.");
-            context.registerService(SHELL_CLI_SERVICE, {
-                execute: (cmd) => this.handleCommand(cmd, context) 
-            });
+            this.logger.debug("Shell CLI: Headless mode detected. Registering core service.");
+            context.registerService(SHELL_CLI_SERVICE, shellService);
             return;
         }
 
-
-        // Initialize Global Shell State if not already present
+        // DOM-specific logic
         if (!globalThis.Alpine?.store('shell')) {
             globalThis.Alpine?.store('shell', {
                 history: [],
@@ -42,11 +52,11 @@ export default class Activator extends BaseActivator {
         }
         
         const state = globalThis.Alpine?.store('shell');
+        const activator = this;
 
         globalThis.getShellScope = () => ({
             currentCommand: "",
             get history() { return state.history; },
-            
             async executeCommand() {
                 const cmd = this.currentCommand.trim();
                 if (!cmd) return;
@@ -56,11 +66,9 @@ export default class Activator extends BaseActivator {
                 this.currentCommand = "";
                 await this.processCommand(cmd);
             },
-            
             async processCommand(input) {
-                return await this.handleCommand(input, context);
+                return await activator.handleCommand(input, context);
             },
-                
             navigateHistory(dir) {
                 if (state.commandHistory.length === 0) return;
                 state.historyIndex = Math.max(0, Math.min(state.commandHistory.length - 1, state.historyIndex + dir));
@@ -70,6 +78,7 @@ export default class Activator extends BaseActivator {
 
         context.registerService([FLOW_SERVICE, SHELL_CLI_SERVICE], {
             ...this.config,
+            ...shellService,
             id: SHELL_CLI_PID,
             title: "Shell CLI",
             launch: (targetElement) => {
@@ -83,8 +92,7 @@ export default class Activator extends BaseActivator {
                     </div>
                 `;
             },
-            processCommand: async (cmd) => await this.handleCommand(cmd, context),
-            getCommands: () => ["/invite", "/clear", "/whoami", "/vars", "/services", "/bundles", "/loglevel", "/start", "/stop", "/update", "/uninstall", "/install", "/reset-config", "/prime-all", "/diag-manifest", "/reload-ui", "/methods", "/actions", "/flows", "/caps", "/help"]
+            processCommand: async (cmd) => await this.handleCommand(cmd, context)
         }, {
             "capability": "sys:cli", "flow.id": SHELL_CLI_PID,
             "flowType": BUNDLE_TYPE_SERVICE,
@@ -95,18 +103,29 @@ export default class Activator extends BaseActivator {
     }
 
     log(content, type = 'output') {
+        const entry = { timestamp: Date.now(), type, content };
+        this.history.push(entry);
+        
+        // Notify subscribers (Term/DOM UI)
+        this.listeners.forEach(listener => {
+            try {
+                listener(entry);
+            } catch (_err) { /* ignore listener errors */ }
+        });
+
         if (this.isHeadless) {
-            if (type === 'error') this.logger.error(`[SHELL] ${content}`);
-            else this.logger.info(`[SHELL] ${content}`);
+            const cleanLog = content.replace(/<[^>]*>/g, '').trim();
+            if (type === 'error') this.logger.error(`[SHELL] ${cleanLog}`);
+            else this.logger.debug(`[SHELL] ${cleanLog}`);
         } else {
             const state = globalThis.Alpine?.store('shell');
             if (state) state.addLog(content, type);
-            else this.logger.info(`[SHELL] ${content}`);
+            else this.logger.debug(`[SHELL] ${content.replace(/<[^>]*>/g, '').trim()}`);
         }
     }
 
     async handleCommand(input, context) {
-        const parts = input.trim().split(' ');
+        const parts = input.trim().split(/\s+/);
         const command = parts[0].toLowerCase();
         const args = parts.slice(1);
         
@@ -142,6 +161,7 @@ export default class Activator extends BaseActivator {
                     break;
                     
                 case '/clear':
+                    this.history = [];
                     if (!this.isHeadless) {
                         const store = globalThis.Alpine?.store('shell');
                         if (store) store.history = [];
@@ -173,7 +193,7 @@ export default class Activator extends BaseActivator {
                     }
 
                     const categoryArg = args[0];
-                    let targetArg = args[1]; // Can be ID or ID.PATH
+                    let targetArg = args[1]; 
 
                     const categories = {
                         people: { data: boState.persons, label: "Persons" },
@@ -192,67 +212,18 @@ export default class Activator extends BaseActivator {
                         Object.keys(categories).forEach(cat => {
                             this.log(` - <span class="text-yellow-400">${cat}</span> (${categories[cat].data?.length || 0} items)`);
                         });
-                        this.log(`<div class="opacity-50 text-[10px]">Usage: /vars [category|serviceId] [id][.path]</div>`);
                         return;
                     }
 
-                    // 1. Resolve Data Source
-                    let explicitMethodUsed = false;
                     let items = categories[categoryArg.toLowerCase()]?.data;
                     let label = categories[categoryArg.toLowerCase()]?.label || categoryArg;
 
                     if (items === undefined) {
-                        // Try dynamic service lookup
                         const ref = context.getServiceReference(categoryArg);
                         if (ref) {
                             const svc = context.getService(ref);
-                            
-                            // 1. EXPLICIT SELECTION: If targetArg is a method on the service
-                            if (targetArg && typeof svc[targetArg] === 'function') {
-                                try {
-                                    const result = svc[targetArg]();
-                                    if (Array.isArray(result)) {
-                                        items = result;
-                                        label = `${categoryArg}.${targetArg}()`;
-                                        explicitMethodUsed = true;
-                                        // Shift the "next" argument to be the new target (ID or Path)
-                                        targetArg = args[2]; // The original targetArg was the method, so the next arg is the actual ID/Path
-                                    }
-                                } catch (_e) {
-                                    // Ignore evaluation errors
-                                }
-                            }
-
-                            // 2. REFINED HEURISTIC: Look for any "get*" that returns an array recursively
-                            if (!items) {
-                                let getter;
-                                let current = svc;
-                                while (current && current !== Object.prototype && !getter) {
-                                    // Priority 1: Match the last part of service ID (e.g. getRules for rules.data)
-                                    const targetBase = categoryArg.split('.').reverse().find(p => p !== 'data');
-                                    const bestMatch = `get${targetBase?.charAt(0).toUpperCase()}${targetBase?.slice(1)}`;
-
-                                    const allProps = Object.getOwnPropertyNames(current);
-                                    if (allProps.includes(bestMatch) && typeof svc[bestMatch] === 'function') {
-                                        getter = bestMatch;
-                                    } else {
-                                        getter = allProps.find(m => {
-                                            try {
-                                                return m.startsWith('get') && Array.isArray(svc[m]());
-                                            } catch (_e) { return false; }
-                                        });
-                                    }
-                                    current = Object.getPrototypeOf(current);
-                                }
-                                
-                                if (getter) {
-                                    items = svc[getter]();
-                                    label = `${categoryArg}.${getter}()`;
-                                } else {
-                                    items = [svc];
-                                    label = `Service: ${categoryArg}`;
-                                }
-                            }
+                            items = [svc];
+                            label = `Service: ${categoryArg}`;
                         }
                     }
 
@@ -261,28 +232,15 @@ export default class Activator extends BaseActivator {
                         return;
                     }
 
-                    // 2. Handle Listing
                     if (!targetArg) {
                         this.log(`<div class="text-white font-bold">${label}:</div>`);
-                        if (items.length === 1 && items[0]?.id === undefined) {
-                            // Single service inspection
-                            this.log(`<pre class="text-[10px] text-emerald-400">${JSON.stringify(items[0], null, 2)}</pre>`);
-                        } else {
-                            (items || []).forEach(item => {
-                                const _methodSuffix = explicitMethodUsed ? ` ${args[1]}` : ""; // Use original args[1] for method name
-                                this.log(` - <span class="text-yellow-400 cursor-pointer">${item.id || '[no-id]'}</span>: ${item.name || item.label || item.firstname || '...'}`);
-                            });
-                        }
+                        this.log(`<pre class="text-[10px] text-emerald-400">${JSON.stringify(items, null, 2)}</pre>`);
                         return;
                     }
 
-                    // 3. Resolve Target and Path (Dot Notation)
                     const [id, ...pathParts] = targetArg.split('.');
                     const path = pathParts.join('.');
-
-                    const item = Array.isArray(items) 
-                        ? items.find(i => String(i.id) === String(id) || (items.length === 1 && !i.id))
-                        : items;
+                    const item = Array.isArray(items) ? items.find(i => String(i.id) === String(id)) : items;
 
                     if (!item) {
                         this.log(`Item not found: ${id}`, 'error');
@@ -294,11 +252,6 @@ export default class Activator extends BaseActivator {
                         result = path.split('.').reduce((obj, p) => obj?.[p], item);
                     }
 
-                    if (result === undefined) {
-                        this.log(`Path not found: ${path}`, 'error');
-                        return;
-                    }
-
                     this.log(`<div class="text-white font-bold">Inspect: ${label} / ${targetArg}</div>`);
                     this.log(`<pre class="text-[10px] text-emerald-400 overflow-x-auto">${JSON.stringify(result, null, 2)}</pre>`);
                     break;
@@ -306,101 +259,35 @@ export default class Activator extends BaseActivator {
 
                 case '/services': {
                     const filter = args[0]?.toLowerCase();
-                    const refs = context.getServiceReferences?.(null, null) || [];
-                    const serviceIds = new Set();
-                    const detailedInfo = [];
-
-                    refs.forEach(ref => {
-                        const ocs = ref.getProperty("objectClass");
-                        (Array.isArray(ocs) ? ocs : [ocs]).forEach(id => {
-                            if (!filter || id.toLowerCase().includes(filter)) {
-                                serviceIds.add(id);
-                                detailedInfo.push({ id, ref });
-                            }
-                        });
-                    });
-
-                    const sortedIds = Array.from(serviceIds).sort();
-
-                    if (sortedIds.length === 0) {
-                        this.log(`No services found matching: ${filter || '*'}`, 'error');
-                        return;
-                    }
-
-                    if (sortedIds.length === 1 && filter) {
-                        const id = sortedIds[0];
-                        const match = detailedInfo.find(d => d.id === id);
-                        const bundle = match.ref.bundle;
-                        const stateMap = { 1: 'UNINSTALLED', 2: 'INSTALLED', 4: 'RESOLVED', 8: 'STARTING', 16: 'STOPPING', 32: 'ACTIVE' };
-                        
-                        this.log(`<div class="text-white font-bold">Service Detail: ${id}</div>`);
-                        this.log(`<div class="text-blue-200">Bundle: <span class="text-white">${bundle.getSymbolicName()}</span> (#${bundle.id}) [${stateMap[bundle.getState()] || bundle.getState()}]</div>`);
-                        
-                        const props = {};
-                        match.ref.getPropertyKeys().forEach(k => {
-                            props[k] = match.ref.getProperty(k);
-                        });
-                        this.log(`<pre class="text-[10px] text-cyan-400">${JSON.stringify(props, null, 2)}</pre>`);
+                    const refs = context.getServiceReferences(null, null) || [];
+                    const ids = [...new Set(refs.flatMap(ref => ref.getProperty("objectClass") || []))].sort();
+                    
+                    if (filter) {
+                        const matched = ids.filter(id => id.toLowerCase().includes(filter));
+                        this.log(`<div class="text-white font-bold">Matching Services (${matched.length}):</div>`);
+                        matched.forEach(id => this.log(` - ${id}`));
                     } else {
-                        this.log(`<div class="text-white font-bold">Registered Services (${sortedIds.length}):</div>`);
-                        sortedIds.forEach(id => {
-                            this.log(` - <span class="text-yellow-400 cursor-pointer">${id}</span>`);
-                        });
+                        this.log(`<div class="text-white font-bold">Registered Services (${ids.length}):</div>`);
+                        ids.forEach(id => this.log(` - ${id}`));
                     }
                     break;
                 }
 
                 case '/bundles': {
                     const filterStr = args[0];
-                    const allBundles = (context.getBundles?.() || []).sort((a,b) => b.id - a.id);
+                    const allBundles = context.getBundles().sort((a,b) => b.id - a.id);
                     const stateMap = { 1: 'UNINSTALLED', 2: 'INSTALLED', 4: 'RESOLVED', 8: 'STARTING', 16: 'STOPPING', 32: 'ACTIVE' };
                     
-                    let matched = allBundles;
+                    let matched = allBundles.filter(b => b.getState() !== 1);
                     if (filterStr) {
-                        if (filterStr.startsWith('(')) {
-                            try {
-                                const f = context.createFilter?.(filterStr);
-                                const matchFn = f?.matches || f?.match;
-                                if (typeof matchFn === 'function') {
-                                    matched = allBundles.filter(b => matchFn.call(f, b.getHeaders()));
-                                }
-                            } catch (err) {
-                                this.log(`Framework filter error: ${err.message}`, 'error');
-                                return;
-                            }
-                        } else {
-                            const fs = filterStr.toLowerCase();
-                            matched = allBundles.filter(b => 
-                                String(b.id) === fs || 
-                                b.getSymbolicName().toLowerCase().includes(fs)
-                            );
-                        }
-                    } else {
-                        matched = allBundles.filter(b => b.getState() !== 1);
+                        const fs = filterStr.toLowerCase();
+                        matched = matched.filter(b => String(b.id) === fs || b.getSymbolicName().toLowerCase().includes(fs));
                     }
 
-                    if (matched.length === 0) {
-                        this.log(`No active bundles found matching: ${filterStr || '*'}`, 'error');
-                        return;
-                    }
-
-                    if (matched.length === 1 || (filterStr && matched.length > 0 && !isNaN(filterStr))) {
-                        const b = matched[0];
-                        this.log(`<div class="text-white font-bold">Bundle Detail: ${b.getSymbolicName() || 'unnamed'} (#${b.id})</div>`);
-                        this.log(`<div class="text-blue-200">State: <span class="text-white font-bold">${stateMap[b.state] || b.state}</span></div>`);
-                        
-                        const bProps = [];
-                        for (let obj = b; obj && obj !== Object.prototype; obj = Object.getPrototypeOf(obj)) {
-                            Object.getOwnPropertyNames(obj).forEach(k => {
-                                if (typeof b[k] !== 'function' && !bProps.includes(k)) bProps.push(k);
-                            });
-                        }
-                        bProps.forEach(k => {
-                            this.log(`<div class="text-blue-200">${k}: <span class="text-white text-[10px] break-all">${b[k]}</span></div>`);
-                        });
-                        
-                        this.log(`<div class="text-white font-bold mt-2 underline">Manifest Headers:</div>`);
-                        this.log(`<pre class="text-[10px] text-cyan-400">${JSON.stringify(b.getHeaders(), null, 2)}</pre>`);
+                    if (this.isHeadless) {
+                        this.log("Universe Bundles:");
+                        const table = matched.map(b => ` #${String(b.id).padEnd(3)} | [${(stateMap[b.getState()] || b.getState()).padEnd(10)}] | ${b.getSymbolicName()}`).join('\n');
+                        this.log(table);
                     } else {
                         this.log(`<div class="text-white font-bold">Universe Bundles (${matched.length}):</div>`);
                         matched.forEach(b => {
@@ -418,88 +305,15 @@ export default class Activator extends BaseActivator {
                         this.log("Usage: /methods [serviceId]", 'error');
                         return;
                     }
-
                     const ref = context.getServiceReference(serviceId);
                     if (!ref) {
                         this.log(`Service not found: ${serviceId}`, 'error');
                         return;
                     }
-
                     const svc = context.getService(ref);
-                    if (!svc) {
-                        this.log(`Could not retrieve service: ${serviceId}`, 'error');
-                        return;
-                    }
-
-                    const methods = new Set();
-                    let current = svc;
-                    const standardProto = Object.getOwnPropertyNames(Object.prototype);
-                    
-                    while (current && current !== Object.prototype) {
-                        Object.getOwnPropertyNames(current).forEach(m => {
-                            if (typeof svc[m] === 'function' && m !== 'constructor' && !standardProto.includes(m)) {
-                                methods.add(m);
-                            }
-                        });
-                        current = Object.getPrototypeOf(current);
-                    }
-
-                    const sortedMethods = Array.from(methods).sort();
-
-                    this.log(`<div class="text-white font-bold">Methods for: ${serviceId}</div>`);
-                    if (sortedMethods.length === 0) {
-                        this.log("No direct methods found.");
-                    } else {
-                        sortedMethods.forEach(m => {
-                            this.log(` - <span class="text-yellow-400 cursor-pointer">${m}()</span>`);
-                        });
-                    }
-                    break;
-                }
-
-                case '/actions': {
-                    const filter = args[0]?.toLowerCase();
-                    const regRef = context.getServiceReference(ACTION_REGISTRY_SERVICE);
-                    const registry = regRef ? context.getService(regRef) : null;
-                    
-                    if (!registry) {
-                        this.log("Action Registry service not available.", 'error');
-                        return;
-                    }
-
-                    const actions = registry.getActions().filter(a => !filter || a.id.toLowerCase().includes(filter));
-
-                    if (actions.length === 0) {
-                        this.log(`No actions found matching: ${filter || '*'}`, 'error');
-                        return;
-                    }
-
-                    this.log(`<div class="text-white font-bold mb-2 underline">Action Registry (${actions.length} items):</div>`);
-                    
-                    actions.forEach(a => {
-                        let paramDoc = "";
-                        if (a.params && Object.keys(a.params).length > 0) {
-                            paramDoc = `<div class="ml-4 mt-1 space-y-1 opacity-75">
-                                ${Object.entries(a.params).map(([k, v]) => `
-                                    <div class="flex gap-2">
-                                        <span class="text-cyan-300 min-w-[100px] font-mono">${k}:</span>
-                                        <span class="text-gray-300 italic">${v}</span>
-                                    </div>
-                                `).join('')}
-                            </div>`;
-                        }
-
-                        this.log(`
-                            <div class="mb-3">
-                                <div class="flex gap-2 items-baseline">
-                                    <span class="text-yellow-400 font-bold font-mono text-[11px]">${a.id}</span>
-                                    <span class="text-white text-[10px] opacity-70">| ${a.label}</span>
-                                </div>
-                                <div class="text-[10px] text-gray-400 ml-4">${a.description}</div>
-                                ${paramDoc}
-                            </div>
-                        `);
-                    });
+                    const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(svc)).filter(m => typeof svc[m] === 'function' && m !== 'constructor').sort();
+                    this.log(`<div class="text-white font-bold">Methods for ${serviceId}:</div>`);
+                    methods.forEach(m => this.log(` - ${m}()`));
                     break;
                 }
 
@@ -517,130 +331,112 @@ export default class Activator extends BaseActivator {
                     break;
                 }
 
-                case '/caps': {
-                    const filter = args[0]?.toLowerCase();
-                    const refs = context.getServiceReferences(FLOW_SERVICE, null) || [];
-                    const caps = new Set();
-                    refs.forEach(ref => {
-                        const cap = ref.getProperty("capability");
-                        if (cap) caps.add(cap);
-                    });
-                    
-                    const sortedCaps = Array.from(caps).sort();
-                    this.log(`<div class="text-white font-bold mb-2 underline">Global Capabilities (${sortedCaps.length}):</div>`);
-                    sortedCaps.forEach(cap => {
-                        if (!filter || cap.toLowerCase().includes(filter)) {
-                            this.log(` - <span class="text-cyan-400">${cap}</span>`);
-                        }
-                    });
-                    break;
-                }
-
                 case '/start':
                 case '/stop':
                 case '/update':
                 case '/uninstall': {
                     const target = args[0];
-                    if (!target) {
-                        this.log(`Usage: ${command} [id|bsn]`, 'error');
-                        return;
-                    }
-
-                    const targets = context.getBundles().filter(b => 
-                        String(b.id) === target || b.getSymbolicName() === target
-                    );
-
-                    if (targets.length === 0) {
-                        this.log(`Bundle not found: ${target}`, 'error');
-                        return;
-                    }
-
+                    if (!target) return;
                     const action = command.slice(1);
-                    
+                    const targets = context.getBundles().filter(b => String(b.id) === target || b.getSymbolicName() === target);
                     for (const b of targets) {
                         try {
-                            this.log(`${action.charAt(0).toUpperCase() + action.slice(1)}ing bundle ${b.getSymbolicName()} (#${b.id})...`);
+                            this.log(`${action.charAt(0).toUpperCase() + action.slice(1)}ing bundle ${b.getSymbolicName()}...`);
                             if (action === 'start') await b.start();
                             else if (action === 'stop') await b.stop();
                             else if (action === 'update') await b.update();
                             else if (action === 'uninstall') await b.uninstall();
-                            this.log(`Success: Bundle ${b.getSymbolicName()} (#${b.id}) shifted to desired state.`);
-                        } catch (err) {
-                            this.log(`Action failed for #${b.id}: ${err.message}`, 'error');
-                        }
+                        } catch (err) { this.log(`Action failed: ${err.message}`, 'error'); }
                     }
-                    break;
-                }
-
-                case '/sidebar': {
-                    const target = args[0];
-                    const caRef = context.getServiceReference(CONFIG_ADMIN_SERVICE);
-                    const ca = caRef ? context.getService(caRef) : null;
-                    if (!ca) {
-                        this.log("Config Admin service not available.", 'error');
-                        return;
-                    }
-                    const bundle = context.getBundles().find(b => String(b.id) === target || b.getSymbolicName() === target);
-                    if (!bundle) {
-                        this.log(`Bundle/Flow not found: ${target}`, 'error');
-                        return;
-                    }
-                    const bsn = bundle.getSymbolicName();
-                    const config = ca.getConfiguration(bsn);
-                    const currentProps = config.getProperties() || {};
-                    const newState = !currentProps.sidebar;
-                    config.update({ ...currentProps, sidebar: newState });
-                    this.log(`Sidebar visibility for ${bsn} set to: <b>${newState}</b>`);
-                    this.log(`<span class="text-gray-400 italic">Hint: You may need to restart the bundle to apply changes.</span>`);
                     break;
                 }
 
                 case '/install': {
-
                     let url = args[0];
-                    if (!url) {
-                        this.log(`Usage: /install [url|@neverplayed/name]`, 'error');
-                        return;
-                    }
+                    if (!url) return;
                     if (url.startsWith(NEVERPLAYED_PREFIX)) {
                         const name = url.replace(NEVERPLAYED_PREFIX, '');
-                        url = `./bundles/org.neverplayed.${name}/manifest.json`;
+                        const base = globalThis.NEVERPLAYED_BASE_URL || globalThis.location?.href || './';
+                        try {
+                            url = new URL(`./bundles/org.neverplayed.${name}/manifest.json`, base).href;
+                        } catch (_e) {
+                            url = `./bundles/org.neverplayed.${name}/manifest.json`;
+                        }
                     }
-                    const bustedUrl = `${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`;
-                    this.log(`Installing bundle from: <span class="text-white">${url}</span>...`);
+                    
                     try {
-                        const b = await context.installBundle(bustedUrl);
+                        const bustedUrl = this.isHeadless ? url : `${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+                        const response = await fetch(bustedUrl);
+                        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        const manifest = await response.json();
+
+                        // Fix activator path using raw absolute strategy
+                        if (url.startsWith('file:') || (this.isHeadless && !url.startsWith('http'))) {
+                            const baseUrl = url.replace(/[^\/]*\.json(\?.*)?$/, '').replace(/^file:\/+/ , "/");
+                            const activator = manifest["Bundle-Activator"] || "activator.js";
+                            manifest["Bundle-Activator"] = `/${baseUrl.replace(/^\/+/,'')}${activator.replace(/^\.\//, '')}`;
+                        }
+
+                        let b;
+                        if (this.isHeadless) {
+                            b = await context.installBundle(manifest);
+                        } else {
+                            // In web mode, the Pandino loader handles URL resolution/cache-busting better than passing a raw object
+                            b = await context.installBundle(url);
+                        }
+                        
                         this.log(`Success: Installed bundle #${b.id} (${b.getSymbolicName()})`);
-                    } catch (err) {
-                        this.log(`Installation failed: ${err.message}`, 'error');
-                    }
+                        // Only start if not already starting/active
+                        if (b.getState() < 32) await b.start();
+                    } catch (err) { this.log(`Installation failed: ${err.message}`, 'error'); }
                     break;
                 }
-                    
+
                 case '/prime-all': {
                     const target = args[0];
                     const caRef = context.getServiceReference(CONFIG_ADMIN_SERVICE);
                     const ca = caRef ? context.getService(caRef) : null;
                     if (!ca) return;
-
-                    const bundles = context.getBundles().filter(b => {
-                        const isActive = b.state === 32 || b.state === "ACTIVE";
-                        if (!target) return isActive;
-                        return isActive && (String(b.id) === target || b.getSymbolicName() === target);
-                    });
-                    
+                    const bundles = context.getBundles().filter(b => b.state === 32 && (!target || b.getSymbolicName() === target));
                     for (const b of bundles) {
-                        const url = b.location || b.bundleLocation || b.manifestLocation || b.url;
-                        if (!url) continue;
                         try {
-                            const manifestUrl = url.startsWith('http') ? url : `http://localhost:8008/${url.replace('./', '')}`;
-                            const manifest = await (await fetch(`${manifestUrl}${manifestUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`)).json();
+                            const url = b.location || b.bundleLocation;
+                            if (!url) continue;
+                            const manifestUrl = this.isHeadless ? url : `${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+                            const manifest = await (await fetch(manifestUrl)).json();
                             if (manifest.Configuration) ca.getConfiguration(b.getSymbolicName()).update(manifest.Configuration);
-                        } catch (_e) {
-                            // Ignore failed re-priming
+                        } catch (_e) { /* ignore */ }
+                    }
+                    this.log("Re-primed configurations.");
+                    break;
+                }
+
+                case '/sidebar': {
+                    const target = args[0];
+                    if (this.isHeadless) {
+                        this.log("Sidebar commands are only reactive in the Web UI.", "warn");
+                        break;
+                    }
+                    if (!target) {
+                        globalThis.dispatchEvent(new CustomEvent('shell:sidebar-toggle'));
+                        this.log("Toggled global sidebar (via DOM event).");
+                    } else {
+                        const caRef = context.getServiceReference(CONFIG_ADMIN_SERVICE);
+                        const ca = caRef ? context.getService(caRef) : null;
+                        if (ca) {
+                            const bundle = context.getBundles().find(b => String(b.id) === target || b.getSymbolicName() === target);
+                            if (bundle) {
+                                const bsn = bundle.getSymbolicName();
+                                const config = ca.getConfiguration(bsn);
+                                const props = config.getProperties() || {};
+                                const newState = !props.sidebar;
+                                await config.update({ ...props, sidebar: newState });
+                                // Architectural "flows-updated" signal for index.html to re-evaluate isFlowEnabled
+                                globalThis.dispatchEvent(new CustomEvent('shell:flows-updated'));
+                                this.log(`Sidebar property for ${bsn} set to: ${newState} (signal dispatched).`);
+                            }
                         }
                     }
-                    this.log(`Re-primed configurations.`);
                     break;
                 }
 
@@ -654,4 +450,3 @@ export default class Activator extends BaseActivator {
 
     stop(_context) {}
 }
-

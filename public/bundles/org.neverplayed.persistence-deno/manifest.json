@@ -1,0 +1,6 @@
+{
+    "Bundle-SymbolicName": "@neverplayed/persistence-deno",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "./activator.js",
+    "Description": "Deno-native localStorage Persistence Manager"
+}

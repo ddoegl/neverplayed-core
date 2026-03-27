@@ -90,6 +90,8 @@
 
   <body
     x-data="navigationMenu"
+    @shell:sidebar-toggle.window="sidebarOpen = !sidebarOpen"
+    @shell:flows-updated.window="flows = [...flows]"
     class="h-screen flex flex-col bg-gray-100 text-gray-900 overflow-hidden sl-theme-light"
   >
     <!-- Cinematic Splash Screen -->
@@ -1288,6 +1290,7 @@
           "./bundles/flows/hello-world-do/manifest.json",
           "./bundles/flows/visual-do-editor/manifest.json",
           "./bundles/org.neverplayed.shell-cli/manifest.json",
+          "./bundles/org.neverplayed.shell-cli-dom/manifest.json",
         ];
 
         const splashScreen = document.getElementById("splash-screen");

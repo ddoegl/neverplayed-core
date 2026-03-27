@@ -1,4 +1,4 @@
-import { FLOW_SERVICE } from "core-types";
+import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE } from "core-types";
 import { BaseActivator } from "osgi-base";
 
 const _Alpine = globalThis.Alpine;
@@ -38,6 +38,16 @@ export default class Activator extends BaseActivator {
             init() {
                 logger.info("Shell Sidebar: Initializing Scope...");
 
+                // Track ConfigAdmin for property filtering
+                context.trackService(`(objectClass=${CONFIG_ADMIN_SERVICE})`, {
+                    addingService: (ref) => {
+                        this.ca = context.getService(ref);
+                        this.syncFlows();
+                        return this.ca;
+                    },
+                    removedService: () => { this.ca = null; this.syncFlows(); }
+                }).open();
+
                 // Track Shell Host Service (Orchestrator)
                 context.trackService(`(objectClass=@neverplayed/shell-host-service)`, {
                     addingService: (ref) => {
@@ -69,8 +79,8 @@ export default class Activator extends BaseActivator {
                 
                 // Safer Diagnostic Log (Rule 19)
                 const capability = ref.getProperty("capability");
-                const sidebar = ref.getProperty("sidebar");
-                logger.info(`Shell Sidebar: [DISCOVERY] Bundle: ${bsn} (${bundleId}) | Flow: ${flowId} | Capability: ${capability} | Sidebar: ${sidebar}`);
+                const sidebarProp = ref.getProperty("sidebar");
+                logger.debug(`Shell Sidebar: [DISCOVERY] Bundle: ${bsn} (${bundleId}) | Flow: ${flowId} | Capability: ${capability} | Sidebar: ${sidebarProp}`);
                 
                 // Key should be unique per registration instance
                 const key = `${bundleId}:${flowId}`;
@@ -79,7 +89,7 @@ export default class Activator extends BaseActivator {
                 const title = svc.title || ref.getProperty("flow.name") || ref.getProperty("flow.title") || flowId;
                 const icon = ref.getProperty("icon") || ref.getProperty("flow.icon") || "fas fa-cube";
 
-                this._flows.set(key, { id: flowId, title, icon, svc, bundleId, bsn, key });
+                this._flows.set(key, { id: flowId, title, icon, svc, bundleId, bsn, key, sidebarProp });
                 this.syncFlows();
             },
 
@@ -89,7 +99,7 @@ export default class Activator extends BaseActivator {
                 const key = `${bundleId}:${flowId}`;
                 
                 if (this._flows.has(key)) {
-                    logger.info(`Shell Sidebar: [REMOVAL] Bundle: ${bundleId} | Flow: ${flowId}`);
+                    logger.debug(`Shell Sidebar: [REMOVAL] Bundle: ${bundleId} | Flow: ${flowId}`);
                     this._flows.delete(key);
                     this.syncFlows();
                 }
@@ -97,18 +107,24 @@ export default class Activator extends BaseActivator {
 
             syncFlows() {
                 // BULLETPROOF: Use a secondary Map keyed ONLY by logical Flow ID
-                // to ensure that even if multiple registrations exist, only ONE 
-                // instance of each logical flow is rendered in the UI.
                 const uniqueByFlowId = new Map();
                 for (const item of this._flows.values()) {
-                    // If multiple registrations for the same flow ID exist, 
-                    // the last one discovered wins.
-                    uniqueByFlowId.set(item.id, item);
+                    // Filter based on ConfigAdmin or service property
+                    const config = this.ca?.getConfiguration(item.bsn)?.getProperties();
+                    
+                    // Priority: ConfigAdmin > Service Property > Default (true)
+                    const isVisible = config?.sidebar !== undefined 
+                        ? config.sidebar 
+                        : (item.sidebarProp !== undefined ? item.sidebarProp : true);
+
+                    if (isVisible) {
+                        uniqueByFlowId.set(item.id, item);
+                    }
                 }
 
                 this.flows = Array.from(uniqueByFlowId.values()).sort((a, b) => {
-                    if (a.id === "@neverplayed/shell-cli") return -1;
-                    if (b.id === "@neverplayed/shell-cli") return 1;
+                    if (a.id === "@neverplayed/shell-cli" || a.id === "shell-cli") return -1;
+                    if (b.id === "@neverplayed/shell-cli" || b.id === "shell-cli") return 1;
                     return a.title.localeCompare(b.title);
                 });
             },
@@ -143,6 +159,9 @@ export default class Activator extends BaseActivator {
         // Note: We don't call Alpine.initTree(el) here because barebones.html 
         // calls Alpine.start() at the end of the boot sequence, which will 
         // initialize this injected content automatically.
-        el.innerHTML = `<div x-data="globalThis.getShellSidebarScope()" class="h-full w-full">${html}</div>`;
+        el.innerHTML = `<div x-data="globalThis.getShellSidebarScope()" 
+                             @shell:sidebar-toggle.window="toggleCollapse()" 
+                             @shell:flows-updated.window="syncFlows()"
+                             class="h-full w-full">${html}</div>`;
     }
 }
