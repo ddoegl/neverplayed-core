@@ -8,6 +8,9 @@ export const PERSISTENCE_MANAGER_SERVICE = "@pandino/persistence-manager/Persist
 export const YAML_SERVICE = "@neverplayed/yaml-service";
 export const SELECTION_SERVICE = "@neverplayed/selection-service";
 export const ACTION_REGISTRY_SERVICE = "@neverplayed/action-registry";
+export const AUTH_SHIELD_SERVICE = "@neverplayed/auth-shield/service";
+export const AUTH_SHIELD_BUNDLE = "@neverplayed/auth-shield";
+
 export const BUNDLE_TYPE_SERVICE = "service-flow";
 export const NEVERPLAYED_PREFIX = "@neverplayed/";
 

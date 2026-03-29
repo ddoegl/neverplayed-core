@@ -1,0 +1,10 @@
+{
+    "Bundle-SymbolicName": "@neverplayed/auth-shield",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Auth Shield",
+    "Bundle-Description": "Firebase-based Google Authentication & Authorization layer",
+    "Bundle-Activator": "activator.js",
+    "Configuration": {
+        "log-level": "INFO"
+    }
+}

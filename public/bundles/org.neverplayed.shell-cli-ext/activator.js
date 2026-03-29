@@ -49,7 +49,7 @@ export default class Activator extends BaseActivator {
         context.registerService(SHELL_COMMAND_SERVICE, {
             name: "vars",
             description: "[category] [id] - List and drill down flow variables",
-            execute: async (args, ctx, log) => {
+            execute: (args, ctx, log) => {
                 const boState = globalThis.backofficeState;
                 if (!boState) {
                     log("Backoffice state not found.", "error");

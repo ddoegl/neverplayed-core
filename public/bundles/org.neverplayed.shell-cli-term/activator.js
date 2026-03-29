@@ -38,12 +38,28 @@ export default class Activator extends BaseActivator {
                 return;
             }
 
-            const color = entry.type === 'error' ? "\x1b[31m" : "\x1b[36m";
             const reset = "\x1b[0m";
-            
             let content = entry.content;
+            let color = entry.type === 'error' ? "\x1b[31m" : "\x1b[36m"; // Default cyan or red
+            let bold = "";
+
             if (typeof content === 'object' && content !== null) {
-                content = JSON.stringify(content, null, 2);
+                if (content.text) {
+                    const colorMap = {
+                        blue: "\x1b[34m",
+                        green: "\x1b[32m",
+                        yellow: "\x1b[33m",
+                        red: "\x1b[31m",
+                        cyan: "\x1b[36m",
+                        magenta: "\x1b[35m",
+                        gray: "\x1b[90m"
+                    };
+                    color = colorMap[content.color] || color;
+                    bold = content.bold ? "\x1b[1m" : "";
+                    content = content.text;
+                } else {
+                    content = JSON.stringify(content, null, 2);
+                }
             } else {
                 // Strip HTML only if it looks like there's any (light safety net)
                 content = String(content);
@@ -58,7 +74,7 @@ export default class Activator extends BaseActivator {
                 .join('\n');
 
             // Move to start of line, clear it, print log, then redraw prompt
-            const output = `\r\x1b[K${color}${content}${reset}\n`;
+            const output = `\r\x1b[K${bold}${color}${content}${reset}\n`;
             process.stdout.write(output);
             rl.prompt(true);
         });

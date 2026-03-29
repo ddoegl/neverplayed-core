@@ -40,9 +40,24 @@ export default class Activator extends BaseActivator {
                     
                     let formatted = entry.content;
                     if (typeof formatted === 'object' && formatted !== null) {
-                        try {
-                            formatted = `<pre class="text-[10px] text-emerald-400 overflow-x-auto">${JSON.stringify(formatted, null, 2)}</pre>`;
-                        } catch (_e) { formatted = String(formatted); }
+                        if (formatted.text) {
+                            const colorMap = {
+                                blue: 'text-blue-400',
+                                green: 'text-emerald-400',
+                                yellow: 'text-amber-400',
+                                red: 'text-rose-400',
+                                cyan: 'text-cyan-400',
+                                magenta: 'text-fuchsia-400',
+                                gray: 'text-slate-400'
+                            };
+                            const colorClass = colorMap[formatted.color] || 'text-slate-200';
+                            const boldClass = formatted.bold ? 'font-bold' : '';
+                            formatted = `<span class="${colorClass} ${boldClass}">${formatted.text}</span>`;
+                        } else {
+                            try {
+                                formatted = `<pre class="text-[10px] text-emerald-400 overflow-x-auto">${JSON.stringify(formatted, null, 2)}</pre>`;
+                            } catch (_e) { formatted = String(formatted); }
+                        }
                     }
 
                     this.history.push({

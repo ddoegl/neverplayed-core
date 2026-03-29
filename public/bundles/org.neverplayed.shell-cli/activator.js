@@ -20,7 +20,8 @@ const CORE_COMMANDS = [
     { name: 'uninstall', description: '[id/bsn] - Uninstall a bundle' },
     { name: 'start', description: '[id/bsn] - Start a bundle' },
     { name: 'stop', description: '[id/bsn] - Stop a bundle' },
-    { name: 'update', description: '[id/bsn] - Update a bundle' }
+    { name: 'update', description: '[id/bsn] - Update a bundle' },
+    { name: 'props', description: '[serviceId] - List OSGi service properties' }
 ];
 
 export default class Activator extends BaseActivator {
@@ -80,7 +81,10 @@ export default class Activator extends BaseActivator {
 
         if (this.isHeadless) {
             let cleanLog = content;
-            if (typeof content === 'object') cleanLog = JSON.stringify(content, null, 2);
+            if (typeof content === 'object' && content !== null) {
+                if (content.text) cleanLog = content.text;
+                else try { cleanLog = JSON.stringify(content, null, 2); } catch (_e) { cleanLog = '[Object]'; }
+            }
             if (type === 'error') this.logger.error(`[SHELL] ${cleanLog}`);
             else this.logger.debug(`[SHELL] ${cleanLog}`);
         }
@@ -137,10 +141,89 @@ export default class Activator extends BaseActivator {
                         matched = matched.filter(b => String(b.id) === fs || b.getSymbolicName().toLowerCase().includes(fs));
                     }
 
-                    this.log(`Universe Bundles (${matched.length}):`);
-                    matched.forEach(b => {
+                    if (matched.length === 1) {
+                        const b = matched[0];
+                        const headers = b.getHeaders() || {};
                         const stateStr = stateMap[b.getState()] || b.getState();
-                        this.log(` #${b.id} [${stateStr}] ${b.getSymbolicName()}`);
+                        
+                        this.log({ text: `Details for Bundle #${b.id}:`, color: 'blue', bold: true });
+                        this.log({ text: ` - SymbolicName: ${b.getSymbolicName()}`, color: 'cyan' });
+                        this.log(` - Version: ${headers['Bundle-Version'] || 'n/a'}`);
+                        this.log(` - State: ${stateStr}`);
+                        
+                        const regSvc = b.getRegisteredServices() || [];
+                        if (regSvc.length > 0) {
+                            this.log({ text: ` Registered Services:`, color: 'yellow' });
+                            regSvc.forEach(ref => {
+                                const names = ref.getProperty("objectClass");
+                                this.log(`   - ${Array.isArray(names) ? names.join(', ') : names}`);
+                            });
+                        }
+
+                        // Manually find services in use
+                        const allRefs = context.getServiceReferences(null, null) || [];
+                        const useSvc = allRefs.filter(ref => {
+                            const using = ref.getUsingBundles() || [];
+                            return using.some(ub => ub.getSymbolicName() === b.getSymbolicName());
+                        });
+
+                        if (useSvc.length > 0) {
+                            this.log({ text: ` Services In Use:`, color: 'yellow' });
+                            useSvc.forEach(ref => {
+                                const names = ref.getProperty("objectClass");
+                                this.log(`   - ${Array.isArray(names) ? names.join(', ') : names}`);
+                            });
+                        }
+
+                        // Try to find configuration via ConfigAdmin
+                        const configAdminRef = context.getServiceReference("@neverplayed/config-admin/ConfigAdmin");
+                        if (configAdminRef) {
+                            const configAdmin = context.getService(configAdminRef);
+                            const config = configAdmin.getConfiguration(b.getSymbolicName());
+                            const props = config?.getProperties();
+                            if (props && Object.keys(props).length > 0) {
+                                this.log({ text: ` Configuration (ConfigAdmin):`, color: 'magenta' });
+                                Object.entries(props).forEach(([pk, pv]) => {
+                                    this.log({ text: `   - ${pk}: ${pv}`, color: 'green' });
+                                });
+                            }
+                        }
+
+                        this.log({ text: ` Manifest Headers:`, color: 'gray' });
+                        Object.entries(headers).forEach(([k, v]) => {
+                            if (typeof v === 'object') v = JSON.stringify(v);
+                            this.log(`   - ${k}: ${v}`);
+                        });
+                    } else {
+                        this.log({ text: `Universe Bundles (${matched.length}):`, color: 'blue', bold: true });
+                        matched.forEach(b => {
+                            const stateStr = stateMap[b.getState()] || b.getState();
+                            this.log(` #${b.id.toString().padEnd(3)} [${stateStr.padEnd(10)}] ${b.getSymbolicName()}`);
+                        });
+                    }
+                    break;
+                }
+
+                case 'props': {
+                    const serviceId = args[0];
+                    if (!serviceId) {
+                        this.log("Usage: /props [serviceId]", 'error');
+                        return;
+                    }
+                    const ref = context.getServiceReference(serviceId);
+                    if (!ref) {
+                        this.log(` Service not found: ${serviceId}`, 'error');
+                        return;
+                    }
+
+                    const keys = ref.getPropertyKeys() || [];
+                    this.log(`OSGi Properties for ${serviceId}:`);
+                    keys.sort().forEach(key => {
+                        let val = ref.getProperty(key);
+                        if (typeof val === 'object' && val !== null) {
+                            try { val = JSON.stringify(val); } catch (_e) { val = '{...}'; }
+                        }
+                        this.log(` - ${key}: ${val}`);
                     });
                     break;
                 }
@@ -247,8 +330,8 @@ export default class Activator extends BaseActivator {
                     const refs = context.getServiceReferences(null, null) || [];
                     const caps = [...new Set(refs.map(r => r.getProperty("capability")).filter(c => typeof c === 'string' && c !== 'none'))].sort();
                     
-                    this.log(`Active Capabilities (${caps.length}):`);
-                    caps.forEach(c => this.log(` - ${c}`));
+                    this.log({ text: `Active Capabilities (${caps.length}):`, color: 'blue', bold: true });
+                    caps.forEach(c => this.log({ text: ` - ${c}`, color: 'cyan' }));
                     break;
                 }
 
@@ -301,15 +384,17 @@ export default class Activator extends BaseActivator {
     }
 
     renderHelp() {
-        this.log("Available Commands:");
+        this.log({ text: "Available Commands:", color: 'blue', bold: true });
         CORE_COMMANDS.forEach(cmd => {
-            this.log(` - /${cmd.name.padEnd(12)} ${cmd.description || ''}`);
+            this.log({ text: ` /${cmd.name.padEnd(12)}`, color: 'cyan', bold: true });
+            this.log({ text: `  ${cmd.description || ''}`, color: 'gray' });
         });
         
         if (this.commands.size > 0) {
-            this.log("Extensions:");
+            this.log({ text: "Extensions:", color: 'magenta', bold: true });
             Array.from(this.commands.values()).forEach(cmd => {
-                this.log(` - /${cmd.name.padEnd(12)} ${cmd.description || ''}`);
+                this.log({ text: ` /${cmd.name.padEnd(12)}`, color: 'cyan', bold: true });
+                this.log({ text: `  ${cmd.description || ''}`, color: 'gray' });
             });
         }
     }
