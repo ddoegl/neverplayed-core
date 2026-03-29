@@ -38,8 +38,16 @@ export default class Activator extends BaseActivator {
                                 now.getMinutes().toString().padStart(2, '0') + ':' + 
                                 now.getSeconds().toString().padStart(2, '0');
                     
+                    let formatted = entry.content;
+                    if (typeof formatted === 'object' && formatted !== null) {
+                        try {
+                            formatted = `<pre class="text-[10px] text-emerald-400 overflow-x-auto">${JSON.stringify(formatted, null, 2)}</pre>`;
+                        } catch (_e) { formatted = String(formatted); }
+                    }
+
                     this.history.push({
                         ...entry,
+                        content: formatted,
                         time
                     });
                     
@@ -60,7 +68,13 @@ export default class Activator extends BaseActivator {
         shellService.getHistory().forEach(entry => state.addLog(entry));
 
         // Subscribe to live output
-        shellService.subscribe(entry => state.addLog(entry));
+        shellService.subscribe(entry => {
+            if (entry.type === 'clear') {
+                state.history = [];
+                return;
+            }
+            state.addLog(entry);
+        });
 
         // 3. Define Shell Scope for Template (Final Implementation)
         globalThis.getShellScope = () => ({

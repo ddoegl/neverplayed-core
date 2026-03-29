@@ -77,7 +77,7 @@ export default class Activator {
         }).open();
 
         logService.getLogger(context.getBundle().getSymbolicName());
-        this.registration = context.registerService(LOG_SERVICE, logService);
+        this.registration = context.registerService(LOG_SERVICE, logService, { "capability": "sys:logger" });
     }
 
     stop(_context) {

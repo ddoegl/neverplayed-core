@@ -30,17 +30,36 @@ export default class Activator extends BaseActivator {
         // 1. Subscribe to output to print it to stdout
         shellService.subscribe(entry => {
             if (entry.type === 'input') return;
+            
+            if (entry.type === 'clear') {
+                // Clear screen and scrollback, then move cursor to 1,1
+                process.stdout.write('\x1bc');
+                rl.prompt(true);
+                return;
+            }
+
             const color = entry.type === 'error' ? "\x1b[31m" : "\x1b[36m";
             const reset = "\x1b[0m";
             
-            let cleanContent = entry.content.replace(/<[^>]*>/g, '');
-            cleanContent = cleanContent.split('\n')
+            let content = entry.content;
+            if (typeof content === 'object' && content !== null) {
+                content = JSON.stringify(content, null, 2);
+            } else {
+                // Strip HTML only if it looks like there's any (light safety net)
+                content = String(content);
+                if (content.includes('<') && content.includes('>')) {
+                    content = content.replace(/<[^>]*>/g, '');
+                }
+            }
+            
+            content = content.split('\n')
                 .map(line => line.trim())
                 .filter(line => line.length > 0)
                 .join('\n');
 
             // Move to start of line, clear it, print log, then redraw prompt
-            Deno.stdout.writeSync(new TextEncoder().encode(`\r\x1b[K${color}${cleanContent}${reset}\n`));
+            const output = `\r\x1b[K${color}${content}${reset}\n`;
+            process.stdout.write(output);
             rl.prompt(true);
         });
 

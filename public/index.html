@@ -18,7 +18,6 @@
           "osgi-base": "./osgi-base.js"
         }
       }
-
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -387,7 +386,11 @@
               x-show="activeFlowId"
             >
               <!-- Mobile target -->
-              <div id="flow-container-mobile" x-ignore class="h-full w-full relative">
+              <div
+                id="flow-container-mobile"
+                x-ignore
+                class="h-full w-full relative"
+              >
               </div>
             </div>
           </div>
@@ -407,7 +410,8 @@
             </div>
             <!-- Target for OSGi flows -->
             <div x-show="activeFlowId" class="h-full w-full">
-              <div id="flow-container" x-ignore class="h-full w-full relative"></div>
+              <div id="flow-container" x-ignore class="h-full w-full relative">
+              </div>
             </div>
           </div>
         </template>
@@ -1291,6 +1295,7 @@
           "./bundles/flows/visual-do-editor/manifest.json",
           "./bundles/org.neverplayed.shell-cli/manifest.json",
           "./bundles/org.neverplayed.shell-cli-dom/manifest.json",
+          "./bundles/org.neverplayed.shell-cli-ext/manifest.json",
         ];
 
         const splashScreen = document.getElementById("splash-screen");

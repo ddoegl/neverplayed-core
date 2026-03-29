@@ -145,6 +145,41 @@ export default class Activator extends BaseActivator {
 
         // 3. Inject UI
         this.render(mountPoint, logger);
+
+        // 4. Register Shell Command
+        context.registerService("@neverplayed/shell-command-service", {
+            name: "sidebar",
+            description: "[id|bsn] - Toggle sidebar or set visibility for a specific flow",
+            execute: async (args, ctx, log) => {
+                const target = args[0];
+                if (this.isHeadless) {
+                    log("Sidebar commands are only reactive in the Web UI.", "warn");
+                    return;
+                }
+
+                if (!target) {
+                    globalThis.dispatchEvent(new CustomEvent('shell:sidebar-toggle'));
+                    log("Toggled global sidebar.");
+                } else {
+                    const caRef = ctx.getServiceReference(CONFIG_ADMIN_SERVICE);
+                    const ca = caRef ? ctx.getService(caRef) : null;
+                    if (ca) {
+                        const bundle = ctx.getBundles().find(b => String(b.id) === target || b.getSymbolicName() === target);
+                        if (bundle) {
+                            const bsn = bundle.getSymbolicName();
+                            const config = ca.getConfiguration(bsn);
+                            const props = config.getProperties() || {};
+                            const newState = !props.sidebar;
+                            await config.update({ ...props, sidebar: newState });
+                            globalThis.dispatchEvent(new CustomEvent('shell:flows-updated'));
+                            log(`Sidebar property for ${bsn} set to: ${newState}`);
+                        } else {
+                            log(`Bundle not found: ${target}`, "error");
+                        }
+                    }
+                }
+            }
+        });
     }
 
     async render(mountPoint, logger) {

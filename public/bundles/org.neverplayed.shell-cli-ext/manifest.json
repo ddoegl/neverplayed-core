@@ -1,0 +1,6 @@
+{
+    "Bundle-SymbolicName": "@neverplayed/shell-cli-ext",
+    "Bundle-Name": "Shell CLI Extensions",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js"
+}

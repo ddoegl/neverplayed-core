@@ -896,3 +896,56 @@ When defining capabilities (Handle Pattern), use a colon-separated namespace.
   Backoffice vs. "Login" in a Retail App.
 - **Scannability**: Service Registry dumps become easier to read when names
   follow a logical hierarchy.
+
+---
+
+## 22. Service Implementation Styles (Class vs. Literal)
+
+To ensure a predictable and discoverable service registry, we follow specific
+guidelines for implementing OSGi services.
+
+### 1. Object Literal (The "Lite" Pattern)
+
+Best for simple, stateless, or singleton-like services where minimal boilerplate
+is preferred.
+
+- **Pros**: Low verbosity, no `this` binding concerns.
+- **Cons**: Method discovery via reflection can be noisier if not correctly
+  filtered.
+
+```javascript
+const myService = {
+  doWork: (params) => {
+    /* logic */
+  },
+  getStatus: () => "active",
+};
+context.registerService(MY_SERVICE, myService);
+```
+
+### 2. Class Instance (The "Robust" Pattern) - RECOMMENDED
+
+Best for complex services with internal state, private logic, or those that
+benefit from inheritance.
+
+- **Pros**: Cleaner prototype-based reflection, clear API surface, better
+  structure.
+- **Cons**: Requires careful `this` binding in callbacks.
+
+```javascript
+class MyService {
+  constructor(context) {
+    this.ctx = context;
+  }
+  saveData(data) {
+    /* logic using this.ctx */
+  }
+}
+context.registerService(MY_SERVICE, new MyService(context));
+```
+
+### 3. Discovery Guidelines
+
+The Shell CLI's `/methods` command is designed to handle both styles by
+traversing the prototype chain and explicitly filtering out internal Javascript
+engine methods (`toString`, `valueOf`, etc.).

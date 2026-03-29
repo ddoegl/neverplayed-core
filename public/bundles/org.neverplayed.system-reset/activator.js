@@ -13,7 +13,7 @@ export default class Activator extends BaseActivator {
             }
         };
 
-        context.registerService(SYSTEM_RESET_SERVICE, resetService);
+        context.registerService(SYSTEM_RESET_SERVICE, resetService, { "capability": "sys:reset" });
     }
 }
 

@@ -1,4 +1,5 @@
 export const FLOW_SERVICE = "@neverplayed/flow-service";
+export const SHELL_COMMAND_SERVICE = "@neverplayed/shell-command-service";
 export const SESSION_SERVICE = "@neverplayed/session-service";
 export const LOG_SERVICE = "@neverplayed/LogService";
 export const CONFIG_ADMIN_SERVICE = "@neverplayed/config-admin/ConfigAdmin";

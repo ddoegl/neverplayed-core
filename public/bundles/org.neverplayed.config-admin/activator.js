@@ -1,15 +1,18 @@
 import { 
-    CONFIG_ADMIN_SERVICE, 
-    FLOW_SERVICE, 
     CONFIG_ADMIN_UI_FLOW, 
-    SYSTEM_RESET_SERVICE,
     BUNDLE_TYPE_ORDER,
     BUNDLE_TYPE_SYSTEM,
     BUNDLE_TYPE_ADMIN,
-    SHELL_CONFIG_PID,
-    BUNDLE_TYPE_REGISTRY,
-    LOG_LEVEL_PROP
+    BUNDLE_TYPE_REGISTRY
 } from "shared-types";
+import { 
+    CONFIG_ADMIN_SERVICE, 
+    FLOW_SERVICE,
+    SYSTEM_RESET_SERVICE,
+    SHELL_CONFIG_PID,
+    SHELL_COMMAND_SERVICE,
+    LOG_LEVEL_PROP
+} from "core-types";
 import { BaseActivator } from "osgi-base";
 
 export default class Activator extends BaseActivator {
@@ -146,7 +149,7 @@ export default class Activator extends BaseActivator {
             });
         };
 
-        context.registerService(CONFIG_ADMIN_SERVICE, service);
+        context.registerService(CONFIG_ADMIN_SERVICE, service, { "capability": "sys:config" });
         // Register the ConfigAdmin UI Flow
         const flowMetadata = {
             id: CONFIG_ADMIN_UI_FLOW,
@@ -278,6 +281,33 @@ export default class Activator extends BaseActivator {
                 if (event.type === "INSTALLED" || event.type === "STARTED") {
                     primeBundle(event.bundle);
                 }
+            }
+        });
+
+        // Register Shell Commands
+        context.registerService(SHELL_COMMAND_SERVICE, {
+            name: "prime-all",
+            description: "Sync all active bundles strategies to ConfigAdmin (hot-reload)",
+            execute: (_args, _ctx, log) => {
+                log("Re-priming all bundle configurations...");
+                primeFromManifests();
+                log("Re-priming completed.");
+            }
+        });
+
+        context.registerService(SHELL_COMMAND_SERVICE, {
+            name: "reset-config",
+            description: "[pid] - Reset a specific configuration to defaults",
+            execute: (args, _ctx, log) => {
+                const pid = args[0];
+                if (!pid) {
+                    log("Usage: /reset-config [pid]", "error");
+                    return;
+                }
+                const config = service.getConfiguration(pid);
+                config.update({});
+                pm.store(`config.${pid}`, {}); // Explicitly clear persistence
+                log(`Configuration for ${pid} reset to manifest defaults.`);
             }
         });
     }
