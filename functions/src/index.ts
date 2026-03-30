@@ -11,8 +11,10 @@ import {setGlobalOptions} from "firebase-functions";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
-// Initialize Admin SDK
-admin.initializeApp();
+// Initialize Admin SDK with explicit service account for token signing
+admin.initializeApp({
+  serviceAccountId: "cladmin-bc594@appspot.gserviceaccount.com"
+});
 
 // Limit instances and set region
 setGlobalOptions({
@@ -97,3 +99,4 @@ export const checkUserAccess = onCall({cors: true}, async (request) => {
 
 export * from "./mailjet";
 export * from "./google-mail";
+export * from "./mcp-connector";

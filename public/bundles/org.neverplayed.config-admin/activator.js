@@ -64,7 +64,7 @@ export default class Activator extends CoreActivator {
                 if (!configs.has(pid)) {
                     const config = {
                         getProperties: () => ({ ...(pm.load(`config.${pid}`) || {}) }),
-                        update: (properties) => {
+                        update: async (properties) => {
                             // Security Guard via CoreActivator helper
                             console.log(`DEBUG: ConfigAdmin.update calling isAllowed for ${pid}`);
                             if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
@@ -74,7 +74,7 @@ export default class Activator extends CoreActivator {
 
                             const stored = pm.load(`config.${pid}`) || {};
                             deepMerge(stored, properties);
-                            pm.store(`config.${pid}`, stored);
+                            await pm.store(`config.${pid}`, stored);
                             if (logger) logger.debug(`Updated configuration for PID: ${pid}`);
                             
                             const eventAdminRef = context.getServiceReference(EVENT_ADMIN_SERVICE);
@@ -136,7 +136,15 @@ export default class Activator extends CoreActivator {
                             // INTERNAL UPDATE: Bypass security check during boot priming
                             const stored = pm.load(`config.${pid}`) || {};
                             deepMerge(stored, missingDefaults);
-                            pm.store(`config.${pid}`, stored);
+                            
+                            // Priming is usually fire-and-forget during boot, but we MUST catch errors
+                            // to prevent unhandled promise rejections if the persistence layer is restricted.
+                            const p = pm.store(`config.${pid}`, stored);
+                            if (p && typeof p.catch === 'function') {
+                                p.catch(err => {
+                                    if (logger) logger.warn(`ConfigAdmin: Failed to prime defaults for ${pid}: ${err.message}`);
+                                });
+                            }
                         }
                     };
 

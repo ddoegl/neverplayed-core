@@ -1,4 +1,4 @@
-import { SYSTEM_RESET_SERVICE } from "core-types";
+import { SYSTEM_RESET_SERVICE, PERSISTENCE_MANAGER_SERVICE } from "core-types";
 import { CoreActivator } from "osgi-base";
 
 export default class Activator extends CoreActivator {
@@ -11,9 +11,20 @@ export default class Activator extends CoreActivator {
                 }
 
                 if (confirm("Reset ALL stored OSGi states across all tenants and backoffices? This CANNOT be undone.")) {
-                    this.logger.info("SystemReset: Factory Reset confirmed. Clearing localStorage and reloading...");
-                    localStorage.clear();
-                    setTimeout(() => location.reload(), 100);
+                    this.logger.info("SystemReset: Factory Reset confirmed. Clearing persistence layer and reloading...");
+                    
+                    const pmRef = this.context.getServiceReference(PERSISTENCE_MANAGER_SERVICE);
+                    if (pmRef) {
+                        const pm = this.context.getService(pmRef);
+                        if (typeof pm.clear === 'function') {
+                            pm.clear();
+                        } else {
+                            localStorage.clear();
+                        }
+                    } else {
+                        localStorage.clear();
+                    }
+                    setTimeout(() => location.reload(), 500);
                 }
             }
         };

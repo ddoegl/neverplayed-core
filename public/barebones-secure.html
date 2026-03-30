@@ -144,12 +144,16 @@
           globalThis.pandinoContext = context;
 
           // Security First: Boot AuthShield and Limes before anything else
+          const response = await fetch("./env.json");
+          const envConfig = response.ok ? await response.json() : { persistence_mode: "local" };
+          const isFirebase = envConfig.persistence_mode === "firebase";
+
           const coreBundles = [
             "./bundles/system-services/yaml-service/manifest.json", // INFRA BASE
             "./bundles/org.neverplayed.auth-shield/manifest.json",   // LAYER 1 AUTH
-            "./bundles/org.neverplayed.persistence-firebase/manifest.json", // CLOUD PERSISTENCE
+            isFirebase ? "./bundles/org.neverplayed.persistence-firebase/manifest.json" : null, // CLOUD PERSISTENCE
             "./bundles/org.neverplayed.limes/manifest.json",         // BOOTSTRAP GUARD
-            "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
+            isFirebase ? null : "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
             "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
             "./bundles/org.neverplayed.system-logger/manifest.json",
             "./bundles/org.neverplayed.config-admin/manifest.json",
@@ -159,9 +163,9 @@
             "./bundles/org.neverplayed.shell-cli/manifest.json",
             "./bundles/org.neverplayed.shell-cli-dom/manifest.json",
             "./bundles/org.neverplayed.shell-cli-ext/manifest.json",
-            "./bundles/org.neverplayed.persistence-fs-sync/manifest.json",
+            isFirebase ? null : "./bundles/org.neverplayed.persistence-fs-sync/manifest.json",
             "./bundles/org.neverplayed.event-monitor/manifest.json",
-          ];
+          ].filter(Boolean);
 
           for (const url of coreBundles) {
             const isShield = url.includes("auth-shield");

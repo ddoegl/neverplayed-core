@@ -530,12 +530,26 @@
         const context = pandino.getBundleContext();
         globalThis.Alpine = Alpine;
 
-        // Infrastructure: Persistence Manager
-        const pmBundle = await context.installBundle(
-          "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
-        );
+        // Infrastructure: Dynamic Persistence Engine
+        const response = await globalThis.fetch("./env.json");
+        const envConfig = response.ok ? await response.json() : { persistence_mode: "local" };
+        const isFirebase = envConfig.persistence_mode === "firebase";
+
+        const pmBundleUrl = isFirebase 
+          ? "./bundles/org.neverplayed.persistence-firebase/manifest.json"
+          : "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json";
+
+        const pmBundle = await context.installBundle(pmBundleUrl);
         if (pmBundle.state === 2 || pmBundle.state === 4) {
           await pmBundle.start();
+        }
+
+        // Install fs-sync conditionally if local
+        if (!isFirebase) {
+            const fsSyncBundle = await context.installBundle("./bundles/org.neverplayed.persistence-fs-sync/manifest.json");
+            if (fsSyncBundle.state === 2 || fsSyncBundle.state === 4) {
+                await fsSyncBundle.start();
+            }
         }
 
         // Infrastructure: Event Admin
@@ -1288,7 +1302,7 @@
           "./bundles/system-clients/email-monitor/manifest.json",
           "./bundles/system-services/bpmn-engine/manifest.json",
           "./bundles/org.neverplayed.auth-shield/manifest.json",
-          "./bundles/org.neverplayed.persistence-firebase/manifest.json",
+
           "./bundles/org.neverplayed.limes/manifest.json",
           "./bundles/org.neverplayed.system-ready/manifest.json",
           "./bundles/org.neverplayed.system-reset/manifest.json",

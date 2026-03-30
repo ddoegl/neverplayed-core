@@ -5,6 +5,7 @@ import {
     signInWithRedirect, 
     getRedirectResult,
     onAuthStateChanged,
+    signInWithCustomToken,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
@@ -40,6 +41,35 @@ export async function checkAccess(logger = console) {
         const user = globalThis.NEVERPLAYED_HEADLESS_USER;
         user.attributes = user.attributes || {};
         user.attributes['neverplayed-admin'] = user.isSuperuser || user.isAdmin || false;
+        
+        try {
+            logger.info("Auth Shield: Requesting Cloud Function MCP Custom Token...");
+            // We use the local cloud functions emulator or production URL placeholder depending on env.
+            // For safety we hardcode the production HTTPS endpoint for the Deno agent to reach.
+            const fnUrl = "https://europe-west4-cladmin-bc594.cloudfunctions.net/mcpApi";
+            const response = await fetch(fnUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-mcp-secret": "NEVERPLAYED_MCP_API_SECRET_2026"
+                },
+                body: JSON.stringify({ action: "mintToken", payload: { email: user.email } })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                logger.info(`Auth Shield: Successfully minted Custom Token for: ${data.uid}. Authenticating...`);
+                await signInWithCustomToken(auth, data.token);
+                logger.info("Auth Shield: Deno Firebase Session securely established.");
+                // Ensure real Firebase uid overrides mock
+                user.uid = data.uid;
+            } else {
+                logger.warn(`Auth Shield: MCP Token fetch refused (${response.status}). Operating strictly offline.`);
+            }
+        } catch (err) {
+            logger.warn("Auth Shield: Stateless MCP network failure. Running offline.", err);
+        }
+
         logger.debug("Auth Shield: Resulting user attributes", JSON.stringify(user.attributes));
         return Promise.resolve(user);
     }

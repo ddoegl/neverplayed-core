@@ -72,8 +72,17 @@ async function main() {
     await pandino.start();
     const context = pandino.getBundleContext();
 
+    let isFirebase = false;
+    try {
+        const envPath = join(Deno.cwd(), "public", "env.json");
+        const envConfig = JSON.parse(await Deno.readTextFile(envPath));
+        isFirebase = envConfig.persistence_mode === "firebase";
+    } catch (_e) {
+        // Fallback to local
+    }
+
     const coreManifests = [
-        "bundles/org.neverplayed.persistence-deno/manifest.json",
+        isFirebase ? "bundles/org.neverplayed.persistence-firebase/manifest.json" : "bundles/org.neverplayed.persistence-deno/manifest.json",
         "bundles/org.neverplayed.system-logger/manifest.json",
         "bundles/org.neverplayed.auth-shield/manifest.json",
         "bundles/org.neverplayed.limes/manifest.json",

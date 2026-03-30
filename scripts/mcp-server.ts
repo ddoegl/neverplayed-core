@@ -60,11 +60,20 @@ async function bootOSGI() {
     await pandinoInstance.start();
     const context = pandinoInstance.getBundleContext();
 
+    let isFirebase = false;
+    try {
+        const envPath = join(Deno.cwd(), "public", "env.json");
+        const envConfig = JSON.parse(await Deno.readTextFile(envPath));
+        isFirebase = envConfig.persistence_mode === "firebase";
+    } catch (_e) {
+        console.warn("MCP Boot: public/env.json missing or invalid, defaulting to local persistence.");
+    }
+
     const coreManifests = [
-        "bundles/org.neverplayed.persistence-deno/manifest.json",
         "bundles/system-services/yaml-service/manifest.json",
-        "bundles/org.neverplayed.system-logger/manifest.json",
         "bundles/org.neverplayed.auth-shield/manifest.json",
+        isFirebase ? "bundles/org.neverplayed.persistence-firebase/manifest.json" : "bundles/org.neverplayed.persistence-deno/manifest.json",
+        "bundles/org.neverplayed.system-logger/manifest.json",
         "bundles/org.neverplayed.limes/manifest.json",
         "bundles/org.neverplayed.config-admin/manifest.json",
         "bundles/org.neverplayed.shell-cli/manifest.json",
@@ -143,12 +152,13 @@ async function handleRequest(request: { method: string; params: Record<string, u
                     },
                     {
                       name: "osgi_update_config",
-                      description: "Updates configuration properties for a bundle (via ConfigAdmin).",
+                      description: "Updates configuration properties for a bundle (via ConfigAdmin). Supports optional 'uid' to target a specific user (Admin SDK).",
                       inputSchema: {
                         type: "object",
                         properties: {
                           pid: { type: "string", description: "The configuration PID" },
-                          properties: { type: "object", description: "Key-value pairs to update" }
+                          properties: { type: "object", description: "Key-value pairs to update" },
+                          uid: { type: "string", description: "Optional target User ID (Admin Mode)" }
                         },
                         required: ["pid", "properties"]
                       }
@@ -237,10 +247,41 @@ async function handleRequest(request: { method: string; params: Record<string, u
           const ref = context.getServiceReferences(undefined, "(objectClass=@neverplayed/config-admin/ConfigAdmin)")[0];
           if (!ref) return { jsonrpc: "2.0", id, error: { code: -32603, message: "ConfigAdmin not available" } };
           
+          // deno-lint-ignore no-explicit-any
           const ca = context.getService(ref) as any;
           const config = ca.getConfiguration(pid);
-          await config.update(properties);
-          return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Configuration updated for ${pid}` }] } };
+          
+          try {
+              if (typeof config.update !== 'function') {
+                throw new Error("config.update is not a function");
+              }
+              await config.update(properties);
+              return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Configuration updated for ${pid}` }] } };
+          } catch (err: any) {
+              console.warn(`[MCP] Native OSGi write failed (${err.message}). Falling back to stateless HTTPS API...`);
+              try {
+                  const fnUrl = "https://europe-west4-cladmin-bc594.cloudfunctions.net/mcpApi";
+                  const { uid: toolUid } = toolArgs as { uid?: string };
+                  const targetUid = toolUid || (globalThis as any).NEVERPLAYED_HEADLESS_USER?.uid || "mcp-agent-mcp";
+                  
+                  const response = await fetch(fnUrl, {
+                      method: "POST",
+                      headers: {
+                          "Content-Type": "application/json",
+                          "x-mcp-secret": "NEVERPLAYED_MCP_API_SECRET_2026"
+                      },
+                      body: JSON.stringify({ action: "updateConfig", payload: { pid, properties, uid: targetUid } })
+                  });
+                  if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`API refused connection (${response.status}): ${errorText}`);
+                  }
+                  return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Direct stateless API update forced for: ${pid}` }] } };
+              } catch (fallbackErr: any) {
+                  console.error(`[MCP] Both write paths failed: ${fallbackErr.message}`);
+                  return { jsonrpc: "2.0", id, error: { code: -32603, message: `System write failed: ${fallbackErr.message}` } };
+              }
+          }
         }
 
         if (name === "osgi_launch_flow") {
@@ -294,6 +335,12 @@ async function startMCP() {
 
 // 🚀 Boot everything
 (async () => {
+    // Prevent Deno from crashing on late-arriving unhandled Firestore/Network rejections
+    globalThis.addEventListener("unhandledrejection", (e) => {
+        console.warn(`[MCP] Caught unhandled promise rejection: ${e.reason}`);
+        e.preventDefault();
+    });
+
     await bootOSGI();
     console.log("🚀 MCP OSGi Bridge is listening on stdin...");
     await startMCP();

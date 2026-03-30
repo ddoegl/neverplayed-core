@@ -93,16 +93,27 @@ export default class Activator extends BaseActivator {
                 const val = this._cache.get(key);
                 return val !== undefined ? val : null;
             },
-            store: (key, val) => {
+            store: async (key, val) => {
                 this._cache.set(key, val);
                 if (this._db && this._userId && this._setDoc && this._docFn) {
-                    this._setDoc(
-                        this._docFn(this._db, COLLECTION, this._userId),
-                        { [key]: val },
-                        { merge: true }
-                    ).catch((err) => {
-                        this.logger.warn(`Firebase Persistence: Store failed for '${key}': ${err.message}`);
-                    });
+                    try {
+                        await this._setDoc(
+                            this._docFn(this._db, COLLECTION, this._userId),
+                            { [key]: val },
+                            { merge: true }
+                        );
+                    } catch (err) {
+                        this.logger.error(`Firebase Persistence: Store failed for '${key}': ${err.message}`);
+                        throw err; // Propagate to ConfigAdmin
+                    }
+                }
+            },
+            clear: async () => {
+                this._cache.clear();
+                if (this._db && this._userId && this._setDoc && this._docFn) {
+                    // Overwrite document with completely empty object to erase all fields
+                    await this._setDoc(this._docFn(this._db, COLLECTION, this._userId), {});
+                    this.logger.info("Firebase Persistence: Cloud state cleared.");
                 }
             }
         }, {
