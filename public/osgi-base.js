@@ -37,8 +37,10 @@ export class BaseActivator {
         const pmRef = context.getServiceReference(PERSISTENCE_MANAGER_SERVICE);
                       
         if (pmRef) {
-
             this.persistence = context.getService(pmRef);
+            if (typeof this.persistence.waitReady === 'function') {
+                await this.persistence.waitReady();
+            }
         } else {
             // Memory Fallback (Generic Support)
             // Ensures bundles don't crash before the storage bundle is ready
