@@ -1,0 +1,118 @@
+import { PERSISTENCE_MANAGER_SERVICE, AUTH_SHIELD_SERVICE, LOG_SERVICE } from "../../core-types.js";
+import { BaseActivator } from "../../osgi-base.js";
+
+const FIREBASE_CDN = "https://www.gstatic.com/firebasejs/10.8.0";
+const COLLECTION = "neverplayed_persistence";
+
+export default class Activator extends BaseActivator {
+    _cache = new Map();
+    _db = null;
+    _userId = null;
+    _setDoc = null;
+    _docFn = null;
+    _readyPromise = null;
+    _resolveReady = null;
+
+    async onStart(context) {
+        this._readyPromise = new Promise(resolve => {
+            this._resolveReady = resolve;
+        });
+
+        // 1. Core Logic Setup
+        const { getApps, getApp } = await import(`${FIREBASE_CDN}/firebase-app.js`);
+        const apps = getApps();
+
+        if (!apps.length) {
+            this.logger.warn("Firebase Persistence: No Firebase app initialized. Falling back to in-memory.");
+            this._registerService(context);
+            this._resolveReady();
+            return;
+        }
+
+        const { getFirestore, doc, getDoc, setDoc } = await import(`${FIREBASE_CDN}/firebase-firestore.js`);
+        const app = getApp();
+        this._db = getFirestore(app);
+        this._setDoc = setDoc;
+        this._docFn = doc;
+
+        // 2. Track AuthShield for Identity
+        context.trackService(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
+            addingService: async (ref) => {
+                const svc = context.getService(ref);
+                const user = svc.getCurrentUser();
+                if (user && user.uid !== this._userId) {
+                    await this._hydrate(user.uid, getDoc, doc);
+                }
+                return svc;
+            },
+            removedService: () => {
+                this._userId = null;
+                this._cache.clear();
+                this.logger.info("Firebase Persistence: User session lost, cache cleared.");
+            }
+        }).open();
+
+        // 3. Track Logger
+        context.trackService(`(objectClass=${LOG_SERVICE})`, {
+            addingService: (ref) => {
+                const svc = context.getService(ref);
+                this.logger = svc.getLogger("neverplayed.persistence-firebase");
+                this.logger.info("Firebase Persistence: Connected to System Logger.");
+                return svc;
+            }
+        }).open();
+
+        this._registerService(context);
+    }
+
+    async _hydrate(uid, getDoc, docFn) {
+        this._userId = uid;
+        this.logger.info(`Firebase Persistence: Hydrating for user ${uid}...`);
+        try {
+            const snap = await getDoc(docFn(this._db, COLLECTION, uid));
+            if (snap.exists()) {
+                const data = snap.data();
+                for (const [key, val] of Object.entries(data)) {
+                    this._cache.set(key, val);
+                }
+                this.logger.info(`Firebase Persistence: Hydrated ${Object.keys(data).length} keys.`);
+            } else {
+                this.logger.info("Firebase Persistence: No existing cloud state found.");
+            }
+        } catch (err) {
+            this.logger.error(`Firebase Persistence: Hydration error for ${uid}:`, err);
+        } finally {
+            this._resolveReady();
+        }
+    }
+
+    _registerService(context) {
+        context.registerService(PERSISTENCE_MANAGER_SERVICE, {
+            waitReady: () => this._readyPromise,
+            load: (key) => {
+                const val = this._cache.get(key);
+                return val !== undefined ? val : null;
+            },
+            store: (key, val) => {
+                this._cache.set(key, val);
+                if (this._db && this._userId && this._setDoc && this._docFn) {
+                    this._setDoc(
+                        this._docFn(this._db, COLLECTION, this._userId),
+                        { [key]: val },
+                        { merge: true }
+                    ).catch((err) => {
+                        this.logger.warn(`Firebase Persistence: Store failed for '${key}': ${err.message}`);
+                    });
+                }
+            }
+        }, {
+            "capability": "sys:persistence",
+            "implementation": "firebase-firestore"
+        });
+        this.logger.info("Firebase Persistence Manager: Registered.");
+    }
+
+    onStop(_context) {
+        this.logger.info("Firebase Persistence Manager: Stopped.");
+    }
+}
