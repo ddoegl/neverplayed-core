@@ -4,5 +4,9 @@
     "Bundle-Activator": "activator.js",
     "Import-Service": [
         "@neverplayed/shell-cli/service"
-    ]
+    ],
+  "Configuration": {
+    "flowType": "service-flow",
+    "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
+  }
 }

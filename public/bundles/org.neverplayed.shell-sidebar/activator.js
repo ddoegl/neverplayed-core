@@ -1,4 +1,4 @@
-import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE } from "core-types";
+import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE, AUTH_SHIELD_SERVICE } from "core-types";
 import { BaseActivator } from "osgi-base";
 
 const _Alpine = globalThis.Alpine;
@@ -29,6 +29,7 @@ export default class Activator extends BaseActivator {
             _flows: new Map(), 
             flows: [], 
             shellHost: null,
+            user: { email: 'Guest User', uid: 'guest', isSuperuser: false },
             ready: false,
 
             toggleCollapse() {
@@ -46,6 +47,17 @@ export default class Activator extends BaseActivator {
                         return this.ca;
                     },
                     removedService: () => { this.ca = null; this.syncFlows(); }
+                }).open();
+
+                // Track Auth Shield for identity (Rule 18)
+                context.trackService(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
+                    addingService: (ref) => {
+                        const svc = context.getService(ref);
+                        this.user = svc.getCurrentUser();
+                        logger.info(`Shell Sidebar: User identity updated: ${this.user?.email}`);
+                        return svc;
+                    },
+                    removedService: () => { this.user = null; }
                 }).open();
 
                 // Track Shell Host Service (Orchestrator)

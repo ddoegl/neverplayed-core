@@ -4,7 +4,7 @@ import {
     SHELL_COMMAND_SERVICE,
     FLOW_SERVICE
 } from "core-types";
-import { BaseActivator } from "osgi-base";
+import { CoreActivator } from "osgi-base";
 
 const CORE_COMMANDS = [
     { name: 'help', description: 'Show this help text' },
@@ -24,8 +24,8 @@ const CORE_COMMANDS = [
     { name: 'props', description: '[serviceId] - List OSGi service properties' }
 ];
 
-export default class Activator extends BaseActivator {
-    onStart(context) {
+export default class Activator extends CoreActivator {
+    onCoreStart(context) {
         this.history = [];
         this.logCounter = 0;
         this.listeners = new Set();
@@ -44,13 +44,11 @@ export default class Activator extends BaseActivator {
             ].sort()
         };
 
-        // Track external command extensions
         context.trackService(`(objectClass=${SHELL_COMMAND_SERVICE})`, {
             addingService: (_ref) => {
                 const cmd = context.getService(_ref);
                 if (cmd && cmd.name) {
                     this.commands.set(cmd.name, cmd);
-                    this.logger.debug(`Shell CLI: Registered external command: /${cmd.name}`);
                 }
                 return cmd;
             },
@@ -76,7 +74,7 @@ export default class Activator extends BaseActivator {
         this.listeners.forEach(listener => {
             try {
                 listener(entry);
-            } catch (_err) { /* ignore listener errors */ }
+            } catch (_err) { /* ignore */ }
         });
 
         if (this.isHeadless) {
@@ -88,6 +86,26 @@ export default class Activator extends BaseActivator {
             if (type === 'error') this.logger.error(`[SHELL] ${cleanLog}`);
             else this.logger.debug(`[SHELL] ${cleanLog}`);
         }
+    }
+
+    resolveServiceRef(idOrName, context) {
+        if (!idOrName) return null;
+        
+        // 1. Try numeric ID
+        if (/^\d+$/.test(idOrName)) {
+            const refs = context.getServiceReferences(null, `(service.id=${idOrName})`);
+            if (refs && refs.length > 0) return refs[0];
+        }
+
+        // 2. Try standard OSGi (objectClass or filter)
+        try {
+            return context.getServiceReference(idOrName);
+        } catch (_e) {
+            // Might be a filter that needs getServiceReferences
+            const refs = context.getServiceReferences(null, idOrName);
+            if (refs && refs.length > 0) return refs[0];
+        }
+        return null;
     }
 
     async handleCommand(input, context) {
@@ -103,7 +121,7 @@ export default class Activator extends BaseActivator {
                 return;
             }
 
-            // Fallback to core internal commands
+            // Core internal commands
             switch(command) {
                 case 'help':
                     this.renderHelp();
@@ -111,7 +129,6 @@ export default class Activator extends BaseActivator {
                     
                 case 'clear':
                     this.history = [];
-                    // No direct store call anymore!
                     this.listeners.forEach(l => l({ type: 'clear' })); 
                     break;
                     
@@ -122,11 +139,17 @@ export default class Activator extends BaseActivator {
                 case 'services': {
                     const filter = args[0]?.toLowerCase();
                     const refs = context.getServiceReferences(null, null) || [];
-                    const ids = [...new Set(refs.flatMap(ref => ref.getProperty("objectClass") || []))].sort();
-                    const matched = filter ? ids.filter(id => id.toLowerCase().includes(filter)) : ids;
                     
-                    this.log(`Registered Services (${matched.length}):`);
-                    matched.forEach(id => this.log(` - ${id}`));
+                    this.log(`Registered Services (${refs.length}):`);
+                    refs.sort((a,b) => a.getProperty("service.id") - b.getProperty("service.id")).forEach(ref => {
+                        const id = ref.getProperty("service.id");
+                        const classes = ref.getProperty("objectClass");
+                        const name = Array.isArray(classes) ? classes.join(', ') : classes;
+                        
+                        if (!filter || name.toLowerCase().includes(filter)) {
+                            this.log(` #${id.toString().padEnd(3)} ${name}`);
+                        }
+                    });
                     break;
                 }
 
@@ -148,7 +171,6 @@ export default class Activator extends BaseActivator {
                         
                         this.log({ text: `Details for Bundle #${b.id}:`, color: 'blue', bold: true });
                         this.log({ text: ` - SymbolicName: ${b.getSymbolicName()}`, color: 'cyan' });
-                        this.log(` - Version: ${headers['Bundle-Version'] || 'n/a'}`);
                         this.log(` - State: ${stateStr}`);
                         
                         const regSvc = b.getRegisteredServices() || [];
@@ -160,7 +182,6 @@ export default class Activator extends BaseActivator {
                             });
                         }
 
-                        // Manually find services in use
                         const allRefs = context.getServiceReferences(null, null) || [];
                         const useSvc = allRefs.filter(ref => {
                             const using = ref.getUsingBundles() || [];
@@ -173,20 +194,6 @@ export default class Activator extends BaseActivator {
                                 const names = ref.getProperty("objectClass");
                                 this.log(`   - ${Array.isArray(names) ? names.join(', ') : names}`);
                             });
-                        }
-
-                        // Try to find configuration via ConfigAdmin
-                        const configAdminRef = context.getServiceReference("@neverplayed/config-admin/ConfigAdmin");
-                        if (configAdminRef) {
-                            const configAdmin = context.getService(configAdminRef);
-                            const config = configAdmin.getConfiguration(b.getSymbolicName());
-                            const props = config?.getProperties();
-                            if (props && Object.keys(props).length > 0) {
-                                this.log({ text: ` Configuration (ConfigAdmin):`, color: 'magenta' });
-                                Object.entries(props).forEach(([pk, pv]) => {
-                                    this.log({ text: `   - ${pk}: ${pv}`, color: 'green' });
-                                });
-                            }
                         }
 
                         this.log({ text: ` Manifest Headers:`, color: 'gray' });
@@ -210,7 +217,7 @@ export default class Activator extends BaseActivator {
                         this.log("Usage: /props [serviceId]", 'error');
                         return;
                     }
-                    const ref = context.getServiceReference(serviceId);
+                    const ref = this.resolveServiceRef(serviceId, context);
                     if (!ref) {
                         this.log(` Service not found: ${serviceId}`, 'error');
                         return;
@@ -234,14 +241,13 @@ export default class Activator extends BaseActivator {
                         this.log("Usage: /methods [serviceId]", 'error');
                         return;
                     }
-                    const ref = context.getServiceReference(serviceId);
+                    const ref = this.resolveServiceRef(serviceId, context);
                     if (!ref) {
                         this.log(` Service not found: ${serviceId}`, 'error');
                         return;
                     }
                     const svc = context.getService(ref);
                     
-                    // Robust method discovery
                     let propertyNames = [];
                     let current = svc;
                     while (current && current !== Object.prototype) {
@@ -274,20 +280,22 @@ export default class Activator extends BaseActivator {
                             this.log(` - ${p}: ${val}`);
                         });
                     }
-
-                    if (methods.length === 0 && data.length === 0) {
-                        this.log(`No discoverable API for ${serviceId} (Object appears empty).`);
-                    }
                     break;
                 }
 
                 case 'call': {
+                    // Security Guard
+                    if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
+                        this.log("Access Denied: Admin attributes required for /call.", 'error');
+                        return;
+                    }
+
                     const [serviceId, methodName, ...callArgs] = args;
                     if (!serviceId || !methodName) {
                         this.log("Usage: /call [serviceId] [methodName] [args...]", 'error');
                         return;
                     }
-                    const ref = context.getServiceReference(serviceId);
+                    const ref = this.resolveServiceRef(serviceId, context);
                     if (!ref) {
                         this.log(` Service not found: ${serviceId}`, 'error');
                         return;
@@ -326,10 +334,8 @@ export default class Activator extends BaseActivator {
                 }
 
                 case 'caps': {
-                    // Discover capabilities from ALL registered services
                     const refs = context.getServiceReferences(null, null) || [];
                     const caps = [...new Set(refs.map(r => r.getProperty("capability")).filter(c => typeof c === 'string' && c !== 'none'))].sort();
-                    
                     this.log({ text: `Active Capabilities (${caps.length}):`, color: 'blue', bold: true });
                     caps.forEach(c => this.log({ text: ` - ${c}`, color: 'cyan' }));
                     break;
@@ -339,6 +345,12 @@ export default class Activator extends BaseActivator {
                 case 'stop':
                 case 'update':
                 case 'uninstall': {
+                    // Security Guard
+                    if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
+                        this.log(`Access Denied: Admin attributes required for /${command}.`, 'error');
+                        return;
+                    }
+
                     const target = args[0];
                     if (!target) return;
                     const targets = context.getBundles().filter(b => String(b.id) === target || b.getSymbolicName() === target);
@@ -355,6 +367,12 @@ export default class Activator extends BaseActivator {
                 }
 
                 case 'install': {
+                    // Security Guard
+                    if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
+                        this.log("Access Denied: Admin attributes required for /install.", 'error');
+                        return;
+                    }
+
                     let url = args[0];
                     if (!url) return;
                     if (url.startsWith(NEVERPLAYED_PREFIX)) {
@@ -399,7 +417,5 @@ export default class Activator extends BaseActivator {
         }
     }
 
-    stop() {
-        // No cleanup needed
-    }
+    onCoreStop() {}
 }

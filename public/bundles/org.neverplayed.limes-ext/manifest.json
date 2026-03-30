@@ -1,0 +1,10 @@
+{
+    "Bundle-SymbolicName": "@neverplayed/limes-ext",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Limes Legacy Extensions",
+    "Bundle-Description": "Legacy and non-core security strategies for Limes",
+    "Bundle-Activator": "./activator.js",
+    "Require-Bundle": "@neverplayed/limes",
+    "Import-Service": "@neverplayed/limes/service",
+    "Export-Package": ""
+}

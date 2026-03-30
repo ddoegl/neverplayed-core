@@ -10,6 +10,10 @@ export const SELECTION_SERVICE = "@neverplayed/selection-service";
 export const ACTION_REGISTRY_SERVICE = "@neverplayed/action-registry";
 export const AUTH_SHIELD_SERVICE = "@neverplayed/auth-shield/service";
 export const AUTH_SHIELD_BUNDLE = "@neverplayed/auth-shield";
+export const LIMES_SERVICE = "@neverplayed/limes/service";
+export const LIMES_BUNDLE = "@neverplayed/limes";
+export const LIMES_STRATEGIES_PID = "@neverplayed/limes/strategies";
+export const PLEXUS_ENGINE_SERVICE = "@neverplayed/plexus/engine";
 
 export const BUNDLE_TYPE_SERVICE = "service-flow";
 export const NEVERPLAYED_PREFIX = "@neverplayed/";

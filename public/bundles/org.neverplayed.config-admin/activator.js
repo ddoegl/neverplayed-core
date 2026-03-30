@@ -13,18 +13,15 @@ import {
     SHELL_COMMAND_SERVICE,
     LOG_LEVEL_PROP
 } from "core-types";
-import { BaseActivator } from "osgi-base";
+import { CoreActivator } from "osgi-base";
 
-export default class Activator extends BaseActivator {
-    onStart(context) {
+export default class Activator extends CoreActivator {
+    onCoreStart(context) {
         const logger = this.logger;
         const pm = this.persistence;
 
-
-
         const configs = new Map();
         const flowMetadataCache = new Map(); // Map PID/BSN -> { title, icon, flowType }
-
 
         // Helper to get well-known bundle types
         const getBundleType = (pid, meta, props) => {
@@ -38,7 +35,6 @@ export default class Activator extends BaseActivator {
             if (meta.orderFlow || pid.includes('order')) return BUNDLE_TYPE_ORDER;
             if (pid.includes('admin') || pid === CONFIG_ADMIN_UI_FLOW || pid === SHELL_CONFIG_PID) return BUNDLE_TYPE_ADMIN;
             if (pid.includes('event.monitor') || pid.includes('registry') || pid.includes('system') || pid.includes('logger')) return BUNDLE_TYPE_SYSTEM;
-            
             return 'component';
         };
 
@@ -46,7 +42,6 @@ export default class Activator extends BaseActivator {
             for (const key in source) {
                 if (source[key] instanceof Object && key in target) {
                     if (Array.isArray(source[key])) {
-                        // For arrays, we now replace them to support subtraction (e.g. toggles)
                         target[key] = source[key];
                     } else {
                         deepMerge(target[key], source[key]);
@@ -66,7 +61,12 @@ export default class Activator extends BaseActivator {
                     const config = {
                         getProperties: () => ({ ...stored }),
                         update: (properties) => {
-                            // Deep merge updates into stored config
+                            // Security Guard via CoreActivator helper
+                            if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
+                                if (logger) logger.warn(`Access Denied: Config update attempt for ${pid}`);
+                                return;
+                            }
+
                             deepMerge(stored, properties);
                             pm.store(`config.${pid}`, stored);
                             if (logger) logger.debug(`Updated configuration for PID: ${pid}`);
@@ -115,10 +115,12 @@ export default class Activator extends BaseActivator {
                                 missingDefaults[key] = defaults[key];
                             }
                         }
-
                         if (Object.keys(missingDefaults).length > 0) {
                             if (logger) logger.info(`Applying missing manifest defaults for ${pid}`);
-                            config.update(missingDefaults);
+                            // INTERNAL UPDATE: Bypass security check during boot priming
+                            const stored = pm.load(`config.${pid}`) || {};
+                            deepMerge(stored, missingDefaults);
+                            pm.store(`config.${pid}`, stored);
                         }
                     };
 
@@ -136,7 +138,6 @@ export default class Activator extends BaseActivator {
                     }
                 } catch (e) {
                     if (logger) logger.error(`Failed to parse Configuration header in bundle ${bundle.getSymbolicName()}`, e);
-                    else console.error(`ConfigAdmin: Failed to parse Configuration header in bundle ${bundle.getSymbolicName()}`, e);
                 }
             }
         };
@@ -145,22 +146,19 @@ export default class Activator extends BaseActivator {
         const primeFromManifests = () => {
             const bundles = context.getBundles();
             bundles.forEach(bundle => {
-                primeBundle(bundle, bundle.getHeaders());
+                primeBundle(bundle);
             });
         };
 
         context.registerService(CONFIG_ADMIN_SERVICE, service, { "capability": "sys:config" });
-        // Register the ConfigAdmin UI Flow
+        
         const flowMetadata = {
             id: CONFIG_ADMIN_UI_FLOW,
             title: "Universe Settings",
             icon: "fas fa-cog",
             launch: async (targetElement) => {
                 const bsn = context.getBundle().getSymbolicName();
-                if (targetElement.getAttribute('data-bsn') === bsn) {
-                    if (logger) logger.debug(`UI: Already rendered ${bsn}, skipping destructive update.`);
-                    return;
-                }
+                if (targetElement.getAttribute('data-bsn') === bsn) return;
                 targetElement.setAttribute('data-bsn', bsn);
 
                 const Alpine = (await import("https://esm.sh/alpinejs@3.13.5")).default;
@@ -168,14 +166,10 @@ export default class Activator extends BaseActivator {
                     cfgs: [],
                     init() {
                         const configsList = service.listConfigurations().filter(p => typeof p === 'string');
-                        if (logger) logger.debug(`UI initializing with ${configsList.length} PIDs`);
-
                         this.cfgs = configsList.map(pid => {
                             const props = service.getConfiguration(pid).getProperties() || {};
                             const meta = flowMetadataCache.get(pid) || {};
-
                             const type = getBundleType(pid, meta, props);
-
                              return {
                                 pid,
                                 properties: props,
@@ -189,13 +183,11 @@ export default class Activator extends BaseActivator {
                     get categorized() {
                         const types = [...new Set(this.cfgs.map(c => c.type))];
                         const order = Object.keys(BUNDLE_TYPE_REGISTRY);
-                        
                         const getCategoryMeta = (type) => BUNDLE_TYPE_REGISTRY[type] || { 
                             title: type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), 
                             color: "slate",
                             icon: "fas fa-cube"
                         };
-
                         return types.sort((a, b) => {
                             const idxA = order.indexOf(a);
                             const idxB = order.indexOf(b);
@@ -216,14 +208,9 @@ export default class Activator extends BaseActivator {
                         const cfg = service.getConfiguration(pid);
                         const props = cfg.getProperties() || {};
                         const channels = props.channels || [];
-                        let nextChannels;
-                        if (enabled) {
-                            nextChannels = [...new Set([...channels, channel])];
-                        } else {
-                            nextChannels = channels.filter(c => c !== channel);
-                        }
+                        const nextChannels = enabled ? [...new Set([...channels, channel])] : channels.filter(c => c !== channel);
                         cfg.update({ ...props, channels: nextChannels });
-                        this.init(); // Refresh local list
+                        this.init();
                     },
                     setLogLevel(pid, level) {
                         const cfg = service.getConfiguration(pid);
@@ -237,7 +224,6 @@ export default class Activator extends BaseActivator {
                 targetElement.innerHTML = await response.text();
                 state.init();
 
-                // Listen for system reset from the template (with guard to avoid accumulation during navigation)
                 if (!targetElement.hasAttribute('data-reset-listener-active')) {
                     targetElement.addEventListener('shell-system-reset', () => {
                         const resetRefs = context.getServiceReferences(SYSTEM_RESET_SERVICE);
@@ -249,19 +235,16 @@ export default class Activator extends BaseActivator {
                 }
             }
         };
+
         context.registerService(FLOW_SERVICE, flowMetadata, { 
             ...this.config, 
             "flow.id": CONFIG_ADMIN_UI_FLOW 
         });
 
-        if (logger) logger.info("Service registered successfully");
-
-        // Track Flow Metadata to enrich the UI
         context.trackService(`(objectClass=${FLOW_SERVICE})`, {
             addingService: (ref) => {
                 const bsn = ref.bundle.getSymbolicName();
-                const pid = bsn; // We use BSN as default PID for flat configs
-                flowMetadataCache.set(pid, {
+                flowMetadataCache.set(bsn, {
                     title: ref.getProperty("flow.title") || ref.getProperty("title"),
                     icon: ref.getProperty("flow.icon") || ref.getProperty("icon"),
                     flowType: ref.getProperty("flowType")
@@ -272,10 +255,8 @@ export default class Activator extends BaseActivator {
             }
         }).open();
 
-        // Initial scan
         primeFromManifests();
 
-        // Listen for future bundles
         context.addBundleListener({
             bundleChanged: (event) => {
                 if (event.type === "INSTALLED" || event.type === "STARTED") {
@@ -284,11 +265,15 @@ export default class Activator extends BaseActivator {
             }
         });
 
-        // Register Shell Commands
         context.registerService(SHELL_COMMAND_SERVICE, {
             name: "prime-all",
             description: "Sync all active bundles strategies to ConfigAdmin (hot-reload)",
-            execute: (_args, _ctx, log) => {
+            execute: async (_args, _ctx, log) => {
+                await Promise.resolve();
+                if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
+                    log("Access Denied: You do not have the 'neverplayed-admin' attribute.", "error");
+                    return;
+                }
                 log("Re-priming all bundle configurations...");
                 primeFromManifests();
                 log("Re-priming completed.");
@@ -298,19 +283,24 @@ export default class Activator extends BaseActivator {
         context.registerService(SHELL_COMMAND_SERVICE, {
             name: "reset-config",
             description: "[pid] - Reset a specific configuration to defaults",
-            execute: (args, _ctx, log) => {
+            execute: async (args, _ctx, log) => {
+                await Promise.resolve();
+                if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
+                    log("Access Denied: You do not have the 'neverplayed-admin' attribute.", "error");
+                    return;
+                }
                 const pid = args[0];
                 if (!pid) {
                     log("Usage: /reset-config [pid]", "error");
                     return;
                 }
                 const config = service.getConfiguration(pid);
-                config.update({});
-                pm.store(`config.${pid}`, {}); // Explicitly clear persistence
+                await config.update({});
+                pm.store(`config.${pid}`, {});
                 log(`Configuration for ${pid} reset to manifest defaults.`);
             }
         });
     }
 
-    async stop(_context) {}
+    stop(_context) {}
 }

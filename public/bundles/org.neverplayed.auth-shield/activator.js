@@ -1,34 +1,56 @@
-import { checkAccess, signOut } from "../../auth-shield.js";
-import { AUTH_SHIELD_SERVICE } from "../../core-types.js";
+import { checkAccess, signOut } from "./src/firebase-auth.js";
+import { AUTH_SHIELD_SERVICE, LOG_SERVICE } from "../../core-types.js";
 
 export default class Activator {
     async start(context) {
-        console.log("Auth Shield: Activator starting...");
+        // 1. Initial Logger (Fallback to console)
+        this.logger = {
+            info: (...args) => console.log("[BOOT] ", ...args),
+            debug: (...args) => console.debug("[BOOT] ", ...args),
+            warn: (...args) => console.warn("[BOOT] ", ...args),
+            error: (...args) => console.error("[BOOT] ", ...args)
+        };
+
+        // 2. Track System Logger
+        context.trackService(`(objectClass=${LOG_SERVICE})`, {
+            addingService: (ref) => {
+                const svc = context.getService(ref);
+                this.logger = svc.getLogger("neverplayed.auth-shield");
+                this.logger.info("Auth Shield: Connected to System Logger.");
+            },
+            removedService: () => {
+                // Fallback again
+                this.logger = console;
+            }
+        }).open();
+
+        this.logger.info("Auth Shield: Activator starting...");
         
         try {
-            const user = await checkAccess();
-            console.log("Auth Shield: Access granted for", user.email);
+            // Note: pass the dynamic logger to the auth logic
+            const user = await checkAccess(this.logger);
+            this.logger.info(`Auth Shield: Access granted for ${user.email}`);
             
             context.registerService(AUTH_SHIELD_SERVICE, {
                 getCurrentUser: () => user,
                 logout: () => {
-                    console.log("Auth Shield: Logging out...");
+                    this.logger.info("Auth Shield: Logging out...");
                     signOut();
                 }
             }, { 
                 "capability": "auth:shield",
-                "auth.user": user.email
+                "auth.user": user.email,
+                "neverplayed-admin": user.isSuperuser || false,
+                "neverplayed-developer": user.isDeveloper || false
             });
 
         } catch (error) {
-            console.error("Auth Shield: Access check failed, stopping bundle.", error);
-            // In a real OSGi env, we might want to stop the bundle or even the framework
-            // but for now, we just don't register the service.
+            this.logger.error("Auth Shield: Access check failed, stopping bundle.", error);
             throw error;
         }
     }
 
     stop(_context) {
-        console.log("Auth Shield: Stopped.");
+        if (this.logger) this.logger.info("Auth Shield: Stopped.");
     }
 }

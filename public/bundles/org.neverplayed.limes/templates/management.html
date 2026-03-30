@@ -1,0 +1,178 @@
+<div class="p-6 bg-white h-full overflow-auto space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between border-b pb-4">
+    <div class="flex items-center space-x-3">
+      <div
+        class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center text-yellow-600"
+      >
+        <i class="fas fa-shield-alt text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-gray-900 leading-none">
+          Guard Management
+        </h1>
+        <p class="text-xs text-gray-500 mt-1">
+          Limes Permission Guarding & Context Strategies
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-12 gap-6">
+    <!-- Strategy Registry -->
+    <div class="col-span-8 space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wider">
+          Strategy Registry
+        </h2>
+        <div class="flex items-center space-x-2">
+          <button
+            @click="host.createLimesStrategy()"
+            class="text-[10px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded transition-colors"
+          >
+            <i class="fas fa-plus mr-1"></i> Create New
+          </button>
+          <span
+            class="text-[10px] font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-500"
+            x-text="`${host.limesStrategies?.length || 0} Registered`"
+          ></span>
+        </div>
+      </div>
+
+      <div class="bg-gray-50 border rounded-xl overflow-hidden">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="bg-gray-100 border-b text-gray-600">
+              <th class="px-4 py-2 font-bold">Strategy ID</th>
+              <th class="px-4 py-2 font-bold">Origin</th>
+              <th class="px-4 py-2 font-bold">Matchers</th>
+              <th class="px-4 py-2 font-bold flex justify-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <template x-for="strat in host.limesStrategies" :key="strat.id">
+              <tr class="hover:bg-white transition-colors group">
+                <td
+                  class="px-4 py-3 font-mono font-bold text-indigo-600"
+                  x-text="strat.id"
+                >
+                </td>
+                <td class="px-4 py-3">
+                  <span
+                    :class="strat.origin === 'bundle' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
+                    class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                    x-text="strat.origin || 'custom'"
+                  ></span>
+                </td>
+                <td class="px-4 py-3 text-gray-500">
+                  <div class="flex flex-wrap gap-1">
+                    <template x-for="m in strat.matchers">
+                      <span
+                        class="bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded text-[10px]"
+                        x-text="m.type"
+                      ></span>
+                    </template>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-right space-x-2">
+                  <button
+                    @click="host.editLimesStrategy(strat.id)"
+                    class="text-gray-400 hover:text-indigo-600 transition-colors"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button
+                    @click="host.deleteLimesStrategy(strat.id)"
+                    class="text-gray-400 hover:text-rose-600 transition-colors"
+                  >
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Test Bench -->
+    <div class="col-span-4 space-y-4">
+      <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wider">
+        Test Bench
+      </h2>
+
+      <div
+        class="bg-slate-900 rounded-xl p-5 border border-slate-700 shadow-xl space-y-4"
+        x-data="{ testUserId: '6786432', testStratId: '', testCtx: '{}' }"
+      >
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase"
+          >Target User ID</label>
+          <input
+            type="text"
+            x-model="testUserId"
+            class="w-full bg-slate-800 border-slate-700 rounded p-2 text-xs text-white focus:border-indigo-500 outline-none"
+            placeholder="e.g. 6432432"
+          >
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase"
+          >Guard Strategy</label>
+          <select
+            x-model="testStratId"
+            class="w-full bg-slate-800 border-slate-700 rounded p-2 text-xs text-white focus:border-indigo-500 outline-none"
+          >
+            <option value="">Select Strategy...</option>
+            <template x-for="strat in host.limesStrategies">
+              <option :value="strat.id" x-text="strat.id"></option>
+            </template>
+          </select>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase"
+          >Context (JSON)</label>
+          <textarea
+            x-model="testCtx"
+            rows="4"
+            class="w-full bg-slate-800 border-slate-700 rounded p-2 text-xs text-white font-mono focus:border-indigo-500 outline-none"
+            placeholder='{ "id": "case-123", "customers": ["bikevalue"] }'
+          ></textarea>
+        </div>
+
+        <button
+          @click="host.testLimesGuard(testUserId, testStratId, testCtx)"
+          class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold text-xs transition-colors shadow-lg shadow-indigo-500/20"
+        >
+          Execute Guard Check
+        </button>
+
+        <!-- Result Display -->
+        <template x-if="host.limesTestResults">
+          <div
+            :class="host.limesTestResults.allowed ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-rose-500/20 border-rose-500/50'"
+            class="p-4 rounded border text-center transition-all animate-in fade-in zoom-in duration-300"
+          >
+            <div class="text-2xl mb-1">
+              <i
+                :class="host.limesTestResults.allowed ? 'fas fa-check-circle text-emerald-500' : 'fas fa-times-circle text-rose-500'"
+              ></i>
+            </div>
+            <p
+              :class="host.limesTestResults.allowed ? 'text-emerald-400' : 'text-rose-400'"
+              class="text-[10px] font-bold uppercase tracking-widest"
+              x-text="host.limesTestResults.allowed ? 'ACCESS ALLOWED' : 'ACCESS DENIED'"
+            >
+            </p>
+            <p
+              class="text-[10px] text-slate-500 mt-1"
+              x-text="`Result as of ${host.limesTestResults.timestamp}`"
+            >
+            </p>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>

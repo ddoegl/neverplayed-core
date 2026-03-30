@@ -1,0 +1,22 @@
+- id: GLOBAL_VIEW
+  operator: AND
+  matchers:
+    - type: matchAlways
+  keys: []
+
+- id: SYSTEM_ADMIN_REQUIRED
+  operator: AND
+  matchers:
+    - type: matchAttribute
+      key: neverplayed-admin
+      value: true
+
+- id: SYSTEM_DEVELOPER_REQUIRED
+  operator: OR
+  matchers:
+    - type: matchAttribute
+      key: neverplayed-admin
+      value: true
+    - type: matchAttribute
+      key: neverplayed-developer
+      value: true

@@ -1,4 +1,4 @@
-import { FLOW_SERVICE as _FLOW_SERVICE, LOG_SERVICE, CONFIG_ADMIN_SERVICE, PERSISTENCE_MANAGER_SERVICE } from "core-types";
+import { FLOW_SERVICE as _FLOW_SERVICE, LOG_SERVICE, CONFIG_ADMIN_SERVICE, PERSISTENCE_MANAGER_SERVICE, LIMES_SERVICE, AUTH_SHIELD_SERVICE, PLEXUS_ENGINE_SERVICE, SESSION_SERVICE } from "core-types";
 
 /**
  * BaseActivator
@@ -91,6 +91,82 @@ export class BaseActivator {
         // This is a hook for sub-classes to easily register themselves if they match a pattern
         // Usually, complex UI flows will override onStart and do manual registration,
         // but simple ones can use this.
+    }
+}
+
+/**
+ * CoreActivator
+ * Hardened activator with native Limes and AuthShield integration.
+ */
+export class CoreActivator extends BaseActivator {
+    constructor() {
+        super();
+        this.limes = null;
+        this.authShield = null;
+    }
+
+    async onStart(context) {
+        // 1. Track Limes
+        context.trackService(`(objectClass=${LIMES_SERVICE})`, {
+            addingService: (ref) => {
+                this.limes = context.getService(ref);
+                // Declarative Strategy Registration
+                if (this.config.limesStrategies) {
+                    this.config.limesStrategies.forEach(s => this.limes.registerStrategy(s.id, s.definition));
+                }
+            },
+            removedService: () => { this.limes = null; }
+        }).open();
+
+        // 2. Track AuthShield
+        context.trackService(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
+            addingService: (ref) => { this.authShield = context.getService(ref); },
+            removedService: () => { this.authShield = null; }
+        }).open();
+
+        await this.onCoreStart(context);
+    }
+
+    isAllowed(strategyId, runtimeContext = {}) {
+        if (!this.limes) return false;
+        const user = this.authShield?.getCurrentUser();
+        return this.limes.isAllowed(user, strategyId, runtimeContext);
+    }
+
+    async onCoreStart(_context) {
+        // To be implemented by subclasses
+    }
+}
+
+/**
+ * DomainActivator
+ * Persona-aware activator for application domain logic.
+ */
+export class DomainActivator extends CoreActivator {
+    constructor() {
+        super();
+        this.plexus = null;
+        this.session = null;
+    }
+
+    async onCoreStart(context) {
+        // 1. Track Plexus
+        context.trackService(`(objectClass=${PLEXUS_ENGINE_SERVICE})`, {
+            addingService: (ref) => { this.plexus = context.getService(ref); },
+            removedService: () => { this.plexus = null; }
+        }).open();
+
+        // 2. Track Session
+        context.trackService(`(objectClass=${SESSION_SERVICE})`, {
+            addingService: (ref) => { this.session = context.getService(ref); },
+            removedService: () => { this.session = null; }
+        }).open();
+
+        await this.onDomainStart(context);
+    }
+
+    async onDomainStart(_context) {
+        // To be implemented by subclasses
     }
 }
 

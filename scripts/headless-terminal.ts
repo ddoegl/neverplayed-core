@@ -31,7 +31,18 @@ const mockDoc = {
 // deno-lint-ignore no-explicit-any
 (globalThis as any).NEVERPLAYED_BASE_URL = BASE_URL;
 
-// 2. Fetcher for Pandino
+// 3. Headless Security Context
+const terminalUser = Deno.env.get("NEVERPLAYED_USER") || "terminal-admin@neverplayed.io";
+// deno-lint-ignore no-explicit-any
+(globalThis as any).NEVERPLAYED_HEADLESS_USER = {
+    email: terminalUser,
+    uid: "terminal-system-uid",
+    isSuperuser: true,
+    isDeveloper: true,
+    authorized: true
+};
+
+// 4. Fetcher for Pandino
 const denoFetcher = async (url: string) => {    
     const isHttp = url.startsWith("http");
     if (isHttp) return await fetch(url).then(r => r.text());
@@ -46,7 +57,7 @@ const denoFetcher = async (url: string) => {
     }
 };
 
-// 3. Main Execution
+// 5. Main Execution
 async function main() {
     process.stdout.write(`\x1b[35m\x1b[1m\x1b[4m🌌 Never Played: Terminal Edition [Mode: ${MODE}] 🌌\x1b[0m\n\n`);
 
@@ -64,6 +75,8 @@ async function main() {
     const coreManifests = [
         "bundles/org.neverplayed.persistence-deno/manifest.json",
         "bundles/org.neverplayed.system-logger/manifest.json",
+        "bundles/org.neverplayed.auth-shield/manifest.json",
+        "bundles/org.neverplayed.limes/manifest.json",
         "bundles/org.neverplayed.config-admin/manifest.json",
         "bundles/org.neverplayed.system-reset/manifest.json",
         "bundles/org.neverplayed.shell-cli/manifest.json",
