@@ -14,7 +14,7 @@ Deno.test({
     sanitizeResources: false,
     fn: async (t) => {
     // 1. Setup Global Mocks BEFORE Harness Init
-    (globalThis as any).NEVERPLAYED_HEADLESS_USER = {
+    (globalThis as unknown as { NEVERPLAYED_HEADLESS_USER: unknown }).NEVERPLAYED_HEADLESS_USER = {
         email: "admin@neverplayed.io",
         uid: "admin-uid",
         isSuperuser: true,
@@ -22,7 +22,7 @@ Deno.test({
     };
 
     const harness = new BundleTestHarness();
-    const context = await harness.init();
+    const _context = await harness.init();
 
     await t.step("Prerequisite: Install Core Bundles", async () => {
         try {
@@ -74,7 +74,7 @@ Deno.test({
             attempts++;
         }
 
-        assertExists(limes.getStrategies().find((s: any) => s.id === "SYSTEM_ADMIN_REQUIRED"), "Should have ADMIN strategy");
+        assertExists(limes.getStrategies().find((s: { id: string }) => s.id === "SYSTEM_ADMIN_REQUIRED"), "Should have ADMIN strategy");
         
         // Non-admin check
         const guestUser = { email: "guest@neverplayed.io", attributes: {} };
@@ -106,7 +106,7 @@ Deno.test({
         const history = shell.getHistory();
         
         // Check if ANY entry contains the target text
-        const found = history.some((h: any) => 
+        const found = history.some((h: { type: string; content?: { text?: string } }) => 
             h.type === 'output' && h.content?.text?.includes("Available Commands:")
         );
         assertEquals(found, true, "Help output should contain 'Available Commands:'");

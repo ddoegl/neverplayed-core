@@ -949,3 +949,62 @@ context.registerService(MY_SERVICE, new MyService(context));
 The Shell CLI's `/methods` command is designed to handle both styles by
 traversing the prototype chain and explicitly filtering out internal Javascript
 engine methods (`toString`, `valueOf`, etc.).
+
+---
+
+## 23. Identity-Aware Persistence & Readiness Pattern
+
+As the system moves toward cloud-backed state (Firebase), bundles must handle
+asynchronous data hydration and identity synchronization to prevent race
+conditions and data leaks.
+
+### The Problem: Asynchronous Boot
+
+High-level services (like `Limes` or `ConfigAdmin`) often rely on persisted
+state to function. If these services start before the `PersistenceManager` has
+finished fetching data from the cloud (hydration), they will load stale or
+empty "factory" defaults, leading to inconsistent security checks or UI states.
+
+### The Solution: The `waitReady()` Pattern
+
+All persistence implementations must provide a `waitReady()` method that
+returns a `Promise`. Critical services must await this promise during their
+`start` or `onActivate` phase.
+
+**1. Persistence Provider (Activator)**:
+
+```javascript
+context.registerService(PERSISTENCE_MANAGER_SERVICE, {
+  waitReady: () => this._readyPromise, // Resolves after Cloud Hydration
+  load: (key) => this._cache.get(key),
+  store: (key, val) => { /* ... sync to Firestore ... */ }
+});
+```
+
+**2. Service Consumer (e.g., Limes)**:
+
+```javascript
+async onStart(context) {
+  context.trackService(`(objectClass=${PERSISTENCE_MANAGER_SERVICE})`, {
+    addingService: async (pm) => {
+      await pm.waitReady(); // MANDATORY: Wait for cloud sync
+      this.loadStrategies(pm);
+    }
+  }).open();
+}
+```
+
+### Identity Synchronization
+
+Cloud persistence is scoped to the `uid` of the authenticated user. The
+persistence manager must track the `AUTH_SHIELD_SERVICE` and trigger
+re-hydration whenever the user identity changes.
+
+### Benefits
+
+- **Reliability**: Guarantees that the UI and security layer are always based on
+  the latest "Ground Truth."
+- **Security**: Prevents cross-user data leakage by enforcing identity-scoped
+  hydration.
+- **Performance**: By using an internal cache that is populated once during
+  boot, subsequent `load()` calls remain synchronous and fast.

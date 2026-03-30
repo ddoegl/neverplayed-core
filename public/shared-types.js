@@ -8,6 +8,7 @@ export const NEVERPLAYED_PREFIX = "@neverplayed/";
 export const SYSTEM_RESET_SERVICE = "@neverplayed/system-reset/SystemReset";
 export const LOG_SERVICE = "@neverplayed/LogService";
 export const CONFIG_ADMIN_SERVICE = "@neverplayed/config-admin/ConfigAdmin";
+export const PERSISTENCE_FIREBASE_BUNDLE = "@neverplayed/persistence-firebase";
 export const CONFIG_ADMIN_UI_FLOW = "@neverplayed/config-admin-ui";
 export const REALLIFE_FLOW = "real-life";
 export const MOBILE_LAUNCHER_FLOW = "mobile-launcher";

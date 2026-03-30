@@ -13,6 +13,7 @@ export const AUTH_SHIELD_BUNDLE = "@neverplayed/auth-shield";
 export const LIMES_SERVICE = "@neverplayed/limes/service";
 export const LIMES_BUNDLE = "@neverplayed/limes";
 export const LIMES_STRATEGIES_PID = "@neverplayed/limes/strategies";
+export const PERSISTENCE_FIREBASE_BUNDLE = "@neverplayed/persistence-firebase";
 export const PLEXUS_ENGINE_SERVICE = "@neverplayed/plexus/engine";
 
 export const BUNDLE_TYPE_SERVICE = "service-flow";
