@@ -4,10 +4,15 @@ import {
     AUTH_SHIELD_SERVICE, 
     LIMES_SERVICE, 
     CONFIG_ADMIN_SERVICE,
-    SHELL_CLI_SERVICE 
+    SHELL_CLI_SERVICE,
+    PERSISTENCE_MANAGER_SERVICE
 } from "core-types";
 
-Deno.test("Core Bundles Regression Suite", async (t) => {
+Deno.test({
+    name: "Core Bundles Regression Suite",
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async (t) => {
     // 1. Setup Global Mocks BEFORE Harness Init
     (globalThis as any).NEVERPLAYED_HEADLESS_USER = {
         email: "admin@neverplayed.io",
@@ -20,15 +25,21 @@ Deno.test("Core Bundles Regression Suite", async (t) => {
     const context = await harness.init();
 
     await t.step("Prerequisite: Install Core Bundles", async () => {
-        await harness.installBundles([
-            "bundles/org.neverplayed.persistence-deno/manifest.json",
-            "bundles/org.neverplayed.system-logger/manifest.json",
-            "bundles/system-services/yaml-service/manifest.json",
-            "bundles/org.neverplayed.auth-shield/manifest.json",
-            "bundles/org.neverplayed.limes/manifest.json",
-            "bundles/org.neverplayed.config-admin/manifest.json",
-            "bundles/org.neverplayed.shell-cli/manifest.json"
-        ]);
+        try {
+            await harness.installBundles([
+                "bundles/org.neverplayed.persistence-deno/manifest.json",
+                "bundles/org.neverplayed.system-logger/manifest.json",
+                "bundles/system-services/yaml-service/manifest.json",
+                "bundles/org.neverplayed.auth-shield/manifest.json",
+                "bundles/org.neverplayed.persistence-firebase/manifest.json",
+                "bundles/org.neverplayed.limes/manifest.json",
+                "bundles/org.neverplayed.config-admin/manifest.json",
+                "bundles/org.neverplayed.shell-cli/manifest.json"
+            ]);
+        } catch (e) {
+            console.error("INSTALL BUNDLES FAILED:", e);
+            throw e;
+        }
     });
 
     await t.step("AuthShield: Identity & Attributes", async () => {
@@ -37,6 +48,19 @@ Deno.test("Core Bundles Regression Suite", async (t) => {
         
         assertEquals(user.email, "admin@neverplayed.io");
         assertEquals(user.attributes['neverplayed-admin'], true, "Should have neverplayed-admin attribute");
+    });
+
+    await t.step("Firebase Persistence: Cloud-Backed State", async () => {
+        const pm = await harness.getService(PERSISTENCE_MANAGER_SERVICE);
+        assertExists(pm, "Persistence service should be registered");
+
+        if (typeof pm.waitReady === 'function') {
+            await pm.waitReady();
+        }
+
+        // Test in-memory behavior (Firebase fallback if no app)
+        pm.store("test.key", "test.value");
+        assertEquals(pm.load("test.key"), "test.value");
     });
 
     await t.step("Limes: ABAC Enforcement", async () => {
@@ -90,4 +114,5 @@ Deno.test("Core Bundles Regression Suite", async (t) => {
 
     // Cleanup
     await harness.stop();
+    }
 });

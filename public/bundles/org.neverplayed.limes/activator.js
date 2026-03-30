@@ -49,8 +49,11 @@ export default class Activator {
         };
 
         context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
-            addingService: (ref) => {
+            addingService: async (ref) => {
                 pmInstance = context.getService(ref);
+                if (typeof pmInstance.waitReady === 'function') {
+                    await pmInstance.waitReady();
+                }
                 loadStrategies(yamlInstance, pmInstance);
             }
         }).open();

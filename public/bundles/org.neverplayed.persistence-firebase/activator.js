@@ -2,7 +2,7 @@ import { PERSISTENCE_MANAGER_SERVICE, AUTH_SHIELD_SERVICE, LOG_SERVICE } from ".
 import { BaseActivator } from "../../osgi-base.js";
 
 const FIREBASE_CDN = "https://www.gstatic.com/firebasejs/10.8.0";
-const COLLECTION = "neverplayed_persistence";
+const COLLECTION = "persistence";
 
 export default class Activator extends BaseActivator {
     _cache = new Map();
