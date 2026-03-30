@@ -15,7 +15,7 @@ export default class Activator {
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
-                this.logger = svc.getLogger("neverplayed.auth-shield");
+                this.logger = svc.getLogger(context.getBundle().getSymbolicName());
                 this.logger.info("Auth Shield: Connected to System Logger.");
             },
             removedService: () => {

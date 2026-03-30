@@ -13,6 +13,10 @@ export default class Activator extends BaseActivator {
         const config = this.config;
         const verbosity = config[LOG_LEVEL_PROP] || "INFO";
 
+        // Maintain an in-memory ring buffer of the last 100 events
+        this.eventHistory = [];
+        const MAX_HISTORY = 100;
+
         // Register Event Handler for ALL topics
         const eventHandler = {
             handleEvent: (event) => {
@@ -40,7 +44,23 @@ export default class Activator extends BaseActivator {
                     }, 2);
                 };
                 
-                const logMsg = `Topic: ${topic} | Data: ${safeJson(data)}`;
+                const logMsg = `[${new Date().toLocaleTimeString()}] Topic: ${topic} | Data: ${safeJson(data)}`;
+                
+                // Save to history buffer (unshift puts newest at index 0)
+                this.eventHistory.unshift(logMsg);
+                if (this.eventHistory.length > MAX_HISTORY) {
+                    this.eventHistory.pop();
+                }
+
+                // Also Render to UI Element if active
+                const ui = globalThis.document?.getElementById('event-log-monitor');
+                if (ui) {
+                     if (ui.innerHTML.includes("Waiting for events...")) ui.innerHTML = "";
+                     const entry = globalThis.document.createElement('div');
+                     entry.className = "border-b border-green-900/30 pb-1 mb-1";
+                     entry.innerText = logMsg;
+                     ui.prepend(entry);
+                }
 
                 if (verbosity === "DEBUG") {
                     logger.debug(logMsg);
@@ -51,7 +71,7 @@ export default class Activator extends BaseActivator {
         };
 
         context.registerService(EVENT_HANDLER_INTERFACE, eventHandler, {
-            [EVENT_TOPIC]: ["backoffice/invitations/*", "backoffice/cases/*"]
+            [EVENT_TOPIC]: ["backoffice/invitations/*", "backoffice/cases/*", "org/neverplayed/config/*"]
         });
 
         // Register as a FLOW_SERVICE so it can be governed
@@ -60,6 +80,10 @@ export default class Activator extends BaseActivator {
             title: "Event Monitor",
             icon: "fas fa-terminal",
             launch: (target) => {
+                const historyHtml = this.eventHistory.length > 0 
+                    ? this.eventHistory.map(msg => `<div class="border-b border-green-900/30 pb-1 mb-1">${msg}</div>`).join('') 
+                    : "Waiting for events...";
+
                 target.innerHTML = `
                     <div class="p-8 bg-slate-900 text-green-400 font-mono h-full overflow-auto text-xs">
                         <div class="mb-4 border-b border-green-900/50 pb-2 flex justify-between items-center text-xs uppercase tracking-widest font-bold">
@@ -67,7 +91,7 @@ export default class Activator extends BaseActivator {
                             <span class="text-[9px] opacity-50">Verbosity: ${verbosity}</span>
                         </div>
                         <div id="event-log-monitor" class="space-y-1">
-                             Waiting for events...
+                             ${historyHtml}
                         </div>
                     </div>
                 `;

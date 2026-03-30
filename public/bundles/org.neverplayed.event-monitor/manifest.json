@@ -10,7 +10,10 @@
     ],
     "level": "INFO",
     "topics": [
-      "backoffice/invitations/*"
-    ]
+      "backoffice/invitations/*",
+      "backoffice/cases/*",
+      "org/neverplayed/config/*"
+    ],
+    "sidebar": true
   }
 }

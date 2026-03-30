@@ -3,7 +3,11 @@ import {
     BUNDLE_TYPE_ORDER,
     BUNDLE_TYPE_SYSTEM,
     BUNDLE_TYPE_ADMIN,
-    BUNDLE_TYPE_REGISTRY
+    BUNDLE_TYPE_REGISTRY,
+    EVENT_ADMIN_SERVICE,
+    EVENT_FACTORY_SERVICE,
+    EVENT_HANDLER_INTERFACE,
+    EVENT_TOPIC
 } from "shared-types";
 import { 
     CONFIG_ADMIN_SERVICE, 
@@ -11,7 +15,8 @@ import {
     SYSTEM_RESET_SERVICE,
     SHELL_CONFIG_PID,
     SHELL_COMMAND_SERVICE,
-    LOG_LEVEL_PROP
+    LOG_LEVEL_PROP,
+    CONFIG_UPDATED_TOPIC
 } from "core-types";
 import { CoreActivator } from "osgi-base";
 
@@ -57,20 +62,31 @@ export default class Activator extends CoreActivator {
             getConfiguration: (pid) => {
                 if (typeof pid !== 'string') return { getProperties: () => ({}), update: () => {} };
                 if (!configs.has(pid)) {
-                    const stored = pm.load(`config.${pid}`) || {};
                     const config = {
-                        getProperties: () => ({ ...stored }),
+                        getProperties: () => ({ ...(pm.load(`config.${pid}`) || {}) }),
                         update: (properties) => {
                             // Security Guard via CoreActivator helper
+                            console.log(`DEBUG: ConfigAdmin.update calling isAllowed for ${pid}`);
                             if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
                                 if (logger) logger.warn(`Access Denied: Config update attempt for ${pid}`);
                                 return;
                             }
 
+                            const stored = pm.load(`config.${pid}`) || {};
                             deepMerge(stored, properties);
                             pm.store(`config.${pid}`, stored);
                             if (logger) logger.debug(`Updated configuration for PID: ${pid}`);
-                            globalThis.dispatchEvent(new CustomEvent('config-updated', { detail: { pid, properties: stored } }));
+                            
+                            const eventAdminRef = context.getServiceReference(EVENT_ADMIN_SERVICE);
+                            const eventFactoryRef = context.getServiceReference(EVENT_FACTORY_SERVICE);
+                            if (eventAdminRef && eventFactoryRef) {
+                                const eventAdmin = context.getService(eventAdminRef);
+                                const eventFactory = context.getService(eventFactoryRef);
+                                const event = eventFactory.build(CONFIG_UPDATED_TOPIC, { pid, properties: stored });
+                                eventAdmin.postEvent(event);
+                            } else {
+                                globalThis.dispatchEvent(new CustomEvent('config-updated', { detail: { pid, properties: stored } }));
+                            }
                         }
                     };
                     configs.set(pid, config);
@@ -231,6 +247,13 @@ export default class Activator extends CoreActivator {
                             context.getService(resetRefs[0]).factoryReset();
                         }
                     });
+                    
+                    globalThis.addEventListener('config-updated', () => {
+                        if (targetElement.isConnected) {
+                            state.init();
+                        }
+                    });
+                    
                     targetElement.setAttribute('data-reset-listener-active', 'true');
                 }
             }
@@ -300,6 +323,19 @@ export default class Activator extends CoreActivator {
                 log(`Configuration for ${pid} reset to manifest defaults.`);
             }
         });
+
+        // Bridge OSGi events to DOM for the UI
+        context.registerService(EVENT_HANDLER_INTERFACE, {
+            handleEvent: (event) => {
+                if (event.getTopic() === CONFIG_UPDATED_TOPIC) {
+                    const detail = {};
+                    event.getPropertyNames().forEach(key => {
+                        detail[key] = event.getProperty(key);
+                    });
+                    globalThis.dispatchEvent(new CustomEvent('config-updated', { detail }));
+                }
+            }
+        }, { [EVENT_TOPIC]: [CONFIG_UPDATED_TOPIC] });
     }
 
     stop(_context) {}

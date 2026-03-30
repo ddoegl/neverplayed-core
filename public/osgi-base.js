@@ -1,4 +1,5 @@
 import { FLOW_SERVICE as _FLOW_SERVICE, LOG_SERVICE, CONFIG_ADMIN_SERVICE, PERSISTENCE_MANAGER_SERVICE, LIMES_SERVICE, AUTH_SHIELD_SERVICE, PLEXUS_ENGINE_SERVICE, SESSION_SERVICE } from "core-types";
+console.log("DEBUG: osgi-base.js loaded");
 
 /**
  * BaseActivator
@@ -105,6 +106,7 @@ export class CoreActivator extends BaseActivator {
         super();
         this.limes = null;
         this.authShield = null;
+        console.log(`DEBUG: CoreActivator instance created for ${this.bsn}`);
     }
 
     async onStart(context) {
@@ -130,8 +132,16 @@ export class CoreActivator extends BaseActivator {
     }
 
     isAllowed(strategyId, runtimeContext = {}) {
-        if (!this.limes) return false;
+        console.log(`DEBUG: isAllowed ENTERED for ${this.bsn}, strategy=${strategyId}`);
+        if (!this.limes) {
+            this.logger.warn(`isAllowed: Limes service not found for ${this.bsn}`);
+            return false;
+        }
         const user = this.authShield?.getCurrentUser();
+        if (!user) {
+            this.logger.warn(`isAllowed: AuthShield user not found for ${this.bsn}`);
+            return false;
+        }
         return this.limes.isAllowed(user, strategyId, runtimeContext);
     }
 

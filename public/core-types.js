@@ -14,6 +14,7 @@ export const LIMES_SERVICE = "@neverplayed/limes/service";
 export const LIMES_BUNDLE = "@neverplayed/limes";
 export const LIMES_STRATEGIES_PID = "@neverplayed/limes/strategies";
 export const PERSISTENCE_FIREBASE_BUNDLE = "@neverplayed/persistence-firebase";
+export const PERSISTENCE_FS_SYNC_BUNDLE = "@neverplayed/persistence-fs-sync";
 export const PLEXUS_ENGINE_SERVICE = "@neverplayed/plexus/engine";
 
 export const BUNDLE_TYPE_SERVICE = "service-flow";
@@ -24,6 +25,9 @@ export const CAP_SYS = "sys:";
 export const CAP_AUTH = "auth:";
 export const CAP_BIZ = "biz:";
 export const CAP_FLOW = "flow:";
+
+// Event Topics
+export const CONFIG_UPDATED_TOPIC = "org/neverplayed/config/UPDATED";
 
 // Core PIDs & Properties
 export const SHELL_CONFIG_PID = "@neverplayed/shell-cli";

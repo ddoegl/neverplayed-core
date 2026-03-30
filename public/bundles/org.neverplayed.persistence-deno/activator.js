@@ -3,29 +3,41 @@ import { BaseActivator } from "../../osgi-base.js";
 
 export default class Activator extends BaseActivator {
     onStart(context) {
-        // Deno natively supports localStorage on a per-location basis
-        const storage = globalThis.localStorage;
+        const STATE_DIR = "public/.neverplayed";
+        const STATE_FILE = `${STATE_DIR}/state.json`;
+
+        // Ensure directory exists
+        try { Deno.mkdirSync(STATE_DIR, { recursive: true }); } catch (_e) {}
+
+        const getStore = () => {
+            try {
+                const data = Deno.readTextFileSync(STATE_FILE);
+                return JSON.parse(data);
+            } catch (_e) {
+                return {};
+            }
+        };
+
+        const saveStore = (data) => {
+            Deno.writeTextFileSync(STATE_FILE, JSON.stringify(data, null, 2));
+        };
         
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
             load: (key) => {
-                const val = storage.getItem(key);
-                if (val === null) return null;
-                try {
-                    return JSON.parse(val);
-                } catch (_e) {
-                    return val;
-                }
+                const store = getStore();
+                return store[key] !== undefined ? store[key] : null;
             },
             store: (key, val) => {
-                const stringVal = typeof val === 'string' ? val : JSON.stringify(val);
-                storage.setItem(key, stringVal);
+                const store = getStore();
+                store[key] = val;
+                saveStore(store);
             }
         }, {
             "capability": "sys:persistence",
-            "implementation": "deno-localstorage"
+            "implementation": "deno-fs"
         });
 
-        this.logger.info("Deno Persistence Manager: ACTIVE (localStorage).");
+        this.logger.info(`Deno Persistence Manager: ACTIVE (FS: ${STATE_FILE}).`);
     }
 
     onStop(_context) {

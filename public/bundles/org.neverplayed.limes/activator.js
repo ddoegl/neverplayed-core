@@ -8,8 +8,10 @@ export default class Activator {
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
-                this.logger = svc.getLogger("neverplayed.limes");
+                this.logger = svc.getLogger(context.getBundle().getSymbolicName());
                 this.logger.info("Limes: Connected to System Logger.");
+                // FORCE: Override with console for debugging
+                this.logger = console;
             },
             removedService: () => {
                 this.logger = { 
@@ -31,7 +33,10 @@ export default class Activator {
         const loadStrategies = async (yaml, pm) => {
             if (!yaml || !pm) return;
             this.logger.info("Limes: Loading strategies from YAML & PM...");
-            const res = await fetch("./bundles/org.neverplayed.limes/data/limes-strategies.yaml");
+            const url = globalThis.NEVERPLAYED_BASE_URL 
+                ? new URL("bundles/org.neverplayed.limes/data/limes-strategies.yaml", globalThis.NEVERPLAYED_BASE_URL) 
+                : "./bundles/org.neverplayed.limes/data/limes-strategies.yaml";
+            const res = await fetch(url);
             const text = await res.text();
             const yamlStrategies = yaml.load(text) || [];
             
@@ -48,8 +53,10 @@ export default class Activator {
             (persistentStrategies || []).forEach(s => strategyRegistry.set(s.id, s));
         };
 
+        console.log(`DEBUG: Limes tracking PM with key: ${PM_INTERFACE_KEY}`);
         context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
             addingService: async (ref) => {
+                console.log("DEBUG: Limes found PM service!");
                 pmInstance = context.getService(ref);
                 if (typeof pmInstance.waitReady === 'function') {
                     await pmInstance.waitReady();
@@ -149,6 +156,7 @@ export default class Activator {
                         case 'matchPropertyNotEmpty': res = !!runtimeContext[m.key]; break;
                         case 'matchAttribute': {
                             const val = userCap[m.key] !== undefined ? userCap[m.key] : userCap.attributes?.[m.key];
+                            this.logger.debug(`Limes: [matchAttribute] key=${m.key}, required=${m.value}, actual=${val}`);
                             res = val === m.value; 
                             break;
                         }

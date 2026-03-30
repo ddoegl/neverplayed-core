@@ -15,7 +15,7 @@ Deno.test({
     fn: async (t) => {
     // 1. Setup Global Mocks BEFORE Harness Init
     (globalThis as unknown as { NEVERPLAYED_HEADLESS_USER: unknown }).NEVERPLAYED_HEADLESS_USER = {
-        email: "admin@neverplayed.io",
+        email: "admin@neverplayed.org",
         uid: "admin-uid",
         isSuperuser: true,
         authorized: true
@@ -46,7 +46,7 @@ Deno.test({
         const auth = await harness.getService(AUTH_SHIELD_SERVICE);
         const user = auth.getCurrentUser();
         
-        assertEquals(user.email, "admin@neverplayed.io");
+        assertEquals(user.email, "admin@neverplayed.org");
         assertEquals(user.attributes['neverplayed-admin'], true, "Should have neverplayed-admin attribute");
     });
 
@@ -77,12 +77,12 @@ Deno.test({
         assertExists(limes.getStrategies().find((s: { id: string }) => s.id === "SYSTEM_ADMIN_REQUIRED"), "Should have ADMIN strategy");
         
         // Non-admin check
-        const guestUser = { email: "guest@neverplayed.io", attributes: {} };
+        const guestUser = { email: "guest@neverplayed.org", attributes: {} };
         const allowed = await limes.isAllowed(guestUser, "SYSTEM_ADMIN_REQUIRED");
         assertEquals(allowed, false, "Guest should be denied admin tasks");
 
         // Admin check
-        const adminUser = { email: "admin@neverplayed.io", attributes: { 'neverplayed-admin': true } };
+        const adminUser = { email: "admin@neverplayed.org", attributes: { 'neverplayed-admin': true } };
         const adminAllowed = await limes.isAllowed(adminUser, "SYSTEM_ADMIN_REQUIRED");
         assertEquals(adminAllowed, true, "Admin should be allowed admin tasks");
     });

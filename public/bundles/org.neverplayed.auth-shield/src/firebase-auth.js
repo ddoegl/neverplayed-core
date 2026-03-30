@@ -36,10 +36,11 @@ let isHandlingRedirect = false;
 export async function checkAccess(logger = console) {
     // 0. Headless / Terminal Fallback
     if (globalThis.NEVERPLAYED_HEADLESS_USER) {
-        logger.info("Auth Shield: Headless mode detected. Using provided user context.");
+        logger.info(`Auth Shield: Headless mode detected for ${globalThis.NEVERPLAYED_HEADLESS_USER.email}`);
         const user = globalThis.NEVERPLAYED_HEADLESS_USER;
         user.attributes = user.attributes || {};
         user.attributes['neverplayed-admin'] = user.isSuperuser || user.isAdmin || false;
+        logger.debug("Auth Shield: Resulting user attributes", JSON.stringify(user.attributes));
         return Promise.resolve(user);
     }
 

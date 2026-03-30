@@ -32,7 +32,7 @@ const mockDoc = {
 (globalThis as any).NEVERPLAYED_BASE_URL = BASE_URL;
 
 // 3. Headless Security Context
-const terminalUser = Deno.env.get("NEVERPLAYED_USER") || "terminal-admin@neverplayed.io";
+const terminalUser = Deno.env.get("NEVERPLAYED_USER") || "terminal-admin@neverplayed.org";
 // deno-lint-ignore no-explicit-any
 (globalThis as any).NEVERPLAYED_HEADLESS_USER = {
     email: terminalUser,

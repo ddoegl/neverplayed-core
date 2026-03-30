@@ -1,0 +1,86 @@
+{
+  "pandino.pm.managed-keys": [
+    "@neverplayed/limes/strategies"
+  ],
+  "@neverplayed/limes/strategies": [
+    {
+      "id": "GLOBAL_VIEW",
+      "operator": "AND",
+      "matchers": [
+        {
+          "type": "matchAlways"
+        }
+      ],
+      "keys": []
+    },
+    {
+      "id": "SYSTEM_ADMIN_REQUIRED",
+      "operator": "AND",
+      "matchers": [
+        {
+          "type": "matchAttribute",
+          "key": "neverplayed-admin",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": "SYSTEM_DEVELOPER_REQUIRED",
+      "operator": "OR",
+      "matchers": [
+        {
+          "type": "matchAttribute",
+          "key": "neverplayed-admin",
+          "value": true
+        },
+        {
+          "type": "matchAttribute",
+          "key": "neverplayed-developer",
+          "value": true
+        }
+      ]
+    }
+  ],
+  "config.@neverplayed/shell-cli": {
+    "flowType": "service-flow",
+    "channels": [
+      "real-life",
+      "business-portal",
+      "web-browser",
+      "business-channel-web",
+      "business-channel-app",
+      "retail-channel-app"
+    ],
+    "log-level": "INFO"
+  },
+  "config.@neverplayed/system-logger": {
+    "log-level": "INFO"
+  },
+  "config.@neverplayed/event-monitor": {
+    "flowType": "system-flow",
+    "channels": [
+      "real-life",
+      "business-channel-web"
+    ],
+    "level": "INFO",
+    "topics": [
+      "backoffice/invitations/*",
+      "backoffice/cases/*",
+      "org/neverplayed/config/*"
+    ],
+    "sidebar": true
+  },
+  "config.@neverplayed/system-reset": {
+    "channels": [
+      "business-channel-web"
+    ]
+  },
+  "config.@neverplayed/config-admin": {
+    "flowType": "system-flow",
+    "channels": [
+      "business-channel-web",
+      "retail-channel-app"
+    ],
+    "sidebar": true
+  }
+}

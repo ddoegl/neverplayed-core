@@ -1,0 +1,9 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.persistence-fs-sync",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Import-Service": [
+        "(objectClass=@neverplayed/system-logger/LogService)",
+        "(objectClass=@neverplayed/persistence-manager/PersistenceManager)"
+    ]
+}

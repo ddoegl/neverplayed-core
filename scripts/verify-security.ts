@@ -21,7 +21,7 @@ const mockDoc = {
 
 // 2. Mock Non-Admin User (initially)
 const headlessUser = {
-    email: "test-user@neverplayed.io",
+    email: "test-user@neverplayed.org",
     uid: "test-uid",
     isSuperuser: false,
     isDeveloper: false,

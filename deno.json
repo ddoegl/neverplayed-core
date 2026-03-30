@@ -12,7 +12,9 @@
     "headless-fs": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/headless-boot-fs.ts",
     "terminal": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/headless-terminal.ts",
     "terminal-web": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/headless-terminal.ts --url http://localhost:8008/",
-    "test": "deno test -A --location http://localhost --import-map scripts/import-map.json scripts/*.test.ts"
+    "test": "deno test -A --location http://localhost --import-map scripts/import-map.json scripts/*.test.ts",
+    "mcp": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/mcp-server.ts",
+    "mcp-test": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/test-mcp-client.ts"
   },
   "lint": {
     "files": {
