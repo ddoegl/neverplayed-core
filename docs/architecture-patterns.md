@@ -801,6 +801,53 @@ get logger() {
 }
 ```
 
+---
+
+## 20. Headless Secret Management (Dynamic Injection)
+
+When building OSGi bundles that require sensitive credentials (e.g., API keys, MCP secrets), we must prevent these secrets from being hardcoded in the Javascript source, which would leak them into the browser bundle.
+
+### The Problem
+
+If a bundle like `auth-shield` needs a secret to communicate with a Cloud Function, hardcoding it makes it public. However, a headless Deno agent needs that same secret to operate.
+
+### The Solution: The Dynamic Injection Pattern
+
+1. **Bundle (Client)**: Consume the secret from a global context variable (e.g., `globalThis.NEVERPLAYED_MCP_SECRET`) with a safe fallback to an empty string.
+2. **Headless Host (Deno)**: Load the secret from a local, gitignored environment file (`.env.mcp`) and inject it into the global scope before starting the OSGi bundles.
+3. **Browser Host**: (Optional) In a production browser environment, use App Check or Firebase Auth instead of the static secret for the same endpoint.
+
+**Bundle Implementation**:
+
+```javascript
+// src/firebase-auth.js
+const response = await fetch(fnUrl, {
+    method: "POST",
+    headers: {
+        "x-mcp-secret": globalThis.NEVERPLAYED_MCP_SECRET || ""
+    },
+    // ...
+});
+```
+
+**Headless Host (Deno) Implementation**:
+
+```typescript
+// scripts/mcp-server.ts
+const envText = Deno.readTextFileSync("./.env.mcp");
+const match = envText.match(/MCP_API_SECRET=(.*)/);
+if (match) {
+    (globalThis as any).NEVERPLAYED_MCP_SECRET = match[1].trim();
+}
+```
+
+### Benefits
+
+- **Zero Hardcoding**: The secret is never stored in version control.
+- **Portability**: The same bundle works in the browser (limited mode) and headless (full power).
+- **Rotation Safety**: Secrets can be rotated in Secret Manager and the `.env.mcp` file without changing code.
+
+
 ### Dynamic Configuration
 
 The logging infrastructure is integrated with `ConfigAdmin`. Log levels can be

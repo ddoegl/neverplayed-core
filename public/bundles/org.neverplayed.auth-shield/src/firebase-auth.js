@@ -51,7 +51,7 @@ export async function checkAccess(logger = console) {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-mcp-secret": "NEVERPLAYED_MCP_API_SECRET_2026"
+                    "x-mcp-secret": globalThis.NEVERPLAYED_MCP_SECRET || ""
                 },
                 body: JSON.stringify({ action: "mintToken", payload: { email: user.email } })
             });
@@ -59,7 +59,11 @@ export async function checkAccess(logger = console) {
             if (response.ok) {
                 const data = await response.json();
                 logger.info(`Auth Shield: Successfully minted Custom Token for: ${data.uid}. Authenticating...`);
-                await signInWithCustomToken(auth, data.token);
+                const cred = await signInWithCustomToken(auth, data.token);
+                // Export ID Token for headless fallback verification
+                const idToken = await cred.user.getIdToken();
+                globalThis.NEVERPLAYED_HEADLESS_TOKEN = idToken;
+
                 logger.info("Auth Shield: Deno Firebase Session securely established.");
                 // Ensure real Firebase uid overrides mock
                 user.uid = data.uid;

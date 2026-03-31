@@ -34,9 +34,20 @@ const mockDoc = {
 const BASE_URL = `file://${Deno.cwd()}/public/`;
 (globalThis as unknown as Record<string, unknown>).NEVERPLAYED_BASE_URL = BASE_URL;
 
-// 2. Headless Identity Context
+// 2. Headless Identity Context & Secrets
+// Load secret from .env.mcp if it exists
+let mcpSecret = "PLACEHOLDER";
+try {
+    const envText = Deno.readTextFileSync("./.env.mcp");
+    const match = envText.match(/MCP_API_SECRET=(.*)/);
+    if (match) mcpSecret = match[1].trim();
+} catch (_e) {
+    console.warn("MCP Server: .env.mcp not found or invalid. Secret fallback might fail.");
+}
+(globalThis as any).NEVERPLAYED_MCP_SECRET = mcpSecret;
+
 const agentEmail = Deno.env.get("NEVERPLAYED_USER") || "agent-mcp@neverplayed.org";
-(globalThis as unknown as Record<string, unknown>).NEVERPLAYED_HEADLESS_USER = {
+(globalThis as any).NEVERPLAYED_HEADLESS_USER = {
     email: agentEmail,
     uid: `mcp-${agentEmail.split('@')[0]}`,
     isSuperuser: true,
@@ -268,7 +279,8 @@ async function handleRequest(request: { method: string; params: Record<string, u
                       method: "POST",
                       headers: {
                           "Content-Type": "application/json",
-                          "x-mcp-secret": "NEVERPLAYED_MCP_API_SECRET_2026"
+                          "x-mcp-secret": (globalThis as any).NEVERPLAYED_MCP_SECRET || "",
+                          "x-mcp-token": (globalThis as any).NEVERPLAYED_HEADLESS_TOKEN || ""
                       },
                       body: JSON.stringify({ action: "updateConfig", payload: { pid, properties, uid: targetUid } })
                   });

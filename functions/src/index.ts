@@ -11,9 +11,9 @@ import {setGlobalOptions} from "firebase-functions";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
-// Initialize Admin SDK with explicit service account for token signing
+// Initialize Admin SDK with the explicit identity of this 2nd Gen Function
 admin.initializeApp({
-  serviceAccountId: "cladmin-bc594@appspot.gserviceaccount.com"
+  serviceAccountId: "27160798303-compute@developer.gserviceaccount.com"
 });
 
 // Limit instances and set region
