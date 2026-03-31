@@ -535,13 +535,19 @@
         const envConfig = response.ok ? await response.json() : { persistence_mode: "local" };
         const isFirebase = envConfig.persistence_mode === "firebase";
 
-        const pmBundleUrl = isFirebase 
+        const pmProviderUrl = isFirebase 
           ? "./bundles/org.neverplayed.persistence-firebase/manifest.json"
           : "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json";
 
-        const pmBundle = await context.installBundle(pmBundleUrl);
-        if (pmBundle.state === 2 || pmBundle.state === 4) {
-          await pmBundle.start();
+        const providerBundle = await context.installBundle(pmProviderUrl);
+        if (providerBundle.state === 2 || providerBundle.state === 4) {
+          await providerBundle.start();
+        }
+
+        // Install and Start the Persistence Selector (Data Guardian)
+        const selectorBundle = await context.installBundle("./bundles/org.neverplayed.persistence-selector/manifest.json");
+        if (selectorBundle.state === 2 || selectorBundle.state === 4) {
+            await selectorBundle.start();
         }
 
         // Install fs-sync conditionally if local
@@ -562,15 +568,19 @@
 
         // Fetch the Persistence Manager
         const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
+        console.log("Shell Boot: Persistence Manager Reference:", pmRef);
+        
         const pm = context.getService(pmRef);
+        console.log("Shell Boot: Persistence Manager Instance:", pm);
+        
         const SESSION_PID = "pandino.session.state";
 
         // Initialize a reactive Session Service
         const sessionService = Alpine.reactive({
-          ...(pm.load(SESSION_PID) || {
+          ...(pm ? pm.load(SESSION_PID) : null) || {
             environment: "business-channel-web",
             scopedUsers: {},
-          }),
+          },
           activeFlowId: null,
           bootstrapCodeModal: { show: false, code: "", phone: "" },
           get currentUser() {

@@ -10,6 +10,7 @@ export default class Activator extends BaseActivator {
     _userId = null;
     _setDoc = null;
     _docFn = null;
+    _unsub = null;
     _readyPromise = null;
     _resolveReady = null;
 
@@ -29,7 +30,7 @@ export default class Activator extends BaseActivator {
             return;
         }
 
-        const { getFirestore, doc, getDoc, setDoc } = await import(`${FIREBASE_CDN}/firebase-firestore.js`);
+        const { getFirestore, doc, setDoc, onSnapshot } = await import(`${FIREBASE_CDN}/firebase-firestore.js`);
         const app = getApp();
         this._db = getFirestore(app);
         this._setDoc = setDoc;
@@ -37,18 +38,19 @@ export default class Activator extends BaseActivator {
 
         // 2. Track AuthShield for Identity
         context.trackService(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
-            addingService: async (ref) => {
+            addingService: (ref) => {
                 const svc = context.getService(ref);
                 const user = svc.getCurrentUser();
                 if (user && user.uid !== this._userId) {
-                    await this._hydrate(user.uid, getDoc, doc);
+                    this._setupSync(user.uid, onSnapshot);
                 }
                 return svc;
             },
             removedService: () => {
+                if (this._unsub) this._unsub();
                 this._userId = null;
                 this._cache.clear();
-                this.logger.info("Firebase Persistence: User session lost, cache cleared.");
+                this.logger.info("Firebase Persistence: User session lost, sync stopped.");
             }
         }).open();
 
@@ -65,25 +67,27 @@ export default class Activator extends BaseActivator {
         this._registerService(context);
     }
 
-    async _hydrate(uid, getDoc, docFn) {
+    _setupSync(uid, onSnapshot) {
+        if (this._unsub) this._unsub();
         this._userId = uid;
-        this.logger.info(`Firebase Persistence: Hydrating for user ${uid}...`);
-        try {
-            const snap = await getDoc(docFn(this._db, COLLECTION, uid));
+        this.logger.info(`Firebase Persistence: Seeting up real-time sync for user ${uid}...`);
+        
+        this._unsub = onSnapshot(this._docFn(this._db, COLLECTION, uid), (snap) => {
             if (snap.exists()) {
                 const data = snap.data();
+                this._cache.clear(); // Fresh start for the cache from remote source
                 for (const [key, val] of Object.entries(data)) {
                     this._cache.set(key, val);
                 }
-                this.logger.info(`Firebase Persistence: Hydrated ${Object.keys(data).length} keys.`);
+                this.logger.info(`Firebase Persistence: Remote update detected. Hydrated ${Object.keys(data).length} keys.`);
             } else {
                 this.logger.info("Firebase Persistence: No existing cloud state found.");
             }
-        } catch (err) {
-            this.logger.error(`Firebase Persistence: Hydration error for ${uid}:`, err);
-        } finally {
             this._resolveReady();
-        }
+        }, (err) => {
+            this.logger.error(`Firebase Persistence: Sync error for ${uid}:`, err);
+            this._resolveReady();
+        });
     }
 
     _registerService(context) {
@@ -118,12 +122,18 @@ export default class Activator extends BaseActivator {
             }
         }, {
             "capability": "sys:persistence",
-            "implementation": "firebase-firestore"
+            "implementation": "firebase-firestore",
+            "persistence.type": "provider",
+            "persistence.tier": "cloud",
+            "persistence.scope": "global",
+            "service.ranking": 20
         });
         this.logger.info("Firebase Persistence Manager: Registered.");
     }
 
     onStop(_context) {
+        if (this._unsub) this._unsub();
         this.logger.info("Firebase Persistence Manager: Stopped.");
     }
 }
+

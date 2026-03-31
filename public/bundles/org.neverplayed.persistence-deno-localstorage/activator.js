@@ -35,10 +35,18 @@ export default class Activator extends BaseActivator {
                     }
                 }
                 return result;
+            },
+            clear: () => {
+                storage.clear();
+                this.logger.info("Deno Persistence Manager: LocalStorage cleared.");
             }
         }, {
             "capability": "sys:persistence",
-            "implementation": "deno-localstorage"
+            "implementation": "deno-localstorage",
+            "persistence.type": "provider",
+            "persistence.tier": "local",
+            "persistence.scope": "device",
+            "service.ranking": 5
         });
 
         this.logger.info("Deno Persistence Manager: ACTIVE (localStorage).");

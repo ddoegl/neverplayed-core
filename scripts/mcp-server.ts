@@ -44,10 +44,10 @@ try {
 } catch (_e) {
     console.warn("MCP Server: .env.mcp not found or invalid. Secret fallback might fail.");
 }
-(globalThis as any).NEVERPLAYED_MCP_SECRET = mcpSecret;
+(globalThis as unknown as Record<string, unknown>).NEVERPLAYED_MCP_SECRET = mcpSecret;
 
 const agentEmail = Deno.env.get("NEVERPLAYED_USER") || "agent-mcp@neverplayed.org";
-(globalThis as any).NEVERPLAYED_HEADLESS_USER = {
+(globalThis as unknown as Record<string, unknown>).NEVERPLAYED_HEADLESS_USER = {
     email: agentEmail,
     uid: `mcp-${agentEmail.split('@')[0]}`,
     isSuperuser: true,
@@ -55,7 +55,12 @@ const agentEmail = Deno.env.get("NEVERPLAYED_USER") || "agent-mcp@neverplayed.or
 };
 
 // 3. Dynamic Registry Holder
-let pandinoInstance: any = null;
+interface PandinoInstance {
+    init(): Promise<void>;
+    start(): Promise<void>;
+    getBundleContext(): unknown;
+}
+let pandinoInstance: PandinoInstance | null = null;
 
 async function bootOSGI() {
     // Dynamic imports to ensure console is already redirected
@@ -65,11 +70,12 @@ async function bootOSGI() {
     pandinoInstance = new Pandino({
         ...loaderConfiguration,
         "pandino.base.url": BASE_URL,
+        // deno-lint-ignore no-explicit-any
     } as any);
 
     await pandinoInstance.init();
     await pandinoInstance.start();
-    const context = pandinoInstance.getBundleContext();
+    const _context = (pandinoInstance as PandinoInstance).getBundleContext();
 
     let isFirebase = false;
     try {
@@ -84,6 +90,7 @@ async function bootOSGI() {
         "bundles/system-services/yaml-service/manifest.json",
         "bundles/org.neverplayed.auth-shield/manifest.json",
         isFirebase ? "bundles/org.neverplayed.persistence-firebase/manifest.json" : "bundles/org.neverplayed.persistence-deno/manifest.json",
+        "bundles/org.neverplayed.persistence-selector/manifest.json",
         "bundles/org.neverplayed.system-logger/manifest.json",
         "bundles/org.neverplayed.limes/manifest.json",
         "bundles/org.neverplayed.config-admin/manifest.json",
@@ -99,14 +106,39 @@ async function bootOSGI() {
             if (manifest["Bundle-Activator"]) {
                 manifest["Bundle-Activator"] = join(dirPath, manifest["Bundle-Activator"].replace(/^\.\//, ""));
             }
+            const context = (pandinoInstance as { getBundleContext: () => { installBundle: (m: unknown) => Promise<{ getState: () => number, start: () => Promise<void> }> } }).getBundleContext();
             const bundle = await context.installBundle(manifest);
-            if (bundle && ((bundle.getState() as unknown as number) < 32)) {
+            if (bundle && (bundle.getState() < 32)) {
                 await bundle.start();
             }
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`❌ MCP Boot: Failed ${path}:`, message);
         }
+    }
+}
+
+async function forceCloudUpdate(pid: string, properties: Record<string, unknown>, targetUid: string, id: number) {
+    try {
+        const FN_URL = "https://europe-west4-cladmin-bc594.cloudfunctions.net/mcpApi";
+        const response = await fetch(FN_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-mcp-secret": (globalThis as unknown as Record<string, string>).NEVERPLAYED_MCP_SECRET || "",
+                "x-mcp-token": (globalThis as unknown as Record<string, string>).NEVERPLAYED_HEADLESS_TOKEN || ""
+            },
+            body: JSON.stringify({ action: "updateConfig", payload: { pid, properties, uid: targetUid } })
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API refused connection (${response.status}): ${errorText}`);
+        }
+        return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Direct stateless API update forced for: ${pid} (UID: ${targetUid})` }] } };
+    } catch (fallbackErr: unknown) {
+        const message = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+        console.error(`[MCP] Cloud update failed: ${message}`);
+        return { jsonrpc: "2.0", id, error: { code: -32603, message: `System write failed: ${message}` } };
     }
 }
 
@@ -205,10 +237,10 @@ async function handleRequest(request: { method: string; params: Record<string, u
 
     if (method === "tools/call") {
         const { name, arguments: toolArgs } = params;
-        const context = pandinoInstance.getBundleContext();
+        const context = (pandinoInstance as { getBundleContext: () => { getServiceReferences: (i: unknown, f?: string) => Array<{ getProperty: (k: string) => unknown, getPropertyKeys: () => string[], bundle: { getSymbolicName: () => string } }>, getService: (r: unknown) => unknown } }).getBundleContext();
 
         if (name === "osgi_list_services") {
-            const services = context.getServiceReferences(undefined, undefined).map((ref: any) => {
+            const services = context.getServiceReferences(undefined, undefined).map((ref) => {
                 const rawObjectClass = ref.getProperty("objectClass");
                 const id = Array.isArray(rawObjectClass) ? rawObjectClass[0] : rawObjectClass;
                 console.log(`[MCP Debug] Service Found: ${id} (Raw Type: ${typeof rawObjectClass})`);
@@ -248,18 +280,26 @@ async function handleRequest(request: { method: string; params: Record<string, u
           const ref = context.getServiceReferences(undefined, "(objectClass=@neverplayed/config-admin/ConfigAdmin)")[0];
           if (!ref) return { jsonrpc: "2.0", id, error: { code: -32603, message: "ConfigAdmin not available" } };
           
-          const ca = context.getService(ref) as any;
+          const ca = context.getService(ref) as { getConfiguration: (p: string) => { getProperties: () => Record<string, unknown> } };
           const config = ca.getConfiguration(pid);
           return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(config.getProperties(), null, 2) }] } };
         }
 
         if (name === "osgi_update_config") {
-          const { pid, properties } = toolArgs as { pid: string, properties: Record<string, unknown> };
+          const { pid, properties, uid: targetUid } = toolArgs as { pid: string, properties: Record<string, unknown>, uid?: string };
+          const agentUid = (globalThis as unknown as Record<string, { uid: string }>).NEVERPLAYED_HEADLESS_USER?.uid || "mcp-agent-mcp";
+          
+          // 1. If we are targeting another user, we MUST use the stateless Cloud Function API
+          if (targetUid && targetUid !== agentUid) {
+              console.log(`[MCP] Target UID '${targetUid}' detected. Forcing stateless Cloud Function path...`);
+              return await forceCloudUpdate(pid, properties, targetUid, id);
+          }
+
+          // 2. Otherwise, try native OSGi write first (for the Agent's own state)
           const ref = context.getServiceReferences(undefined, "(objectClass=@neverplayed/config-admin/ConfigAdmin)")[0];
           if (!ref) return { jsonrpc: "2.0", id, error: { code: -32603, message: "ConfigAdmin not available" } };
           
-          // deno-lint-ignore no-explicit-any
-          const ca = context.getService(ref) as any;
+          const ca = context.getService(ref) as { getConfiguration: (p: string) => { getProperties: () => Record<string, unknown>, update: (p: Record<string, unknown>) => Promise<void> } };
           const config = ca.getConfiguration(pid);
           
           try {
@@ -267,32 +307,11 @@ async function handleRequest(request: { method: string; params: Record<string, u
                 throw new Error("config.update is not a function");
               }
               await config.update(properties);
-              return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Configuration updated for ${pid}` }] } };
-          } catch (err: any) {
-              console.warn(`[MCP] Native OSGi write failed (${err.message}). Falling back to stateless HTTPS API...`);
-              try {
-                  const fnUrl = "https://europe-west4-cladmin-bc594.cloudfunctions.net/mcpApi";
-                  const { uid: toolUid } = toolArgs as { uid?: string };
-                  const targetUid = toolUid || (globalThis as any).NEVERPLAYED_HEADLESS_USER?.uid || "mcp-agent-mcp";
-                  
-                  const response = await fetch(fnUrl, {
-                      method: "POST",
-                      headers: {
-                          "Content-Type": "application/json",
-                          "x-mcp-secret": (globalThis as any).NEVERPLAYED_MCP_SECRET || "",
-                          "x-mcp-token": (globalThis as any).NEVERPLAYED_HEADLESS_TOKEN || ""
-                      },
-                      body: JSON.stringify({ action: "updateConfig", payload: { pid, properties, uid: targetUid } })
-                  });
-                  if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`API refused connection (${response.status}): ${errorText}`);
-                  }
-                  return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Direct stateless API update forced for: ${pid}` }] } };
-              } catch (fallbackErr: any) {
-                  console.error(`[MCP] Both write paths failed: ${fallbackErr.message}`);
-                  return { jsonrpc: "2.0", id, error: { code: -32603, message: `System write failed: ${fallbackErr.message}` } };
-              }
+              return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Configuration updated locally for ${pid}` }] } };
+          } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : String(err);
+              console.warn(`[MCP] Native OSGi write failed (${message}). Falling back to Cloud Function...`);
+              return await forceCloudUpdate(pid, properties, targetUid || agentUid, id);
           }
         }
 
@@ -301,12 +320,14 @@ async function handleRequest(request: { method: string; params: Record<string, u
           const ref = context.getServiceReferences(undefined, "(objectClass=@neverplayed/flow-service)")[0];
           if (!ref) return { jsonrpc: "2.0", id, error: { code: -32603, message: "FlowService not available" } };
           
-          const fs = context.getService(ref) as any;
+          
+          const fs = context.getService(ref) as { launch: (c: string, ctx: Record<string, unknown>) => Promise<void> };
           try {
             await fs.launch(capability, flowContext);
             return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Flow launched for capability: ${capability}` }] } };
-          } catch (err: any) {
-            return { jsonrpc: "2.0", id, error: { code: -32603, message: `Launch failed: ${err.message}` } };
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            return { jsonrpc: "2.0", id, error: { code: -32603, message: `Launch failed: ${message}` } };
           }
         }
 

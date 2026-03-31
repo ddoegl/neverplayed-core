@@ -83,6 +83,7 @@ async function main() {
 
     const coreManifests = [
         isFirebase ? "bundles/org.neverplayed.persistence-firebase/manifest.json" : "bundles/org.neverplayed.persistence-deno/manifest.json",
+        "bundles/org.neverplayed.persistence-selector/manifest.json",
         "bundles/org.neverplayed.system-logger/manifest.json",
         "bundles/org.neverplayed.auth-shield/manifest.json",
         "bundles/org.neverplayed.limes/manifest.json",

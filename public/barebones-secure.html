@@ -152,6 +152,7 @@
             "./bundles/system-services/yaml-service/manifest.json", // INFRA BASE
             "./bundles/org.neverplayed.auth-shield/manifest.json",   // LAYER 1 AUTH
             isFirebase ? "./bundles/org.neverplayed.persistence-firebase/manifest.json" : null, // CLOUD PERSISTENCE
+            "./bundles/org.neverplayed.persistence-selector/manifest.json",         // STRATEGIC PERSISTENCE
             "./bundles/org.neverplayed.limes/manifest.json",         // BOOTSTRAP GUARD
             isFirebase ? null : "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
             "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",

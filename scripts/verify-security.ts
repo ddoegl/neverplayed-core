@@ -64,6 +64,7 @@ async function main() {
 
     const coreManifests = [
         "bundles/org.neverplayed.persistence-deno/manifest.json",
+        "bundles/org.neverplayed.persistence-selector/manifest.json",
         "bundles/org.neverplayed.system-logger/manifest.json",
         "bundles/system-services/yaml-service/manifest.json",
         "bundles/org.neverplayed.auth-shield/manifest.json",

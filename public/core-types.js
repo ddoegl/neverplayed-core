@@ -15,6 +15,9 @@ export const LIMES_BUNDLE = "@neverplayed/limes";
 export const LIMES_STRATEGIES_PID = "@neverplayed/limes/strategies";
 export const PERSISTENCE_FIREBASE_BUNDLE = "@neverplayed/persistence-firebase";
 export const PERSISTENCE_FS_SYNC_BUNDLE = "@neverplayed/persistence-fs-sync";
+export const PERSISTENCE_DENO_BUNDLE = "@neverplayed/persistence-deno";
+export const PERSISTENCE_SELECTOR_BUNDLE = "@neverplayed/persistence-selector";
+export const PERSISTENCE_LOCALSTORAGE_BUNDLE = "@neverplayed/persistence-deno-localstorage";
 export const PLEXUS_ENGINE_SERVICE = "@neverplayed/plexus/engine";
 
 export const BUNDLE_TYPE_SERVICE = "service-flow";

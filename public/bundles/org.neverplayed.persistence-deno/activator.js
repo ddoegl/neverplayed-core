@@ -7,7 +7,7 @@ export default class Activator extends BaseActivator {
         const STATE_FILE = `${STATE_DIR}/state.json`;
 
         // Ensure directory exists
-        try { Deno.mkdirSync(STATE_DIR, { recursive: true }); } catch (_e) {}
+        try { Deno.mkdirSync(STATE_DIR, { recursive: true }); } catch (_e) { /* Ignore if exists */ }
 
         const getStore = () => {
             try {
@@ -31,10 +31,18 @@ export default class Activator extends BaseActivator {
                 const store = getStore();
                 store[key] = val;
                 saveStore(store);
+            },
+            clear: () => {
+                saveStore({});
+                this.logger.info("Deno Persistence Manager: Local state cleared.");
             }
         }, {
             "capability": "sys:persistence",
-            "implementation": "deno-fs"
+            "implementation": "deno-fs",
+            "persistence.type": "provider",
+            "persistence.tier": "local",
+            "persistence.scope": "device",
+            "service.ranking": 10
         });
 
         this.logger.info(`Deno Persistence Manager: ACTIVE (FS: ${STATE_FILE}).`);

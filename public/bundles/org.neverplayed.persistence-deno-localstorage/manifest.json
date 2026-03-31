@@ -1,5 +1,5 @@
 {
-    "Bundle-SymbolicName": "org.neverplayed.persistence-deno-localstorage",
+    "Bundle-SymbolicName": "@neverplayed/persistence-deno-localstorage",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "activator.js",
     "Import-Service": [
