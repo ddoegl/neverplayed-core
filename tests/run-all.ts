@@ -12,7 +12,8 @@ const tests = [
   "test-firebase-auth.ts",
   "test-mcp-client.ts",
   "verify-security.ts",
-  "core-bundles.test.ts"
+  "core-bundles.test.ts",
+  "persistence-resilience.test.ts"
 ];
 
 console.log("🏛️  Never Played: Strategic Regression Suite Starting...");

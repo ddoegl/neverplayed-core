@@ -64,6 +64,7 @@ export const EMAIL_DATA_SERVICE = "@neverplayed/backoffice/email/data";
 export const TERMINAL_STATE_SERVICE = "@neverplayed/backoffice/terminal/state";
 
 // Config PIDs
+/** @deprecated Logic must not be persisted as Data (Firestore). Use DOMAIN_STRATEGY_SERVICE tracking instead. */
 export const DO_STRATEGIES_PID = "@neverplayed/backoffice/do/strategies";
 export const DO_INSTANCES_PID = "@neverplayed/backoffice/do/instances";
 export const SHELL_CONFIG_PID = "@neverplayed/shell-cli";

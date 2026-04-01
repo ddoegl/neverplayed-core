@@ -8,7 +8,6 @@ import {
     EVALUATOR_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
     LOG_SERVICE,
-    DO_STRATEGIES_PID,
     DO_INSTANCES_PID
 } from "shared-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
@@ -33,6 +32,21 @@ export default class Activator {
 
     let _limesService = null;
     let persistenceManager = null;
+    const runtimeStrategies = new Map(); // Combined YAML + OSGi behavior
+    
+    context.trackService(`(objectClass=${DOMAIN_STRATEGY_SERVICE})`, {
+        addingService: (ref) => {
+            const strategy = context.getService(ref);
+            runtimeStrategies.set(strategy.id, strategy);
+            if (globalThis.backofficeState) globalThis.backofficeState.recompile?.();
+            return strategy;
+        },
+        removedService: (ref) => {
+            const strategy = context.getService(ref);
+            runtimeStrategies.delete(strategy.id);
+            if (globalThis.backofficeState) globalThis.backofficeState.recompile?.();
+        }
+    }).open();
 
     context.trackService(`(objectClass=${LIMES_SERVICE})`, {
         addingService: (ref) => { _limesService = context.getService(ref); },
@@ -54,20 +68,13 @@ export default class Activator {
             if (!pm) return userCapabilities;
 
             const instContent = pm.load(DO_INSTANCES_PID);
-            const stContent = pm.load(DO_STRATEGIES_PID);
-            
-            if (!instContent || !stContent) return userCapabilities;
-
-            const strategiesMap = Object.values(stContent).reduce((acc, s) => {
-                acc[s.id] = s;
-                return acc;
-            }, {});
+            if (!instContent) return userCapabilities;
 
             const instances = instContent || {};
 
             return userCapabilities.map(entry => {
                 const visibleDOs = Object.values(instances).map(inst => {
-                    const strategy = strategiesMap[inst.strategyId];
+                    const strategy = runtimeStrategies.get(inst.strategyId);
                     const allowedActions = (strategy?.actions || []).map(action => {
                         // For now, allow all actions (matchAlways)
                         return { ...action, allowed: true };
@@ -96,11 +103,15 @@ export default class Activator {
             return;
         }
 
-        // Strategies
+        // Strategies (Static YAML)
         const resStrats = await fetch("./bundles/system-services/backoffice-do-registry/data/strategies.yaml");
         const stratsText = await resStrats.text();
         const yamlStrats = yaml.load(stratsText) || {};
-        pm.store(DO_STRATEGIES_PID, yamlStrats);
+        
+        // Merge yaml into runtime map
+        for (const s of Object.values(yamlStrats)) {
+            runtimeStrategies.set(s.id, s);
+        }
 
         // Intialize empty Instances if null
         if (!pm.load(DO_INSTANCES_PID)) {
@@ -111,11 +122,14 @@ export default class Activator {
         const systemSpecs = [];
 
         const registryService = {
-            getStrategies: () => pm.load(DO_STRATEGIES_PID),
+            getStrategies: () => Array.from(runtimeStrategies.values()),
             getInstances: () => pm.load(DO_INSTANCES_PID),
             
             setStrategies: (newStrats) => {
-                pm.store(DO_STRATEGIES_PID, newStrats);
+                // Update map instead of persistence
+                for (const s of Object.values(newStrats)) {
+                    runtimeStrategies.set(s.id, s);
+                }
                 syncWithHost();
                 if (globalThis.backofficeState) globalThis.backofficeState.recompile?.();
             },
@@ -134,14 +148,13 @@ export default class Activator {
             },
 
             getStrategy: (id) => {
-                const strats = pm.load(DO_STRATEGIES_PID);
-                return Object.values(strats || {}).find(s => s.id === id);
+                return runtimeStrategies.get(id);
             },
 
             addStrategy: (strategy) => {
-                const current = pm.load(DO_STRATEGIES_PID) || {};
-                current[strategy.id] = strategy;
-                registryService.setStrategies(current);
+                runtimeStrategies.set(strategy.id, strategy);
+                if (syncWithHost) syncWithHost();
+                if (globalThis.backofficeState) globalThis.backofficeState.recompile?.();
             },
 
             addInstance: (instance) => {
@@ -207,7 +220,8 @@ export default class Activator {
 
             states.forEach(s => {
                 s.domainObjectSpecs = mergedBlueprints;
-                s.domainObjectStrategies = pm.load(DO_STRATEGIES_PID) || {};
+                const strategiesMap = Object.fromEntries(runtimeStrategies);
+                s.domainObjectStrategies = strategiesMap;
                 s.domainObjectInstances = pm.load(DO_INSTANCES_PID) || {};
                 
                 // Legacy compatibility

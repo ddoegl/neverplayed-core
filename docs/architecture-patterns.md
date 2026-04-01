@@ -1168,3 +1168,88 @@ To maintain the highest level of developer productivity and code quality, all te
 - **Merger Trust**: The `deno task test` command provides a high-confidence gate for all governance-related commits.
 - **Architectural Integrity**: Prevents regression in critical resilience patterns like the "Stealth Tunnel."
 - **Maintainability**: Clear, lint-free tests are easier to read, adapt, and debug.
+
+---
+
+## 29. Digital Twin Persistence Resilience (Stealth Tunnel 2.0)
+
+When standard cloud database protocols (e.g., Firestore QUIC/UDP) encounter network-level interference or resets (`ERR_QUIC_PROTOCOL_ERROR`), the system Must transition to a **Hardened Transport State** to maintain the Digital Twin's integrity.
+
+### 1. Mandatory Forced Long Polling
+In restricted or "noisy" network environments, specialized streaming protocols (WebSockets, QUIC) are the first to be throttled or reset. 
+- **Pattern**: Force standard HTTPS transport (`experimentalForceLongPolling: true`).
+- **Benefit**: Standard `POST` requests are indistinguishable from normal web traffic and are almost never reset by simple network appliances.
+
+### 2. Statutory Stateless Read Fallback (`getConfig`)
+A "listening" SDK that encounters a transport error effectively leaves the application blind to remote state changes.
+- **Pattern**: Implement a `_shuntedFetch` method in the persistence provider.
+- **Trigger**: If the real-time sync listener (`onSnapshot`) errors out, the provider performs a one-time stateless HTTPS fetch to the `mcpApi`.
+- **Integrity**: This ensures that even if the streaming sync is "killed" by a firewall, the application can still hydrate its latest configuration via the standard REST-like bridge.
+
+### 3. Unified Authorization (Secret OR Token)
+Both the primary SDK path and the "Stealth Tunnel" fallback Must share the same security context.
+- **Verification**: The `mcpApi` Cloud Function Must evaluate the same authorization matrix (Secret for Superuser Agents, Verified ID Token for User Self-Service) regardless of the transport method.
+
+### Resilience Summary
+| Feature | Primary Path (SDK) | Fallback Path (Stealth Tunnel) |
+| :--- | :--- | :--- |
+| **Transport** | QUIC / WebChannel | Standard HTTPS (REST) |
+| **State** | Stateful (Listen/Stream) | Stateless (On-Demand Fetch) |
+| **Fallback** | Auto-retry (Long Polling) | Explicit Shunt (`mcpApi`) |
+| **Integrity** | High (Real-time) | High (Statutory Snapshot) |
+
+---
+
+## 30. Logic vs. State Separation (Architectural Decoupling)
+
+To prevent un-serializable data from crashing the cloud persistence layer and to ensure modular behavior, bundles must strictly separate **Runtime Logic (Behavior)** from **Persistent Configuration (Data)**.
+
+### 1. The Separation Rule
+- **Behavior (Logic)**: Registration of functions, event handlers, and callback-rich strategies. These should be registered as **OSGi Services**.
+- **State (Data)**: Serialized preferences, keys, and identifiers. These should be stored in the **`PersistenceManager`**.
+
+### 2. Implementation: The Strategy Tracker Pattern
+Instead of persisting an object containing functions, persist only the **ID** of the strategy. Use an OSGi `ServiceTracker` to resolve the corresponding behavior at runtime.
+
+**Example: `backoffice-do-registry`**
+- **Persistent Data**: `{"activeStrategyId": "STRAT_ALPHA"}`
+- **Runtime Resolve**: `context.getServiceReferences(DOMAIN_STRATEGY_SERVICE, "(id=STRAT_ALPHA)")`
+
+---
+
+## 31. The "Warm Boot" Lifecycle (Freshness Guarantee)
+
+In a reactive UI (Alpine.js), initializing state from a local-first cache (Synchronous API) before the cloud-sync has completed creates a race condition where the user sees "stale" or "empty" state.
+
+### 1. The Pattern: Awaiting Readiness
+The **Shell Bootstrapper** must explicitly wait for the persistence provide to "Warm Up" its cache from the remote source before initializing reactive services.
+
+**Shell (index.html)**:
+```javascript
+const pm = context.getService(pmRef);
+if (pm.waitReady) {
+    await pm.waitReady(); // Blocks until first hydration (SDK or Shunt)
+}
+sessionService.init(pm.load(SESSION_PID));
+```
+
+### 2. Benefits
+- **Zero Flickering**: The UI only renders once fresh state is confirmed.
+- **Sync Logic Integrity**: All other bundles can continue to use the synchronous `load()` API they depend on, secure in the knowledge that the cache is already "Warmed."
+
+---
+
+## 32. Sanity Scrubbing (Defensive Persistence)
+
+To protect the infrastructure (Firestore) from "Architectural Violations" (accidental persistence of non-serializable types), the persistence provider acts as a **Sanity Firewall**.
+
+### 1. Implementation: Recursive Stripping
+Before data reaches the cloud SDK, it is recursively scrubbed of any `function` types.
+
+- **Detection**: The scrubber identifies functions and logs an `ARCHITECTURE VIOLATION` error.
+- **Enforcement**: Functions are stripped from the payload, preserving the serializable structure while preventing an SDK crash.
+
+### 2. Store & Forward Resilience (Shunt Fallback)
+If the primary SDK is unavailable (Early-Boot or Network Gap), the provider transitions to **Proactive Shunting**:
+- Attempts immediate "Stealth Tunnel" (MCP POST) update.
+- If identity is not yet established, queues the update for automatic "Forwarding" as soon as a valid ID Token is acquired.

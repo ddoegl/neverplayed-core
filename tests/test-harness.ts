@@ -66,6 +66,9 @@ export class BundleTestHarness {
 
         const denoFetcher = async (url: string | URL) => {    
             const urlStr = url instanceof URL ? url.toString() : url;
+            if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
+                return null;
+            }
             const path = urlStr.replace(/^file:\/+/ , "/").split('?')[0];
             try {
                 return await Deno.readTextFile(path);
@@ -76,11 +79,17 @@ export class BundleTestHarness {
         };
 
         // deno-lint-ignore no-explicit-any
-        (globalThis as any).fetch = async (url: string | URL) => {
+        const originalFetch = (globalThis as any).fetch || fetch;
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).fetch = async (url: string | URL, init?: any) => {
+            const urlStr = url instanceof URL ? url.toString() : url;
+            if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
+                return await originalFetch(url, init);
+            }
             const text = await denoFetcher(url);
             return {
-                text: () => Promise.resolve(text),
-                json: () => Promise.resolve(JSON.parse(text)),
+                text: () => Promise.resolve(text || ""),
+                json: () => Promise.resolve(JSON.parse(text || "{}")),
                 ok: true
             };
         };

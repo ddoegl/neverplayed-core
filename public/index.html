@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>d-connect OSGi Shell</title>
+    <title>Never Played</title>
+    <link rel="icon" type="image/png" href="favicon.png">
 
     <script type="importmap">
       {
@@ -573,6 +574,12 @@
         const pm = context.getService(pmRef);
         console.log("Shell Boot: Persistence Manager Instance:", pm);
         
+        // Wait for persistence to hydrate (SDK or Shunt)
+        if (pm.waitReady) {
+            console.log("Shell Boot: Waiting for Persistence Manager hydration...");
+            await pm.waitReady();
+        }
+
         const SESSION_PID = "pandino.session.state";
 
         // Initialize a reactive Session Service
@@ -629,6 +636,11 @@
           },
         });
 
+        // Ensure scopedUsers exists early to prevent TypeErrors during promotion
+        if (!sessionService.scopedUsers) {
+          sessionService.scopedUsers = {};
+        }
+
         // Check for Superuser (dd) promotion based on the server-side authorized flag
         if (authenticatedUser && authenticatedUser.isSuperuser) {
           console.log(
@@ -645,12 +657,9 @@
             sessionService.scopedUsers["backoffice-web"];
         }
 
-        // Ensure environment is set if missing in stored state
+        // Final environment fallback
         if (!sessionService.environment) {
           sessionService.environment = "business-channel-web";
-        }
-        if (!sessionService.scopedUsers) {
-          sessionService.scopedUsers = {};
         }
 
         Alpine.effect(() => {
