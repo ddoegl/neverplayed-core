@@ -1,0 +1,4 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.global-state",
+    "Bundle-Activator": "./activator.js"
+}

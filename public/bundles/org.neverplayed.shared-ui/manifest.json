@@ -1,0 +1,6 @@
+{
+  "Bundle-SymbolicName": "org.neverplayed.shared-ui",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"prototyper.ui.components\""
+}

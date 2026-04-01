@@ -99,7 +99,8 @@ export default class Activator extends BaseActivator {
         };
         context.registerService(FLOW_SERVICE, flowMetadata, { 
             ...config,
-            "flow.id": EVENT_MONITOR_PID 
+            "flow.id": EVENT_MONITOR_PID,
+            "sidebar": true
         });
 
         logger.info("Event Monitor started and subscribed to topics");

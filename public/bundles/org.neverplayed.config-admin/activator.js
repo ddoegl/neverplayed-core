@@ -244,7 +244,7 @@ export default class Activator extends CoreActivator {
                 });
 
                 targetElement._x_dataStack = [state];
-                const response = await fetch("./bundles/org.neverplayed.config-admin/templates/settings-ui.html");
+                const response = await fetch(this.resolveResource("templates/settings-ui.html"));
                 targetElement.innerHTML = await response.text();
                 state.init();
 
@@ -269,7 +269,8 @@ export default class Activator extends CoreActivator {
 
         context.registerService(FLOW_SERVICE, flowMetadata, { 
             ...this.config, 
-            "flow.id": CONFIG_ADMIN_UI_FLOW 
+            "flow.id": CONFIG_ADMIN_UI_FLOW,
+            "sidebar": true
         });
 
         context.trackService(`(objectClass=${FLOW_SERVICE})`, {

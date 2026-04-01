@@ -1,0 +1,17 @@
+{
+    "id": "org.neverplayed.realm.foundation",
+    "title": "NPRF Semantic Foundation",
+    "extends": ["org.neverplayed.realm.core"],
+    "description": "Layer 2: Context, State, and Registration foundations.",
+    "bundles": [
+        "./bundles/org.neverplayed.selection-service/manifest.json",
+        "./bundles/org.neverplayed.global-state/manifest.json",
+        "./bundles/org.neverplayed.do-registry/manifest.json",
+        "./bundles/org.neverplayed.shared-domain-strategies/manifest.json",
+        "./bundles/org.neverplayed.action-registry/manifest.json",
+        "./bundles/org.neverplayed.outreach/manifest.json",
+        "./bundles/org.neverplayed.atomic-orchestrator/manifest.json",
+        "./bundles/org.neverplayed.yaml-editor/manifest.json",
+        "./bundles/org.neverplayed.visual-editor/manifest.json"
+    ]
+}

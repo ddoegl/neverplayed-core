@@ -2,7 +2,8 @@ import {
     NEVERPLAYED_PREFIX, 
     SHELL_CLI_SERVICE,
     SHELL_COMMAND_SERVICE,
-    FLOW_SERVICE
+    FLOW_SERVICE,
+    SESSION_SERVICE
 } from "core-types";
 import { CoreActivator } from "osgi-base";
 
@@ -15,6 +16,7 @@ const CORE_COMMANDS = [
     { name: 'methods', description: '[serviceId] - List methods of a service' },
     { name: 'flows', description: '[filter] - List registered UI flows' },
     { name: 'caps', description: 'List active system capabilities' },
+    { name: 'auth', description: 'Show current authentication state (whoami)' },
     { name: 'call', description: '[serviceId] [method] [args...] - Call a service method' },
     { name: 'install', description: '[url] - Install a new bundle' },
     { name: 'uninstall', description: '[id/bsn] - Uninstall a bundle' },
@@ -338,6 +340,34 @@ export default class Activator extends CoreActivator {
                     const caps = [...new Set(refs.map(r => r.getProperty("capability")).filter(c => typeof c === 'string' && c !== 'none'))].sort();
                     this.log({ text: `Active Capabilities (${caps.length}):`, color: 'blue', bold: true });
                     caps.forEach(c => this.log({ text: ` - ${c}`, color: 'cyan' }));
+                    break;
+                }
+
+                case 'whoami':
+                case 'auth': {
+                    const sessionRef = context.getServiceReference(SESSION_SERVICE);
+                    if (!sessionRef) {
+                        this.log("Session Service not found.", 'error');
+                        return;
+                    }
+                    const session = context.getService(sessionRef);
+                    const user = session.currentUser;
+                    
+                    if (!user || user.id === 'guest') {
+                        this.log({ text: "Status: Unauthenticated (Guest)", color: 'yellow', bold: true });
+                        this.log("No active user session detected.");
+                    } else {
+                        this.log({ text: `Status: Authenticated as ${user.alias || user.id}`, color: 'green', bold: true });
+                        this.log({ text: "Session Properties:", color: 'cyan' });
+                        this.log({
+                            id: user.id,
+                            email: user.email,
+                            firstname: user.firstname,
+                            lastname: user.lastname,
+                            capabilities: user.capabilities || [],
+                            attributes: user.attributes || {}
+                        });
+                    }
                     break;
                 }
 

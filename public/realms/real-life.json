@@ -1,10 +1,12 @@
 {
     "id": "org.neverplayed.realm.real-life",
     "title": "Universal Ontology (Real Life)",
-    "extends": ["org.neverplayed.realm.core"],
-    "description": "Layer 2: Space-Time, Person, and Company concepts.",
+    "extends": ["org.neverplayed.realm.foundation"],
+    "description": "Layer 3: Space-Time, Person, and Company concepts.",
+    "privileges": {
+        "realm-admins": ["daniel.doegl@doegl.info", "guest"]
+    },
     "bundles": [
-        "./bundles/real-life/dashboard/manifest.json",
-        "./bundles/system-services/backoffice-do-registry/manifest.json"
+        "./bundles/org.neverplayed.realm.real-life/manifest.json"
     ]
 }

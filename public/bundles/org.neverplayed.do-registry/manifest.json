@@ -1,0 +1,12 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.do-registry",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "./activator.js",
+    "X-Atomic-Bundle": "true",
+    "Configuration": {
+        "flowType": "backoffice-flow",
+        "channels": [
+            "backoffice-web"
+        ]
+    }
+}

@@ -1,5 +1,5 @@
 {
-  "Bundle-SymbolicName": "@neverplayed/yaml-service",
+  "Bundle-SymbolicName": "org.neverplayed.selection-service",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "./activator.js"
 }

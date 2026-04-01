@@ -1,0 +1,6 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.atomic-orchestrator",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "./activator.js",
+    "Configuration": {}
+}

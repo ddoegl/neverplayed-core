@@ -16,31 +16,31 @@ Transitioning a realm to an "Agent-Ready" state is a incremental process:
 
 ---
 
-## 2. The 4-Layer Hierarchy
+## 2. The 5-Layer Ontology
 
-Realms are built using a layered stack, with each layer inheriting the ontological concepts of those beneath it.
+Realms are built using a layered hierarchy. Each layer inherits the semantic concepts of those beneath it, allowing for a strictly modular and reproducible universe.
 
-### Layer 1: Foundation (Core Infrastructure)
-- **Bundles**: Auth-Shield, Persistence-Selector, System-Logger, Limes.
-- **Concepts**: Identity, Universal Persistence, Strategic Security.
-- **Residents**: The System Overseer (Agent).
+| Layer | Type | Responsibility | Key Bundles |
+| :--- | :--- | :--- | :--- |
+| **L0: Kernel** | **Base** | OSGi, Logging, Base Types | `system-logger`, `osgi-base` |
+| **L1: Core Shell** | **Infrastructural** | Auth, Persistence, **Session**, YAML, **Shared UI** | `limes`, `auth-shield`, `session-service`, `persistence-selector`, `yaml-service`, `shared-ui-components` |
+| **L2: Foundation** | **Semantic** | Context, State, Execution, Actions, Messaging | `selection-service`, `global-state`, `do-registry`, `action-registry`, `outreach-service`, `atomic-orchestrator` |
+| **L3: Universe** | **Ontological** | Concepts like People, Companies, Tenants | `real-life/dashboard`, `person-registry`, `company-registry` |
+| **L4: Application** | **Functional** | Specialized business or retail logic | `backoffice-licenses`, `retail-flows`, `invitations` |
 
-### Layer 2: Ontology (Real Life Concepts)
-- **Bundles**: Space-Time Context, Person-Registry, Company-Metadata.
-- **Concepts**: Shared physical reality, legal identities, temporal transitions.
-- **Residents**: The Librarian (Registration Agent).
+### 🛠️ Service Responsibility Matrix
 
-### Layer 3: Capabilities (Enabling Layers)
-- **Bundles**: Email Provider, Notification Mesh, Communication Protocols.
-- **Concepts**: Connectivity, asynchronous messaging, signal persistence.
-- **Residents**: The Postmaster (Message Agent).
+To maintain strict modularity, core services follow a "Reactive Downward Flow" coordination pattern:
 
-### Layer 4: Specialized Realms (Applications)
-- **Example Realms**:
-    - **Backoffice**: Administrative logic, Limes management, Registry editing.
-    - **Business Portal**: B2B case management, Customer onboarding.
-    - **Retail Experience**: Mobile app flows, Promotion engines, Personal dashboards.
-- **Residents**: Specialized Personas (e.g., "Daniela-Mode" for Admin operations).
+| Service | Intent | Responsibility | Layer | Coordination |
+| :--- | :--- | :--- | :--- | :--- |
+| **Session** | **Identity** (Who) | Current User, Scoped Identity, Login/Logout | L1 | **Source of Truth** for Identity. |
+| **Selection** | **Context** (What) | Selected ID (License/Tenant/DO), Active View | L2 | Watches **Session**. Resets if user logs out. |
+| **Global State** | **Operation** (How) | UI Steppers, Layout, Flow State, Evaluation | L2 | Watches **Selection**. Hydrates data on selection shift. |
+
+---
+
+---
 
 ---
 

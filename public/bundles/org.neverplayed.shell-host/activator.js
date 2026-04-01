@@ -40,6 +40,27 @@ export default class Activator {
                     context.registerService(SESSION_SERVICE, session);
                 }
 
+                // Add Listener for cross-flow launch requests (Rule 11)
+                globalThis.addEventListener("shell-launch-flow", (e) => {
+                    const reqId = e.detail.id;
+                    const reqParams = e.detail.params || {};
+                    const reqFlows = context.getServiceReferences(FLOW_SERVICE) || [];
+                    let reqFlowSvc = null;
+                    for (const ref of reqFlows) {
+                        const id = ref.getProperty("flow.id") || context.getService(ref).id;
+                        if (id === reqId) {
+                            reqFlowSvc = context.getService(ref);
+                            break;
+                        }
+                    }
+                    if (reqFlowSvc) {
+                        console.log(`Shell Host: Processing shell-launch-flow for ${reqId}`, reqParams);
+                        this.launch(reqId, reqFlowSvc, reqParams);
+                    } else {
+                        console.warn(`Shell Host: Flow ${reqId} not found for shell-launch-flow request!`);
+                    }
+                });
+
                 // Flow Discovery & Auto-Launch
                 context.trackService(`(objectClass=${FLOW_SERVICE})`, {
                     addingService: (ref) => {
@@ -58,9 +79,9 @@ export default class Activator {
                 }).open();
             },
 
-            async launch(id, flow) {
-                if (this.activeFlowId === id) {
-                    console.log(`Shell Host: Flow ${id} already active, skipping clear.`);
+            async launch(id, flow, params = {}) {
+                if (this.activeFlowId === id && Object.keys(params).length === 0) {
+                    console.log(`Shell Host: Flow ${id} already active with no new params, skipping clear.`);
                     return;
                 }
 
@@ -82,11 +103,16 @@ export default class Activator {
                 await Alpine.nextTick();
                 
                 console.log(`[${Date.now()}] Shell Host: Calling flow.launch...`);
-                await flow.launch(container);
-                
-                console.log(`[${Date.now()}] Shell Host: flow.launch completed.`);
-                this.ready = true; 
-                this.status = `Realm Active: ${id}`;
+                if (typeof flow.launch === 'function') {
+                    await flow.launch(container, params);
+                    this.ready = true; 
+                    this.status = `Realm Active: ${id}`;
+                    console.log(`[${Date.now()}] Shell Host: flow.launch completed.`);
+                } else {
+                    console.error(`Shell Host: Flow ${id} does not provide a launch() method!`);
+                    this.status = `ERR: Flow Incompatible: ${id}`;
+                    this.ready = true; // Still ready to avoid infinite loader, but with error status
+                }
             }
         }));
 

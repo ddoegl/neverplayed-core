@@ -16,7 +16,15 @@
           "alpinejs": "https://esm.sh/alpinejs@3.13.5",
           "shared-types": "./shared-types.js",
           "core-types": "./core-types.js",
-          "osgi-base": "./osgi-base.js"
+          "osgi-base": "./osgi-base.js",
+          "@neverplayed/shared-ui/": "./bundles/org.neverplayed.shared-ui/",
+          "@neverplayed/selection-service/": "./bundles/org.neverplayed.selection-service/",
+          "@neverplayed/do-registry/": "./bundles/org.neverplayed.do-registry/",
+          "@neverplayed/realm.real-life/": "./bundles/org.neverplayed.realm.real-life/",
+          "@neverplayed/visual-editor/": "./bundles/org.neverplayed.visual-editor/",
+          "@neverplayed/showcase/": "./bundles/org.neverplayed.showcase/",
+          "@neverplayed/config-admin/": "./bundles/org.neverplayed.config-admin/",
+          "@neverplayed/event-monitor/": "./bundles/org.neverplayed.event-monitor/"
         }
       }
     </script>
@@ -498,6 +506,35 @@
     </div>
 
     <script type="module">
+      // --- NPRF Cache Buster (One-time Persistence Purge) ---
+      (function () {
+        const legacyPath = "system-services/";
+        const legacyRealm = "real-life/dashboard";
+        let shouldClear = false;
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            const val = localStorage.getItem(key);
+            if (
+              val &&
+              (val.includes(legacyPath) || val.includes(legacyRealm))
+            ) {
+              shouldClear = true;
+              break;
+            }
+          }
+        } catch (_e) { /* Storage access denied */ }
+
+        if (shouldClear) {
+          console.warn(
+            "NPRF: Legacy paths detected in LocalStorage. Performance-preserving purge initiated...",
+          );
+          localStorage.clear();
+          console.log(
+            "NPRF: LocalStorage cleared. Cold-boot sequence starting.",
+          );
+        }
+      })();
       import { checkAccess } from "./auth-shield.js";
 
       import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
@@ -593,97 +630,32 @@
           await pm.waitReady();
         }
 
-        const SESSION_PID = "pandino.session.state";
-
-        // Initialize a reactive Session Service
+        // 1.2 Track Session Service (Externalized in Layer 1)
         const sessionService = Alpine.reactive({
-          ...(pm ? pm.load(SESSION_PID) : null) || {
-            environment: "business-channel-web",
-            scopedUsers: {},
-          },
-          activeFlowId: null,
-          bootstrapCodeModal: { show: false, code: "", phone: "" },
-          get currentUser() {
-            const scope = this.activeFlowId || "global";
+          currentUser: null,
+          scopedUsers: { global: { id: "guest", attributes: {} } },
+          environment: "business-channel-web",
+        });
 
-            // Environment-based inheritance
-            const isRetail =
-              (this.environment || "").includes("mobile") ||
-              (this.environment || "").includes("retail");
-            const defaultBusinessScope = "business-channel-web";
-            const defaultRetailScope = "user-home-retail";
+        context.trackService(`(objectClass=${SESSION_SERVICE})`, {
+          addingService: (ref) => {
+            const svc = context.getService(ref);
+            Object.assign(sessionService, svc);
 
-            // Session Inheritance: Specific flows inherit based on environment
-            const inheritanceScopes = [
-              "cases",
-              "invitation-admin",
-              "company-authorizations",
-              "signing",
-              "dashboard",
-              "dashboard2",
-              "do-dashboard",
-            ];
-
+            // Promotion logic for superusers
             if (
-              !this.scopedUsers[scope] &&
-              inheritanceScopes.includes(scope)
+              authenticatedUser && authenticatedUser.isSuperuser &&
+              typeof svc.promoteUser === "function"
             ) {
-              if (isRetail) {
-                return this.scopedUsers["retail-channel-app"] ||
-                  this.scopedUsers["user-home-retail"] ||
-                  this.scopedUsers["global"] || null;
-              } else {
-                return this.scopedUsers["business-channel-web"] ||
-                  this.scopedUsers["user-home-business"] ||
-                  this.scopedUsers["global"] || null;
-              }
+              svc.promoteUser(authenticatedUser);
             }
 
-            return this.scopedUsers[scope] ||
-              this.scopedUsers["global"] || null;
+            console.log(
+              "Shell Boot: Session Service connected and synchronized. 🛡️",
+            );
+            return svc;
           },
-          set currentUser(val) {
-            const scope = this.activeFlowId || "global";
-            if (!this.scopedUsers) this.scopedUsers = {};
-            this.scopedUsers[scope] = val;
-          },
-        });
-
-        // Ensure scopedUsers exists early to prevent TypeErrors during promotion
-        if (!sessionService.scopedUsers) {
-          sessionService.scopedUsers = {};
-        }
-
-        // Check for Superuser (dd) promotion based on the server-side authorized flag
-        if (authenticatedUser && authenticatedUser.isSuperuser) {
-          console.log(
-            "Shell: User authorized for superuser promotion. Mapping to 'dd' for backoffice-web context.",
-          );
-          sessionService.scopedUsers["backoffice-web"] = {
-            id: "dd",
-            firstname: "Daniel Daniela",
-            lastname: "(Admin)",
-            capabilities: ["superuser", "admin"],
-          };
-          // Also map to global if in Backoffice environment to ensure session works correctly
-          sessionService.scopedUsers["global"] =
-            sessionService.scopedUsers["backoffice-web"];
-        }
-
-        // Final environment fallback
-        if (!sessionService.environment) {
-          sessionService.environment = "business-channel-web";
-        }
-
-        Alpine.effect(() => {
-          // Only persist environment and scopedUsers, not activeFlowId
-          pm.store(SESSION_PID, {
-            environment: sessionService.environment,
-            scopedUsers: sessionService.scopedUsers,
-          });
-        });
-
-        context.registerService(SESSION_SERVICE, sessionService);
+        }).open();
 
         Alpine.data("navigationMenu", () => ({
           flows: [],
@@ -1156,77 +1128,12 @@
             }
           },
 
-          generateBootstrapCode() {
-            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-            const genBlock = () => {
-              let block = "";
-              for (let i = 0; i < 3; i++) {
-                block += chars.charAt(
-                  Math.floor(Math.random() * chars.length),
-                );
-              }
-              return block;
-            };
-            return `${genBlock()}-${genBlock()}-${genBlock()}-${genBlock()}`;
-          },
-
-          async logout() {
-            const scope = this.activeFlowId || "global";
-            const user = (this.session?.scopedUsers || {})[scope] ||
-              (this.session?.scopedUsers || {})["global"];
-
-            if (user && user.scaStrategy === "bootstrap") {
-              const phone = prompt(
-                "Bootstrap Strategy Enforced: Please enter your phone number to secure your account before logging out:",
-                user["bootstrap-phonenumber"] || "",
-              );
-              if (phone) {
-                const newCode = this.generateBootstrapCode();
-                user["bootstrap-phonenumber"] = phone;
-                user["bootstrap-code"] = newCode;
-
-                // Persist via LicenseDataService
-                const licRef = context.getServiceReference(
-                  LICENSE_DATA_SERVICE,
-                );
-                const licSvc = licRef
-                  ? context.getService(licRef)
-                  : null;
-                if (licSvc && licSvc.updateUser) {
-                  licSvc.updateUser(user.licenseId, {
-                    id: user.id,
-                    "bootstrap-phonenumber": phone,
-                    "bootstrap-code": newCode,
-                  });
-                }
-
-                // Show modal
-                this.session.bootstrapCodeModal = {
-                  show: true,
-                  code: newCode,
-                  phone,
-                };
-                // We don't return here yet, we wait for the modal to be closed in the UI
-                return;
-              }
-            }
-
-            if (this.session) {
-              this.session.scopedUsers = {}; // SECURITY: Clear ALL session scopes
-            }
-
-            // SECURITY FIX: Clear all selection contexts to prevent state leakage
-            const selectionRef = context.getServiceReference(
-              SELECTION_SERVICE,
-            );
-            const selectionSvc = selectionRef
-              ? context.getService(selectionRef)
-              : null;
-            if (selectionSvc && selectionSvc.clearAllSelections) {
-              selectionSvc.clearAllSelections();
-            }
-
+          logout() {
             this.sidebarOpen = false;
+
+            if (this.session && this.session.logout) {
+              this.session.logout(this.activeFlowId || "global");
+            }
 
             if (this.envType === "mobile") {
               this.launchFlow(MOBILE_LAUNCHER_FLOW);
@@ -1236,30 +1143,9 @@
           },
 
           closeBootstrapModal() {
-            this.session.bootstrapCodeModal.show = false;
-
-            // Now actually logout
-            if (this.session) {
-              this.session.scopedUsers = {}; // SECURITY: Clear ALL session scopes
-            }
-
-            // SECURITY FIX: Clear all selection contexts to prevent state leakage
-            const selectionRef = context.getServiceReference(
-              SELECTION_SERVICE,
-            );
-            const selectionSvc = selectionRef
-              ? context.getService(selectionRef)
-              : null;
-            if (selectionSvc && selectionSvc.clearAllSelections) {
-              selectionSvc.clearAllSelections();
-            }
-
-            this.sidebarOpen = false;
-
-            if (this.envType === "mobile") {
-              this.launchFlow(MOBILE_LAUNCHER_FLOW);
-            } else {
-              this.launchFlow(REALLIFE_FLOW); // Redirect to home
+            if (this.session && this.session.closeBootstrapModal) {
+              this.session.closeBootstrapModal();
+              this.logout();
             }
           },
         }));
@@ -1270,13 +1156,13 @@
         const manifests = [
           "./bundles/org.neverplayed.system-logger/manifest.json",
           "./bundles/org.neverplayed.auth-shield/manifest.json",
-          "./bundles/system-services/shared-ui-components/manifest.json",
-          "./bundles/system-services/global-state/manifest.json",
-          "./bundles/system-services/selection/manifest.json",
+          "./bundles/org.neverplayed.shared-ui/manifest.json",
+          "./bundles/org.neverplayed.global-state/manifest.json",
+          "./bundles/org.neverplayed.selection-service/manifest.json",
           "./bundles/org.neverplayed.config-admin/manifest.json",
           "./bundles/org.neverplayed.yaml-service/manifest.json",
-          "./bundles/system-services/shared-domain-strategies/manifest.json",
-          "./bundles/system-services/backoffice-do-registry/manifest.json",
+          "./bundles/org.neverplayed.shared-domain-strategies/manifest.json",
+          "./bundles/org.neverplayed.do-registry/manifest.json",
           "./bundles/system-clients/person-registry/manifest.json",
           "./bundles/system-clients/company-registry/manifest.json",
           "./bundles/flows/sca-migration/manifest.json",
@@ -1299,11 +1185,11 @@
           "./bundles/user-services/user-management/manifest.json",
           "./bundles/system-services/backoffice-tenants/manifest.json",
           "./bundles/org.neverplayed.event-monitor/manifest.json",
-          "./bundles/real-life/dashboard/manifest.json",
+          "./bundles/org.neverplayed.realm.real-life/manifest.json",
           "./bundles/flows/login/manifest.json",
           "./bundles/flows/dashboard/manifest.json",
           "./bundles/system-clients/backoffice-web/manifest.json",
-          "./bundles/system-services/backoffice-yaml-editor/manifest.json",
+          "./bundles/org.neverplayed.yaml-editor/manifest.json",
           "./bundles/system-services/backoffice-capabilities/manifest.json",
           "./bundles/system-services/backoffice-business-functions/manifest.json",
           "./bundles/system-services/backoffice-rules/manifest.json",
@@ -1315,7 +1201,7 @@
           "./bundles/system-services/plexus/manifest.json",
           "./bundles/system-services/backoffice-evaluation/manifest.json",
           "./bundles/system-services/backoffice-signing/manifest.json",
-          "./bundles/system-services/action-registry/manifest.json",
+          "./bundles/org.neverplayed.action-registry/manifest.json",
           "./bundles/system-services/backoffice-cases/manifest.json",
           "./bundles/environments/web-browser/manifest.json",
           "./bundles/org.neverplayed.limes/manifest.json",
@@ -1326,7 +1212,7 @@
           "./bundles/flows/user-home-business/manifest.json",
           "./bundles/flows/user-home-retail/manifest.json",
           "./bundles/flows/reactive-order-demo/manifest.json",
-          "./bundles/flows/atomic-showcase/manifest.json",
+          "./bundles/org.neverplayed.showcase/manifest.json",
           "./bundles/system-services/email-data/manifest.json",
           "./bundles/user-services/email-provider/manifest.json",
           "./bundles/user-clients/email-client/manifest.json",
@@ -1339,10 +1225,10 @@
           "./bundles/org.neverplayed.system-ready/manifest.json",
           "./bundles/org.neverplayed.system-reset/manifest.json",
           "./bundles/flows/hello-bpmn/manifest.json",
-          "./bundles/system-services/outreach-service/manifest.json",
-          "./bundles/system-services/atomic-orchestrator/manifest.json",
+          "./bundles/org.neverplayed.outreach/manifest.json",
+          "./bundles/org.neverplayed.atomic-orchestrator/manifest.json",
           "./bundles/flows/hello-world-do/manifest.json",
-          "./bundles/flows/visual-do-editor/manifest.json",
+          "./bundles/org.neverplayed.visual-editor/manifest.json",
           "./bundles/org.neverplayed.shell-cli/manifest.json",
           "./bundles/org.neverplayed.shell-cli-dom/manifest.json",
           "./bundles/org.neverplayed.shell-cli-ext/manifest.json",

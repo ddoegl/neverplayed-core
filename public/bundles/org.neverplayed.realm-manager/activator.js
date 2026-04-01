@@ -1,4 +1,4 @@
-import { REALM_MANAGER_SERVICE, LOG_SERVICE } from "../../shared-types.js";
+import { REALM_MANAGER_SERVICE, LOG_SERVICE, SESSION_SERVICE } from "../../shared-types.js";
 import { BaseActivator } from "../../osgi-base.js";
 
 export default class Activator extends BaseActivator {
@@ -14,6 +14,15 @@ export default class Activator extends BaseActivator {
                 this.logger = svc.getLogger("neverplayed.realm-manager");
                 this.logger.info("Realm Manager: Connected to System Logger. Orchestration Bridge ready.");
                 return svc;
+            }
+        }).open();
+        
+        // 1.2 Track Session Service
+        context.trackService(`(objectClass=${SESSION_SERVICE})`, {
+            addingService: (ref) => {
+                this.session = context.getService(ref);
+                this.logger?.info("Realm Manager: Connected to Session Service. Privilege Injection active.");
+                return this.session;
             }
         }).open();
 
@@ -67,6 +76,41 @@ export default class Activator extends BaseActivator {
                         }
                     } catch (err) {
                         this.logger?.error(`Realm Manager: Failed to activate bundle '${bundleUrl}' in layer '${layer.id}':`, err.message);
+                    }
+                }
+            }
+            
+            // 2.2 Inject Realm privileges
+            if (this.session && manifest.privileges && manifest.privileges["realm-admins"]) {
+                const currentUser = this.session.scopedUsers?.["global"]?.id || this.session.currentUser?.id;
+                const isAdmin = manifest.privileges["realm-admins"].includes(currentUser);
+                
+                if (isAdmin) {
+                    this.logger?.info(`Realm Manager: Elevated privileges detected for user '${currentUser}'. Injecting 'realm-admin' attribute.`);
+                    
+                    // Inject into Session Service (Standard Context)
+                    this.session.scopedUsers["global"].attributes = this.session.scopedUsers["global"].attributes || {};
+                    this.session.scopedUsers["global"].attributes["realm-admin"] = true;
+
+                    // Inject into Backoffice State (Limes Compatibility)
+                    if (globalThis.backofficeState?.evaluatedData) {
+                        const entry = globalThis.backofficeState.evaluatedData.find(d => String(d.user) === String(currentUser));
+                        if (entry) {
+                            entry.attributes = entry.attributes || {};
+                            entry.attributes["realm-admin"] = true;
+                            this.logger?.info(`Realm Manager: Synced 'realm-admin' to backofficeState.evaluatedData.`);
+                        }
+                    }
+                } else {
+                    // Reset if not in admin list for this specific realm
+                    if (this.session.scopedUsers["global"]?.attributes) {
+                        delete this.session.scopedUsers["global"].attributes["realm-admin"];
+                    }
+                    if (globalThis.backofficeState?.evaluatedData) {
+                        const entry = globalThis.backofficeState.evaluatedData.find(d => String(d.user) === String(currentUser));
+                        if (entry?.attributes) {
+                            delete entry.attributes["realm-admin"];
+                        }
                     }
                 }
             }

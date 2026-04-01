@@ -15,11 +15,16 @@
     },
     {
       "id": "SYSTEM_ADMIN_REQUIRED",
-      "operator": "AND",
+      "operator": "OR",
       "matchers": [
         {
           "type": "matchAttribute",
           "key": "neverplayed-admin",
+          "value": true
+        },
+        {
+          "type": "matchAttribute",
+          "key": "realm-admin",
           "value": true
         }
       ]

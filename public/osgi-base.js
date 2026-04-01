@@ -15,6 +15,41 @@ export class BaseActivator {
         this.isHeadless = !!globalThis.Deno || !globalThis.document?.body;
     }
 
+    /**
+     * getBundleBaseUrl (Static)
+     * Robustly determines the base URL for any given bundle.
+     */
+    static getBundleBaseUrl(bundle) {
+        if (!bundle) return "./";
+        const location = (typeof bundle.getLocation === "function"
+            ? bundle.getLocation()
+            : null) ||
+            bundle.manifestLocation ||
+            `./bundles/${bundle.getSymbolicName()}/manifest.json`;
+
+        return location.substring(0, location.lastIndexOf("/") + 1);
+    }
+
+    /**
+     * getBaseUrl
+     * Standardizes bundle-relative resource discovery for the current bundle.
+     */
+    getBaseUrl() {
+        if (!this.context) return "./";
+        return BaseActivator.getBundleBaseUrl(this.context.getBundle());
+    }
+
+    /**
+     * resolveResource
+     * Resolves a bundle-local path (e.g. 'templates/foo.html') to a full URL.
+     */
+    resolveResource(path) {
+        const baseUrl = this.getBaseUrl();
+        // Clean leading ./ if provided
+        const cleanPath = path.replace(/^\.\//, "");
+        return `${baseUrl}${cleanPath}`;
+    }
+
     async start(context) {
         this.context = context;
         const bundle = context.getBundle();

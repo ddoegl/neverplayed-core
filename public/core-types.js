@@ -6,6 +6,7 @@ export const CONFIG_ADMIN_SERVICE = "@neverplayed/config-admin/ConfigAdmin";
 export const SYSTEM_RESET_SERVICE = "@neverplayed/system-reset/SystemReset";
 export const PERSISTENCE_MANAGER_SERVICE = "@pandino/persistence-manager/PersistenceManager";
 export const YAML_SERVICE = "@neverplayed/yaml-service";
+export const YAML_EDITOR_SERVICE = "@neverplayed/yaml-editor/service";
 export const SELECTION_SERVICE = "@neverplayed/selection-service";
 export const ACTION_REGISTRY_SERVICE = "@neverplayed/action-registry";
 export const AUTH_SHIELD_SERVICE = "@neverplayed/auth-shield/service";

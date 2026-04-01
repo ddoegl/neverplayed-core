@@ -30,6 +30,14 @@
   "imports": {
     "shared-types": "./public/shared-types.js",
     "core-types": "./public/core-types.js",
-    "osgi-base": "./public/osgi-base.js"
+    "osgi-base": "./public/osgi-base.js",
+    "@neverplayed/shared-ui/": "./public/bundles/org.neverplayed.shared-ui/",
+    "@neverplayed/selection-service/": "./public/bundles/org.neverplayed.selection-service/",
+    "@neverplayed/do-registry/": "./public/bundles/org.neverplayed.do-registry/",
+    "@neverplayed/realm.real-life/": "./public/bundles/org.neverplayed.realm.real-life/",
+    "@neverplayed/visual-editor/": "./public/bundles/org.neverplayed.visual-editor/",
+    "@neverplayed/showcase/": "./public/bundles/org.neverplayed.showcase/",
+    "@neverplayed/config-admin/": "./public/bundles/org.neverplayed.config-admin/",
+    "@neverplayed/event-monitor/": "./public/bundles/org.neverplayed.event-monitor/"
   }
 }

@@ -6,6 +6,18 @@
         "./bundles/org.neverplayed.system-logger/manifest.json",
         "./bundles/org.neverplayed.persistence-selector/manifest.json",
         "./bundles/org.neverplayed.auth-shield/manifest.json",
-        "./bundles/org.neverplayed.limes/manifest.json"
+        "./bundles/org.neverplayed.limes/manifest.json",
+        "./bundles/org.neverplayed.yaml-service/manifest.json",
+        "./bundles/org.neverplayed.session-service/manifest.json",
+        "./bundles/org.neverplayed.shared-ui/manifest.json",
+        "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
+        "./bundles/org.neverplayed.shell-host/manifest.json",
+        "./bundles/org.neverplayed.shell-sidebar/manifest.json",
+        "./bundles/org.neverplayed.shell-cli/manifest.json",
+        "./bundles/org.neverplayed.shell-cli-dom/manifest.json",
+        "./bundles/org.neverplayed.system-reset/manifest.json",
+        "./bundles/org.neverplayed.config-admin/manifest.json",
+        "./bundles/org.neverplayed.event-monitor/manifest.json",
+        "./bundles/org.neverplayed.showcase/manifest.json"
     ]
 }

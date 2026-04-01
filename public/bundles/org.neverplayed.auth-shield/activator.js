@@ -1,5 +1,5 @@
 import { checkAccess, signOut } from "./src/firebase-auth.js";
-import { AUTH_SHIELD_SERVICE, LOG_SERVICE } from "../../core-types.js";
+import { AUTH_SHIELD_SERVICE, LOG_SERVICE, SHELL_COMMAND_SERVICE, SESSION_SERVICE } from "../../core-types.js";
 
 export default class Activator {
     async start(context) {
@@ -42,6 +42,29 @@ export default class Activator {
                 "auth.user": user.email,
                 "neverplayed-admin": user.isSuperuser || false,
                 "neverplayed-developer": user.isDeveloper || false
+            });
+
+            context.registerService(SHELL_COMMAND_SERVICE, {
+                name: "auth",
+                description: "Show Google Auth information (Layer 1 Auth)",
+                execute: (_args, ctx, log) => {
+                    log({ text: `Google Auth Info for: ${user.email}`, color: 'green', bold: true });
+                    
+                    const isNeverplayedAdmin = user.isSuperuser || user.attributes?.['neverplayed-admin'] || false;
+                    
+                    let isRealmAdmin = false;
+                    const sessionRef = ctx.getServiceReference(SESSION_SERVICE);
+                    if (sessionRef) {
+                        const session = ctx.getService(sessionRef);
+                        isRealmAdmin = session.currentUser?.attributes?.['realm-admin'] === true;
+                    }
+                    
+                    log({ text: `Detected System Roles:`, color: 'cyan', bold: true });
+                    log(` - neverplayed-admin: ${!!isNeverplayedAdmin}`);
+                    log(` - realm-admin: ${isRealmAdmin}`);
+                    
+                    log(user);
+                }
             });
 
         } catch (error) {

@@ -17,7 +17,15 @@
           "alpinejs": "https://esm.sh/alpinejs@3.13.5",
           "shared-types": "./shared-types.js",
           "core-types": "./core-types.js",
-          "osgi-base": "./osgi-base.js"
+          "osgi-base": "./osgi-base.js",
+          "@neverplayed/shared-ui/": "./bundles/org.neverplayed.shared-ui/",
+          "@neverplayed/selection-service/": "./bundles/org.neverplayed.selection-service/",
+          "@neverplayed/do-registry/": "./bundles/org.neverplayed.do-registry/",
+          "@neverplayed/realm.real-life/": "./bundles/org.neverplayed.realm.real-life/",
+          "@neverplayed/visual-editor/": "./bundles/org.neverplayed.visual-editor/",
+          "@neverplayed/showcase/": "./bundles/org.neverplayed.showcase/",
+          "@neverplayed/config-admin/": "./bundles/org.neverplayed.config-admin/",
+          "@neverplayed/event-monitor/": "./bundles/org.neverplayed.event-monitor/"
         }
       }
     </script>
@@ -75,7 +83,7 @@
       </aside>
 
       <!-- Main Content -->
-      <main class="flex-1 overflow-hidden relative bg-slate-50">
+      <main class="flex-1 overflow-y-auto relative bg-slate-50">
         <template x-if="kernelReady">
           <div
             id="shell-host-root"
@@ -128,6 +136,28 @@
     </div>
 
     <script type="module">
+      // --- NPRF Cache Buster (One-time Persistence Purge) ---
+      (function() {
+        const legacyPath = "system-services/";
+        const legacyRealm = "real-life/dashboard";
+        let shouldClear = false;
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            const val = localStorage.getItem(key);
+            if (val && (val.includes(legacyPath) || val.includes(legacyRealm))) {
+              shouldClear = true;
+              break;
+            }
+          }
+        } catch (_e) { /* Storage access denied */ }
+        
+        if (shouldClear) {
+          console.warn("NPRF: Legacy paths detected in LocalStorage. Performance-preserving purge initiated...");
+          localStorage.clear();
+          console.log("NPRF: LocalStorage cleared. Cold-boot sequence starting.");
+        }
+      })();
       import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
       import Pandino from "https://esm.sh/@pandino/pandino@0.8.33";
       import Alpine from "https://esm.sh/alpinejs@3.13.5";
@@ -178,24 +208,23 @@
               coreManifest.bundles.push("https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json");
               coreManifest.bundles.push("./bundles/org.neverplayed.persistence-fs-sync/manifest.json");
             }
-            coreManifest.bundles.push("https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json");
-            coreManifest.bundles.push("./bundles/org.neverplayed.shell-host/manifest.json");
-            coreManifest.bundles.push("./bundles/org.neverplayed.shell-sidebar/manifest.json");
-            coreManifest.bundles.push("./bundles/org.neverplayed.shell-cli/manifest.json");
-            coreManifest.bundles.push("./bundles/org.neverplayed.shell-cli-dom/manifest.json");
-
             rm.registerRealm(coreManifest);
 
-            // 4. Register Real-Life Universe (Layer 2)
+            // 4. Register Foundation Layer (Layer 2)
+            this.bootStatus = "Registering: Foundation Layer...";
+            const foundResp = await fetch("./realms/foundation.json");
+            const foundManifest = await foundResp.json();
+            rm.registerRealm(foundManifest);
+
+            // 5. Register Real-Life Universe (Layer 3)
             this.bootStatus = "Registering: Real-Life Universe...";
             const rlResp = await fetch("./realms/real-life.json");
             const rlManifest = await rlResp.json();
             rm.registerRealm(rlManifest);
 
-            // 5. Initiate Transition to Real-Life
+            // 6. Initiate Transition to Real-Life
             this.bootStatus = "Activating Ontology Layer: Real-Life...";
             
-            // Listen for manager logs if possible, or just wait for the promise
             await rm.switchRealm("org.neverplayed.realm.real-life");
 
             this.kernelReady = true;

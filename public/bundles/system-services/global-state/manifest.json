@@ -1,4 +1,0 @@
-{
-    "Bundle-SymbolicName": "bundles.global-state",
-    "Bundle-Activator": "./activator.js"
-}
