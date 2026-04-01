@@ -149,7 +149,7 @@
           const isFirebase = envConfig.persistence_mode === "firebase";
 
           const coreBundles = [
-            "./bundles/system-services/yaml-service/manifest.json", // INFRA BASE
+            "./bundles/org.neverplayed.yaml-service/manifest.json", // INFRA BASE
             "./bundles/org.neverplayed.auth-shield/manifest.json",   // LAYER 1 AUTH
             isFirebase ? "./bundles/org.neverplayed.persistence-firebase/manifest.json" : null, // CLOUD PERSISTENCE
             "./bundles/org.neverplayed.persistence-selector/manifest.json",         // STRATEGIC PERSISTENCE

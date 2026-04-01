@@ -87,7 +87,7 @@ async function bootOSGI() {
     }
 
     const coreManifests = [
-        "bundles/system-services/yaml-service/manifest.json",
+        "bundles/org.neverplayed.yaml-service/manifest.json",
         "bundles/org.neverplayed.auth-shield/manifest.json",
         isFirebase ? "bundles/org.neverplayed.persistence-firebase/manifest.json" : "bundles/org.neverplayed.persistence-deno/manifest.json",
         "bundles/org.neverplayed.persistence-selector/manifest.json",

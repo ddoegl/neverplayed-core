@@ -53,7 +53,7 @@ export const mcpApi = onRequest({ cors: true, region: "europe-west4", secrets: [
             // SECURITY: Authorization Matrix
             // 1. Secret Path (Superuser Agent)
             if (isSecretValid) {
-                console.log(`[MCP API] Authorized via Admin Secret for UID: ${uid}`);
+                console.log(`[MCP API] (Update) Authorized via Admin Secret for UID: ${uid}`);
             } 
             // 2. Token Path (User Self-Service or Sub-Admin)
             else {
@@ -64,11 +64,11 @@ export const mcpApi = onRequest({ cors: true, region: "europe-west4", secrets: [
 
                     // A. Permitted if updating self
                     if (uid === callerUid) {
-                        console.log(`[MCP API] Authorized via ID Token (Self): ${uid}`);
+                        console.log(`[MCP API] (Update) Authorized via ID Token (Self): ${uid}`);
                     } 
                     // B. Permitted if Admin
                     else if (isAdmin) {
-                        console.log(`[MCP API] Authorized via ID Token (Admin): targeting ${uid}`);
+                        console.log(`[MCP API] (Update) Authorized via ID Token (Admin): targeting ${uid}`);
                     } 
                     // C. Otherwise Forbidden
                     else {
@@ -87,6 +87,45 @@ export const mcpApi = onRequest({ cors: true, region: "europe-west4", secrets: [
             );
 
             res.status(200).json({ success: true, message: `Cloud Function patched config for ${pid}` });
+            return;
+        }
+
+        if (action === "getConfig") {
+            const { uid } = payload;
+            
+            if (!uid) {
+                res.status(400).json({ error: "Bad Request: uid required" });
+                return;
+            }
+
+            // SECURITY: Authorization Matrix (Mirror of Update)
+            if (isSecretValid) {
+                console.log(`[MCP API] (Get) Authorized via Admin Secret for UID: ${uid}`);
+            } else {
+                try {
+                    const decodedToken = await admin.auth().verifyIdToken(idToken);
+                    const callerUid = decodedToken.uid;
+                    const isAdmin = decodedToken["neverplayed-admin"] === true;
+
+                    if (uid !== callerUid && !isAdmin) {
+                        res.status(403).json({ error: "Forbidden: Insufficient permissions for reading another user's state" });
+                        return;
+                    }
+                    console.log(`[MCP API] (Get) Authorized via ID Token for UID: ${uid}`);
+                } catch (err: any) {
+                    res.status(401).json({ error: `Unauthorized: Token verification failed: ${err.message}` });
+                    return;
+                }
+            }
+
+            const db = admin.firestore();
+            const snap = await db.collection("persistence").doc(uid).get();
+            
+            if (!snap.exists) {
+                res.status(200).json({ data: {} });
+            } else {
+                res.status(200).json({ data: snap.data() || {} });
+            }
             return;
         }
 

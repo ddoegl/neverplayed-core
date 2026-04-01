@@ -64,8 +64,9 @@ export class BundleTestHarness {
             (globalThis as any).sessionStorage = { getItem: () => null, setItem: (_k: string, _v: string) => {} };
         }
 
-        const denoFetcher = async (url: string) => {    
-            const path = url.replace(/^file:\/+/ , "/").split('?')[0];
+        const denoFetcher = async (url: string | URL) => {    
+            const urlStr = url instanceof URL ? url.toString() : url;
+            const path = urlStr.replace(/^file:\/+/ , "/").split('?')[0];
             try {
                 return await Deno.readTextFile(path);
             } catch (_err) {
@@ -75,7 +76,7 @@ export class BundleTestHarness {
         };
 
         // deno-lint-ignore no-explicit-any
-        (globalThis as any).fetch = async (url: string) => {
+        (globalThis as any).fetch = async (url: string | URL) => {
             const text = await denoFetcher(url);
             return {
                 text: () => Promise.resolve(text),

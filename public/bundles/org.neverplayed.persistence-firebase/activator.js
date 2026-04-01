@@ -30,9 +30,14 @@ export default class Activator extends BaseActivator {
             return;
         }
 
-        const { getFirestore, doc, setDoc, onSnapshot } = await import(`${FIREBASE_CDN}/firebase-firestore.js`);
+        const { initializeFirestore, doc, setDoc, onSnapshot } = await import(`${FIREBASE_CDN}/firebase-firestore.js`);
         const app = getApp();
-        this._db = getFirestore(app);
+        
+        // Force Long Polling to bypass QUIC resets (ERR_QUIC_PROTOCOL_ERROR)
+        this._db = initializeFirestore(app, {
+            experimentalForceLongPolling: true
+        });
+        
         this._setDoc = setDoc;
         this._docFn = doc;
 
@@ -84,10 +89,47 @@ export default class Activator extends BaseActivator {
                 this.logger.info("Firebase Persistence: No existing cloud state found.");
             }
             this._resolveReady();
-        }, (err) => {
-            this.logger.error(`Firebase Persistence: Sync error for ${uid}:`, err);
+        }, async (err) => {
+            this.logger.error(`Firebase Persistence: Sync error (Transport reset likely):`, err);
+            
+            // ATTEMPT SHUNTED READ FALLBACK
+            try {
+                this.logger.info("Firebase Persistence: Attempting Stateless Read Fallback via Stealth Tunnel...");
+                const data = await this._shuntedFetch(uid);
+                if (data) {
+                    this._cache.clear();
+                    for (const [key, val] of Object.entries(data)) {
+                        this._cache.set(key, val);
+                    }
+                    this.logger.info(`Firebase Persistence: Shunted hydration successful. ${Object.keys(data).length} keys recovered.`);
+                }
+            } catch (subErr) {
+                this.logger.error("Firebase Persistence: Stateless Read Fallback also failed.", subErr);
+            }
+            
             this._resolveReady();
         });
+    }
+
+    async _shuntedFetch(uid) {
+        const shuntingUrl = "https://mcpapi-ya355i2z4a-ez.a.run.app";
+        try {
+            const idToken = await globalThis.NEVERPLAYED_GET_ID_TOKEN?.();
+            if (!idToken) throw new Error("ID Token not available.");
+
+            const response = await fetch(shuntingUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-mcp-token": idToken },
+                body: JSON.stringify({ action: "getConfig", payload: { uid } })
+            });
+
+            if (!response.ok) throw new Error(`Shunting API status: ${response.status}`);
+            const result = await response.json();
+            return result.data;
+        } catch (err) {
+            this.logger.warn("Firebase Persistence: Shunted fetch failed:", err.message);
+            throw err;
+        }
     }
 
     _registerService(context) {
@@ -110,7 +152,7 @@ export default class Activator extends BaseActivator {
                         this.logger.warn(`Firebase Persistence: Store failed for '${key}' via SDK (${err.message}). Attempting stateless shunting fallback...`);
                         
                         // 1. Resolve Shunting URL (Stateless Tunnel)
-                        const shuntingUrl = "https://europe-west4-cladmin-bc594.cloudfunctions.net/mcpApi";
+                        const shuntingUrl = "https://mcpapi-ya355i2z4a-ez.a.run.app";
                         
                         // 2. Resolve ID Token (if available in global context)
                         try {

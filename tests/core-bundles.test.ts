@@ -29,7 +29,7 @@ Deno.test({
             await harness.installBundles([
                 "bundles/org.neverplayed.persistence-deno/manifest.json",
                 "bundles/org.neverplayed.system-logger/manifest.json",
-                "bundles/system-services/yaml-service/manifest.json",
+                "bundles/org.neverplayed.yaml-service/manifest.json",
                 "bundles/org.neverplayed.auth-shield/manifest.json",
                 "bundles/org.neverplayed.persistence-firebase/manifest.json",
                 "bundles/org.neverplayed.limes/manifest.json",
