@@ -34,22 +34,47 @@ function routeToTier(key: string, mode: string = "normal") {
   return "cloud";
 }
 
-// 3. Test Cases
-const tests = [
-  { key: "config.shell", expected: "cloud", mode: "normal" },
-  { key: "identities.mcp", expected: "local", mode: "normal" },
-  { key: "security.token", expected: "volatile", mode: "normal" },
-  { key: "config.shell", expected: "local", mode: "privacy" },
-  { key: "any.key", expected: "volatile", mode: "stealth" }
+// 3. Identity Shield Verification (Recursion Protection)
+const _mockSelector = {
+    type: "provider",
+    implementation: "selector-proxy"
+};
+
+function shouldTrack(p: { type: string, implementation?: string }) {
+    return p.type === "provider" && p.implementation !== "selector-proxy";
+}
+
+let passed = 0;
+console.log("\n--- IDENTITY SHIELD TEST ---");
+const shieldTests = [
+    { name: "Cloud Provider", type: "provider", implementation: "firebase", expected: true },
+    { name: "Local Provider", type: "provider", implementation: "deno-fs", expected: true },
+    { name: "Selector Proxy", type: "provider", implementation: "selector-proxy", expected: false },
+    { name: "Generic Service", type: "service", implementation: "logger", expected: false }
 ];
 
-console.log("\n--- SHUNTING RESULTS ---");
-let passed = 0;
+shieldTests.forEach(t => {
+    const result = shouldTrack(t);
+    const ok = result === t.expected;
+    if (ok) passed++;
+    console.log(`${ok ? "✅" : "❌"} ${t.name} -> Managed: ${result} (Expected: ${t.expected})`);
+});
+
+// 4. Test Cases
+const tests = [
+    { key: "config.shell", expected: "cloud", mode: "normal" },
+    { key: "identities.mcp", expected: "local", mode: "normal" },
+    { key: "security.token", expected: "volatile", mode: "normal" },
+    { key: "config.shell", expected: "local", mode: "privacy" },
+    { key: "any.key", expected: "volatile", mode: "stealth" }
+];
+
+console.log("\n--- ROUTING RESULTS ---");
 tests.forEach(test => {
-  const result = routeToTier(test.key, test.mode);
-  const ok = result === test.expected;
-  if (ok) passed++;
-  console.log(`${ok ? "✅" : "❌"} Key='${test.key}' [Mode=${test.mode}] -> Tier='${result}' (Expected: ${test.expected})`);
+    const result = routeToTier(test.key, test.mode);
+    const ok = result === test.expected;
+    if (ok) passed++;
+    console.log(`${ok ? "✅" : "❌"} Key='${test.key}' [Mode=${test.mode}] -> Tier='${result}' (Expected: ${test.expected})`);
 });
 
 // 4. Test Broadcast Clear
@@ -70,9 +95,10 @@ if (clearOk) {
     console.error("❌ Broadcast Clear Failed.");
 }
 
-console.log(`\nTest Finished: ${passed}/${tests.length + 1} passed.`);
+const totalExpected = tests.length + shieldTests.length + 1;
+console.log(`\nTest Finished: ${passed}/${totalExpected} passed.`);
 
-if (passed === tests.length + 1) {
+if (passed === totalExpected) {
   console.log("🎊 Persistence Shunting & Reset Logic Verified!");
 } else {
   console.error("💥 Logic Failure!");

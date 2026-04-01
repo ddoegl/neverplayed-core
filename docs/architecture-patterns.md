@@ -155,6 +155,7 @@ The project follows a "Local-First" persistence strategy using the OSGi
 3. **Reactive Session Persistence**: Use
    `Alpine.effect(() => { pm.store(ID, state); })` for global UI state to
    automatically sync property changes to `localStorage`.
+4. **Cloud Parity & Real-Time Sync**: For Cloud providers (Firebase), use **`onSnapshot`** to ensure the local `PersistenceManager` cache is reactively updated when remote state (pushed by an MCP Agent) changes. This maintains a "Digital Twin" between headless governance and the browser UI.
 
 ---
 
@@ -1055,3 +1056,115 @@ re-hydration whenever the user identity changes.
   hydration.
 - **Performance**: By using an internal cache that is populated once during
   boot, subsequent `load()` calls remain synchronous and fast.
+
+---
+
+## 24. The Lean Activator Pattern (Anti-Deadlock)
+
+To prevent circular dependencies and boot deadlocks in complex OSGi systems, infrastructure orchestrators (like the `PersistenceSelector`) must use **Non-Blocking Activators**.
+
+### The Problem: Circular Readiness
+
+High-level services (like `Limes` or `ConfigAdmin`) often call `await pm.waitReady()` on the `PersistenceManager` service. If the `PersistenceManager` is a **Selector Proxy** that blocks its own `onStart` until it finds and hydrates its child providers, a deadlock occurs:
+1. `Limes` is waiting for `PersistenceManager` (Selector).
+2. `Selector` is waiting for `FirebaseProvider`.
+3. `FirebaseProvider` is waiting for `AuthShield`.
+4. `AuthShield` is waiting to be started after `Limes` (in a sequential boot sequence).  
+**Result**: The system hangs indefinitely.
+
+### The Solution: Lean & Reactive
+
+1. **Start Immediately**: The orchestrator's `onStart` should **never** await external services or hydration. It registers its service interface instantly.
+2. **Reactive Tracking**: Use `context.trackService()` to discover child providers in the background.
+3. **Lazy Readiness**: Provide a `waitReady()` Promise that only resolves when the *tracked* children are themselves ready.
+
+### Benefits
+
+- **Boot Stability**: System boots regardless of service registration order.
+- **Resilience**: The orchestrator can "warm up" in the background while other services start.
+
+---
+
+## 25. The Identity Shield (Provider Filtration)
+
+In systems with multiple storage tiers managed by a central proxy (the Selector), we must ensure the proxy does not accidentally track itself, which leads to **Infinite Recursion**.
+
+### The Pattern: Metadata-Based Inclusion
+
+1. **Provider Labeling**: Every storage provider must register with specific metadata: `"persistence.type": "provider"`.
+2. **Proxy Labeling**: The Selector should register with its own identifier: `"implementation": "selector-proxy"`.
+3. **Surgical Filter**: The Selector's tracker must use an LDAP filter that explicitly ignores itself:  
+   `(&(persistence.type=provider)(!(implementation=selector-proxy)))`.
+
+### Benefits
+
+- **Recursion Safety**: Prevents `RangeError: Maximum call stack size exceeded` during service discovery.
+- **Clean Registry**: Clearly separates "Data Producers" from "Data Orchestrators."
+
+---
+
+## 26. Real-Time Cloud Parity (The Sync Pattern)
+
+To achieve parity between the headless "Government" (MCP Agent) and the "Citizen" (Browser UI), the persistence layer must go beyond one-time hydration.
+
+### The Pattern: `onSnapshot` Reactivity
+
+Instead of using `getDoc()` (one-time fetch) during boot, the Cloud provider should establish a persistent listener using `onSnapshot`.
+
+1. **Cache Synchronization**: When the listener detects a remote change, it updates the internal `PersistenceManager` cache.
+2. **Zero-Refresh Parity**: Changes pushed by an MCP agent command (`scripts/set-all-info.ts`) are immediately visible to any open browser session that queries the `PersistenceManager`.
+
+### Benefits
+
+- **Governance Speed**: High-level policies (like log level shifts) apply globally and instantly.
+- **Operational Trust**: The UI always reflects the current Cloud state without manual interaction.
+
+---
+
+## 27. Resilient API Shunting (The Stealth Tunnel)
+
+To ensure maximum availability in extremely restricted network environments (e.g., enterprise firewalls with Deep Packet Inspection), persistence providers must implement a **Stateless API Fallback**.
+
+### The Problem: Blocked SDK Traffic
+
+Standard Cloud SDKs (like Firebase) often rely on persistent WebSockets or long-polling HTTP streams. Even with native fallbacks, these can be flagged and blocked by strict security appliances. If the SDK cannot establish a heartbeat, persistence fails.
+
+### The Solution: Polymorphic Shunting
+
+1. **The Stealth Tunnel**: Implement a stateless Cloud Function (`mcpApi`) that performs Firestore writes via the Admin SDK. Standard JSON `POST` requests are much harder to distinguish from regular web traffic than SDK-specific protocols.
+2. **Polymorphic Auth**: The tunnel must accept two forms of authorization:
+   - **Agent Path**: A shared `x-mcp-secret` (for headless environments).
+   - **User Path**: A valid `x-mcp-token` (Firebase ID Token) for browser-to-cloud resilience.
+3. **Automatic Fallback**: The persistence bundle's `store()` method should catch SDK errors and automatically retry via a `fetch()` to the shunting API.
+
+### Benefits
+
+- **Unstoppable State**: Persistence succeeds as long as any standard web traffic is permitted.
+- **Universal Governance**: Headless agents and browser sessions share the same resilient write path when necessary.
+
+---
+
+## 28. Strategic Regression & Test Governance
+
+To ensure the long-term stability and resilience of the OSGi Governance Bridge, the project follows a **Strategic Regression Policy**. All critical architectural patterns (Lean Activators, Stealth Tunnels, Polymorphic Auth) must be protected by automated verification.
+
+### 1. The Process-Based Runner (`tests/run-all.ts`)
+Standard unit tests that use dynamic `import()` are vulnerable to shared global state and standalone scripts that call `Deno.exit()`. To prevent suite termination and state corruption, the global regression runner uses **Process-Based Execution**.
+- **Isolation**: Each test runs in its own Deno subprocess (`Deno.Command`).
+- **Resilience**: A failure in one test (or an explicit `Deno.exit`) does not terminate the rest of the suite.
+- **Reporting**: The runner consolidates exit codes and provides a unified "ALL SYSTEMS NOMINAL" signal.
+
+### 2. Regular Adaptation & Coverage
+Test scripts are not static artifacts; they must evolve alongside the functionality they protect. 
+- **Drift Protection**: When a core bundle (e.g., `persistence-selector`) is refactored, its corresponding test must be updated immediately to reflect the new logic.
+- **New Feature Mandate**: Any new architectural pattern (Section 1-27) must include a verification script in the `tests/` directory before it is considered "production ready."
+
+### 3. 100% Lint & Type Compliance
+To maintain the highest level of developer productivity and code quality, all test scripts must pass the same rigorous standards as the production bundles.
+- **Zero Warnings**: `deno lint tests/` must report 0 problems.
+- **Tactical Suppressions**: If `any` types are unavoidable (e.g., for complex OSGi mocks), use specific `// deno-lint-ignore` comments with a clear justification.
+
+### Benefits
+- **Merger Trust**: The `deno task test` command provides a high-confidence gate for all governance-related commits.
+- **Architectural Integrity**: Prevents regression in critical resilience patterns like the "Stealth Tunnel."
+- **Maintainability**: Clear, lint-free tests are easier to read, adapt, and debug.

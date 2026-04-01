@@ -21,7 +21,8 @@ async function send(req: { method: string; params: Record<string, unknown>; id: 
   const line = JSON.stringify(req) + "\n";
   await writer.write(encoder.encode(line));
   const { value } = await reader.read();
-  const res = decoder.decode(value).trim();
+  // deno-lint-ignore no-explicit-any
+  const res = decoder.decode(value as any).trim();
   try {
     return JSON.parse(res);
   } catch (err) {

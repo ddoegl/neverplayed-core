@@ -16,6 +16,7 @@ export class BundleTestHarness {
 
     private setupMocks() {
         // Only mock document if not present
+        // deno-lint-ignore no-explicit-any
         if (!(globalThis as any).document) {
             const mockElement = () => ({ 
                 style: {}, 
@@ -51,14 +52,16 @@ export class BundleTestHarness {
         
         // Note: Deno location is read-only if set via flag, 
         // so we only mock if missing or if we really need to override (risky)
+        // deno-lint-ignore no-explicit-any
         if (!(globalThis as any).location) {
             // deno-lint-ignore no-explicit-any
             (globalThis as any).location = { href: 'http://localhost/', hostname: 'localhost' };
         }
 
+        // deno-lint-ignore no-explicit-any
         if (!(globalThis as any).sessionStorage) {
             // deno-lint-ignore no-explicit-any
-            (globalThis as any).sessionStorage = { getItem: () => null, setItem: () => {} };
+            (globalThis as any).sessionStorage = { getItem: () => null, setItem: (_k: string, _v: string) => {} };
         }
 
         const denoFetcher = async (url: string) => {    
@@ -81,15 +84,17 @@ export class BundleTestHarness {
             };
         };
 
+        // deno-lint-ignore no-explicit-any
         (globalThis as any).denoFetcher = denoFetcher;
     }
 
     async init() {
-        // deno-lint-ignore no-explicit-any
         this.pandino = new Pandino({
             ...loaderConfiguration,
+            // deno-lint-ignore no-explicit-any
             "pandino.loader.fetcher": (globalThis as any).denoFetcher,
             "pandino.base.url": this.baseUrl,
+            // deno-lint-ignore no-explicit-any
         } as any);
 
         await this.pandino.init();

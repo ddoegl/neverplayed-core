@@ -14,10 +14,12 @@ const mockDoc = {
     addEventListener: () => {},
 };
 
-// Using type assertions to satisfy the linter while keeping mocks simple
-(globalThis as unknown as Record<string, unknown>).document = mockDoc;
-(globalThis as unknown as Record<string, unknown>).window = globalThis;
-(globalThis as unknown as Record<string, unknown>).NEVERPLAYED_BASE_URL = BASE_URL;
+// deno-lint-ignore no-explicit-any
+(globalThis as any).document = mockDoc;
+// deno-lint-ignore no-explicit-any
+(globalThis as any).window = globalThis;
+// deno-lint-ignore no-explicit-any
+(globalThis as any).NEVERPLAYED_BASE_URL = BASE_URL;
 
 // 2. Mock Non-Admin User (initially)
 const headlessUser = {
@@ -28,10 +30,12 @@ const headlessUser = {
     authorized: true,
     attributes: {} as Record<string, unknown>
 };
-(globalThis as unknown as Record<string, unknown>).NEVERPLAYED_HEADLESS_USER = headlessUser;
+// deno-lint-ignore no-explicit-any
+(globalThis as any).NEVERPLAYED_HEADLESS_USER = headlessUser;
 
 // 3. Fetcher & Fetch Mock
-const denoFetcher = async (url: string) => {    
+const denoFetcher = async (urlOrString: string | URL) => {    
+    const url = typeof urlOrString === 'string' ? urlOrString : urlOrString.toString();
     const path = url.replace(/^file:\/+/ , "/").split('?')[0];
     try {
         return await Deno.readTextFile(path);
@@ -41,7 +45,8 @@ const denoFetcher = async (url: string) => {
     }
 };
 
-(globalThis as unknown as Record<string, unknown>).fetch = async (url: string) => {
+// deno-lint-ignore no-explicit-any
+(globalThis as any).fetch = async (url: string | URL) => {
     const text = await denoFetcher(url);
     return {
         text: () => Promise.resolve(text),

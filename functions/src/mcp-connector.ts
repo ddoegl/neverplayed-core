@@ -5,18 +5,20 @@ import * as admin from "firebase-admin";
 const MCP_SECRET_KEY = "MCP_API_SECRET";
 
 export const mcpApi = onRequest({ cors: true, region: "europe-west4", secrets: [MCP_SECRET_KEY] }, async (req, res) => {
-    // 1. Validate Secret from environment
-    const authHeader = req.headers["x-mcp-secret"];
-    const secret = process.env[MCP_SECRET_KEY];
+    // 1. Unified Authorization (Secret OR Token)
+    const secretFromHeader = req.headers["x-mcp-secret"];
+    const secretFromEnv = process.env[MCP_SECRET_KEY];
+    const idToken = req.headers["x-mcp-token"] as string;
 
-    if (!authHeader || authHeader !== secret) {
-        res.status(401).json({ error: "Unauthorized: Invalid or missing MCP Secret" });
+    const isSecretValid = Boolean(secretFromHeader && secretFromHeader === secretFromEnv);
+    
+    // If NO secret AND NO token, reject immediately
+    if (!isSecretValid && !idToken) {
+        res.status(401).json({ error: "Unauthorized: Invalid Secret AND missing ID Token" });
         return;
     }
 
     const { action, payload } = req.body;
-    const token = req.headers["x-mcp-token"] as string;
-
     if (!action) {
         res.status(400).json({ error: "Bad Request: Action required" });
         return;
@@ -48,15 +50,33 @@ export const mcpApi = onRequest({ cors: true, region: "europe-west4", secrets: [
             const db = admin.firestore();
             const configKey = `config.${pid}`;
 
-            // SECURITY: If targeting a different UID, require a valid Admin ID Token
-            if (uid !== "mcp-agent-mcp") {
-                if (!token) {
-                    res.status(403).json({ error: "Forbidden: Admin token required for cross-user targeting" });
-                    return;
-                }
-                const decodedToken = await admin.auth().verifyIdToken(token);
-                if (!decodedToken["neverplayed-admin"] && decodedToken.uid !== "mcp-agent-mcp") {
-                    res.status(403).json({ error: "Forbidden: Insufficient permissions for targeting" });
+            // SECURITY: Authorization Matrix
+            // 1. Secret Path (Superuser Agent)
+            if (isSecretValid) {
+                console.log(`[MCP API] Authorized via Admin Secret for UID: ${uid}`);
+            } 
+            // 2. Token Path (User Self-Service or Sub-Admin)
+            else {
+                try {
+                    const decodedToken = await admin.auth().verifyIdToken(idToken);
+                    const callerUid = decodedToken.uid;
+                    const isAdmin = decodedToken["neverplayed-admin"] === true;
+
+                    // A. Permitted if updating self
+                    if (uid === callerUid) {
+                        console.log(`[MCP API] Authorized via ID Token (Self): ${uid}`);
+                    } 
+                    // B. Permitted if Admin
+                    else if (isAdmin) {
+                        console.log(`[MCP API] Authorized via ID Token (Admin): targeting ${uid}`);
+                    } 
+                    // C. Otherwise Forbidden
+                    else {
+                        res.status(403).json({ error: "Forbidden: Insufficient permissions for targeting another user" });
+                        return;
+                    }
+                } catch (err: any) {
+                    res.status(401).json({ error: `Unauthorized: Token verification failed: ${err.message}` });
                     return;
                 }
             }
