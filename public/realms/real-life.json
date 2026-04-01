@@ -1,0 +1,10 @@
+{
+    "id": "org.neverplayed.realm.real-life",
+    "title": "Universal Ontology (Real Life)",
+    "extends": ["org.neverplayed.realm.core"],
+    "description": "Layer 2: Space-Time, Person, and Company concepts.",
+    "bundles": [
+        "./bundles/real-life/dashboard/manifest.json",
+        "./bundles/system-services/backoffice-do-registry/manifest.json"
+    ]
+}

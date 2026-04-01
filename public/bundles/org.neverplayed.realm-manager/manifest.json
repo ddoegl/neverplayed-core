@@ -1,0 +1,9 @@
+{
+    "Bundle-SymbolicName": "@neverplayed/realm-manager",
+    "Bundle-Name": "Never Played Realm Manager",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Description": "Central authority for orchestrating layered semantic universes (Realms) and their bundle clusters.",
+    "Bundle-Author": "Never Played Core Team",
+    "Bundle-Category": "system-service"
+}

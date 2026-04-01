@@ -1,0 +1,11 @@
+{
+    "id": "org.neverplayed.realm.core",
+    "title": "Institutional Core Infrastructure",
+    "description": "Layer 1: Security, Logging, and Persistence Foundations.",
+    "bundles": [
+        "./bundles/org.neverplayed.system-logger/manifest.json",
+        "./bundles/org.neverplayed.persistence-selector/manifest.json",
+        "./bundles/org.neverplayed.auth-shield/manifest.json",
+        "./bundles/org.neverplayed.limes/manifest.json"
+    ]
+}

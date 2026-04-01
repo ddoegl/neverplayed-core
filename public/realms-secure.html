@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Realms Shell | Never Played</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <script type="importmap">
+      {
+        "imports": {
+          "@pandino/pandino": "https://esm.sh/@pandino/pandino@0.8.33",
+          "@pandino/pandino-api": "https://esm.sh/@pandino/pandino-api@0.8.33",
+          "@pandino/persistence-manager-api": "https://esm.sh/@pandino/persistence-manager-api@0.8.33",
+          "@pandino/persistence-manager-localstorage": "https://esm.sh/@pandino/persistence-manager-localstorage@0.8.33",
+          "@pandino/event-api": "https://esm.sh/@pandino/event-api@0.8.33",
+          "@pandino/log-api": "https://esm.sh/@pandino/log-api@0.8.33",
+          "alpinejs": "https://esm.sh/alpinejs@3.13.5",
+          "shared-types": "./shared-types.js",
+          "core-types": "./core-types.js",
+          "osgi-base": "./osgi-base.js"
+        }
+      }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace-autoloader.js"
+    ></script>
+
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+      body {
+        background: #f8fafc;
+      }
+    </style>
+  </head>
+  <body
+    x-data="shellLoader"
+    class="h-screen flex flex-col overflow-hidden sl-theme-light"
+  >
+    <!-- Global Header -->
+    <header
+      class="h-12 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-30 shrink-0"
+    >
+      <div class="flex items-center space-x-3">
+        <img src="branding.svg" class="w-6 h-6" />
+        <span
+          class="font-bold text-sm tracking-tight text-slate-200"
+        >neverplayed <span class="text-blue-400">realms</span></span>
+      </div>
+      <div id="boot-status" class="text-[10px] font-mono text-slate-500">
+        <span x-show="!kernelReady">Shielding...</span>
+        <span x-show="kernelReady">Secure Kernel Active</span>
+      </div>
+    </header>
+
+    <!-- App Container -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Sidebar Slot -->
+      <aside
+        id="shell-sidebar-root"
+        class="w-auto bg-white z-20 overflow-hidden flex flex-col"
+      >
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 overflow-hidden relative bg-slate-50">
+        <template x-if="kernelReady">
+          <div
+            id="shell-host-root"
+            class="h-full w-full relative"
+          >
+            <!-- Shell Host UI will manifest here -->
+            <div
+              id="flow-content"
+              class="h-full w-full"
+            >
+            </div>
+          </div>
+        </template>
+
+        <!-- Kernel Boot Progress -->
+        <div
+          x-show="!kernelReady"
+          class="h-full flex flex-col items-center justify-center space-y-4"
+        >
+          <i class="fas fa-shield-alt fa-spin text-blue-400 text-2xl"></i>
+          <span
+            class="text-slate-400 text-[10px] font-mono uppercase tracking-widest text-center px-20"
+            x-text="bootStatus"
+          ></span>
+
+          <div
+            x-show="error"
+            class="text-red-500 text-xs font-mono mt-4 text-center px-10"
+          >
+            <p class="font-bold">BOOT FAILURE</p>
+            <p x-text="error"></p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module">
+      import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
+      import Pandino from "https://esm.sh/@pandino/pandino@0.8.33";
+      import Alpine from "https://esm.sh/alpinejs@3.13.5";
+      import { REALM_MANAGER_SERVICE } from "shared-types";
+
+      Alpine.data("shellLoader", () => ({
+        kernelReady: false,
+        bootStatus: "Starting Shell Layer...",
+        error: null,
+
+        init() {
+          this.boot();
+        },
+        async boot() {
+          try {
+            const pandino = new Pandino({ ...loaderConfiguration });
+            await pandino.init();
+            await pandino.start();
+
+            const context = pandino.getBundleContext();
+            globalThis.Alpine = Alpine;
+            globalThis.pandinoContext = context;
+
+            // 1. Install Realm Manager
+            this.bootStatus = "Loading: @neverplayed/realm-manager...";
+            const rmBundle = await context.installBundle("./bundles/org.neverplayed.realm-manager/manifest.json");
+            if (rmBundle.state === 2 || rmBundle.state === 4) {
+              await rmBundle.start();
+            }
+
+            const rmRef = context.getServiceReference(REALM_MANAGER_SERVICE);
+            const rm = context.getService(rmRef);
+            
+            // 2. Fetch Environment to determine Persistence Provider
+            const envResp = await fetch("./env.json");
+            const envConfig = envResp.ok ? await envResp.json() : { persistence_mode: "local" };
+            const isFirebase = envConfig.persistence_mode === "firebase";
+
+            // 3. Register Core Universe (Layer 1)
+            this.bootStatus = "Registering: Core Universe...";
+            const coreResp = await fetch("./realms/core.json");
+            const coreManifest = await coreResp.json();
+            
+            // Inject Provider and Event Admin
+            if (isFirebase) {
+              coreManifest.bundles.push("./bundles/org.neverplayed.persistence-firebase/manifest.json");
+            } else {
+              coreManifest.bundles.push("https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json");
+              coreManifest.bundles.push("./bundles/org.neverplayed.persistence-fs-sync/manifest.json");
+            }
+            coreManifest.bundles.push("https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json");
+            coreManifest.bundles.push("./bundles/org.neverplayed.shell-host/manifest.json");
+            coreManifest.bundles.push("./bundles/org.neverplayed.shell-sidebar/manifest.json");
+            coreManifest.bundles.push("./bundles/org.neverplayed.shell-cli/manifest.json");
+            coreManifest.bundles.push("./bundles/org.neverplayed.shell-cli-dom/manifest.json");
+
+            rm.registerRealm(coreManifest);
+
+            // 4. Register Real-Life Universe (Layer 2)
+            this.bootStatus = "Registering: Real-Life Universe...";
+            const rlResp = await fetch("./realms/real-life.json");
+            const rlManifest = await rlResp.json();
+            rm.registerRealm(rlManifest);
+
+            // 5. Initiate Transition to Real-Life
+            this.bootStatus = "Activating Ontology Layer: Real-Life...";
+            
+            // Listen for manager logs if possible, or just wait for the promise
+            await rm.switchRealm("org.neverplayed.realm.real-life");
+
+            this.kernelReady = true;
+          } catch (err) {
+            console.error("Boot Sequence Failed:", err);
+            this.error = err.message;
+          }
+        },
+      }));
+
+      Alpine.start();
+    </script>
+  </body>
+</html>

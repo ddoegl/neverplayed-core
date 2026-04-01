@@ -62,8 +62,10 @@ export const SCA_DATA_SERVICE = "@neverplayed/backoffice/sca/data";
 export const SCA_METHODS_SERVICE = "@neverplayed/backoffice/sca/methods";
 export const EMAIL_DATA_SERVICE = "@neverplayed/backoffice/email/data";
 export const TERMINAL_STATE_SERVICE = "@neverplayed/backoffice/terminal/state";
+export const REALM_MANAGER_SERVICE = "@neverplayed/realm-manager/service";
 
 // Config PIDs
+export const REALM_CONFIG_PID = "@neverplayed/realm-manager";
 /** @deprecated Logic must not be persisted as Data (Firestore). Use DOMAIN_STRATEGY_SERVICE tracking instead. */
 export const DO_STRATEGIES_PID = "@neverplayed/backoffice/do/strategies";
 export const DO_INSTANCES_PID = "@neverplayed/backoffice/do/instances";

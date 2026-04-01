@@ -533,30 +533,38 @@
 
         // Infrastructure: Dynamic Persistence Engine
         const response = await globalThis.fetch("./env.json");
-        const envConfig = response.ok ? await response.json() : { persistence_mode: "local" };
+        const envConfig = response.ok
+          ? await response.json()
+          : { persistence_mode: "local" };
         const isFirebase = envConfig.persistence_mode === "firebase";
 
-        const pmProviderUrl = isFirebase 
+        const pmProviderUrl = isFirebase
           ? "./bundles/org.neverplayed.persistence-firebase/manifest.json"
           : "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json";
 
-        const providerBundle = await context.installBundle(pmProviderUrl);
+        const providerBundle = await context.installBundle(
+          pmProviderUrl,
+        );
         if (providerBundle.state === 2 || providerBundle.state === 4) {
           await providerBundle.start();
         }
 
         // Install and Start the Persistence Selector (Data Guardian)
-        const selectorBundle = await context.installBundle("./bundles/org.neverplayed.persistence-selector/manifest.json");
+        const selectorBundle = await context.installBundle(
+          "./bundles/org.neverplayed.persistence-selector/manifest.json",
+        );
         if (selectorBundle.state === 2 || selectorBundle.state === 4) {
-            await selectorBundle.start();
+          await selectorBundle.start();
         }
 
         // Install fs-sync conditionally if local
         if (!isFirebase) {
-            const fsSyncBundle = await context.installBundle("./bundles/org.neverplayed.persistence-fs-sync/manifest.json");
-            if (fsSyncBundle.state === 2 || fsSyncBundle.state === 4) {
-                await fsSyncBundle.start();
-            }
+          const fsSyncBundle = await context.installBundle(
+            "./bundles/org.neverplayed.persistence-fs-sync/manifest.json",
+          );
+          if (fsSyncBundle.state === 2 || fsSyncBundle.state === 4) {
+            await fsSyncBundle.start();
+          }
         }
 
         // Infrastructure: Event Admin
@@ -569,15 +577,20 @@
 
         // Fetch the Persistence Manager
         const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
-        console.log("Shell Boot: Persistence Manager Reference:", pmRef);
-        
+        console.log(
+          "Shell Boot: Persistence Manager Reference:",
+          pmRef,
+        );
+
         const pm = context.getService(pmRef);
         console.log("Shell Boot: Persistence Manager Instance:", pm);
-        
+
         // Wait for persistence to hydrate (SDK or Shunt)
         if (pm.waitReady) {
-            console.log("Shell Boot: Waiting for Persistence Manager hydration...");
-            await pm.waitReady();
+          console.log(
+            "Shell Boot: Waiting for Persistence Manager hydration...",
+          );
+          await pm.waitReady();
         }
 
         const SESSION_PID = "pandino.session.state";
