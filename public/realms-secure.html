@@ -80,12 +80,27 @@
           <div
             id="shell-host-root"
             class="h-full w-full relative"
+            x-data="shellHost"
           >
             <!-- Shell Host UI will manifest here -->
             <div
               id="flow-content"
+              x-ref="flowContent"
+              x-ignore
               class="h-full w-full"
             >
+            </div>
+
+            <!-- Global Overlay (Loader) -->
+            <div
+              x-show="!ready"
+              class="absolute inset-0 bg-slate-50/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 z-50"
+            >
+              <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+              <span
+                class="text-slate-400 text-[10px] font-mono uppercase tracking-widest"
+                x-text="status"
+              ></span>
             </div>
           </div>
         </template>
