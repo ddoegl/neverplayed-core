@@ -144,14 +144,14 @@ This is the most critical phase where the system's "bits and bytes" are aligned.
     - **STICKY**: If an identical bundle is active, it is skipped. This preserves its registered services and CLI commands.
     - **NEW**: If not found or in a lower state, it is installed and started incrementally.
 
-### Phase 4: Privilege & Policy Injection
+### Phase 4: Privilege & Policy Injection (Identity Guard)
 - **Tier -1 Persistence**: The `PersistenceResolver` is updated with realm-specific overrides (e.g., "In this realm, all `secure-note` objects MUST stay in `local` storage").
-- **Admin Elevation**: If the current user is listed in `privileges["realm-admins"]`, the system injects the `realm-admin` attribute into the session.
+- **Late-Join Identity Injection**: Because the `SessionService` may arrive asynchronously during a cold boot surge, the manager uses a **Phase-Aware Tracker**. If a realm is currently activating or already active when the session service arrives, the system injects realm-specific attributes (e.g., `realm-admin`) directly into the `global` user scope.
 
-### Phase 5: The "Talkative" Stepper & Healing
+### Phase 5: The "Talkative" Stepper & Healing Pass
 Because context shifts are high-risk operations, the `RealmManager` provides an **Interactive Stepper** mode (`--step` flag):
 - **Milestones**: Resolves the plan and pauses for user review before applying the "Surge."
-- **Healing Pass**: After activation, the manager re-registers its own CLI commands to ensure management tools are always available, even if a core layer was re-shuffled.
+- **Healing Pass**: After activation, the manager re-registers its own CLI commands. This ensures that even if a core bundle (like the Shell CLI) was re-shuffled or restarted during the surge, the management tools remain correctly bound to the current shell environment.
 
 ---
 

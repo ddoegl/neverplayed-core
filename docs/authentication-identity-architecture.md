@@ -71,9 +71,10 @@ The two layers interact via the **"Identity Handshake"** sequence:
 - **Logic**: Before the full system (Plexus) is even initialized, a barebones version of Limes acts as a gatekeeper for the `sys:*` capability surface.
 - **Check**: Valid `AuthShield` token + `neverplayed-admin` attribute.
 
-### Layer 2: The Identity Tier
-- **Mechanism**: **Plexus Engine**.
-- **Logic**: Once technical access is granted, Plexus takes over as the "Big Brain." It ingests the selected **Persona**, **License**, and **Business Rules** to derive a dense Set of Capabilities (the AST).
+### Layer 2: The Identity Tier (Late-Join Sync)
+- **Mechanism**: **Plexus Engine + Realm Manager Bridge**.
+- **Logic**: Once technical access is granted, Plexus takes over as the "Big Brain." 
+- **Late-Join Injection**: During rapid realm transitions, it is possible for the `SessionService` to register *after* the realm has already started. The `RealmManager` implements a **Phase-Aware tracker** that monitors both the active and the pending realm states to ensure business-level attributes (like `realm-admin`) are correctly injected regardless of service arrival order.
 - **Check**: Bitmask matching against the `Person Registry`.
 
 ### The Guarding Tier (Cross-Layer)

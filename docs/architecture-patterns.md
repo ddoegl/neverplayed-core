@@ -1477,3 +1477,78 @@ The NPRF framework manages universe transitions through a multi-phase **Surge Pl
 For high-risk environments, developers should use the **Interactive Stepper**:
 - Use `--step` to pause at the RECONCILED phase.
 - Use `/realm next` to advance through Ontology Filtering into final Activation.
+
+---
+
+## 36. The Orchestration Shield (Warp Locking)
+
+When orchestrating complex realm transitions (Warping), the system must prevent recursive state recovery loops that can lead to stack overflows or transition collisions.
+
+### The Shield Pattern
+
+We use an internal `_isRecovering` or `_isWarping` execution lock in the `RealmManager` (or any core orchestrator) to guard state recovery logic. This ensures that a single "Warp" operation cannot be re-entered while it is still in-flight.
+
+```javascript
+async _recoverState(context) {
+    if (this._isRecovering) return; // Shield Active
+    this._isRecovering = true;
+    try {
+        // State recovery logic (e.g., _switchRealm)...
+    } finally {
+        this._isRecovering = false;
+    }
+}
+```
+
+---
+
+## 37. UI Variable Resolution (The Magic Shield)
+
+To ensure robust variable resolution in standardized UI components, especially during asynchronous Domain Object (DO) flows, we use a global Alpine magic helper `$uifResolve`.
+
+### The Resolution Pattern
+
+Instead of relying on naked Alpine scope resolution inside `x-text` or `x-show` attributes, we use the `$uifResolve` magic to perform a guided, "Search-and-Fallback" resolution.
+
+```html
+<span x-text="((v) => v ?? '')($uifResolve('targetId'))"></span>
+```
+
+### Benefits
+
+- **Reference Safety**: Prevents `ReferenceError` crashes if the Alpine tree is processed before it has its parent factory context.
+- **Scope Resilience**: Automatically falls back to the nearest `ui-factory` or the global `__UI_FACTORY_REGISTRY` if the local data-stack is fragmented.
+
+---
+
+## 38. Phase-Aware Synchronization
+
+When tracking OSGi services during a "Cold Boot Leap," synchronization must be **Phase-Aware**. Services may arrive *during* a transition phase, before the target state is officially finalized.
+
+### The Guard Pattern
+
+Orchestrators must track both the **Active State** (finalized) and the **Pending State** (in-transition) to ensure late-arriving services (like `SessionService`) are correctly synchronized with the incipient context.
+
+```javascript
+// Example: Realm Manager Identity Sync
+const targetId = this._activeRealmId || this._pendingTransition?.id;
+if (targetId) {
+    this._syncPrivileges(targetId);
+}
+```
+
+---
+
+## 39. Atomic Phase Rendering
+
+To prevent mutation race conditions in custom components that use Alpine.js, we adhere to the **Atomic Phase Rendering** pattern.
+
+### The Injection Rule
+
+Always establish the Alpine `x-data` attribute and the internal state registry **BEFORE** injecting child templates or fragments into the DOM.
+
+1.  **Map State**: Register the state in a global or shared registry.
+2.  **Bind Attributes**: Set `x-data` and `data-*` attributes on the parent element.
+3.  **Ignite Children**: Only then append the child template/element to the DOM.
+
+This ensures Alpine's discovery engine sees a fully context-aware and "Hydrated" parent from the very first frame of the mutation.
