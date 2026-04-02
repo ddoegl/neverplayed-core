@@ -8,5 +8,8 @@
     },
     "bundles": [
         "./bundles/org.neverplayed.realm.real-life/manifest.json"
+    ],
+    "domainObjects": [
+        { "id": "visual-do-editor", "persistence": { "tier": "local", "enforce": true } }
     ]
 }

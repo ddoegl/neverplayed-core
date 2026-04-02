@@ -22,6 +22,7 @@ export default class Activator extends BaseActivator {
     this._limesService = null;
     this._isInitialized = false;
     this._runtimeStrategies = new Map();
+    this._realmContext = null; // { realmId, blueprintIds: [], specializes: [] }
   }
 
   onStart(context) {
@@ -176,6 +177,33 @@ export default class Activator extends BaseActivator {
             handleAction: (action, instance, host) => {
                 const handler = actionHandlers.find(h => h.id === action.id && h.match(instance));
                 if (handler) handler.execute(instance, host);
+            },
+            setRealmContext: async (realmId, domainObjects = null) => {
+                this.logger.info(`DO Registry: Setting Realm Context for '${realmId}'...`);
+                // null = reset to global defaults
+                if (domainObjects === null) {
+                    this._realmContext = null;
+                } else {
+                    const blueprintIds = domainObjects.map(d => d.id);
+                    const specializes = domainObjects.filter(d => d.spec);
+                    
+                    // Fetch specialized specs asynchronously
+                    for (const s of specializes) {
+                        try {
+                            const res = await fetch(s.spec);
+                            if (res.ok) {
+                                const yamlText = await res.text();
+                                const spec = this._yamlService.load(yamlText);
+                                registryService.addBlueprint(spec);
+                                this.logger.info(`DO Registry: Loaded specialized spec for '${s.id}' from '${s.spec}'`);
+                            }
+                        } catch (err) {
+                            this.logger.error(`DO Registry: Failed to load specialized spec for '${s.id}':`, err);
+                        }
+                    }
+                    this._realmContext = { realmId, blueprintIds };
+                }
+                syncWithHost();
             }
         };
 
@@ -185,6 +213,15 @@ export default class Activator extends BaseActivator {
             const persisted = raw ? JSON.parse(raw) : [];
             const mergedBlueprints = [...systemSpecs];
             persisted.forEach(ps => { if (!mergedBlueprints.find(s => s.id === ps.id)) mergedBlueprints.push(ps); });
+
+            let finalBlueprints = mergedBlueprints;
+            // Apply Ontological Filtering (NPRF Tier -1)
+            if (this._realmContext) {
+                finalBlueprints = mergedBlueprints.filter(spec => 
+                    this._realmContext.blueprintIds.includes(spec.id)
+                );
+                this.logger.debug(`DO Registry: Filtered blueprints for realm '${this._realmContext.realmId}': ${finalBlueprints.length}/${mergedBlueprints.length} active.`);
+            }
 
             // Enrich raw instances for "Show All" mode (Phase 9)
             const instances = pm.load(DO_INSTANCES_PID) || {};
@@ -197,7 +234,7 @@ export default class Activator extends BaseActivator {
             );
 
             states.forEach(s => {
-                s.domainObjectSpecs = mergedBlueprints;
+                s.domainObjectSpecs = finalBlueprints;
                 s.domainObjectStrategies = Object.fromEntries(this._runtimeStrategies);
                 s.domainObjectInstances = instances;
                 s.parsedDOStrategies = s.domainObjectStrategies;

@@ -99,53 +99,44 @@ In high-security contexts, ensure the `persistence-firebase` bundle is **removed
 
 ---
 
-## 5. Tiered Enforcement: Participant-Driven Choice
+## 5. The Hierarchy of Persistence Influence (Policy Stack)
 
-While the system defaults to "Best-Available" shunting, both **Bundles** and **Users** can enforce a specific persistence level.
+Data gravity is determined through a layered priority stack, allowing for granular control across different actors and environments.
 
-### 🧩 Bundle-Driven Enforcement (Developer Choice)
-A bundle may demand a specific storage type for its domain objects or configuration to ensure security or performance.
+| Tier | Driver | Policy Source | Example |
+| :--- | :--- | :--- | :--- |
+| **0. Realm** | **Context** | `realm-manifest.json` | A "Confidential War Room" realm barring all Cloud sync. |
+| **1. System** | Infrastructure | `env.json`, Deployment | Node-wide "Air-Gapped" vs. "Cloud-Synced" strategy. |
+| **2. Bundle** | Developer | `manifest.json`, Activator | A "Secure Wallet" bundle enforcing `persistence.tier=local` for its payloads. |
+| **3. Blueprint** | Designer | `spec.yaml:domainObject` | "Employee Records" blueprint defaulting to Cloud for collaboration. |
+| **4. Instance** | User | `instance.persistenceSpec` | A specific "Personal Journal" instance pinned to Local storage by the user. |
 
-**Mechanism: OSGi LDAP Filters**
-Instead of requesting a generic `PersistenceManager`, the bundle specifies its mandatory attributes in the service lookup filter.
-
-*   **In-Memory Only**:
-    `(&(objectClass=PersistenceManager)(persistence.tier=volatile))`
-*   **Privacy-First (No Cloud)**:
-    `(&(objectClass=PersistenceManager)(persistence.scope=device))`
-*   **Mandatory Sync (Cloud Only)**:
-    `(&(objectClass=PersistenceManager)(persistence.scope=global))`
-
-### 👤 User-Driven Enforcement (User Choice)
-The Shell provides a global **"Data Privacy Toggle"** that alters the `PersistenceSelector`'s routing rules.
-
-| Mode | Selector Logic | Use Case |
-| :--- | :--- | :--- |
-| **Normal** | Best-Available (Defaults to Firebase) | Collaboration, Roaming |
-| **Stealth** | Route ALL to **Memory** | Guest Mode, Ephemeral Session |
-| **Privacy** | Route ALL to **Local FS / localStorage** | Sensitive Work, Offline Data |
-| **Developer** | Enable **FS-Sync** bridge | Local Development, Twin Testing |
+### Decision Logic (The Highest Priority Wins)
+If a **Realm (Tier 0)** enforces "Local-Only," it overrides all other participants including the user. If the Realm is permissive, the **Bundle (Tier 1)** or **User (Tier 4)** fallback logic applies.
 
 ---
 
-## 6. Implementation Rule: "The Intentional Fallback"
+## 6. Security Enforcement (The Limes Guardian) 🔐
 
-When a bundle requests a specific tier, it must handle the **Service Availability Exception**:
+In a "Persistence-Aware" architecture, **Limes** must move from being a simple UI guard to a **Policy Validator**:
 
-1.  **Strict Mode**: If the requested tier (e.g., Cloud) is missing, the bundle refuses to start or warns the user.
-2.  **Graceful Mode**: The bundle attempts to find the "next safest" tier (e.g., Local) but marks the data as "Temporary."
-
-**Example: A secure bundle's Activator**
-```javascript
-const pm = context.trackService(`(&(objectClass=PersistenceManager)(persistence.tier=volatile))`, {
-  addingService: (ref) => { /* Handle secure start */ },
-  removedService: () => { /* Secure wipe / shutdown */ }
-}).open();
-```
+*   **Authorized Gravity**: Before a strategy moves data to the Cloud, Limes must verify the user possesses the `sys:persistence-cloud` capability.
+*   **Encrypted Tunnels**: High-tier persistence (Cloud/FS) must be governed by Limes-checked encryption keys provided via the identity session.
+*   **Audit Logging**: Every "Gravity Shift" (moving data between tiers) must be logged as a security event.
 
 ---
 
-## 7. Strategic Summary: Gravity & Control
+## 7. Strategic Data Migration (Gravity Shifts) 🚀
+
+As policies or user choices evolve, instances may need to "Shift Gravity" between persistence managers.
+
+1.  **Promotion (Local ⮕ Cloud)**: An instance created offline in `localStorage` is moved to Firebase when a global "Sync All" policy is activated.
+2.  **Demotion (Cloud ⮕ Local)**: For privacy reasons, a user "unplugs" a specific instance from the cloud, moving its payload to the local device and wiping the remote copy.
+3.  **Wipe Logic**: Moving data **out** of a tier must always include a mandatory "Secure Wipe" of the source bucket to prevent data leaks.
+
+---
+
+## 8. Strategic Summary: Gravity & Control
 
 The Never Played persistence architecture is built on the principle of **Managed Gravity**. 
 

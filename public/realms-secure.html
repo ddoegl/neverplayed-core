@@ -137,7 +137,7 @@
 
     <script type="module">
       // --- NPRF Cache Buster (One-time Persistence Purge) ---
-      (function() {
+      (function () {
         const legacyPath = "system-services/";
         const legacyRealm = "real-life/dashboard";
         let shouldClear = false;
@@ -145,17 +145,24 @@
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             const val = localStorage.getItem(key);
-            if (val && (val.includes(legacyPath) || val.includes(legacyRealm))) {
+            if (
+              val &&
+              (val.includes(legacyPath) || val.includes(legacyRealm))
+            ) {
               shouldClear = true;
               break;
             }
           }
         } catch (_e) { /* Storage access denied */ }
-        
+
         if (shouldClear) {
-          console.warn("NPRF: Legacy paths detected in LocalStorage. Performance-preserving purge initiated...");
+          console.warn(
+            "NPRF: Legacy paths detected in LocalStorage. Performance-preserving purge initiated...",
+          );
           localStorage.clear();
-          console.log("NPRF: LocalStorage cleared. Cold-boot sequence starting.");
+          console.log(
+            "NPRF: LocalStorage cleared. Cold-boot sequence starting.",
+          );
         }
       })();
       import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
@@ -183,30 +190,43 @@
 
             // 1. Install Realm Manager
             this.bootStatus = "Loading: @neverplayed/realm-manager...";
-            const rmBundle = await context.installBundle("./bundles/org.neverplayed.realm-manager/manifest.json");
+            const rmBundle = await context.installBundle(
+              "./bundles/org.neverplayed.realm-manager/manifest.json",
+            );
             if (rmBundle.state === 2 || rmBundle.state === 4) {
               await rmBundle.start();
             }
 
-            const rmRef = context.getServiceReference(REALM_MANAGER_SERVICE);
+            const rmRef = context.getServiceReference(
+              REALM_MANAGER_SERVICE,
+            );
             const rm = context.getService(rmRef);
-            
+
             // 2. Fetch Environment to determine Persistence Provider
             const envResp = await fetch("./env.json");
-            const envConfig = envResp.ok ? await envResp.json() : { persistence_mode: "local" };
-            const isFirebase = envConfig.persistence_mode === "firebase";
+            const envConfig = envResp.ok
+              ? await envResp.json()
+              : { persistence_mode: "local" };
+            const isFirebase =
+              envConfig.persistence_mode === "firebase";
 
             // 3. Register Core Universe (Layer 1)
             this.bootStatus = "Registering: Core Universe...";
             const coreResp = await fetch("./realms/core.json");
             const coreManifest = await coreResp.json();
-            
+
             // Inject Provider and Event Admin
             if (isFirebase) {
-              coreManifest.bundles.push("./bundles/org.neverplayed.persistence-firebase/manifest.json");
+              coreManifest.bundles.push(
+                "./bundles/org.neverplayed.persistence-firebase/manifest.json",
+              );
             } else {
-              coreManifest.bundles.push("https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json");
-              coreManifest.bundles.push("./bundles/org.neverplayed.persistence-fs-sync/manifest.json");
+              coreManifest.bundles.push(
+                "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
+              );
+              coreManifest.bundles.push(
+                "./bundles/org.neverplayed.persistence-fs-sync/manifest.json",
+              );
             }
             rm.registerRealm(coreManifest);
 
@@ -222,9 +242,15 @@
             const rlManifest = await rlResp.json();
             rm.registerRealm(rlManifest);
 
-            // 6. Initiate Transition to Real-Life
+            // 6. Register Work Universe (Layer 3)
+            this.bootStatus = "Registering: Work Universe...";
+            const workResp = await fetch("./realms/work.json");
+            const workManifest = await workResp.json();
+            rm.registerRealm(workManifest);
+
+            // 7. Initiate Transition to Real-Life
             this.bootStatus = "Activating Ontology Layer: Real-Life...";
-            
+
             await rm.switchRealm("org.neverplayed.realm.real-life");
 
             this.kernelReady = true;

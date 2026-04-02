@@ -20,6 +20,7 @@ export const PERSISTENCE_DENO_BUNDLE = "@neverplayed/persistence-deno";
 export const PERSISTENCE_SELECTOR_BUNDLE = "@neverplayed/persistence-selector";
 export const PERSISTENCE_LOCALSTORAGE_BUNDLE = "@neverplayed/persistence-deno-localstorage";
 export const PLEXUS_ENGINE_SERVICE = "@neverplayed/plexus/engine";
+export const REALM_MANAGER_SERVICE = "@neverplayed/realm-manager";
 
 export const BUNDLE_TYPE_SERVICE = "service-flow";
 export const NEVERPLAYED_PREFIX = "@neverplayed/";
@@ -39,3 +40,14 @@ export const SYSTEM_LOGGER_PID = "@neverplayed/system-logger";
 export const LOG_LEVEL_PROP = "log-level";
 export const SHELL_CLI_PID = "@neverplayed/shell-cli";
 export const SHELL_CLI_SERVICE = "@neverplayed/shell-cli/service";
+
+// OSGi Bundle States (Numeric and String)
+export const BUNDLE_STATE_UNINSTALLED = 1;
+export const BUNDLE_STATE_INSTALLED = 2;
+export const BUNDLE_STATE_RESOLVED = 4;
+export const BUNDLE_STATE_STARTING = 8;
+export const BUNDLE_STATE_STOPPING = 16;
+export const BUNDLE_STATE_ACTIVE = 32;
+
+// String versions for resilient mapping
+export const BUNDLE_STATUS_ACTIVE = "ACTIVE";

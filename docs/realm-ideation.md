@@ -27,6 +27,17 @@ Realms are built using a layered hierarchy. Each layer inherits the semantic con
 | **L2: Foundation** | **Semantic** | Context, State, Execution, Actions, Messaging | `selection-service`, `global-state`, `do-registry`, `action-registry`, `outreach-service`, `atomic-orchestrator` |
 | **L3: Universe** | **Ontological** | Concepts like People, Companies, Tenants | `real-life/dashboard`, `person-registry`, `company-registry` |
 | **L4: Application** | **Functional** | Specialized business or retail logic | `backoffice-licenses`, `retail-flows`, `invitations` |
+| **L6: Inhabitant** | **Human-Centric** | Personal tools, manual overrides, Debug utilities | `/install` command results, `manually-installed` set |
+
+### 👤 Layer 6: The Inhabitant Layer (Human Sovereignty)
+The Inhabitant Layer represents the **Human Inhabitant's personal context**. Unlike the lower 5 layers, which are defined by the universe, the Inhabitant Layer is defined by **Sovereign Choice**. 
+
+- **Persistence**: These bundles are the "human's luggage." They travel between realms.
+- **Priority**: If a realm manifest provides a conflicting bundle (same BSN), the **Universe wins** (ensuring semantic determinism), but the user-tooling is otherwise preserved.
+
+---
+
+## 3. Realm Technical Definition
 
 ### 🛠️ Service Responsibility Matrix
 
@@ -58,6 +69,11 @@ Realms are orchestrating using a declarative manifest that the `RealmManager` re
     "./bundles/org.neverplayed.limes-ui/manifest.json",
     "./bundles/system-services/backoffice-do-registry/manifest.json"
   ],
+  "persistencePolicy": {
+    "tier": "local",
+    "enforce": true,
+    "description": "High-security realm: Data must never leave the local node."
+  },
   "personas": [
     { "id": "admin-sentry", "role": "Oversight", "strategy": "AUDIT_VIEW" }
   ]
@@ -102,3 +118,69 @@ A company provider hosts a specific "Professional Realm." A human citizen "loads
 Agents do not have "God Mode." They **Inhabit** specific realms.
 - **Locality**: An agent inside the "Communication Realm" cannot see or modify data in the "Financial Realm" unless a cross-realm bridge exists.
 - **Ontology Awareness**: Agent prompts are enriched with the "Realm Context," allowing them to understand the specific semantics and domain objects of their inhabitancy.
+
+---
+
+## 4. Realm Transition: The Context Hot-Swap
+
+When a user or the system triggers a Realm Switch (e.g., via `/realm switch`), the `RealmManager` orchestrates a multi-phase transition to align the OSGi environment with the target universe's manifest.
+
+### Phase 1: Hierarchy Resolution
+The manager resolves the recursive `extends` chain. 
+- **Example**: `work` -> `foundation` -> `core`.
+- The result is a **Layer Stack**, where `core` is the base and the specific `realm` is the tip.
+
+### Phase 2: Ontological Intersection
+The manager aggregates all `domainObjects` defined across the layer stack.
+- It notifies the **Domain Object Registry** to filter the visible universe.
+- Blueprints not present in the "Ontological Horizon" of the realm are hidden from the UI and CLI.
+
+### Phase 3: Layered Bundle Surge (The "Sticky" Reconciliation)
+This is the most critical phase where the system's "bits and bytes" are aligned. To prevent redundant restarts, the manager uses a **Sticky reconciliation guard**.
+
+1.  **Identity Normalization**: The manager maps manifest BSNs (e.g., `@neverplayed/shell-cli`) to their physical counterparts (e.g., `org.neverplayed.shell-cli`) to ensure consistent identity matching.
+2.  **State Resilience**: Before initiating an install, the system checks if an identical bundle is already `ACTIVE` (handling both numeric `32` and string `"ACTIVE"` states).
+3.  **Surge Action**: 
+    - **STICKY**: If an identical bundle is active, it is skipped. This preserves its registered services and CLI commands.
+    - **NEW**: If not found or in a lower state, it is installed and started incrementally.
+
+### Phase 4: Privilege & Policy Injection
+- **Tier -1 Persistence**: The `PersistenceResolver` is updated with realm-specific overrides (e.g., "In this realm, all `secure-note` objects MUST stay in `local` storage").
+- **Admin Elevation**: If the current user is listed in `privileges["realm-admins"]`, the system injects the `realm-admin` attribute into the session.
+
+### Phase 5: The "Talkative" Stepper & Healing
+Because context shifts are high-risk operations, the `RealmManager` provides an **Interactive Stepper** mode (`--step` flag):
+- **Milestones**: Resolves the plan and pauses for user review before applying the "Surge."
+- **Healing Pass**: After activation, the manager re-registers its own CLI commands to ensure management tools are always available, even if a core layer was re-shuffled.
+
+---
+
+## 6. The Unloading Strategy: Manifest-Driven Reconciliation
+
+NPRF transitions use a **Surge Plan** to add capabilities and a **Purge Protocol** to maintain context purity. To ensure determinism, we follow a **Declarative Set-Based Reconciliation** strategy.
+
+### 6.1 The Single Source of Truth
+The target realm manifest (including its `extends` chain) is the absolute definition of what bundles *should* be active. 
+
+- **Explicit Inclusion**: If a bundle from another realm (e.g., `real-life`) is needed in the current realm (e.g., `work`), it must be explicitly listed in the target's `bundles` array.
+- **Total Reconciliation**: Any bundle currently `ACTIVE` that is not part of the target manifest's tree is considered "Orphaned" and must be removed.
+
+### 6.2 Reconciliation Set Logic
+During a transition from `Realm A` to `Realm B`, the `RealmManager` performs the following set operations:
+
+| Set Operation | Logic | NPRF Phase | Result |
+| :--- | :--- | :--- | :--- |
+| **Intersection** | `Active ∩ Target` | **STICKY** | Bundles remain active. No flicker. |
+| **Difference (Add)** | `Target - Active` | **SURGE** | New bundles are installed and started. |
+| **Difference (Rem)** | `Active - Target` | **PURGE** | Orphaned bundles are stopped and uninstalled. |
+
+### 6.3 Benefits of Explicit Composition
+- **Determinism**: The framework state is reproducible from the manifest alone, regardless of the transition path.
+- **Horizontal Isolation**: Switching from `real-life` to `work` automatically cleans up personal tools unless they are intentionally "Whitelisted" in the work manifest.
+- **Semantic Purity**: Prevents "Ghost Services" and registry pollution from previous sessions.
+
+### 6.4 The "Purge" Protocol (Phase 6 Implementation)
+The future `RealmManager` cleanup phase will follow this lifecycle:
+1.  **Exclusion Sweep**: Management bundles (`realm-manager`, `shell-cli`) are marked as protected.
+2.  **Dependency-Aware Stop**: Orphaned bundles are stopped in reverse-order of their IDs (or discovery order) to prevent service lookup errors during shutdown.
+3.  **Registry Unbinding**: Bundles are uninstalled, clearing their registered services and CLI commands from the context.

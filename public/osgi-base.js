@@ -1,4 +1,15 @@
-import { FLOW_SERVICE as _FLOW_SERVICE, LOG_SERVICE, CONFIG_ADMIN_SERVICE, PERSISTENCE_MANAGER_SERVICE, LIMES_SERVICE, AUTH_SHIELD_SERVICE, PLEXUS_ENGINE_SERVICE, SESSION_SERVICE } from "core-types";
+import { 
+    FLOW_SERVICE as _FLOW_SERVICE, 
+    LOG_SERVICE, 
+    CONFIG_ADMIN_SERVICE, 
+    PERSISTENCE_MANAGER_SERVICE, 
+    LIMES_SERVICE, 
+    AUTH_SHIELD_SERVICE, 
+    PLEXUS_ENGINE_SERVICE, 
+    SESSION_SERVICE,
+    BUNDLE_STATE_ACTIVE,
+    BUNDLE_STATUS_ACTIVE
+} from "core-types";
 console.log("DEBUG: osgi-base.js loaded");
 
 /**
@@ -13,6 +24,28 @@ export class BaseActivator {
         this.persistence = null;
         this.bsn = "unknown";
         this.isHeadless = !!globalThis.Deno || !globalThis.document?.body;
+    }
+
+    /**
+     * isBundleActive
+     * Resiliently checks if a bundle is in the ACTIVE state (handles numbers and strings).
+     */
+    static isBundleActive(bundle) {
+        if (!bundle || typeof bundle.getState !== 'function') return false;
+        const state = bundle.getState();
+        return state === BUNDLE_STATE_ACTIVE || state === BUNDLE_STATUS_ACTIVE;
+    }
+
+    /**
+     * normalizeBSN
+     * Standardizes BSNs to a point-separated format for robust comparison.
+     * Maps @neverplayed/foo to org.neverplayed.foo
+     */
+    static normalizeBSN(bsn) {
+        if (!bsn) return "";
+        return bsn
+            .replace(/^@neverplayed\//, "org.neverplayed.")
+            .replace(/\//g, ".");
     }
 
     /**

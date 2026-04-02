@@ -86,6 +86,15 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                // Update ID/Label if provided in values from the metadata form
                if (values && values.symbolic_name) this._draftSpec.id = values.symbolic_name;
                if (values && values.name) this._draftSpec.label = values.name;
+               
+               // Map Persistence Metadata
+               if (values) {
+                   if (!this._draftSpec.domainObject) this._draftSpec.domainObject = {};
+                   if (!this._draftSpec.domainObject.persistence) this._draftSpec.domainObject.persistence = {};
+                   
+                   if (values.persistence_tier) this._draftSpec.domainObject.persistence.tier = values.persistence_tier;
+                   if (values.persistence_bucket) this._draftSpec.domainObject.persistence.bucket = values.persistence_bucket;
+               }
 
                ingestionSvc.ingest(this._draftSpec, { persist: true, source: 'visual-editor' });
                alert(`Blueprint [${this._draftSpec.id}] saved and registered! Check your Dashboard.`);

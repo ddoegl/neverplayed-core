@@ -1404,3 +1404,76 @@ Ontology, the three primary state services follow a **Reactive Downward Flow**.
    Service**. When the focus shifts (e.g., new License selected), the Global
    State triggers the reactive refresh of domain data and permission
    evaluations.
+
+---
+
+## 34. Bundle Identity & State Resilience (Sticky Bundles)
+
+To ensure architectural stability during "Context Hot-Swaps" (Realm Transitions), the framework enforces strict **Identity Normalization** and **State Resilience**. This prevents redundant bundle restarts ("Shuffling") and "Invalid Context" errors caused by signature mismatches.
+
+### 1. Identity Normalization (BSN Mapping)
+
+Different subsystems may refer to the same bundle using different naming conventions (e.g., Folder name `org.neverplayed.shell-cli` vs. Manifest BSN `@neverplayed/shell-cli`).
+
+**The Rule**: Always use `BaseActivator.normalizeBSN(bsn)` when comparing bundle identities.
+- It transforms `@neverplayed/` prefixes and `/` separators into a standardized `org.neverplayed.` point-separated format.
+- **Goal**: Ensures that `org.neverplayed.foo` and `@neverplayed/foo` are recognized as the same logical entity.
+
+### 2. State Resilience (Active Duality)
+
+Pandino bundle states can be represented as numeric constants (`32`) or string literals (`"ACTIVE"`), depending on the retrieval context and proxying.
+
+**The Rule**: Never use strict numeric equality like `bundle.getState() === 32`.
+- **Solution**: Use the static helper `BaseActivator.isBundleActive(bundle)`.
+- It handles the "Numeric vs. String" duality safely and refers to the centralized `BUNDLE_STATE_ACTIVE` constant in `core-types.js`.
+
+### 3. Implementation Pattern (Reconciliation Guard)
+
+When iterating through a list of candidate bundles for activation (e.g., during a Realm Switch), use the following "Sticky" pattern:
+
+```javascript
+const existing = activeBundles.find(b => {
+    const obsn = b.getSymbolicName();
+    return BaseActivator.normalizeBSN(obsn) === BaseActivator.normalizeBSN(candidateBSN);
+});
+
+if (existing && BaseActivator.isBundleActive(existing)) {
+    // Identity & State match. This bundle is STICKY. 
+    // Skip activation to preserve its running services and CLI commands.
+    return 'SKIP';
+}
+```
+
+### Benefits
+- **Zero Downtime**: Core infrastructure (Logs, Shell, Auth) remains active during universe shifts.
+- **Command Integrity**: Prevents "lost commands" in the CLI by avoiding unnecessary bundle unregistrations.
+- **State Preservation**: Avoids resetting local volatile state in active activators.
+
+---
+
+## 35. The Realm Transition Protocol (Context Hot-Swap)
+
+The NPRF framework manages universe transitions through a multi-phase **Surge Plan**. This protocol ensures that Layer 1 (Infrastructure) remains stable while Layer 4 (Applications) and Layer 5 (Contexts) are swapped.
+
+### 35.1 The 4-Phase Lifecycle
+
+1.  **RESOLVED**: The target hierarchy is flattened (Layer 1 -> 2 -> 3).
+2.  **FILTERED**: Ontology guards apply Layer 5 rules (Domain Object visibility).
+3.  **RECONCILED**: The "Sticky Reconciliation Guard" identifies existing active bundles to preserve.
+4.  **ACTIVATED**: The Delta (New - Sticky) is installed and started incrementally.
+
+### 35.2 Layered Synchronization
+
+| Layer | Stability | Transition Action |
+| :--- | :--- | :--- |
+| **L1: Infrastructure** | **IMMUTABLE** | Always **STICKY**. Never restarted during a switch. |
+| **L2: Foundation** | **PERSISTENT** | Usually **STICKY** unless the target realm requires a higher version. |
+| **L3: Universe** | **VOLATILE** | These are the **NEW** bundles being surged into the context. |
+| **L4: Application** | **DYNAMIC** | Re-configured or re-injected based on the target Universe. |
+| **L5: Context** | **ACTIVE** | The active `realm-manifest` currently occupying the Shell. |
+
+### 35.3 Usage: Interactive Transitions
+
+For high-risk environments, developers should use the **Interactive Stepper**:
+- Use `--step` to pause at the RECONCILED phase.
+- Use `/realm next` to advance through Ontology Filtering into final Activation.

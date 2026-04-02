@@ -1,0 +1,6 @@
+{
+    "Bundle-SymbolicName": "@neverplayed/persistence-resolver",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "./activator.js",
+    "description": "Orchestrates the 5-layer persistence resolution hierarchy."
+}

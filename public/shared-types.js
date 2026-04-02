@@ -63,6 +63,9 @@ export const SCA_METHODS_SERVICE = "@neverplayed/backoffice/sca/methods";
 export const EMAIL_DATA_SERVICE = "@neverplayed/backoffice/email/data";
 export const TERMINAL_STATE_SERVICE = "@neverplayed/backoffice/terminal/state";
 export const REALM_MANAGER_SERVICE = "@neverplayed/realm-manager/service";
+export const PERSISTENCE_RESOLVER_SERVICE = "@neverplayed/persistence/resolver";
+export const SHELL_COMMAND_SERVICE = "@neverplayed/shell-command-service";
+export const REALM_STORAGE_PID = "realm.active";
 
 // Config PIDs
 export const REALM_CONFIG_PID = "@neverplayed/realm-manager";

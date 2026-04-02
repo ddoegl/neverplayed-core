@@ -123,6 +123,7 @@ export default class Activator {
     }
 
     _getPreferredTierForKey(key) {
+        if (key.startsWith("realm.")) return "local";
         if (key.startsWith("security.")) return "volatile";
         if (key.startsWith("identities.")) return "local";
         if (key.startsWith("config.")) return "cloud";

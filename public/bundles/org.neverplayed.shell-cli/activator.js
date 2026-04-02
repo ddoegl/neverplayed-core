@@ -3,7 +3,14 @@ import {
     SHELL_CLI_SERVICE,
     SHELL_COMMAND_SERVICE,
     FLOW_SERVICE,
-    SESSION_SERVICE
+    SESSION_SERVICE,
+    BUNDLE_STATE_UNINSTALLED,
+    BUNDLE_STATE_INSTALLED,
+    BUNDLE_STATE_RESOLVED,
+    BUNDLE_STATE_STARTING,
+    BUNDLE_STATE_STOPPING,
+    BUNDLE_STATE_ACTIVE,
+    REALM_MANAGER_SERVICE
 } from "core-types";
 import { CoreActivator } from "osgi-base";
 
@@ -27,14 +34,14 @@ const CORE_COMMANDS = [
 ];
 
 export default class Activator extends CoreActivator {
-    onCoreStart(context) {
+    onCoreStart(_context) {
         this.history = [];
         this.logCounter = 0;
         this.listeners = new Set();
         this.commands = new Map();
 
         const shellService = {
-            execute: (input) => this.handleCommand(input, context),
+            execute: (input) => this.handleCommand(input, this.context),
             subscribe: (listener) => {
                 this.listeners.add(listener);
                 return () => this.listeners.delete(listener);
@@ -46,9 +53,9 @@ export default class Activator extends CoreActivator {
             ].sort()
         };
 
-        context.trackService(`(objectClass=${SHELL_COMMAND_SERVICE})`, {
+        this.context.trackService(`(objectClass=${SHELL_COMMAND_SERVICE})`, {
             addingService: (_ref) => {
-                const cmd = context.getService(_ref);
+                const cmd = this.context.getService(_ref);
                 if (cmd && cmd.name) {
                     this.commands.set(cmd.name, cmd);
                 }
@@ -61,7 +68,15 @@ export default class Activator extends CoreActivator {
             }
         }).open();
 
-        context.registerService(SHELL_CLI_SERVICE, shellService);
+        this.context.trackService(`(objectClass=${REALM_MANAGER_SERVICE})`, {
+            addingService: (ref) => {
+                this.realmManager = this.context.getService(ref);
+                return this.realmManager;
+            },
+            removedService: () => { this.realmManager = null; }
+        }).open();
+
+        this.context.registerService(SHELL_CLI_SERVICE, shellService);
     }
 
     log(content, type = 'output') {
@@ -110,16 +125,17 @@ export default class Activator extends CoreActivator {
         return null;
     }
 
-    async handleCommand(input, context) {
+    async handleCommand(input, _context) {
+        // Use the latest context from the instance if not explicitly provided
+        const ctx = _context || this.context;
         const parts = input.trim().split(/\s+/);
         const commandLine = parts[0].toLowerCase();
         const command = commandLine.startsWith('/') ? commandLine.slice(1) : commandLine;
         const args = parts.slice(1);
         
         try {
-            // Check dynamic commands first
             if (this.commands.has(command)) {
-                await this.commands.get(command).execute(args, context, (msg, type) => this.log(msg, type));
+                await this.commands.get(command).execute(args, ctx, (msg, type) => this.log(msg, type));
                 return;
             }
 
@@ -140,7 +156,7 @@ export default class Activator extends CoreActivator {
 
                 case 'services': {
                     const filter = args[0]?.toLowerCase();
-                    const refs = context.getServiceReferences(null, null) || [];
+                    const refs = ctx.getServiceReferences(null, null) || [];
                     
                     this.log(`Registered Services (${refs.length}):`);
                     refs.sort((a,b) => a.getProperty("service.id") - b.getProperty("service.id")).forEach(ref => {
@@ -157,8 +173,15 @@ export default class Activator extends CoreActivator {
 
                 case 'bundles': {
                     const filterStr = args[0];
-                    const allBundles = context.getBundles().sort((a,b) => a.id - b.id);
-                    const stateMap = { 1: 'UNINSTALLED', 2: 'INSTALLED', 4: 'RESOLVED', 8: 'STARTING', 16: 'STOPPING', 32: 'ACTIVE' };
+                    const allBundles = ctx.getBundles().sort((a,b) => a.id - b.id);
+                    const stateMap = { 
+                        [BUNDLE_STATE_UNINSTALLED]: 'UNINSTALLED', 
+                        [BUNDLE_STATE_INSTALLED]: 'INSTALLED', 
+                        [BUNDLE_STATE_RESOLVED]: 'RESOLVED', 
+                        [BUNDLE_STATE_STARTING]: 'STARTING', 
+                        [BUNDLE_STATE_STOPPING]: 'STOPPING', 
+                        [BUNDLE_STATE_ACTIVE]: 'ACTIVE' 
+                    };
                     
                     let matched = allBundles.filter(b => b.getState() !== 1);
                     if (filterStr) {
@@ -184,7 +207,7 @@ export default class Activator extends CoreActivator {
                             });
                         }
 
-                        const allRefs = context.getServiceReferences(null, null) || [];
+                        const allRefs = ctx.getServiceReferences(null, null) || [];
                         const useSvc = allRefs.filter(ref => {
                             const using = ref.getUsingBundles() || [];
                             return using.some(ub => ub.getSymbolicName() === b.getSymbolicName());
@@ -219,7 +242,7 @@ export default class Activator extends CoreActivator {
                         this.log("Usage: /props [serviceId]", 'error');
                         return;
                     }
-                    const ref = this.resolveServiceRef(serviceId, context);
+                    const ref = this.resolveServiceRef(serviceId, ctx);
                     if (!ref) {
                         this.log(` Service not found: ${serviceId}`, 'error');
                         return;
@@ -243,12 +266,12 @@ export default class Activator extends CoreActivator {
                         this.log("Usage: /methods [serviceId]", 'error');
                         return;
                     }
-                    const ref = this.resolveServiceRef(serviceId, context);
+                    const ref = this.resolveServiceRef(serviceId, ctx);
                     if (!ref) {
                         this.log(` Service not found: ${serviceId}`, 'error');
                         return;
                     }
-                    const svc = context.getService(ref);
+                    const svc = ctx.getService(ref);
                     
                     let propertyNames = [];
                     let current = svc;
@@ -297,12 +320,12 @@ export default class Activator extends CoreActivator {
                         this.log("Usage: /call [serviceId] [methodName] [args...]", 'error');
                         return;
                     }
-                    const ref = this.resolveServiceRef(serviceId, context);
+                    const ref = this.resolveServiceRef(serviceId, ctx);
                     if (!ref) {
                         this.log(` Service not found: ${serviceId}`, 'error');
                         return;
                     }
-                    const svc = context.getService(ref);
+                    const svc = ctx.getService(ref);
                     if (typeof svc[methodName] !== 'function') {
                         this.log(` Method not found or not a function: ${methodName}`, 'error');
                         return;
@@ -323,7 +346,7 @@ export default class Activator extends CoreActivator {
 
                 case 'flows': {
                     const filter = args[0]?.toLowerCase();
-                    const refs = context.getServiceReferences(FLOW_SERVICE, null) || [];
+                    const refs = ctx.getServiceReferences(FLOW_SERVICE, null) || [];
                     this.log(`Registered Flows (${refs.length}):`);
                     refs.forEach(ref => {
                         const id = ref.getProperty("flow.id") || "unknown";
@@ -336,7 +359,7 @@ export default class Activator extends CoreActivator {
                 }
 
                 case 'caps': {
-                    const refs = context.getServiceReferences(null, null) || [];
+                    const refs = ctx.getServiceReferences(null, null) || [];
                     const caps = [...new Set(refs.map(r => r.getProperty("capability")).filter(c => typeof c === 'string' && c !== 'none'))].sort();
                     this.log({ text: `Active Capabilities (${caps.length}):`, color: 'blue', bold: true });
                     caps.forEach(c => this.log({ text: ` - ${c}`, color: 'cyan' }));
@@ -345,12 +368,12 @@ export default class Activator extends CoreActivator {
 
                 case 'whoami':
                 case 'auth': {
-                    const sessionRef = context.getServiceReference(SESSION_SERVICE);
+                    const sessionRef = ctx.getServiceReference(SESSION_SERVICE);
                     if (!sessionRef) {
                         this.log("Session Service not found.", 'error');
                         return;
                     }
-                    const session = context.getService(sessionRef);
+                    const session = ctx.getService(sessionRef);
                     const user = session.currentUser;
                     
                     if (!user || user.id === 'guest') {
@@ -383,7 +406,16 @@ export default class Activator extends CoreActivator {
 
                     const target = args[0];
                     if (!target) return;
-                    const targets = context.getBundles().filter(b => String(b.id) === target || b.getSymbolicName() === target);
+
+                    if (command === 'uninstall' && this.realmManager) {
+                        try {
+                            await this.realmManager.uninstallManualBundle(target);
+                            this.log(`Success: uninstalled ${target} (Inhabitant Layer updated)`);
+                        } catch (err) { this.log(`Uninstall failed: ${err.message}`, 'error'); }
+                        return;
+                    }
+
+                    const targets = ctx.getBundles().filter(b => String(b.id) === target || b.getSymbolicName() === target);
                     for (const b of targets) {
                          try {
                             if (command === 'start') await b.start();
@@ -416,9 +448,14 @@ export default class Activator extends CoreActivator {
                         }
                     }
                     try {
-                        const b = await context.installBundle(url);
-                        this.log(`Success: Installed bundle #${b.id} (${b.getSymbolicName()})`);
-                        if (b.getState() < 32) await b.start();
+                        if (this.realmManager) {
+                            const b = await this.realmManager.installManualBundle(url);
+                            this.log(`Success: Installed bundle #${b.id} (${b.getSymbolicName()}) into Inhabitant Layer.`);
+                        } else {
+                            const b = await ctx.installBundle(url);
+                            this.log(`Success: Installed bundle #${b.id} (${b.getSymbolicName()})`);
+                            if (b.getState() < 32) await b.start();
+                        }
                     } catch (err) { this.log(`Installation failed: ${err.message}`, 'error'); }
                     break;
                 }
