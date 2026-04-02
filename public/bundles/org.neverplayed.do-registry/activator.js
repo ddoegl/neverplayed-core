@@ -5,7 +5,6 @@ import {
     LIMES_SERVICE, 
     EVALUATOR_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
-    LOG_SERVICE,
     DO_INSTANCES_PID,
     FLOW_SERVICE,
     SESSION_SERVICE,
@@ -107,7 +106,6 @@ export default class Activator extends BaseActivator {
         const context = this.context;
         const pm = this._persistenceManager;
         const yaml = this._yamlService;
-        const logger = this.logger;
 
         // A. Seed Static Strategies
         const strategiesPath = this.resolveResource("data/strategies.yaml");
