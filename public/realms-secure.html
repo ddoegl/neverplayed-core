@@ -282,6 +282,8 @@
 
         async switchRealm(id) {
           this.open = false;
+          const context = globalThis.pandinoContext;
+          if (!context) return;
           const rm = context.getService(
             context.getServiceReference(REALM_MANAGER_SERVICE),
           );

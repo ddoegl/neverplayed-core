@@ -335,6 +335,7 @@ class UIFactory extends HTMLElement {
             globalThis.__UI_FACTORY_REGISTRY.set(this._id, this._state);
         }
 
+        // 2.1 Critical Sync: Ensure x-data is set BEFORE children are injected
         this.setAttribute('data-uif-id', this._id);
         this.setAttribute('x-data', `globalThis.__UI_FACTORY_REGISTRY.get('${this._id}')`);
         
@@ -345,11 +346,13 @@ class UIFactory extends HTMLElement {
         body.className = 'uif-body flex flex-col gap-4'; 
         root.appendChild(body);
         
+        // 2.2 Atomic Swap: Clear existing content (if any) and inject the root
         this.innerHTML = "";
-        this.appendChild(root);
-        
         this.container = body;
         this.hydrateBody(body, ui);
+
+        // Append the prepared tree
+        this.appendChild(root);
 
         // Append styles only once
         if (!this.querySelector('style.uif-styles')) {
@@ -1252,7 +1255,7 @@ class UIFactory extends HTMLElement {
                     const decodedPath = temp.textContent;
 
                     const escapedPath = decodedPath.replace(/'/g, "\\'"); // Single backslash for setAttribute
-                    span.setAttribute('x-text', `((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))(uifResolve('${escapedPath}'))`);
+                    span.setAttribute('x-text', `((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))($uifResolve('${escapedPath}'))`);
                 }
             });
         }
@@ -1353,6 +1356,33 @@ class UIFactory extends HTMLElement {
 
 if (!customElements.get("ui-factory")) {
     customElements.define("ui-factory", UIFactory);
+}
+
+// --- Alpine Magic Registration: $uifResolve (Global Shield) ---
+if (globalThis.Alpine && !globalThis.Alpine._uifResolveRegistered) {
+    globalThis.Alpine.magic('uifResolve', (el, { Alpine }) => {
+        return (expr) => {
+            // 1. Try to find local uifResolve in Alpine data stack
+            const dataStack = Alpine.closestDataStack(el);
+            for (const scope of dataStack) {
+                if (typeof scope.uifResolve === 'function') {
+                    return scope.uifResolve(expr);
+                }
+                // Fallback: If it's a proxy for uifValues, check the factory bridge
+                if (scope.uifId) {
+                    const factory = document.querySelector(`ui-factory[data-uif-id="${scope.uifId}"]`);
+                    if (factory?._state?.uifResolve) return factory._state.uifResolve(expr);
+                }
+            }
+            // 2. Fallback: Search for nearest UIFactory component in DOM
+            const factoryEl = el.closest('ui-factory');
+            if (factoryEl?._state?.uifResolve) {
+                return factoryEl._state.uifResolve(expr);
+            }
+            return undefined;
+        };
+    });
+    globalThis.Alpine._uifResolveRegistered = true;
 }
 
 export default UIFactory;
