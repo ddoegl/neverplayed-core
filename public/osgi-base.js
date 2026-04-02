@@ -45,7 +45,8 @@ export class BaseActivator {
         if (!bsn) return "";
         return bsn
             .replace(/^@neverplayed\//, "org.neverplayed.")
-            .replace(/\//g, ".");
+            .replace(/\//g, ".")
+            .replace(/-/g, ".");
     }
 
     /**
@@ -96,6 +97,13 @@ export class BaseActivator {
         const caRef = context.getServiceReference(CONFIG_ADMIN_SERVICE);
         if (caRef) {
             const ca = context.getService(caRef);
+            
+            // 2.1 Proactive Push: Register manifest configuration if it exists
+            if (Object.keys(this.config).length > 0) {
+                const config = ca.getConfiguration(this.bsn);
+                config.update(this.config);
+            }
+
             const persistentConfig = ca.getConfiguration(this.bsn).getProperties();
             if (persistentConfig) {
                 this.config = { ...this.config, ...persistentConfig };

@@ -12,6 +12,11 @@ export default class Activator extends BaseActivator {
     _bsnCache = new Map(); // url -> bsn
     _manualBSNs = new Set();
     _pendingTransition = null; 
+    _instanceId = Math.random().toString(36).substring(7);
+    _orderedRealmIds = []; // For numeric switching
+    _discoveryPromise = null;
+    _recoveryPromise = null;
+    _isRecovering = false;
 
     onStart(context) {
         // 1. Initialize Logger
@@ -19,50 +24,137 @@ export default class Activator extends BaseActivator {
             addingService: (ref) => {
                 const svc = context.getService(ref);
                 this.logger = svc.getLogger("neverplayed.realm-manager");
-                this.logger.info("Realm Manager: Connected to System Logger. Orchestration Bridge ready.");
+                this.logger.info(`Realm Manager: Bridge Active [ID: ${this._instanceId}]. Configuration synchronized.`);
                 return svc;
             }
         }).open();
         
-        // 1.2 Track Session Service
+        // 1.2 Track Session Service (Late-Join Sync)
         context.trackService(`(objectClass=${SESSION_SERVICE})`, {
             addingService: (ref) => {
                 this.session = context.getService(ref);
                 this.logger?.info("Realm Manager: Connected to Session Service. Privilege Injection active.");
+                
+                // Late-Join Sync: If realm active OR pending transition, push attributes
+                const targetId = this._activeRealmId || this._pendingTransition?.id;
+                if (targetId) {
+                    this._syncPrivileges(targetId);
+                }
                 return this.session;
             }
         }).open();
 
-        // 1.3 Track Persistence for State Recovery
+        // 1.3 Discovery & Handshake State
+        this._discoveryPromise = this._discoverRealms();
+        this._recoveryPromise = this._recoverState(context);
+
+        // 1.4 Persistence Tracker (Double-Trigger Recovery)
         context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
             addingService: (ref) => {
                 this._persistence = context.getService(ref);
-                this._recoverState(context);
+                this._recoveryPromise = this._recoverState(context);
                 return this._persistence;
             },
             removedService: () => { this._persistence = null; }
         }).open();
 
-        // 1.4 Track Registry for Ontological Intersection
+        // 1.5 Track Registry for Ontological Intersection
         context.trackService(`(objectClass=${DOMAIN_OBJECT_REGISTRY_SERVICE})`, {
             addingService: (ref) => { this._registry = context.getService(ref); return this._registry; },
             removedService: () => { this._registry = null; }
         }).open();
 
-        // 2. Register Foundation Service
+        // 2. Register Unified Service interface
         this.context.registerService(REALM_MANAGER_SERVICE, {
             registerRealm: (manifest) => this._registerRealm(manifest),
-            switchRealm: (id, interactive = false) => this._switchRealm(this.context, id, interactive),
+            switchRealm: (id, interactive = false) => {
+                const targetId = isNaN(id) ? id : this._orderedRealmIds[parseInt(id) - 1];
+                return this._switchRealm(this.context, targetId, interactive);
+            },
             nextStep: () => this._nextStep(),
-            installManualBundle: (url) => this._installManualBundle(url),
-            uninstallManualBundle: (target) => this._uninstallManualBundle(target),
+            abort: () => { this._pendingTransition = null; },
             getTransitionStatus: () => this._pendingTransition ? { ...this._pendingTransition, context: undefined } : null,
             getActiveRealm: () => this._activeRealmId,
-            getRealms: () => Array.from(this._realms.values())
+            getRealms: () => Array.from(this._realms.values()),
+            getOrderedRealms: () => this._orderedRealmIds.map(id => this._realms.get(id)),
+            waitReady: async () => {
+                if (this._discoveryPromise) await this._discoveryPromise;
+                if (this._recoveryPromise) await this._recoveryPromise;
+                return true;
+            },
+            installManualBundle: (url) => this._installManualBundle(url),
+            uninstallManualBundle: (target) => this._uninstallManualBundle(target)
         });
         this._registerCLI(context);
 
         this.logger?.info("Realm Manager: Registered Core Service and CLI Engine.");
+    }
+
+    async _discoverRealms() {
+        try {
+            // 1. Fetch Environment (for Provider Injection)
+            const envResp = await fetch("./env.json");
+            const envConfig = envResp.ok ? await envResp.json() : { persistence_mode: "local" };
+            const isFirebase = envConfig.persistence_mode === "firebase";
+
+            // 2. Fetch Discovery Index
+            const resp = await fetch("./realms/index.json");
+            if (!resp.ok) return;
+            const files = await resp.json();
+            
+            for (const file of files) {
+                try {
+                    const r = await fetch(`./realms/${file}`);
+                    if (r.ok) {
+                        const manifest = await r.json();
+                        
+                        // 3. Provider Injection (Rule 1: Patch Core Universe)
+                        if (manifest.id === "org.neverplayed.realm.core") {
+                            // Defensive Initializer: Ensure bundles array exists
+                            manifest.bundles = Array.isArray(manifest.bundles) ? manifest.bundles : [];
+                            
+                            if (isFirebase) {
+                                manifest.bundles.push("./bundles/org.neverplayed.persistence-firebase/manifest.json");
+                            } else {
+                                manifest.bundles.push("https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json");
+                                manifest.bundles.push("./bundles/org.neverplayed.persistence-fs-sync/manifest.json");
+                            }
+                        }
+                        
+                        this._registerRealm(manifest);
+                    }
+                } catch (_e) { /* skip failed files */ }
+            }
+            this.logger?.info(`Realm Manager: Discovered ${this._orderedRealmIds.length} worlds via dynamic manifest.`);
+        } catch (err) {
+            this.logger?.error("Failed to discover realms:", err.message);
+        }
+    }
+
+
+    _syncPrivileges(realmId) {
+        if (!this.session) return;
+        
+        const manifest = this._realms.get(realmId);
+        if (!manifest || !manifest.privileges || !manifest.privileges["realm-admins"]) return;
+
+        const currentUser = this.session.scopedUsers?.["global"]?.id || this.session.currentUser?.id;
+        const isAdmin = manifest.privileges["realm-admins"].includes(currentUser);
+        
+        if (isAdmin) {
+            this.logger?.info(`Realm Manager: Elevated privileges for '${currentUser}' in '${realmId}'. Injecting 'realm-admin'.`);
+            
+            // Identity Guard: Ensure scopedUsers and global entry are initialized
+            if (!this.session.scopedUsers) this.session.scopedUsers = {};
+            if (!this.session.scopedUsers["global"]) this.session.scopedUsers["global"] = { id: currentUser };
+            
+            this.session.scopedUsers["global"].attributes = this.session.scopedUsers["global"].attributes || {};
+            this.session.scopedUsers["global"].attributes["realm-admin"] = true;
+        } else {
+            if (this.session.scopedUsers?.["global"]?.attributes) {
+                delete this.session.scopedUsers["global"].attributes["realm-admin"];
+            }
+        }
     }
 
     _registerCLI(_context) {
@@ -79,14 +171,23 @@ export default class Activator extends BaseActivator {
                 const activeId = this._activeRealmId;
 
                 if (sub === 'list') {
-                    const realms = Array.from(this._realms.values());
+                    const realms = this._orderedRealmIds.map(id => this._realms.get(id));
                     log({ text: `Available Realms (${realms.length}):`, color: 'blue', bold: true });
-                    realms.forEach(r => {
+                    realms.forEach((r, idx) => {
                         const marker = r.id === activeId ? ' (ACTIVE) 🌌' : '';
-                        log(` - ${r.id.padEnd(30)} | ${r.title}${marker}`);
+                        log(` [${idx + 1}] ${r.id.padEnd(30)} | ${r.title}${marker}`);
                     });
                 } else if (sub === 'switch' && args[1]) {
-                    const targetId = args[1];
+                    const target = args[1];
+                    let targetId = target;
+                    if (!isNaN(target)) {
+                        targetId = this._orderedRealmIds[parseInt(target) - 1];
+                    }
+                    
+                    if (!targetId || !this._realms.has(targetId)) {
+                        return log(`Universe not found: ${target}`, 'error');
+                    }
+
                     const interactive = args.includes('--step');
                     try {
                         const result = await this._switchRealm(ctx, targetId, interactive);
@@ -135,23 +236,73 @@ export default class Activator extends BaseActivator {
                     this._pendingTransition = null;
                     log({ text: "Transition aborted. Framework remains in previous state.", color: "orange" });
                 } else if (sub === 'info') {
-                    const manifest = this._realms.get(this._activeRealmId);
-                    if (!manifest) return log("No universe currently occupies this context.", 'error');
-                    
-                    log({ text: `Context: ${manifest.title}`, color: 'blue', bold: true });
-                    log(` ID: ${manifest.id}`);
-                    
+                    // 1. Inhabitant Layer (Personal Tools) - ALWAYS VISIBLE
                     if (this._manualBSNs.size > 0) {
-                        log({ text: ` --- Inhabitant Layer (User Managed) ---`, color: 'magenta' });
-                        this._manualBSNs.forEach(bsn => log(` - ${bsn}`));
+                        log({ text: ` --- Inhabitant Layer (Personal Tools) ---`, color: 'magenta' });
+                        this._manualBSNs.forEach(norm => {
+                            const b = this.context.getBundles().find(b => BaseActivator.normalizeBSN(b.getSymbolicName()) === norm);
+                            const rawInfo = b ? ` (${b.getSymbolicName()})` : '';
+                            log(`   - ${norm}${rawInfo}`);
+                        });
+                    } else {
+                        log({ text: " --- Inhabitant Layer (Personal Tools) ---", color: 'magenta' });
+                        log("   [Empty]");
                     }
                     
+                    // 2. Pending Transitions - ALWAYS VISIBLE
                     if (this._pendingTransition) {
                         log({ text: ` --- PENDING TRANSITION ---`, color: 'yellow' });
                         log(` Target: ${this._pendingTransition.id}`);
                         log(` Phase: ${this._pendingTransition.currentPhase}`);
-                        log(` Delta: ${this._pendingTransition.surgePlan.toInstall.length} installs.`);
+                        log(` Delta: ${this._pendingTransition.surgePlan.toInstall.length} Surge, ${this._pendingTransition.surgePlan.toPurge.length} Purge.`);
                     }
+
+                    // 3. Universe Layers (Only if active)
+                    const manifest = this._realms.get(this._activeRealmId);
+                    if (!manifest) {
+                         log({ text: " --- Universe Layers ---", color: 'blue' });
+                         log("   [No realm active]");
+                         return;
+                    }
+                    
+                    const hierarchy = await this._resolveHierarchy(this._activeRealmId);
+                    
+                    log({ text: `🌌 Active Context: ${manifest.title}`, color: 'blue', bold: true });
+                    log(` ID: ${manifest.id}`);
+                    
+                    log({ text: ` --- Layers (Hierarchy) ---`, color: 'cyan' });
+                    hierarchy.map(h => h.id).reverse().forEach((id, idx) => {
+                        const prefix = idx === 0 ? '📍 ' : '   ';
+                        log(`${prefix}${id}`);
+                    });
+
+                    // 4. Ontology (Domain Objects)
+                    const aggregatedDOs = [];
+                    for (const layer of hierarchy) {
+                        if (layer.domainObjects) {
+                            layer.domainObjects.forEach(d => {
+                                if (!aggregatedDOs.some(ad => ad.id === d.id)) aggregatedDOs.push(d);
+                            });
+                        }
+                    }
+                    if (aggregatedDOs.length > 0) {
+                        log({ text: ` --- Ontological Horizon (Domain Objects) ---`, color: 'yellow' });
+                        log(` Total Blueprints: ${aggregatedDOs.length}`);
+                        aggregatedDOs.map(d => d.id).sort().forEach(id => log(`   - ${id}`));
+                    }
+                    
+                    // 5. Manifest Bundles
+                    const manifestBSNs = new Set();
+                    for (const layer of hierarchy) {
+                        if (layer.bundles) {
+                            for (const url of layer.bundles) {
+                                const bsn = await this._getBsn(url);
+                                manifestBSNs.add(BaseActivator.normalizeBSN(bsn));
+                            }
+                        }
+                    }
+                    log({ text: ` --- Component Stack (Manifest Bundles) ---`, color: 'green' });
+                    log(` Total Manifest Bundles: ${manifestBSNs.size}`);
                 } else {
                     log("Usage: /realm <list|switch [id] [--step]|next|abort|info>");
                 }
@@ -160,27 +311,65 @@ export default class Activator extends BaseActivator {
     }
 
     async _recoverState(context) {
-        if (!this._persistence) return;
-        
-        // 1. Recover Manual Bundles (Inhabitant Layer)
-        const manualUrls = await this._persistence.load("realm-manager.manual-bundles") || [];
-        for (const url of manualUrls) {
-            try { 
-                await this._installManualBundle(url); 
-            } catch (_e) { /* ignore */ }
-        }
+        // 1. Wait for Discovery! (Orchestration V2)
+        if (this._discoveryPromise) await this._discoveryPromise;
 
-        // 2. Recover Active Realm
-        const lastRealmId = await this._persistence.load(REALM_STORAGE_PID);
-        if (lastRealmId && this._realms.has(lastRealmId)) {
-            this.logger.info(`Realm Manager: Recovering Context -> '${lastRealmId}'...`);
-            await this._switchRealm(context, lastRealmId);
+        // 2. Orchestration Shield: Double-trigger and re-entry lock
+        if (this._isRecovering || this._activeRealmId) return; 
+        this._isRecovering = true;
+
+        try {
+            // 3. Stateless Fallback for Catch-22 (Cold Boot)
+            let lastRealmId = null;
+            if (this._persistence) {
+                // Wait for Persistence Readiness
+                if (typeof this._persistence.waitReady === 'function') {
+                    try { await this._persistence.waitReady(); } catch (_e) { /* ignore */ }
+                }
+                lastRealmId = await this._persistence.load(REALM_STORAGE_PID);
+            } else {
+                // Direct LocalStorage fallback before service is active
+                try {
+                    lastRealmId = localStorage.getItem(REALM_STORAGE_PID);
+                    if (lastRealmId) lastRealmId = lastRealmId.replace(/^"|"$/g, ''); // unquote if stored as JSON
+                } catch (_e) { /* ignore */ }
+            }
+
+            // 4. Recover Manual Bundles (Inhabitant Layer)
+            if (this._persistence) {
+                const manualUrls = await this._persistence.load("realm-manager.manual-bundles") || [];
+                if (manualUrls.length > 0) {
+                    this.logger?.info(`[RealmManager] Recovering ${manualUrls.length} inhabitant bundles...`);
+                    for (const url of manualUrls) {
+                        try { await this._installManualBundle(url); } catch (_e) { /* ignore */ }
+                    }
+                }
+            }
+
+            // 5. Recover Active Realm
+            lastRealmId = this._persistence 
+                ? await this._persistence.load(REALM_STORAGE_PID) 
+                : lastRealmId;
+                
+            if (lastRealmId && this._realms.has(lastRealmId)) {
+                this.logger.info(`Realm Manager: Recovering Context -> '${lastRealmId}'...`);
+                await this._switchRealm(context, lastRealmId);
+            } else if (this._realms.has("org.neverplayed.realm.real-life")) {
+                // Default Fallback: Real-Life Universe
+                this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to 'org.neverplayed.realm.real-life'...`);
+                await this._switchRealm(context, "org.neverplayed.realm.real-life");
+            }
+        } finally {
+            this._isRecovering = false;
         }
     }
 
     _registerRealm(manifest) {
         if (!manifest.id) throw new Error("Realm manifest must have a unique ID.");
         this._realms.set(manifest.id, manifest);
+        if (!this._orderedRealmIds.includes(manifest.id)) {
+            this._orderedRealmIds.push(manifest.id);
+        }
         this.logger?.info(`Realm Manager: Registered universe '${manifest.id}' (${manifest.title})`);
     }
 
@@ -281,6 +470,8 @@ export default class Activator extends BaseActivator {
             toPurge.push({ bsn, id: b.id, reason: 'Orphaned (Not in target hierarchy)' });
         }
 
+        // 3. Final Plan
+        this.logger?.debug(`[RealmManager] Surge Plan: ${toInstall.length} to install, ${toKeep.length} sticky, ${toPurge.length} orphans.`);
         return { toInstall, toKeep, toPurge };
     }
 
@@ -311,10 +502,14 @@ export default class Activator extends BaseActivator {
 
     async _installManualBundle(url) {
         const bsn = await this._getBsn(url);
+        const normalized = BaseActivator.normalizeBSN(bsn);
+        
+        console.debug(`[RealmManager] Manual install initiated for [${normalized}] from ${url}`);
+        
         const bundle = await this.context.installBundle(url);
         if (bundle.getState() < 32) await bundle.start();
         
-        this._manualBSNs.add(bsn);
+        this._manualBSNs.add(normalized);
         if (this._persistence) {
             const current = await this._persistence.load("realm-manager.manual-bundles") || [];
             if (!current.includes(url)) {
@@ -331,12 +526,13 @@ export default class Activator extends BaseActivator {
         if (!b) throw new Error(`Bundle not found: ${target}`);
         
         const bsn = b.getSymbolicName();
+        const normalized = BaseActivator.normalizeBSN(bsn);
         const urlToMatch = b.getLocation();
 
         await b.stop();
         await b.uninstall();
         
-        this._manualBSNs.delete(bsn);
+        this._manualBSNs.delete(normalized);
         if (this._persistence) {
             const current = await this._persistence.load("realm-manager.manual-bundles") || [];
             const filtered = current.filter(url => url !== urlToMatch);
@@ -371,7 +567,6 @@ export default class Activator extends BaseActivator {
         if (phase === 'ONTOLOGY') {
             this.logger?.info(`Realm Manager: Applying Ontological & Privilege filters...`);
             
-            const manifest = pt.manifest;
             const hierarchy = pt.hierarchy;
 
             // 1.1 Aggregate Domain Objects for Ontological Intersection
@@ -392,20 +587,7 @@ export default class Activator extends BaseActivator {
             }
 
             // 1.4 Inject Realm privileges
-            if (this.session && manifest.privileges && manifest.privileges["realm-admins"]) {
-                const currentUser = this.session.scopedUsers?.["global"]?.id || this.session.currentUser?.id;
-                const isAdmin = manifest.privileges["realm-admins"].includes(currentUser);
-                
-                if (isAdmin) {
-                    this.logger?.info(`Realm Manager: Elevated privileges detected for user '${currentUser}'. Injecting 'realm-admin' attribute.`);
-                    this.session.scopedUsers["global"].attributes = this.session.scopedUsers["global"].attributes || {};
-                    this.session.scopedUsers["global"].attributes["realm-admin"] = true;
-                } else {
-                    if (this.session.scopedUsers["global"]?.attributes) {
-                        delete this.session.scopedUsers["global"].attributes["realm-admin"];
-                    }
-                }
-            }
+            await this._syncPrivileges(pt.id);
 
             pt.currentPhase = 'ONTOLOGY_READY';
             pt.milestone = 'FILTERED';
@@ -426,7 +608,15 @@ export default class Activator extends BaseActivator {
                     const bundle = activeBundles.find(b => b.id === item.id);
                     if (bundle) {
                         try {
-                            this.logger?.debug(`Purging bundle: ${item.bsn} (#${item.id})`);
+                            const bsn = bundle.getSymbolicName();
+                            const norm = BaseActivator.normalizeBSN(bsn);
+
+                            if (this._manualBSNs.has(norm)) {
+                                this.logger?.debug(`Skipping purge for ${bsn}: Found in Inhabitant Layer.`);
+                                continue;
+                            }
+
+                            this.logger?.debug(`Purging bundle: ${bsn} (#${item.id})`);
                             await bundle.stop();
                             await bundle.uninstall();
                         } catch (err) {
@@ -436,13 +626,21 @@ export default class Activator extends BaseActivator {
                 }
             }
 
-            // 2. Surge (Installation)
+            // 2. Surge (Installation & Start)
             for (const item of pt.surgePlan.toInstall) {
                 try {
+                    this.logger?.info(`[RealmManager] Surging: ${item.bsn} from ${item.url}...`);
                     const bundle = await this.context.installBundle(item.url);
-                    if (bundle.state === 2 || bundle.state === 4) await bundle.start();
+                    
+                    const state = bundle.getState();
+                    if (state < 32) { // Not ACTIVE
+                        this.logger?.debug(`[RealmManager] Starting bundle: ${item.bsn} (Current State: ${state})`);
+                        await bundle.start();
+                    } else {
+                        this.logger?.debug(`[RealmManager] Bundle ${item.bsn} already active, skipping start.`);
+                    }
                 } catch (err) {
-                    this.logger?.error(`Realm Manager: Failed to activate '${item.bsn}':`, err.message);
+                    this.logger?.error(`[RealmManager] Failed to surge '${item.bsn}':`, err.message);
                 }
             }
 

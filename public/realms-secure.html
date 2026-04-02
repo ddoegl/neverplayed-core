@@ -67,22 +67,81 @@
           class="font-bold text-sm tracking-tight text-slate-200"
         >neverplayed <span class="text-blue-400">realms</span></span>
       </div>
-      <div id="boot-status" class="text-[10px] font-mono text-slate-500">
-        <span x-show="!kernelReady">Shielding...</span>
-        <span x-show="kernelReady">Secure Kernel Active</span>
+
+      <div class="flex items-center space-x-6">
+        <!-- Universe Switcher UI -->
+        <div x-data="realmSwitcher" x-cloak class="relative">
+          <button
+            @click="open = !open"
+            class="flex items-center space-x-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 transition-all group"
+          >
+            <div class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse">
+            </div>
+            <span
+              class="text-[11px] font-medium tracking-wide text-slate-300 group-hover:text-white"
+              x-text="activeTitle || 'Loading...'"
+            ></span>
+            <i
+              class="fas fa-chevron-down text-[9px] text-slate-500 group-hover:text-blue-400 transition-transform"
+              :class="open ? 'rotate-180' : ''"
+            ></i>
+          </button>
+
+          <div
+            x-show="open"
+            @click.away="open = false"
+            x-transition
+            class="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden z-50"
+          >
+            <div class="px-3 py-2 border-b border-slate-800">
+              <span
+                class="text-[9px] font-bold text-slate-500 uppercase tracking-widest"
+              >Contexts</span>
+            </div>
+            <div class="max-h-64 overflow-y-auto py-1">
+              <template x-for="r in realms" :key="r.id">
+                <button
+                  @click="switchRealm(r.id)"
+                  class="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-800/50 group"
+                >
+                  <div class="flex flex-col items-start">
+                    <span
+                      class="text-xs font-medium"
+                      :class="r.id === activeId ? 'text-blue-400' : 'text-slate-300 group-hover:text-white'"
+                      x-text="r.title"
+                    ></span>
+                    <span
+                      class="text-[9px] text-slate-500 font-mono"
+                      x-text="r.id"
+                    ></span>
+                  </div>
+                  <i
+                    x-show="r.id === activeId"
+                    class="fas fa-check text-[10px] text-blue-400"
+                  ></i>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-[10px] font-mono text-slate-500">
+          <span x-show="!kernelReady">Initial Shielding...</span>
+          <span x-show="kernelReady">Secure Kernel Active</span>
+        </div>
       </div>
     </header>
 
     <!-- App Container -->
     <div class="flex-1 flex overflow-hidden">
-      <!-- Sidebar Slot -->
+      <!-- Sidebar managed by org.neverplayed.shell-sidebar -->
       <aside
         id="shell-sidebar-root"
         class="w-auto bg-white z-20 overflow-hidden flex flex-col"
       >
       </aside>
 
-      <!-- Main Content -->
+      <!-- Main Content managed by org.neverplayed.shell-host -->
       <main class="flex-1 overflow-y-auto relative bg-slate-50">
         <template x-if="kernelReady">
           <div
@@ -90,7 +149,6 @@
             class="h-full w-full relative"
             x-data="shellHost"
           >
-            <!-- Shell Host UI will manifest here -->
             <div
               id="flow-content"
               x-ref="flowContent"
@@ -123,12 +181,13 @@
             class="text-slate-400 text-[10px] font-mono uppercase tracking-widest text-center px-20"
             x-text="bootStatus"
           ></span>
-
           <div
             x-show="error"
             class="text-red-500 text-xs font-mono mt-4 text-center px-10"
           >
-            <p class="font-bold">BOOT FAILURE</p>
+            <p class="font-bold uppercase tracking-wider">
+              Kernel Panic: Boot Failure
+            </p>
             <p x-text="error"></p>
           </div>
         </div>
@@ -136,43 +195,17 @@
     </div>
 
     <script type="module">
-      // --- NPRF Cache Buster (One-time Persistence Purge) ---
-      (function () {
-        const legacyPath = "system-services/";
-        const legacyRealm = "real-life/dashboard";
-        let shouldClear = false;
-        try {
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            const val = localStorage.getItem(key);
-            if (
-              val &&
-              (val.includes(legacyPath) || val.includes(legacyRealm))
-            ) {
-              shouldClear = true;
-              break;
-            }
-          }
-        } catch (_e) { /* Storage access denied */ }
-
-        if (shouldClear) {
-          console.warn(
-            "NPRF: Legacy paths detected in LocalStorage. Performance-preserving purge initiated...",
-          );
-          localStorage.clear();
-          console.log(
-            "NPRF: LocalStorage cleared. Cold-boot sequence starting.",
-          );
-        }
-      })();
       import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
       import Pandino from "https://esm.sh/@pandino/pandino@0.8.33";
       import Alpine from "https://esm.sh/alpinejs@3.13.5";
       import { REALM_MANAGER_SERVICE } from "shared-types";
 
+      // 1. Initialize Central Orchestration State
+      Alpine.store("platform", { kernelReady: false });
+
       Alpine.data("shellLoader", () => ({
         kernelReady: false,
-        bootStatus: "Starting Shell Layer...",
+        bootStatus: "Shielding Phase: Core Initialization...",
         error: null,
 
         init() {
@@ -188,76 +221,72 @@
             globalThis.Alpine = Alpine;
             globalThis.pandinoContext = context;
 
-            // 1. Install Realm Manager
-            this.bootStatus = "Loading: @neverplayed/realm-manager...";
+            // 2. Load Orchestrator
+            this.bootStatus = "Loading Orchestration Layer...";
             const rmBundle = await context.installBundle(
               "./bundles/org.neverplayed.realm-manager/manifest.json",
             );
-            if (rmBundle.state === 2 || rmBundle.state === 4) {
-              await rmBundle.start();
-            }
+            if (rmBundle.getState() < 32) await rmBundle.start();
 
+            // 3. Handshake with Orchestrator (Wait for full context leap)
             const rmRef = context.getServiceReference(
               REALM_MANAGER_SERVICE,
             );
-            const rm = context.getService(rmRef);
-
-            // 2. Fetch Environment to determine Persistence Provider
-            const envResp = await fetch("./env.json");
-            const envConfig = envResp.ok
-              ? await envResp.json()
-              : { persistence_mode: "local" };
-            const isFirebase =
-              envConfig.persistence_mode === "firebase";
-
-            // 3. Register Core Universe (Layer 1)
-            this.bootStatus = "Registering: Core Universe...";
-            const coreResp = await fetch("./realms/core.json");
-            const coreManifest = await coreResp.json();
-
-            // Inject Provider and Event Admin
-            if (isFirebase) {
-              coreManifest.bundles.push(
-                "./bundles/org.neverplayed.persistence-firebase/manifest.json",
-              );
-            } else {
-              coreManifest.bundles.push(
-                "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
-              );
-              coreManifest.bundles.push(
-                "./bundles/org.neverplayed.persistence-fs-sync/manifest.json",
-              );
+            if (rmRef) {
+              const rm = context.getService(rmRef);
+              this.bootStatus = "Synthesizing Framework...";
+              await rm.waitReady();
             }
-            rm.registerRealm(coreManifest);
 
-            // 4. Register Foundation Layer (Layer 2)
-            this.bootStatus = "Registering: Foundation Layer...";
-            const foundResp = await fetch("./realms/foundation.json");
-            const foundManifest = await foundResp.json();
-            rm.registerRealm(foundManifest);
-
-            // 5. Register Real-Life Universe (Layer 3)
-            this.bootStatus = "Registering: Real-Life Universe...";
-            const rlResp = await fetch("./realms/real-life.json");
-            const rlManifest = await rlResp.json();
-            rm.registerRealm(rlManifest);
-
-            // 6. Register Work Universe (Layer 3)
-            this.bootStatus = "Registering: Work Universe...";
-            const workResp = await fetch("./realms/work.json");
-            const workManifest = await workResp.json();
-            rm.registerRealm(workManifest);
-
-            // 7. Initiate Transition to Real-Life
-            this.bootStatus = "Activating Ontology Layer: Real-Life...";
-
-            await rm.switchRealm("org.neverplayed.realm.real-life");
+            // 4. Final Activation Buffer (Telemetry Bridge)
+            this.bootStatus = "Igniting UI Layer...";
+            await new Promise((r) => setTimeout(r, 150));
 
             this.kernelReady = true;
+            Alpine.store("platform").kernelReady = true;
           } catch (err) {
-            console.error("Boot Sequence Failed:", err);
+            console.error("Boot Failure:", err);
             this.error = err.message;
           }
+        },
+      }));
+
+      // --- UI Components ---
+      Alpine.data("realmSwitcher", () => ({
+        open: false,
+        realms: [],
+        activeId: null,
+        activeTitle: "",
+
+        async init() {
+          this.$watch("$store.platform.kernelReady", (val) => {
+            if (val) this.sync();
+          });
+          if (Alpine.store("platform").kernelReady) this.sync();
+        },
+
+        async sync() {
+          const context = globalThis.pandinoContext;
+          if (!context) return;
+          const rmRef = context.getServiceReference(
+            REALM_MANAGER_SERVICE,
+          );
+          const rm = context.getService(rmRef);
+          this.realms = rm.getOrderedRealms();
+          this.activeId = rm.getActiveRealm();
+          const active = this.realms.find((r) =>
+            r.id === this.activeId
+          );
+          this.activeTitle = active ? active.title : "Warping...";
+        },
+
+        async switchRealm(id) {
+          this.open = false;
+          const rm = context.getService(
+            context.getServiceReference(REALM_MANAGER_SERVICE),
+          );
+          await rm.switchRealm(id);
+          this.sync();
         },
       }));
 

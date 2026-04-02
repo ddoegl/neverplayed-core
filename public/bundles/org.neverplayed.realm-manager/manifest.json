@@ -5,5 +5,8 @@
     "Bundle-Activator": "activator.js",
     "Bundle-Description": "Central authority for orchestrating layered semantic universes (Realms) and their bundle clusters.",
     "Bundle-Author": "Never Played Core Team",
-    "Bundle-Category": "system-service"
+    "Bundle-Category": "system-service",
+    "Configuration": {
+        "log-level": "DEBUG"
+    }
 }

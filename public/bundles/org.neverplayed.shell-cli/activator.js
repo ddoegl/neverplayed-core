@@ -71,9 +71,13 @@ export default class Activator extends CoreActivator {
         this.context.trackService(`(objectClass=${REALM_MANAGER_SERVICE})`, {
             addingService: (ref) => {
                 this.realmManager = this.context.getService(ref);
+                this.logger?.info(`[ShellCLI] RealmManager bridge established. Inhabitant Guard active.`);
                 return this.realmManager;
             },
-            removedService: () => { this.realmManager = null; }
+            removedService: () => { 
+                this.realmManager = null; 
+                this.logger?.warn(`[ShellCLI] RealmManager bridge disconnected. Inhabitant Guard disabled.`);
+            }
         }).open();
 
         this.context.registerService(SHELL_CLI_SERVICE, shellService);
@@ -449,9 +453,12 @@ export default class Activator extends CoreActivator {
                     }
                     try {
                         if (this.realmManager) {
+                            console.debug(`[ShellCLI] Calling RealmManager.installManualBundle for ${url}`);
                             const b = await this.realmManager.installManualBundle(url);
                             this.log(`Success: Installed bundle #${b.id} (${b.getSymbolicName()}) into Inhabitant Layer.`);
                         } else {
+                            this.log({ text: `[WARNING] RealmManager not found. Inhabitant Guard is INACTIVE!`, color: 'orange', bold: true });
+                            this.log({ text: `This bundle will be PURGED during the next realm switch.`, color: 'orange' });
                             const b = await ctx.installBundle(url);
                             this.log(`Success: Installed bundle #${b.id} (${b.getSymbolicName()})`);
                             if (b.getState() < 32) await b.start();

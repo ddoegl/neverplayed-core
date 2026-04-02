@@ -20,7 +20,7 @@ export const PERSISTENCE_DENO_BUNDLE = "@neverplayed/persistence-deno";
 export const PERSISTENCE_SELECTOR_BUNDLE = "@neverplayed/persistence-selector";
 export const PERSISTENCE_LOCALSTORAGE_BUNDLE = "@neverplayed/persistence-deno-localstorage";
 export const PLEXUS_ENGINE_SERVICE = "@neverplayed/plexus/engine";
-export const REALM_MANAGER_SERVICE = "@neverplayed/realm-manager";
+export const REALM_MANAGER_SERVICE = "@neverplayed/realm-manager/service";
 
 export const BUNDLE_TYPE_SERVICE = "service-flow";
 export const NEVERPLAYED_PREFIX = "@neverplayed/";
