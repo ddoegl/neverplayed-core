@@ -1,5 +1,5 @@
 import { PERSISTENCE_MANAGER_SERVICE, CONFIG_UPDATED_TOPIC } from "../../core-types.js";
-import { EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, EVENT_HANDLER_INTERFACE, EVENT_TOPIC } from "../../shared-types.js";
+import { EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, EVENT_HANDLER_INTERFACE, EVENT_TOPIC } from "../../core-types.js";
 import { BaseActivator } from "../../osgi-base.js";
 
 /**

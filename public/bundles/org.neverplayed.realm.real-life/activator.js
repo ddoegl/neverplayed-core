@@ -16,7 +16,7 @@ import {
   BACKOFFICE_WEB_FLOW,
   EMAIL_MONITOR_FLOW,
   CASE_MONITOR_FLOW
-} from "shared-types";
+} from "core-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {

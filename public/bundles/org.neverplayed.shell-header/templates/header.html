@@ -1,0 +1,131 @@
+<!-- Premium Reactive Header -->
+<header
+  class="h-16 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-20 flex-shrink-0"
+  x-show="!activeFlow?.hideNavigation"
+>
+  <div class="flex items-center space-x-4">
+    <button
+      @click="shell.sidebarOpen = !shell.sidebarOpen"
+      class="p-2 mr-2 text-slate-400 hover:text-white transition-colors"
+      title="Toggle Sidebar"
+    >
+      <i class="fas fa-bars text-xl"></i>
+    </button>
+    <div
+      class="flex items-center space-x-2 cursor-pointer group"
+      @click="logout(); goHome()"
+      title="Return to Space-Time Reality"
+    >
+      <div class="relative overflow-hidden rounded-lg">
+        <img
+          src="branding.svg"
+          class="brand inline transition-transform group-hover:scale-110"
+        />
+      </div>
+      <span class="font-bold text-xl tracking-tight">neverplayed <span
+          class="text-blue-400"
+        >.org</span></span>
+    </div>
+
+    <!-- Active Realm Indicator / Switcher -->
+    <div
+      class="relative"
+      x-data="{ showRealms: false }"
+      @click.away="showRealms = false"
+    >
+      <button
+        @click="showRealms = !showRealms"
+        class="flex items-center space-x-3 bg-slate-800/80 hover:bg-slate-700/80 px-4 py-2 rounded-xl backdrop-blur-md border border-slate-700/50 transition-all duration-300 group"
+      >
+        <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+          <i :class="shell.activeRealm.icon + ' text-sm'"></i>
+        </div>
+        <div class="text-left leading-none">
+          <div class="text-[10px] uppercase text-slate-500 font-bold mb-0.5">Universe</div>
+          <div class="text-sm font-bold text-white truncate max-w-[120px]" x-text="shell.activeRealm.title"></div>
+        </div>
+        <i class="fas fa-chevron-down text-[10px] text-slate-500 group-hover:text-slate-300 transition-colors"></i>
+      </button>
+
+      <!-- Dropdown (Placeholder for Quick Switch) -->
+      <div
+        x-show="showRealms"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        class="absolute left-0 mt-3 w-64 bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden p-2 z-[100] backdrop-blur-xl"
+      >
+         <div class="px-4 py-3 border-b border-slate-800 mb-2">
+            <div class="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Context Info</div>
+            <div class="text-xs text-slate-400 mt-1" x-text="'ID: ' + (shell.activeRealm.id || 'none')"></div>
+         </div>
+         <div class="text-xs text-slate-500 italic p-4 text-center">
+            Use '/realm switch' in the CLI for interactive transitions.
+         </div>
+      </div>
+    </div>
+
+    <!-- Active Flow Title -->
+    <template x-if="activeFlow">
+      <div class="flex items-center space-x-2 text-slate-400 text-sm">
+        <i class="fas fa-chevron-right text-[10px]"></i>
+        <span
+          class="text-white font-medium"
+          x-text="activeFlow.title"
+        ></span>
+      </div>
+    </template>
+  </div>
+
+  <div class="flex items-center space-x-6">
+    <!-- Session Info -->
+    <div x-show="shell.user" class="flex items-center space-x-3">
+      <div class="text-right hidden sm:block">
+        <div
+          class="text-[10px] uppercase text-slate-400 font-bold leading-none mb-1"
+        >
+          Authenticated as
+        </div>
+        <div
+          class="text-sm font-semibold"
+          x-text="shell.user.alias"
+        >
+        </div>
+      </div>
+      <div
+        class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold border-2 border-slate-800 shadow-lg text-white"
+      >
+        <span x-text="shell.user.avatar"></span>
+      </div>
+      <!-- System Controls -->
+      <div class="flex items-center space-x-2 mr-2">
+        <button
+          @click="launchConfig()"
+          class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-blue-400 transition-all border border-slate-700 shadow-inner group"
+          title="Universe Settings"
+        >
+          <i
+            class="fas fa-cog transition-transform group-hover:rotate-90"
+          ></i>
+        </button>
+        <button
+          @click="triggerReset()"
+          class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-red-400 transition-all border border-slate-700 shadow-inner"
+          title="Factory Reset Reality"
+        >
+          <i class="fas fa-undo-alt"></i>
+        </button>
+      </div>
+
+      <button
+        @click="logout()"
+        class="text-slate-400 hover:text-red-400 transition-colors"
+      >
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+    <div x-show="!shell.user">
+      <div class="text-slate-400 text-sm italic">Guest Session</div>
+    </div>
+  </div>
+</header>

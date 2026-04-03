@@ -1,4 +1,4 @@
-import { LIMES_SERVICE } from "shared-types";
+import { LIMES_SERVICE } from "core-types";
 
 export default class Activator {
     start(context) {

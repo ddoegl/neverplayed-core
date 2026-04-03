@@ -87,5 +87,14 @@
       "retail-channel-app"
     ],
     "sidebar": true
+  },
+  "config.org.neverplayed.do-registry": {
+    "flowType": "backoffice-flow",
+    "channels": [
+      "backoffice-web"
+    ]
+  },
+  "identities.test": {
+    "user": "deno-test"
   }
 }

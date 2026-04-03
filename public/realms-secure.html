@@ -58,79 +58,8 @@
     class="h-screen flex flex-col overflow-hidden sl-theme-light"
   >
     <!-- Global Header -->
-    <header
-      class="h-12 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-30 shrink-0"
-    >
-      <div class="flex items-center space-x-3">
-        <img src="branding.svg" class="w-6 h-6" />
-        <span
-          class="font-bold text-sm tracking-tight text-slate-200"
-        >neverplayed <span class="text-blue-400">realms</span></span>
-      </div>
-
-      <div class="flex items-center space-x-6">
-        <!-- Universe Switcher UI -->
-        <div x-data="realmSwitcher" x-cloak class="relative">
-          <button
-            @click="open = !open"
-            class="flex items-center space-x-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 transition-all group"
-          >
-            <div class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse">
-            </div>
-            <span
-              class="text-[11px] font-medium tracking-wide text-slate-300 group-hover:text-white"
-              x-text="activeTitle || 'Loading...'"
-            ></span>
-            <i
-              class="fas fa-chevron-down text-[9px] text-slate-500 group-hover:text-blue-400 transition-transform"
-              :class="open ? 'rotate-180' : ''"
-            ></i>
-          </button>
-
-          <div
-            x-show="open"
-            @click.away="open = false"
-            x-transition
-            class="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden z-50"
-          >
-            <div class="px-3 py-2 border-b border-slate-800">
-              <span
-                class="text-[9px] font-bold text-slate-500 uppercase tracking-widest"
-              >Contexts</span>
-            </div>
-            <div class="max-h-64 overflow-y-auto py-1">
-              <template x-for="r in realms" :key="r.id">
-                <button
-                  @click="switchRealm(r.id)"
-                  class="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-800/50 group"
-                >
-                  <div class="flex flex-col items-start">
-                    <span
-                      class="text-xs font-medium"
-                      :class="r.id === activeId ? 'text-blue-400' : 'text-slate-300 group-hover:text-white'"
-                      x-text="r.title"
-                    ></span>
-                    <span
-                      class="text-[9px] text-slate-500 font-mono"
-                      x-text="r.id"
-                    ></span>
-                  </div>
-                  <i
-                    x-show="r.id === activeId"
-                    class="fas fa-check text-[10px] text-blue-400"
-                  ></i>
-                </button>
-              </template>
-            </div>
-          </div>
-        </div>
-
-        <div class="text-[10px] font-mono text-slate-500">
-          <span x-show="!kernelReady">Initial Shielding...</span>
-          <span x-show="kernelReady">Secure Kernel Active</span>
-        </div>
-      </div>
-    </header>
+    <!-- Global Header (Managed by org.neverplayed.shell-header) -->
+    <header id="shell-header" x-show="kernelReady"></header>
 
     <!-- App Container -->
     <div class="flex-1 flex overflow-hidden">
@@ -221,26 +150,42 @@
             globalThis.Alpine = Alpine;
             globalThis.pandinoContext = context;
 
-            // 2. Load Orchestrator
+            // 2. Load Infrastructure: Event Admin
+            this.bootStatus = "Igniting Event Fabric...";
+            const eaBundle = await context.installBundle(
+              "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
+            );
+            if (eaBundle.getState() < 32) await eaBundle.start();
+            console.log(`[Pandino] Total Services: ${context.getServiceReferences().length}`);
+            context.getServiceReferences().forEach(ref => {
+              console.log(`[Registry] from ${ref.getBundle().getSymbolicName()}:`, ref.getProperty("objectClass"));
+            });
+
+            // 3. Load Orchestrator
             this.bootStatus = "Loading Orchestration Layer...";
             const rmBundle = await context.installBundle(
               "./bundles/org.neverplayed.realm-manager/manifest.json",
             );
             if (rmBundle.getState() < 32) await rmBundle.start();
 
-            // 3. Handshake with Orchestrator (Wait for full context leap)
+            // 4. Load Core UI: Shell Header
+            this.bootStatus = "Synthesizing Shell Interface...";
+            const headerBundle = await context.installBundle(
+              "./bundles/org.neverplayed.shell-header/manifest.json",
+            );
+            if (headerBundle.getState() < 32) {
+              await headerBundle.start();
+            }
+
+            // 5. Handshake with Orchestrator (Wait for full context leap)
             const rmRef = context.getServiceReference(
               REALM_MANAGER_SERVICE,
             );
             if (rmRef) {
               const rm = context.getService(rmRef);
-              this.bootStatus = "Synthesizing Framework...";
+              this.bootStatus = "Finalizing Reality Matrix...";
               await rm.waitReady();
             }
-
-            // 4. Final Activation Buffer (Telemetry Bridge)
-            this.bootStatus = "Igniting UI Layer...";
-            await new Promise((r) => setTimeout(r, 150));
 
             this.kernelReady = true;
             Alpine.store("platform").kernelReady = true;

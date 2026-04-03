@@ -4,7 +4,7 @@ import {
     EVENT_TOPIC,
     EVENT_MONITOR_PID,
     LOG_LEVEL_PROP
-} from "shared-types";
+} from "core-types";
 import { BaseActivator } from "osgi-base";
 
 export default class Activator extends BaseActivator {
@@ -71,7 +71,12 @@ export default class Activator extends BaseActivator {
         };
 
         context.registerService(EVENT_HANDLER_INTERFACE, eventHandler, {
-            [EVENT_TOPIC]: ["backoffice/invitations/*", "backoffice/cases/*", "org/neverplayed/config/*"]
+            [EVENT_TOPIC]: [
+                "backoffice/invitations/*", 
+                "backoffice/cases/*", 
+                "org/neverplayed/config/*",
+                "neverplayed/realm/*"
+            ]
         });
 
         // Register as a FLOW_SERVICE so it can be governed

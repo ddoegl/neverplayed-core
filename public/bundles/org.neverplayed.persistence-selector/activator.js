@@ -13,23 +13,25 @@ export default class Activator {
     _volatileStore = new Map();
     _currentMode = "normal"; // normal, stealth, privacy
     logger = console;
+    _policies = new Map(); // keyPattern -> { tier, enforce }
 
     start(context) {
         this.context = context;
         const bsn = context.getBundle().getSymbolicName();
 
         // 1. Setup Logger (Reactive)
-        context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        this._logTracker = context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 this.logger = context.getService(ref).getLogger(bsn);
                 this.logger.info("Persistence Selector: Connected to System Logger.");
                 return this.logger;
             }
-        }).open();
-
+        });
+        this._logTracker.open();
+ 
         // 2. Track all other Persistence Providers
         // We exclude ourselves specifically via implementation property
-        context.trackService(`(&(objectClass=${PERSISTENCE_MANAGER_SERVICE})(!(implementation=selector-proxy)))`, {
+        this._providerTracker = context.trackService(`(&(objectClass=${PERSISTENCE_MANAGER_SERVICE})(!(implementation=selector-proxy)))`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
                 const tier = ref.getProperty("persistence.tier") || "unknown";
@@ -45,7 +47,8 @@ export default class Activator {
                 this._providers.delete(tier);
                 this.logger.info(`Persistence Selector: Provider tier='${tier}' lost.`);
             }
-        }).open();
+        });
+        this._providerTracker.open();
 
         // 3. Register the Virtual Selector Service
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
@@ -68,6 +71,10 @@ export default class Activator {
             setMode: (mode) => {
                 this._currentMode = mode;
                 this.logger.info(`Persistence Selector: Mode set to '${mode}'`);
+            },
+            setRoutingPolicy: (keyPattern, tier, enforce = false) => {
+                this._policies.set(keyPattern, { tier, enforce });
+                this.logger.info(`Persistence Selector: Registered policy for '${keyPattern}' -> Tier: ${tier} (Enforce: ${enforce})`);
             }
         }, {
             "capability": "sys:persistence",
@@ -103,26 +110,48 @@ export default class Activator {
         }
 
         const tier = this._getPreferredTierForKey(key);
+        const policy = this._getPolicyForKey(key);
+        const finalTier = (this._currentMode === "privacy" && tier === "cloud" && !policy?.enforce) ? "local" : tier;
         
-        // If privacy mode is on, we force 'local' even if 'cloud' was preferred
-        const finalTier = (this._currentMode === "privacy" && tier === "cloud") ? "local" : tier;
+        this.logger?.debug(`Persistence Selector: [${key}] -> Tier: ${finalTier}. Tracked providers: ${Array.from(this._providers.keys()).join(',')}`);
         
         const provider = this._providers.get(finalTier) || this._providers.get("local");
 
         if (provider) {
+            let timer;
             try {
-                await provider.store(key, val);
+                // Set a timeout to prevent absolute hang during tests/headless mode
+                const timeoutPromise = new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error("Timeout")), 5000);
+                });
+                await Promise.race([provider.store(key, val), timeoutPromise]);
             } catch (err) {
-                this.logger.error(`Persistence Selector: Store failed for key='${key}' on tier='${finalTier}': ${err.message}`);
+                const msg = err?.message || String(err);
+                this.logger?.error?.(`Persistence Selector: Store failed for key='${key}' on tier='${finalTier}': ${msg}`);
                 // Fallback to memory on failure to prevent data loss within session
                 this._volatileStore.set(key, val);
+            } finally {
+                if (timer) clearTimeout(timer);
             }
         } else {
             this._volatileStore.set(key, val);
         }
     }
 
+    _getPolicyForKey(key) {
+        // Simple pattern matching for now: key starts with pattern
+        for (const [pattern, policy] of this._policies.entries()) {
+            if (key.includes(pattern)) return policy;
+        }
+        return null;
+    }
+
     _getPreferredTierForKey(key) {
+        // 1. Check Dynamic Policies (Policy Tier)
+        const policy = this._getPolicyForKey(key);
+        if (policy) return policy.tier;
+
+        // 2. Default Prefix-based Routing (System Tier)
         if (key.startsWith("realm.")) return "local";
         if (key.startsWith("security.")) return "volatile";
         if (key.startsWith("identities.")) return "local";
@@ -130,8 +159,10 @@ export default class Activator {
         return "cloud"; // Default to cloud for global persistence
     }
 
-    stop(_context) {
-        this.logger.info("Persistence Selector: STOPPED.");
+
+    onStop(_context) {
+        if (this._logTracker) this._logTracker.close();
+        if (this._providerTracker) this._providerTracker.close();
+        if (this.logger) this.logger.info("Persistence Selector: Stopped.");
     }
 }
-

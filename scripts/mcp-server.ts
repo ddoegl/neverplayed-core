@@ -4,7 +4,7 @@
  * Run via: deno run -A scripts/mcp-server.ts
  */
 
-import { join } from "https://deno.land/std@0.221.0/path/mod.ts";
+import { join, resolve } from "https://deno.land/std@0.221.0/path/mod.ts";
 
 // 0. Redirect console to stderr IMMEDIATELY to prevent stdout corruption
 const _originalConsoleLog = console.log;
@@ -34,6 +34,14 @@ const mockDoc = {
 const BASE_URL = `file://${Deno.cwd()}/public/`;
 (globalThis as unknown as Record<string, unknown>).NEVERPLAYED_BASE_URL = BASE_URL;
 
+// Mock Location for relative URL resolution (Realm Manager / Persistence)
+(globalThis as unknown as Record<string, unknown>).location = {
+    origin: "http://localhost",
+    href: "http://localhost/",
+    pathname: "/",
+    toString() { return (this as unknown as Record<string, string>).href; }
+};
+
 // 2. Headless Identity Context & Secrets
 // Load secret from .env.mcp if it exists
 let mcpSecret = "PLACEHOLDER";
@@ -62,6 +70,47 @@ interface PandinoInstance {
 }
 let pandinoInstance: PandinoInstance | null = null;
 
+const denoFetcher = async (urlOrString: string | URL | Request) => {    
+    const url = (typeof urlOrString === 'string') ? urlOrString : (urlOrString as unknown as { url: string }).url || urlOrString.toString();
+    const path = url
+        .replace(/^file:\/+/ , "/")
+        .replace(/^http:\/\/localhost\//, "/")
+        .split('?')[0];
+
+    try {
+        if (path.startsWith("/")) return await Deno.readTextFile(path);
+        throw new Error("Relative path");
+    } catch (_err) {
+        const altPath = resolve(Deno.cwd(), "public", path.replace(/^\//, ""));
+        console.error(`[denoFetcher] Trying: ${altPath}`);
+        return await Deno.readTextFile(altPath);
+    }
+};
+
+// deno-lint-ignore no-explicit-any
+(globalThis as any).fetch = async (url: string | URL | Request, options?: unknown) => {
+    const urlStr = (typeof url === 'string') ? url : (url as unknown as { url: string }).url || url.toString();
+    
+    // Pass-through external URLs (Cloud Functions, Firebase, etc)
+    if (urlStr.includes("://") && !urlStr.includes("localhost")) {
+        return await (globalThis as unknown as Record<string, (...args: unknown[]) => Promise<Response>>)._originalFetch(url, options);
+    }
+
+    try {
+        const text = await denoFetcher(url);
+        return {
+            text: () => Promise.resolve(text),
+            json: () => Promise.resolve(JSON.parse(text)),
+            ok: true
+        } as Response;
+    } catch (err: unknown) {
+        console.error(`[fetch-mock] Failed local resource '${urlStr}': ${err instanceof Error ? err.message : String(err)}`);
+        return { ok: false, status: 404 } as Response;
+    }
+};
+// deno-lint-ignore no-explicit-any
+(globalThis as any)._originalFetch = fetch;
+
 async function bootOSGI() {
     // Dynamic imports to ensure console is already redirected
     const { default: loaderConfiguration } = await import("https://esm.sh/@pandino/loader-configuration-nodejs@0.8.33");
@@ -81,21 +130,25 @@ async function bootOSGI() {
     try {
         const envPath = join(Deno.cwd(), "public", "env.json");
         const envConfig = JSON.parse(await Deno.readTextFile(envPath));
-        isFirebase = envConfig.persistence_mode === "firebase";
+        const mode = Deno.env.get("PERSISTENCE_MODE") || envConfig.persistence_mode || "local";
+        isFirebase = mode === "firebase";
     } catch (_e) {
-        console.warn("MCP Boot: public/env.json missing or invalid, defaulting to local persistence.");
+        isFirebase = Deno.env.get("PERSISTENCE_MODE") === "firebase";
     }
 
     const coreManifests = [
         "bundles/org.neverplayed.yaml-service/manifest.json",
         "bundles/org.neverplayed.auth-shield/manifest.json",
-        isFirebase ? "bundles/org.neverplayed.persistence-firebase/manifest.json" : "bundles/org.neverplayed.persistence-deno/manifest.json",
+        "bundles/org.neverplayed.persistence-deno/manifest.json", // Local Tier
+        isFirebase ? "bundles/org.neverplayed.persistence-firebase/manifest.json" : null, // Cloud Tier (Optional)
         "bundles/org.neverplayed.persistence-selector/manifest.json",
         "bundles/org.neverplayed.system-logger/manifest.json",
         "bundles/org.neverplayed.limes/manifest.json",
         "bundles/org.neverplayed.config-admin/manifest.json",
         "bundles/org.neverplayed.shell-cli/manifest.json",
-    ];
+        "bundles/org.neverplayed.do-registry/manifest.json",
+        "bundles/org.neverplayed.realm-manager/manifest.json",
+    ].filter(Boolean) as string[];
 
     for (const path of coreManifests) {
         const absPath = join(Deno.cwd(), "public", path);
@@ -257,6 +310,7 @@ async function handleRequest(request: { method: string; params: Record<string, u
 
         if (name === "osgi_call_method") {
           const { serviceId, method: methodName, args: methodArgs = [] } = toolArgs as Record<string, unknown>;
+          console.error(`[MCP] Tool: osgi_call_method(${serviceId}, ${methodName}) ...`);
           const ref = context.getServiceReferences(undefined, `(objectClass=${serviceId})`)[0];
           if (!ref) return { jsonrpc: "2.0", id, error: { code: -32602, message: `Service not found: ${serviceId}` } };
           
@@ -268,6 +322,7 @@ async function handleRequest(request: { method: string; params: Record<string, u
           try {
             const fn = service[methodName as string] as (...args: unknown[]) => Promise<unknown>;
             const result = await fn(...(methodArgs as unknown[]));
+            console.error(`[MCP] Tool: osgi_call_method(${serviceId}, ${methodName}) COMPLETED.`);
             return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] } };
           } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);

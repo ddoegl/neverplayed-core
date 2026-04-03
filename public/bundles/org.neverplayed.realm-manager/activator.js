@@ -1,6 +1,18 @@
-import { REALM_MANAGER_SERVICE, LOG_SERVICE, SESSION_SERVICE, DOMAIN_OBJECT_REGISTRY_SERVICE, REALM_STORAGE_PID, SHELL_COMMAND_SERVICE } from "../../shared-types.js";
+import { 
+    REALM_MANAGER_SERVICE, 
+    LOG_SERVICE, 
+    SESSION_SERVICE, 
+    DOMAIN_OBJECT_REGISTRY_SERVICE, 
+    REALM_STORAGE_PID, 
+    SHELL_COMMAND_SERVICE,
+    EVENT_ADMIN_SERVICE,
+    EVENT_FACTORY_SERVICE, 
+    REALM_CHANGED_TOPIC, 
+    REALM_REGISTERED_TOPIC, 
+    REALM_UNREGISTERED_TOPIC 
+} from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
-import { BaseActivator } from "../../osgi-base.js";
+import { BaseActivator } from "osgi-base";
 
 export default class Activator extends BaseActivator {
     _realms = new Map();
@@ -8,6 +20,8 @@ export default class Activator extends BaseActivator {
     _isTransitioning = false;
     _persistence = null;
     _registry = null;
+    _eventAdmin = null;
+    _eventFactory = null;
     _realmCommandReg = null;
     _bsnCache = new Map(); // url -> bsn
     _manualBSNs = new Set();
@@ -17,20 +31,23 @@ export default class Activator extends BaseActivator {
     _discoveryPromise = null;
     _recoveryPromise = null;
     _isRecovering = false;
+    _bootReadyPromise = new Promise(r => this._bootReadyResolve = r);
+    _registrationBuffer = []; // Buffer for early discovery events (Step 1)
 
     onStart(context) {
         // 1. Initialize Logger
-        context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        this._logTracker = context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
                 this.logger = svc.getLogger("neverplayed.realm-manager");
                 this.logger.info(`Realm Manager: Bridge Active [ID: ${this._instanceId}]. Configuration synchronized.`);
                 return svc;
             }
-        }).open();
+        });
+        this._logTracker.open();
         
         // 1.2 Track Session Service (Late-Join Sync)
-        context.trackService(`(objectClass=${SESSION_SERVICE})`, {
+        this._sessionTracker = context.trackService(`(objectClass=${SESSION_SERVICE})`, {
             addingService: (ref) => {
                 this.session = context.getService(ref);
                 this.logger?.info("Realm Manager: Connected to Session Service. Privilege Injection active.");
@@ -42,30 +59,86 @@ export default class Activator extends BaseActivator {
                 }
                 return this.session;
             }
-        }).open();
+        });
+        this._sessionTracker.open();
 
-        // 1.3 Discovery & Handshake State
-        this._discoveryPromise = this._discoverRealms();
-        this._recoveryPromise = this._recoverState(context);
+        // 1.3 Launch Discovery & Recovery (Moved to step 3 for serialization)
 
-        // 1.4 Persistence Tracker (Double-Trigger Recovery)
-        context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
+        // 1.4 Persistence Tracker (Vital for recovery)
+        this._persistenceTracker = context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
             addingService: (ref) => {
                 this._persistence = context.getService(ref);
-                this._recoveryPromise = this._recoverState(context);
+                this.logger?.info("Realm Manager: Persistence connected.");
                 return this._persistence;
             },
             removedService: () => { this._persistence = null; }
-        }).open();
+        });
+        this._persistenceTracker.open();
 
         // 1.5 Track Registry for Ontological Intersection
-        context.trackService(`(objectClass=${DOMAIN_OBJECT_REGISTRY_SERVICE})`, {
+        this._registryTracker = context.trackService(`(objectClass=${DOMAIN_OBJECT_REGISTRY_SERVICE})`, {
             addingService: (ref) => { this._registry = context.getService(ref); return this._registry; },
             removedService: () => { this._registry = null; }
-        }).open();
+        });
+        this._registryTracker.open();
 
-        // 2. Register Unified Service interface
-        this.context.registerService(REALM_MANAGER_SERVICE, {
+        // 1.6 Track Event Admin
+        this._eventTracker = context.trackService(`(objectClass=${EVENT_ADMIN_SERVICE})`, {
+            addingService: (ref) => { 
+                this._eventAdmin = context.getService(ref); 
+                this.logger?.info(`[RealmManager] Event Admin Service arrived: ${ref.getBundle().getSymbolicName()}`);
+                
+                // Resilience Handshake
+                if (this._eventAdmin?.build && !this._eventFactory) {
+                    this._eventFactory = this._eventAdmin;
+                    this.logger?.info("[RealmManager] Event Factory synthesized from Admin.");
+                }
+
+                this.logger?.info(`[RealmManager] Current Buffer size: ${this._registrationBuffer.length} | Has Factory: ${!!this._eventFactory}`);
+                this._flushRegistrationBuffer();
+                return this._eventAdmin; 
+            },
+            removedService: () => { this._eventAdmin = null; }
+        });
+        this._eventTracker.open();
+        
+        // --- Direct Handshake: Immediate capture to prevent race ---
+        const eaRef = context.getServiceReference(EVENT_ADMIN_SERVICE);
+        if (eaRef) {
+            this._eventAdmin = context.getService(eaRef);
+            // v0.8.33 Resilieny: Check if Admin also acts as Factory
+            if (this._eventAdmin?.build && !this._eventFactory) {
+                this._eventFactory = this._eventAdmin;
+                this.logger?.info("[RealmManager] Event Admin detected as Factory provider.");
+            }
+        }
+
+        this._factoryTracker = context.trackService(`(objectClass=${EVENT_FACTORY_SERVICE})`, {
+            addingService: (ref) => { 
+                this._eventFactory = context.getService(ref); 
+                this.logger?.info(`[RealmManager] Event Factory Service arrived: ${ref.getBundle().getSymbolicName()}`);
+                this.logger?.info(`[RealmManager] Current Buffer size: ${this._registrationBuffer.length} | Has Admin: ${!!this._eventAdmin}`);
+                this._flushRegistrationBuffer();
+                return this._eventFactory; 
+            },
+            removedService: () => { this._eventFactory = null; }
+        });
+        this._factoryTracker.open();
+
+        const efRef = context.getServiceReference(EVENT_FACTORY_SERVICE);
+        if (efRef) this._eventFactory = context.getService(efRef);
+
+        // Final attempt to flush if services were already ready
+        this._flushRegistrationBuffer();
+
+        this._registerCLI(context);
+
+        // Pre-initialize promises to prevent waitReady race (Step 1)
+        this._discoveryPromise = null;
+        this._recoveryPromise = null;
+
+        // 1.8 Register Service
+        context.registerService(REALM_MANAGER_SERVICE, {
             registerRealm: (manifest) => this._registerRealm(manifest),
             switchRealm: (id, interactive = false) => {
                 const targetId = isNaN(id) ? id : this._orderedRealmIds[parseInt(id) - 1];
@@ -77,17 +150,35 @@ export default class Activator extends BaseActivator {
             getActiveRealm: () => this._activeRealmId,
             getRealms: () => Array.from(this._realms.values()),
             getOrderedRealms: () => this._orderedRealmIds.map(id => this._realms.get(id)),
+            unregisterRealm: (id) => this._unregisterRealm(id),
             waitReady: async () => {
+                await this._bootReadyPromise;
                 if (this._discoveryPromise) await this._discoveryPromise;
                 if (this._recoveryPromise) await this._recoveryPromise;
+                // Double-check recovery actually finished
+                while (this._isRecovering) await new Promise(r => setTimeout(r, 50));
                 return true;
             },
             installManualBundle: (url) => this._installManualBundle(url),
             uninstallManualBundle: (target) => this._uninstallManualBundle(target)
         });
-        this._registerCLI(context);
 
-        this.logger?.info("Realm Manager: Registered Core Service and CLI Engine.");
+        this._discoveryPromise = this._discoverRealms();
+        this._recoveryPromise = this._recoverState(context);
+        
+        // Signal readiness
+        this._bootReadyResolve();
+        this.logger.info(`[RealmManager] Boot promises initialized & Ready Signal emitted.`);
+    }
+
+    onStop(_context) {
+        if (this._logTracker) this._logTracker.close();
+        if (this._sessionTracker) this._sessionTracker.close();
+        if (this._persistenceTracker) this._persistenceTracker.close();
+        if (this._registryTracker) this._registryTracker.close();
+        if (this._eventTracker) this._eventTracker.close();
+        if (this._factoryTracker) this._factoryTracker.close();
+        if (this.logger) this.logger.info("Realm Manager: Stopped.");
     }
 
     async _discoverRealms() {
@@ -104,6 +195,7 @@ export default class Activator extends BaseActivator {
             
             for (const file of files) {
                 try {
+                    this.logger?.debug(`Realm Manager: Fetching ./realms/${file}...`);
                     const r = await fetch(`./realms/${file}`);
                     if (r.ok) {
                         const manifest = await r.json();
@@ -123,7 +215,9 @@ export default class Activator extends BaseActivator {
                         
                         this._registerRealm(manifest);
                     }
-                } catch (_e) { /* skip failed files */ }
+                } catch (err) {
+                    this.logger?.error(`Realm Manager: Failed to load context from './realms/${file}':`, err.message);
+                }
             }
             this.logger?.info(`Realm Manager: Discovered ${this._orderedRealmIds.length} worlds via dynamic manifest.`);
         } catch (err) {
@@ -311,14 +405,12 @@ export default class Activator extends BaseActivator {
     }
 
     async _recoverState(context) {
-        // 1. Wait for Discovery! (Orchestration V2)
-        if (this._discoveryPromise) await this._discoveryPromise;
-
-        // 2. Orchestration Shield: Double-trigger and re-entry lock
-        if (this._isRecovering || this._activeRealmId) return; 
+        // 2. Orchestration Shield: Double-trigger
+        if (this._isRecovering) return;
         this._isRecovering = true;
-
+        
         try {
+            if (this._discoveryPromise) await this._discoveryPromise;
             // 3. Stateless Fallback for Catch-22 (Cold Boot)
             let lastRealmId = null;
             if (this._persistence) {
@@ -371,6 +463,59 @@ export default class Activator extends BaseActivator {
             this._orderedRealmIds.push(manifest.id);
         }
         this.logger?.info(`Realm Manager: Registered universe '${manifest.id}' (${manifest.title})`);
+
+        // Broadcast discovery (Step 1)
+        if (this._eventAdmin && this._eventFactory) {
+            this.logger?.info(`Realm Manager: Broadcasting realm registration for '${manifest.id}'`);
+            const event = this._eventFactory.build(REALM_REGISTERED_TOPIC, {
+                "realm.id": manifest.id,
+                "realm.title": manifest.title,
+                "realm.icon": manifest.icon || "fas fa-universe"
+            });
+            this._eventAdmin.postEvent(event);
+        } else {
+            // Diagnostic Bridge
+            this.logger?.warn(`[RealmManager] Broadcast skipped for '${manifest.id}'. Reason: Event Fabric incomplete.`);
+            this.logger?.debug(`[RealmManager] - EventAdmin ready: ${!!this._eventAdmin} (${EVENT_ADMIN_SERVICE})`);
+            this.logger?.debug(`[RealmManager] - EventFactory ready: ${!!this._eventFactory} (${EVENT_FACTORY_SERVICE})`);
+            
+            // Buffer it if services are still booting
+            this._registrationBuffer.push(manifest);
+        }
+    }
+
+    _flushRegistrationBuffer() {
+        if (!this._eventAdmin || !this._eventFactory || this._registrationBuffer.length === 0) return;
+        
+        this.logger?.info(`[RealmManager] Flushing ${this._registrationBuffer.length} registration events from buffer...`);
+        const artifacts = [...this._registrationBuffer];
+        this._registrationBuffer = [];
+        
+        for (const manifest of artifacts) {
+            const event = this._eventFactory.build(REALM_REGISTERED_TOPIC, {
+                "realm.id": manifest.id,
+                "realm.title": manifest.title,
+                "realm.icon": manifest.icon || "fas fa-universe"
+            });
+            this._eventAdmin.postEvent(event);
+        }
+    }
+
+    _unregisterRealm(id) {
+        const manifest = this._realms.get(id);
+        if (!manifest) return;
+
+        this._realms.delete(id);
+        this._orderedRealmIds = this._orderedRealmIds.filter(rid => rid !== id);
+        this.logger?.info(`Realm Manager: Unregistered universe '${id}'`);
+
+        // Broadcast removal (Step 1)
+        if (this._eventAdmin && this._eventFactory) {
+            const event = this._eventFactory.build(REALM_UNREGISTERED_TOPIC, {
+                "realm.id": id
+            });
+            this._eventAdmin.postEvent(event);
+        }
     }
 
     async _switchRealm(context, id, interactive = false) {
@@ -562,7 +707,7 @@ export default class Activator extends BaseActivator {
 
     async _executeTransitionPhase(phase) {
         const pt = this._pendingTransition;
-        if (!pt) return;
+        this.logger?.info(`[RealmManager] Phase '${phase}' | EventAdmin: ${!!this._eventAdmin} | EventFactory: ${!!this._eventFactory}`);
 
         if (phase === 'ONTOLOGY') {
             this.logger?.info(`Realm Manager: Applying Ontological & Privilege filters...`);
@@ -652,8 +797,21 @@ export default class Activator extends BaseActivator {
             this._activeRealmId = pt.id;
             this.logger?.info(`Realm Manager: Context Transition Successful. Universe '${pt.id}' is now active. 🌌`);
             
-            // Global Event
+            // Global Event (Alpine/Vanilla)
             globalThis.dispatchEvent(new CustomEvent("realm-switched", { detail: { id: pt.id, manifest: pt.manifest } }));
+
+            // OSGi EventAdmin Broadcast
+            if (this._eventAdmin && this._eventFactory) {
+                this.logger?.info(`[RealmManager] Broadcasting Universe Change: ${pt.id} on topic ${REALM_CHANGED_TOPIC}`);
+                const event = this._eventFactory.build(REALM_CHANGED_TOPIC, {
+                    "realm.id": pt.id,
+                    "realm.title": pt.manifest.title,
+                    "realm.icon": pt.manifest.icon || "fas fa-universe"
+                });
+                this._eventAdmin.postEvent(event);
+            } else {
+                this.logger?.warn(`[RealmManager] EventAdmin Broadcast skipped! Admin: ${!!this._eventAdmin}, Factory: ${!!this._eventFactory}`);
+            }
 
             // Healer
             this._registerCLI(this.context);

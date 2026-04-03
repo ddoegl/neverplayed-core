@@ -8,8 +8,9 @@ import {
     DO_INSTANCES_PID,
     FLOW_SERVICE,
     SESSION_SERVICE,
-    YAML_EDITOR_SERVICE
-} from "shared-types";
+    YAML_EDITOR_SERVICE,
+    LOG_SERVICE
+} from "core-types";
 import { BaseActivator } from "osgi-base";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
@@ -20,12 +21,25 @@ export default class Activator extends BaseActivator {
     this._yamlService = null;
     this._limesService = null;
     this._isInitialized = false;
+    this._isStopped = false;
     this._runtimeStrategies = new Map();
     this._realmContext = null; // { realmId, blueprintIds: [], specializes: [] }
+    this._timers = [];
+    this._logTracker = null;
+    this._pmTracker = null;
+    this._yamlTracker = null;
   }
 
   onStart(context) {
-    // Core BaseActivator handles context and logger (this.logger)
+    // 1. Initialize Logger Tracker
+    this._logTracker = context.trackService(`(objectClass=${LOG_SERVICE})`, {
+        addingService: (ref) => {
+            const svc = context.getService(ref);
+            this.logger = svc.getLogger("org.neverplayed.do-registry");
+            return svc;
+        }
+    });
+    this._logTracker.open();
 
     // 2. Track Behavioral Strategies (OSGi)
     context.trackService(`(objectClass=${DOMAIN_STRATEGY_SERVICE})`, {
@@ -49,24 +63,26 @@ export default class Activator extends BaseActivator {
     }).open();
 
     // 4. Track Critical Dependency: Persistence Manager
-    context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
+    this._pmTracker = context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
         addingService: (ref) => { 
             this._persistenceManager = context.getService(ref); 
             this._checkReady();
             return this._persistenceManager;
         },
         removedService: () => { this._persistenceManager = null; }
-    }).open();
+    });
+    this._pmTracker.open();
 
     // 5. Track Critical Dependency: YAML Service
-    context.trackService(`(objectClass=${YAML_SERVICE})`, {
+    this._yamlTracker = context.trackService(`(objectClass=${YAML_SERVICE})`, {
         addingService: (ref) => { 
             this._yamlService = context.getService(ref); 
             this._checkReady();
             return this._yamlService;
         },
         removedService: () => { this._yamlService = null; }
-    }).open();
+    });
+    this._yamlTracker.open();
 
     // 6. Evaluator Registration (No dependencies required for reactive Eval)
     context.registerService(EVALUATOR_SERVICE, {
@@ -92,6 +108,7 @@ export default class Activator extends BaseActivator {
 
     // 7. Track Session Changes (Phase 10)
     globalThis.addEventListener('session-changed', () => {
+        if (this._isStopped) return;
         this.logger.info("DO Registry: Session changed, re-syncing host...");
         this._isInitialized = false; 
         this._checkReady();
@@ -99,7 +116,7 @@ export default class Activator extends BaseActivator {
   }
 
   async _checkReady() {
-    if (this._isInitialized || !this._yamlService || !this._persistenceManager) return;
+    if (this._isInitialized || !this._yamlService || !this._persistenceManager || this._isStopped) return;
     this._isInitialized = true;
 
     try {
@@ -117,13 +134,27 @@ export default class Activator extends BaseActivator {
                 this._runtimeStrategies.set(s.id, s);
             }
             this.logger.info(`DO Registry: Loaded ${Object.keys(yamlStrats).length} static strategies.`);
-        } else {
-            this.logger.warn(`DO Registry: Could not load static strategies from ${strategiesPath}`);
         }
 
         // B. Ensure Instance State
         // Bugfix: Removed preemptive pm.store(DO_INSTANCES_PID, {}) here to prevent overwriting
         // remote Firebase data with {} before Firebase PM has fully hydrated.
+
+        // D. Load System Defaults (Configuration over Code)
+        const defaultsPath = this.resolveResource("data/system-defaults.yaml");
+        fetch(defaultsPath).then(async res => {
+            if (res.ok) {
+                const text = await res.text();
+                const data = yaml.load(text) || {};
+                const policies = data.persistencePolicies || [];
+                for (const p of policies) {
+                    if (pm.setRoutingPolicy) pm.setRoutingPolicy(p.pattern, p.tier, p.enforce);
+                }
+                this.logger.info(`DO Registry: Loaded ${policies.length} system persistence policies.`);
+            }
+        }).catch(err => {
+            this.logger.warn("DO Registry: System defaults loading failed:", err);
+        });
 
         // C. Build Registry Service
         const actionHandlers = [];
@@ -181,10 +212,18 @@ export default class Activator extends BaseActivator {
                 // null = reset to global defaults
                 if (domainObjects === null) {
                     this._realmContext = null;
+                    // Reset policies? For now we just let the next realm overwrite them.
                 } else {
                     const blueprintIds = domainObjects.map(d => d.id);
                     const specializes = domainObjects.filter(d => d.spec);
                     
+                    // Register Realm-driven Policies (Upper Tier)
+                    for (const doEntry of domainObjects) {
+                        if (doEntry.persistence && pm.setRoutingPolicy) {
+                            pm.setRoutingPolicy(`instances.${doEntry.id}.`, doEntry.persistence.tier, doEntry.persistence.enforce);
+                        }
+                    }
+
                     // Fetch specialized specs asynchronously
                     for (const s of specializes) {
                         try {
@@ -206,6 +245,7 @@ export default class Activator extends BaseActivator {
         };
 
         const syncWithHost = () => {
+            if (this._isStopped) return;
             const states = [globalThis.backofficeState, globalThis.businessPortalState].filter(Boolean);
             const raw = localStorage.getItem('atomic_persisted_specs');
             const persisted = raw ? JSON.parse(raw) : [];
@@ -238,8 +278,6 @@ export default class Activator extends BaseActivator {
                 s.parsedDOStrategies = s.domainObjectStrategies;
                 s.parsedDOInstances = enrichedInstances;
 
-
-                
                 // Initialize Admin Toggle State
                 if (s.showAllDOs === undefined) s.showAllDOs = false;
                 
@@ -252,17 +290,12 @@ export default class Activator extends BaseActivator {
                     }
                     if (!user) return false;
                     
-                    // 1. Check Capabilities (NPRF Standard Array)
                     const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
-                    
-                    // 2. Check Attributes (Generic Object/Array)
                     const rawAttrs = user.attributes || {};
                     const attrs = Array.isArray(rawAttrs) ? rawAttrs : Object.keys(rawAttrs).filter(k => !!rawAttrs[k]);
                     
                     const adminRoles = ['neverplayed-admin', 'realm-admin', 'admin', 'superuser'];
                     const hasRole = adminRoles.some(role => caps.includes(role) || attrs.includes(role));
-                    
-                    // 3. Fallback for Local Dev / Known Admin IDs
                     const isKnownAdmin = ['dd', 'daniela', 'system', 'daniel.doegl@doegl.info'].includes(user.id);
                     
                     return hasRole || isKnownAdmin;
@@ -272,7 +305,6 @@ export default class Activator extends BaseActivator {
                     s.handleAction = (action, instance) => registryService.handleAction(action, instance, s);
                 }
                 
-                // Trigger Limes Re-evaluation when toggle changes (Phase 9)
                 s.toggleShowAllDOs = () => {
                     s.showAllDOs = !s.showAllDOs;
                     if (!s.showAllDOs) {
@@ -295,18 +327,12 @@ export default class Activator extends BaseActivator {
                     };
                 }
 
-                // Bridge Methods for Design-Time Editors (Phase 7 Harmonization)
-                if (!s.editDomainObjectVisual) {
-                    s.editDomainObjectVisual = (id) => this.logger.warn(`DO Registry: Visual Editor not available for ${id}`);
-                }
                 if (!s.editDomainObjectYAML) {
                     s.editDomainObjectYAML = (id) => {
                         const spec = s.domainObjectSpecs.find(sp => sp.id === id);
                         if (!spec) return this.logger.error(`DO Registry: Spec ${id} not found.`);
-                        
                         const editorRef = context.getServiceReference(YAML_EDITOR_SERVICE);
                         const editorSvc = editorRef ? context.getService(editorRef) : null;
-                        
                         if (editorSvc) {
                             editorSvc.edit({
                                 title: `Edit Blueprint: ${id}`,
@@ -319,23 +345,24 @@ export default class Activator extends BaseActivator {
                             });
                         } else {
                             this.logger.warn("DO Registry: YAML_EDITOR_SERVICE not found.");
-                            alert("YAML Editor Service is not available.");
                         }
                     };
-                }
-                if (!s.openDOStrategiesEditor) {
-                    s.openDOStrategiesEditor = () => this.logger.warn("DO Registry: Strategies Editor not available");
                 }
 
                 if (s.recompile) s.recompile();
             });
 
-            // Force a security re-evaluation so 'host.currentDOs' (and evaluatedData) updates on add/delete
             globalThis.dispatchEvent(new CustomEvent('shell-security-reevaluate'));
         };
 
-        // Poll a few times after boot to catch asynchronous PM hydration (Firebase)
-        [1000, 2500, 5000].forEach(delay => setTimeout(syncWithHost, delay));
+        // Guarded Synchronization Polls
+        [1000, 2500, 5000].forEach(delay => {
+            const t = setTimeout(() => {
+                if (this._isStopped) return;
+                syncWithHost();
+            }, delay);
+            this._timers.push(t);
+        });
 
         // D. Register Default Handlers
         registryService.registerActionHandler({
@@ -422,8 +449,6 @@ export default class Activator extends BaseActivator {
 
         // F. Scan for discovery specs (Rule 4: Configuration over Code)
         const baseUrl = this.getBaseUrl();
-        
-        // Discovery: Scan for additional specs in data subfolder
         const specsPath = `${baseUrl}data/specs.yaml`;
         fetch(specsPath).then(async res => {
             if (res.ok) {
@@ -433,38 +458,38 @@ export default class Activator extends BaseActivator {
                 this.logger.info(`DO Registry: Found ${specs.length} local specs via discovery.`);
                 specs.forEach(s => registryService.addBlueprint(s));
             }
-        }).catch(err => {
-            if (err.status !== 404) this.logger.warn("DO Registry: Local spec discovery failed:", err);
-        });
+        }).catch(() => {});
 
         // G. Scan for existing instances (Delayed to allow PM hydration and prevent overwrite loops)
         const instancesPath = `${baseUrl}data/instances.yaml`;
-        setTimeout(() => {
+        const instTimer = setTimeout(() => {
+            if (this._isStopped) return;
             fetch(instancesPath).then(async res => {
-                if (res.ok) {
-                    const text = await res.text();
-                    const instanceData = yaml.load(text) || {};
-                    const instances = Array.isArray(instanceData) ? instanceData : (instanceData.domainObjectInstances || instanceData);
-                    if (typeof instances === 'object' && !Array.isArray(instances)) {
-                        for (const [id, inst] of Object.entries(instances)) registryService.addInstance({ ...inst, id });
-                    } else if (Array.isArray(instances)) {
-                        instances.forEach(inst => registryService.addInstance(inst));
-                    }
-                    this.logger.info(`DO Registry: Found ${Object.keys(instances).length} local instances via discovery.`);
+                if (!res.ok || this._isStopped) return;
+                const text = await res.text();
+                const instanceData = yaml.load(text) || {};
+                const instances = Array.isArray(instanceData) ? instanceData : (instanceData.domainObjectInstances || instanceData);
+                if (typeof instances === 'object' && !Array.isArray(instances)) {
+                    for (const [id, inst] of Object.entries(instances)) registryService.addInstance({ ...inst, id });
+                } else if (Array.isArray(instances)) {
+                    instances.forEach(inst => registryService.addInstance(inst));
                 }
-            }).catch(_err => {
-                // Silently skip if no instances provided
-            });
+            }).catch(() => {});
         }, 3000);
+        this._timers.push(instTimer);
 
         this.logger.info("DO Registry: Service Registered successfully. 🏛️✅");
-        globalThis.dispatchEvent(new CustomEvent('do-registry-ready'));
-
     } catch (err) {
         this.logger.error("DO Registry: Initialization failed:", err);
-        this._isInitialized = false;
     }
   }
 
-  stop() {}
+  onStop() {
+    this._isStopped = true;
+    this._timers.forEach(t => clearTimeout(t));
+    if (this._logTracker) this._logTracker.close();
+    if (this._pmTracker) this._pmTracker.close();
+    if (this._yamlTracker) this._yamlTracker.close();
+    if (this.logger) this.logger.info("DO Registry: Stopped and cleaned up.");
+  }
 }

@@ -1,4 +1,4 @@
-import { DOMAIN_OBJECT_REGISTRY_SERVICE, DOMAIN_STRATEGY_SERVICE, PERSISTENCE_RESOLVER_SERVICE, LIMES_SERVICE } from "shared-types";
+import { DOMAIN_OBJECT_REGISTRY_SERVICE, DOMAIN_STRATEGY_SERVICE, PERSISTENCE_RESOLVER_SERVICE, LIMES_SERVICE } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {

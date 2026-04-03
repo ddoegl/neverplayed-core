@@ -65,8 +65,11 @@ export class BundleTestHarness {
         }
 
         const denoFetcher = async (url: string | URL) => {    
-            const urlStr = url instanceof URL ? url.toString() : url;
-            if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
+            let urlStr = url instanceof URL ? url.toString() : url;
+            if (urlStr.startsWith("http://localhost/")) {
+                urlStr = urlStr.replace("http://localhost/", "/");
+            }
+            if (urlStr.startsWith("https://") || (urlStr.startsWith("http://") && !urlStr.includes("localhost"))) {
                 return null;
             }
             const path = urlStr.replace(/^file:\/+/ , "/").split('?')[0];
@@ -74,7 +77,11 @@ export class BundleTestHarness {
                 return await Deno.readTextFile(path);
             } catch (_err) {
                 const altPath = resolve(Deno.cwd(), "public", path.replace(/^\//, ""));
-                return await Deno.readTextFile(altPath);
+                try {
+                    return await Deno.readTextFile(altPath);
+                } catch (__err) {
+                    return null; // Silent failure for missing bundles in tests
+                }
             }
         };
 
@@ -84,9 +91,17 @@ export class BundleTestHarness {
         (globalThis as any).fetch = async (url: string | URL, init?: any) => {
             const urlStr = url instanceof URL ? url.toString() : url;
             if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
-                return await originalFetch(url, init);
+                if (!urlStr.includes("localhost")) return await originalFetch(url, init);
             }
             const text = await denoFetcher(url);
+            if (text === null) {
+                return {
+                    status: 404,
+                    ok: false,
+                    text: () => Promise.resolve("Not Found (Harness)"),
+                    json: () => Promise.reject(new Error("Not Found"))
+                };
+            }
             return {
                 text: () => Promise.resolve(text || ""),
                 json: () => Promise.resolve(JSON.parse(text || "{}")),
@@ -96,6 +111,10 @@ export class BundleTestHarness {
 
         // deno-lint-ignore no-explicit-any
         (globalThis as any).denoFetcher = denoFetcher;
+    }
+
+    getBundleContext() {
+        return this.context;
     }
 
     async init() {
@@ -151,6 +170,23 @@ export class BundleTestHarness {
     }
 
     async stop() {
-        if (this.pandino) await this.pandino.stop();
+        if (!this.pandino) return;
+        
+        // 1. Manually stop all bundles to ensure onStop hooks finish
+        const context = (this.pandino as any).getBundleContext();
+        if (context) {
+            const bundles = context.getBundles();
+            for (const b of bundles) {
+                if (b.getState() === 32) { // ACTIVE
+                    try { await b.stop(); } catch (_e) { /* ignore */ }
+                }
+            }
+        }
+        
+        // 2. Shut down kernel
+        await this.pandino.stop();
+        
+        // 3. Drain event loop to ensure clearTimeout propagates
+        await new Promise(r => setTimeout(r, 50));
     }
 }

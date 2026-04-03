@@ -1,4 +1,4 @@
-import { ACTION_REGISTRY_SERVICE, LOG_SERVICE } from "shared-types";
+import { ACTION_REGISTRY_SERVICE, LOG_SERVICE } from "core-types";
 
 class ActionRegistry {
     constructor(logger) {

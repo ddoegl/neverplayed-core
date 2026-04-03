@@ -10,7 +10,7 @@ import {
     PLEXUS_ENGINE_SERVICE,
     TOPICS_DATA_SERVICE,
     CAMPAIGNS_SERVICE
-} from "shared-types";
+} from "core-types";
 
 export default class Activator {
     start(context) {

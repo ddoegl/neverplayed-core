@@ -8,7 +8,7 @@ import {
     EVENT_FACTORY_SERVICE,
     EVENT_HANDLER_INTERFACE,
     EVENT_TOPIC
-} from "shared-types";
+} from "core-types";
 import { 
     CONFIG_ADMIN_SERVICE, 
     FLOW_SERVICE,

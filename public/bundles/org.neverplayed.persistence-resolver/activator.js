@@ -1,4 +1,4 @@
-import { PERSISTENCE_RESOLVER_SERVICE, REALM_MANAGER_SERVICE } from "../../shared-types.js";
+import { PERSISTENCE_RESOLVER_SERVICE, REALM_MANAGER_SERVICE } from "../../core-types.js";
 import { BaseActivator } from "../../osgi-base.js";
 
 export default class Activator extends BaseActivator {

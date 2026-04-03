@@ -98,7 +98,7 @@
 
   <body
     x-data="navigationMenu"
-    @shell:sidebar-toggle.window="sidebarOpen = !sidebarOpen"
+    @shell-header:sidebar-toggle.window="Alpine.store('shell_context').sidebarOpen = !Alpine.store('shell_context').sidebarOpen"
     @shell:flows-updated.window="flows = [...flows]"
     class="h-screen flex flex-col bg-gray-100 text-gray-900 overflow-hidden sl-theme-light"
   >
@@ -152,153 +152,13 @@
         }
       }
     </style>
-    <!-- Premium Header -->
-    <header
-      class="h-16 bg-slate-900 text-white flex items-center justify-between px-6 shadow-md z-20 flex-shrink-0"
-      x-show="!activeFlow?.hideNavigation"
-    >
-      <div class="flex items-center space-x-4">
-        <button
-          @click="sidebarOpen = !sidebarOpen"
-          x-show="envType === 'desktop' && !activeFlow?.hideNavigation"
-          class="p-2 mr-2 text-slate-400 hover:text-white transition-colors"
-          title="Toggle Sidebar"
-        >
-          <i class="fas fa-bars text-xl"></i>
-        </button>
-        <div
-          class="flex items-center space-x-2 cursor-pointer group"
-          @click="logout(); goHome()"
-          title="Return to Space-Time Reality"
-        >
-          <div class="relative overflow-hidden rounded-lg">
-            <img
-              src="branding.svg"
-              class="brand inline transition-transform group-hover:scale-110"
-            />
-          </div>
-          <span class="font-bold text-xl tracking-tight">neverplayed <span
-              class="text-blue-400"
-            >.org</span></span>
-        </div>
-
-        <!-- Environment Switcher -->
-        <div
-          class="relative"
-          x-data="{ open: false }"
-          @click.away="open = false"
-          x-show="!activeFlow?.hideNavigation"
-        >
-          <button
-            @click="open = !open"
-            class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
-          >
-            <i
-              :class="(envServices.find(e => e.id === session.environment)?.icon || 'fas fa-desktop') + ' text-blue-400'"
-            ></i>
-            <span
-              class="text-xs font-semibold"
-              x-text="envServices.find(e => e.id === session.environment)?.name || 'Desktop Web'"
-            ></span>
-            <i class="fas fa-chevron-down text-[10px] text-slate-500"></i>
-          </button>
-
-          <div
-            x-show="open"
-            x-transition
-            class="absolute left-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden text-gray-900 z-50"
-          >
-            <template x-for="env in envServices" :key="env.id">
-              <button
-                @click="env.onActivate(session); open = false; location.reload();"
-                class="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center space-x-3 transition-colors border-b border-gray-100 last:border-0"
-                :class="session.environment === env.id ? 'bg-blue-50 text-blue-600' : ''"
-              >
-                <i :class="env.icon + ' text-lg opacity-50'"></i>
-                <div>
-                  <div class="font-bold" x-text="env.name"></div>
-                  <div
-                    class="text-[10px] text-gray-500 uppercase font-mono"
-                    x-text="env.type"
-                  >
-                  </div>
-                </div>
-              </button>
-            </template>
-          </div>
-        </div>
-
-        <!-- Breadcrumb / Active Flow Title -->
-        <template x-if="activeFlow">
-          <div class="flex items-center space-x-2 text-slate-400 text-sm">
-            <i class="fas fa-chevron-right text-[10px]"></i>
-            <span
-              class="text-white font-medium"
-              x-text="activeFlow.title"
-            ></span>
-          </div>
-        </template>
-      </div>
-
-      <div class="flex items-center space-x-6">
-        <!-- Session Info -->
-        <div x-show="session.currentUser" class="flex items-center space-x-3">
-          <div class="text-right hidden sm:block">
-            <div
-              class="text-[10px] uppercase text-slate-400 font-bold leading-none mb-1"
-            >
-              Authenticated as
-            </div>
-            <div
-              class="text-sm font-semibold"
-              x-text="typeof session.currentUser === 'object' ? (session.currentUser?.alias || session.currentUser?.firstname || 'User') : (session.currentUser || 'Guest')"
-            >
-            </div>
-          </div>
-          <div
-            class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold border-2 border-slate-800 shadow-lg"
-          >
-            <span
-              x-text="(typeof session.currentUser === 'object' ? (session.currentUser?.alias || session.currentUser?.firstname || '?') : (session.currentUser || '?')).charAt(0).toUpperCase()"
-            ></span>
-          </div>
-          <!-- System Controls -->
-          <div class="flex items-center space-x-2 mr-2">
-            <button
-              @click="launchFlow(CONFIG_ADMIN_UI_FLOW)"
-              class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-blue-400 transition-all border border-slate-700 shadow-inner group"
-              title="Universe Settings"
-            >
-              <i
-                class="fas fa-cog transition-transform group-hover:rotate-90"
-              ></i>
-            </button>
-            <button
-              @click="triggerSystemReset()"
-              class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-red-400 transition-all border border-slate-700 shadow-inner"
-              title="Factory Reset Reality"
-            >
-              <i class="fas fa-undo-alt"></i>
-            </button>
-          </div>
-
-          <button
-            @click="logout()"
-            class="text-slate-400 hover:text-red-400 transition-colors"
-          >
-            <i class="fas fa-sign-out-alt"></i>
-          </button>
-        </div>
-        <div x-show="!session.currentUser">
-          <div class="text-slate-400 text-sm italic">Guest Session</div>
-        </div>
-      </div>
-    </header>
+    <!-- Managed Header Bundle Slot -->
+    <header id="shell-header" x-show="!activeFlow?.hideNavigation"></header>
 
     <div class="flex flex-1 overflow-hidden">
       <!-- Primary Sidebar (Flows) -->
       <aside
-        x-show="envType === 'desktop' && sidebarOpen && !activeFlow?.hideNavigation"
+        x-show="envType === 'desktop' && Alpine.store('shell').sidebarOpen && !activeFlow?.hideNavigation"
         x-transition:enter="transition ease-out duration-300"
         x-transition:enter-start="-translate-x-full"
         x-transition:enter-end="translate-x-0"
@@ -604,6 +464,14 @@
           }
         }
 
+        // --- Core UI Extensions ---
+        const headerBundle = await context.installBundle(
+          "./bundles/org.neverplayed.shell-header/manifest.json",
+        );
+        if (headerBundle.state === 2 || headerBundle.state === 4) {
+          await headerBundle.start();
+        }
+
         // Infrastructure: Event Admin
         const eaBundle = await context.installBundle(
           "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
@@ -663,7 +531,6 @@
           envServices: [],
           session: sessionService,
           activeFlowId: null,
-          sidebarOpen: false,
           CONFIG_ADMIN_UI_FLOW,
           REALLIFE_FLOW,
           MOBILE_LAUNCHER_FLOW,

@@ -1,6 +1,7 @@
 import { 
     FLOW_SERVICE, 
-    SESSION_SERVICE
+    SESSION_SERVICE, 
+    SHELL_HOST_SERVICE 
 } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
@@ -117,7 +118,7 @@ export default class Activator {
         }));
 
         // Register the Host Service itself
-        context.registerService("@neverplayed/shell-host-service", {
+        context.registerService(SHELL_HOST_SERVICE, {
             getAlpineDataName: () => "shellHost"
         });
     }

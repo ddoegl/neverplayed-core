@@ -1,4 +1,10 @@
-import { FLOW_SERVICE, CONFIG_ADMIN_SERVICE, AUTH_SHIELD_SERVICE } from "core-types";
+import { 
+    FLOW_SERVICE, 
+    CONFIG_ADMIN_SERVICE, 
+    AUTH_SHIELD_SERVICE, 
+    SHELL_HOST_SERVICE, 
+    SHELL_COMMAND_SERVICE 
+} from "core-types";
 import { BaseActivator } from "osgi-base";
 
 const _Alpine = globalThis.Alpine;
@@ -61,7 +67,7 @@ export default class Activator extends BaseActivator {
                 }).open();
 
                 // Track Shell Host Service (Orchestrator)
-                context.trackService(`(objectClass=@neverplayed/shell-host-service)`, {
+                context.trackService(`(objectClass=${SHELL_HOST_SERVICE})`, {
                     addingService: (ref) => {
                         this.shellHost = context.getService(ref);
                         logger.info("Shell Sidebar: Orchestrator connected.");
@@ -159,7 +165,7 @@ export default class Activator extends BaseActivator {
         this.render(mountPoint, logger);
 
         // 4. Register Shell Command
-        context.registerService("@neverplayed/shell-command-service", {
+        context.registerService(SHELL_COMMAND_SERVICE, {
             name: "sidebar",
             description: "[id|bsn] - Toggle sidebar or set visibility for a specific flow",
             execute: async (args, ctx, log) => {

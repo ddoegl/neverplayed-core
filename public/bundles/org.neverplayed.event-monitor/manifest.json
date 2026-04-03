@@ -12,7 +12,8 @@
     "topics": [
       "backoffice/invitations/*",
       "backoffice/cases/*",
-      "org/neverplayed/config/*"
+      "org/neverplayed/config/*",
+      "neverplayed/realm/*"
     ],
     "sidebar": true
   }

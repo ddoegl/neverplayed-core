@@ -1,4 +1,4 @@
-import { BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, LIMES_SERVICE } from "shared-types";
+import { BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, LIMES_SERVICE } from "core-types";
 
 export default class Activator {
     start(context) {

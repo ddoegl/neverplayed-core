@@ -1,0 +1,16 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.shell-header",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Never Played Shell Header",
+    "Bundle-Description": "Event-driven reactive header for the Never Played shell.",
+    "Bundle-Activator": "activator.js",
+    "Import-Service": [
+        "@pandino/event-admin/EventAdmin",
+        "@neverplayed/realm-manager/service"
+    ],
+    "Configuration": {
+        "channels": [
+            "business-channel-web"
+        ]
+    }
+}

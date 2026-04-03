@@ -1,0 +1,19 @@
+# NPRF: Global Persistence System Defaults 🏛️
+# Tier: System (Final Fallback)
+
+persistencePolicies:
+  - pattern: "config.shell"
+    tier: "cloud"
+    enforce: false
+  - pattern: "identities."
+    tier: "local"
+    enforce: true
+  - pattern: "security."
+    tier: "volatile"
+    enforce: true
+  - pattern: "realm."
+    tier: "local"
+    enforce: true
+  - pattern: "config."
+    tier: "cloud"
+    enforce: false

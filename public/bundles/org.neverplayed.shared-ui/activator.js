@@ -5,7 +5,7 @@ import {
     UI_COMPONENTS_SERVICE,
     ACTION_SERVICE,
     LOG_SERVICE
-} from "shared-types";
+} from "core-types";
 import "./components/ui-factory.js";
 import "./components/atomic-component-base.js";
 import "./components/atomic-button.js";

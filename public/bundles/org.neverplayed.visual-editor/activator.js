@@ -1,4 +1,4 @@
-import { ATOMIC_COMPONENT_REGISTRY_SERVICE, FLOW_SERVICE } from "shared-types";
+import { ATOMIC_COMPONENT_REGISTRY_SERVICE, FLOW_SERVICE } from "core-types";
 import { BaseActivator } from "osgi-base";
 import "./components/atomic-visual-editor.js";
 

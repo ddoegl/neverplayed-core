@@ -1,4 +1,4 @@
-import { SELECTION_SERVICE, SESSION_SERVICE } from "shared-types";
+import { SELECTION_SERVICE, SESSION_SERVICE } from "core-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {

@@ -14,7 +14,7 @@ import {
     UI_FACTORY_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
     ACTION_SERVICE
-} from "shared-types";
+} from "core-types";
 import { BaseActivator } from "osgi-base";
 
 export default class Activator extends BaseActivator {
