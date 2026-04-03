@@ -1,5 +1,5 @@
 {
-    "Bundle-SymbolicName": "@neverplayed/limes",
+    "Bundle-SymbolicName": "org.neverplayed.limes",
     "Bundle-Name": "Limes Guarding Service",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "./activator.js",

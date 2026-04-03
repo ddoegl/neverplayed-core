@@ -1,10 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <title>Realms Shell | Never Played</title>
-    <link rel="icon" type="image/png" href="favicon.png">
-
+    <title>Never Played - Secure Bridge</title>
     <script type="importmap">
       {
         "imports": {
@@ -19,46 +16,34 @@
           "core-types": "./core-types.js",
           "osgi-base": "./osgi-base.js",
           "alpine-base": "./alpine-base.js",
-          "@neverplayed/shared-ui/": "./bundles/org.neverplayed.shared-ui/",
-          "@neverplayed/selection-service/": "./bundles/org.neverplayed.selection-service/",
-          "@neverplayed/do-registry/": "./bundles/org.neverplayed.do-registry/",
-          "@neverplayed/realm.real-life/": "./bundles/org.neverplayed.realm.real-life/",
-          "@neverplayed/visual-editor/": "./bundles/org.neverplayed.visual-editor/",
-          "@neverplayed/showcase/": "./bundles/org.neverplayed.showcase/",
-          "@neverplayed/config-admin/": "./bundles/org.neverplayed.config-admin/",
-          "@neverplayed/event-monitor/": "./bundles/org.neverplayed.event-monitor/"
+          "org.neverplayed.shared-ui/": "./bundles/org.neverplayed.shared-ui/",
+          "org.neverplayed.selection-service/": "./bundles/org.neverplayed.selection-service/",
+          "org.neverplayed.do-registry/": "./bundles/org.neverplayed.do-registry/",
+          "org.neverplayed.realm.real-life/": "./bundles/org.neverplayed.realm.real-life/",
+          "org.neverplayed.visual-editor/": "./bundles/org.neverplayed.visual-editor/",
+          "org.neverplayed.showcase/": "./bundles/org.neverplayed.showcase/",
+          "org.neverplayed.config-admin/": "./bundles/org.neverplayed.config-admin/",
+          "org.neverplayed.event-monitor/": "./bundles/org.neverplayed.event-monitor/"
         }
       }
     </script>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css"
-    />
-    <script
-      type="module"
-      src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace-autoloader.js"
-    ></script>
-
     <style>
-      [x-cloak] {
-        display: none !important;
-      }
-      body {
-        background: #f8fafc;
-      }
+      [x-cloak] { display: none !important; }
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
   </head>
+
   <body
+    class="h-screen w-screen bg-slate-950 flex flex-col overflow-hidden"
     x-data="shellLoader"
-    class="h-screen flex flex-col overflow-hidden sl-theme-light"
   >
-    <!-- Global Header -->
     <!-- Global Header (Managed by org.neverplayed.shell-header) -->
     <header id="shell-header" x-show="kernelReady"></header>
 
@@ -71,55 +56,20 @@
       >
       </aside>
 
-      <!-- Main Content managed by org.neverplayed.shell-host -->
+      <!-- Main Content -->
       <main class="flex-1 overflow-y-auto relative bg-slate-50">
-        <template x-if="kernelReady">
-          <div
-            id="shell-host-root"
-            class="h-full w-full relative"
-            x-data="shellHost"
-          >
-            <div
-              id="flow-content"
-              x-ref="flowContent"
-              x-ignore
-              class="h-full w-full"
-            >
-            </div>
-
-            <!-- Global Overlay (Loader) -->
-            <div
-              x-show="!ready"
-              class="absolute inset-0 bg-slate-50/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 z-50"
-            >
-              <i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
-              <span
-                class="text-slate-400 text-[10px] font-mono uppercase tracking-widest"
-                x-text="status"
-              ></span>
-            </div>
-          </div>
-        </template>
+        <div id="shell-host-root" x-show="kernelReady" class="h-full w-full"></div>
 
         <!-- Kernel Boot Progress -->
-        <div
-          x-show="!kernelReady"
-          class="h-full flex flex-col items-center justify-center space-y-4"
-        >
+        <div x-show="!kernelReady" class="h-full flex flex-col items-center justify-center space-y-4">
           <i class="fas fa-shield-alt fa-spin text-blue-400 text-2xl"></i>
-          <span
-            class="text-slate-400 text-[10px] font-mono uppercase tracking-widest text-center px-20"
-            x-text="bootStatus"
-          ></span>
-          <div
-            x-show="error"
-            class="text-red-500 text-xs font-mono mt-4 text-center px-10"
-          >
-            <p class="font-bold uppercase tracking-wider">
-              Kernel Panic: Boot Failure
-            </p>
-            <p x-text="error"></p>
-          </div>
+          <span class="text-slate-400 text-[10px] font-mono uppercase tracking-widest text-center" x-text="bootStatus"></span>
+          <template x-if="error">
+            <div class="text-red-500 text-xs font-mono mt-4 text-center px-10">
+                <p class="font-bold uppercase tracking-wider">Kernel Panic</p>
+                <p x-text="error"></p>
+            </div>
+          </template>
         </div>
       </main>
     </div>
@@ -130,7 +80,7 @@
       import Alpine from "https://esm.sh/alpinejs@3.13.5";
       import { REALM_MANAGER_SERVICE } from "core-types";
 
-      // 1. Initialize Central Orchestration State
+      // Initialize Central State
       Alpine.store("platform", { kernelReady: false });
 
       Alpine.data("shellLoader", () => ({
@@ -138,10 +88,7 @@
         bootStatus: "Shielding Phase: Core Initialization...",
         error: null,
 
-        init() {
-          this.boot();
-        },
-        async boot() {
+        async init() {
           try {
             const pandino = new Pandino({ ...loaderConfiguration });
             await pandino.init();
@@ -151,96 +98,31 @@
             globalThis.Alpine = Alpine;
             globalThis.pandinoContext = context;
 
-            // 2. Load Infrastructure: Event Admin
-            this.bootStatus = "Igniting Event Fabric...";
-            const eaBundle = await context.installBundle(
-              "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
-            );
+            // 1. Load Event Admin
+            const eaBundle = await context.installBundle("https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json");
             if (eaBundle.getState() < 32) await eaBundle.start();
-            console.log(
-              `[Pandino] Total Services: ${context.getServiceReferences().length}`,
-            );
-            context.getServiceReferences().forEach((ref) => {
-              console.log(
-                `[Registry] from ${ref.getBundle().getSymbolicName()}:`,
-                ref.getProperty("objectClass"),
-              );
-            });
 
-            // 3. Load Orchestrator
+            // 2. Load Orchestrator & UI Bridge
             this.bootStatus = "Loading Orchestration Layer...";
-            const rmBundle = await context.installBundle(
-              "./bundles/org.neverplayed.realm-manager/manifest.json",
-            );
+            const rmBundle = await context.installBundle("./bundles/org.neverplayed.realm-manager/manifest.json");
             if (rmBundle.getState() < 32) await rmBundle.start();
-
-            // 4. Load Core UI: Shell Header
+            
             this.bootStatus = "Synthesizing Shell Interface...";
-            const headerBundle = await context.installBundle(
-              "./bundles/org.neverplayed.shell-header/manifest.json",
-            );
-            if (headerBundle.getState() < 32) {
-              await headerBundle.start();
-            }
+            const headerBundle = await context.installBundle("./bundles/org.neverplayed.shell-header/manifest.json");
+            if (headerBundle.getState() < 32) await headerBundle.start();
 
-            // 5. Handshake with Orchestrator (Wait for full context leap)
-            const rmRef = context.getServiceReference(
-              REALM_MANAGER_SERVICE,
-            );
+            // 3. Handshake
+            const rmRef = context.getServiceReference(REALM_MANAGER_SERVICE);
             if (rmRef) {
-              const rm = context.getService(rmRef);
-              this.bootStatus = "Finalizing Reality Matrix...";
-              await rm.waitReady();
+              await context.getService(rmRef).waitReady();
             }
 
             this.kernelReady = true;
             Alpine.store("platform").kernelReady = true;
           } catch (err) {
-            console.error("Boot Failure:", err);
             this.error = err.message;
           }
-        },
-      }));
-
-      // --- UI Components ---
-      Alpine.data("realmSwitcher", () => ({
-        open: false,
-        realms: [],
-        activeId: null,
-        activeTitle: "",
-
-        async init() {
-          this.$watch("$store.platform.kernelReady", (val) => {
-            if (val) this.sync();
-          });
-          if (Alpine.store("platform").kernelReady) this.sync();
-        },
-
-        async sync() {
-          const context = globalThis.pandinoContext;
-          if (!context) return;
-          const rmRef = context.getServiceReference(
-            REALM_MANAGER_SERVICE,
-          );
-          const rm = context.getService(rmRef);
-          this.realms = rm.getOrderedRealms();
-          this.activeId = rm.getActiveRealm();
-          const active = this.realms.find((r) =>
-            r.id === this.activeId
-          );
-          this.activeTitle = active ? active.title : "Warping...";
-        },
-
-        async switchRealm(id) {
-          this.open = false;
-          const context = globalThis.pandinoContext;
-          if (!context) return;
-          const rm = context.getService(
-            context.getServiceReference(REALM_MANAGER_SERVICE),
-          );
-          await rm.switchRealm(id);
-          this.sync();
-        },
+        }
       }));
 
       Alpine.start();

@@ -1,5 +1,5 @@
 {
-    "Bundle-SymbolicName": "@neverplayed/visual-editor",
+    "Bundle-SymbolicName": "org.neverplayed.visual-editor",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "./activator.js",
     "X-Atomic-Bundle": "true",

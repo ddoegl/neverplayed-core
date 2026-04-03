@@ -1,5 +1,5 @@
 {
-  "Bundle-SymbolicName": "@neverplayed/backoffice-tenants",
+  "Bundle-SymbolicName": "org.neverplayed.backoffice-tenants",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
   "Configuration": {

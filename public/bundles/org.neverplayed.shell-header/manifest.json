@@ -1,16 +1,17 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.shell-header",
     "Bundle-Version": "1.0.0",
-    "Bundle-Name": "Never Played Shell Header",
-    "Bundle-Description": "Event-driven reactive header for the Never Played shell.",
+    "Bundle-Name": "Shell Header UI",
+    "Bundle-Description": "Top navigation and session management bar (Reactive OSGi).",
     "Bundle-Activator": "activator.js",
     "Import-Service": [
         "@pandino/event-admin/EventAdmin",
-        "@neverplayed/realm-manager/service"
+        "org.neverplayed.realm.RealmManager"
     ],
     "Configuration": {
         "channels": [
             "business-channel-web"
-        ]
+        ],
+        "mountPoint": "#shell-header"
     }
 }

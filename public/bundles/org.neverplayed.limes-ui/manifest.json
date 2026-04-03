@@ -1,10 +1,10 @@
 {
-    "Bundle-SymbolicName": "@neverplayed/limes-ui",
+    "Bundle-SymbolicName": "org.neverplayed.limes-ui",
     "Bundle-Version": "1.0.0",
-    "Bundle-Name": "Limes Management UI",
-    "Bundle-Description": "UI components for Limes security management",
-    "Bundle-Activator": "./activator.js",
-    "Require-Bundle": "@neverplayed/limes",
-    "Import-Service": "@neverplayed/limes/service, @neverplayed/backoffice/yaml/editor",
+    "Bundle-Name": "Limes UI",
+    "Bundle-Description": "Security strategy management interface.",
+    "Bundle-Activator": "activator.js",
+    "Require-Bundle": "org.neverplayed.limes",
+    "Import-Service": "org.neverplayed.limes.LimesService, org.neverplayed.yaml.Editor",
     "Export-Package": ""
 }

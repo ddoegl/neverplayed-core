@@ -1,5 +1,5 @@
 {
-    "Bundle-SymbolicName": "@neverplayed/persistence-firebase",
+    "Bundle-SymbolicName": "org.neverplayed.persistence-firebase",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "./activator.js",
     "Description": "Firebase Firestore Persistence Manager"

@@ -1,8 +1,8 @@
 {
   "pandino.pm.managed-keys": [
-    "@neverplayed/limes/strategies"
+    "org.neverplayed.limes/strategies"
   ],
-  "@neverplayed/limes/strategies": [
+  "org.neverplayed.limes/strategies": [
     {
       "id": "GLOBAL_VIEW",
       "operator": "AND",
@@ -46,7 +46,7 @@
       ]
     }
   ],
-  "config.@neverplayed/shell-cli": {
+  "config.org.neverplayed.shell-cli": {
     "flowType": "service-flow",
     "channels": [
       "real-life",
@@ -58,10 +58,10 @@
     ],
     "log-level": "INFO"
   },
-  "config.@neverplayed/system-logger": {
+  "config.org.neverplayed.system-logger": {
     "log-level": "INFO"
   },
-  "config.@neverplayed/event-monitor": {
+  "config.org.neverplayed.event-monitor": {
     "flowType": "system-flow",
     "channels": [
       "real-life",
@@ -75,12 +75,12 @@
     ],
     "sidebar": true
   },
-  "config.@neverplayed/system-reset": {
+  "config.org.neverplayed.system-reset": {
     "channels": [
       "business-channel-web"
     ]
   },
-  "config.@neverplayed/config-admin": {
+  "config.org.neverplayed.config-admin": {
     "flowType": "system-flow",
     "channels": [
       "business-channel-web",

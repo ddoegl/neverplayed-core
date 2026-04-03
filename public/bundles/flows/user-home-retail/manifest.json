@@ -2,7 +2,9 @@
   "Bundle-SymbolicName": "@prototyper/flow.user-home-retail",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
-  "Provide-Capability": "@neverplayed/flow-service;version=\"1.0.0\";flow.id=\"user-home-retail\"",
+  "Provide-Capability": "org.neverplayed.flow.Service;version=\"1.0.0\";flow.id=\"user-home-retail\"",
+  "Bundle-Name": "Retail Home",
+  "Bundle-Description": "Customer Retail dashboard (Gold Standard).",
   "Configuration": {
     "flowType": "web-channel",
     "channels": ["retail-channel-app"]

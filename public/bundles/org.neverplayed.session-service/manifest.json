@@ -1,5 +1,5 @@
 {
-    "Bundle-SymbolicName": "@neverplayed/session-service",
+    "Bundle-SymbolicName": "org.neverplayed.session-service",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "activator.js",
     "Description": "Infrastructural Session Service (Layer 1). Manages identity, attributes, and persistence."

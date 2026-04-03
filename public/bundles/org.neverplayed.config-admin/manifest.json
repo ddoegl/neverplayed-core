@@ -1,5 +1,5 @@
 {
-  "Bundle-SymbolicName": "@neverplayed/config-admin",
+  "Bundle-SymbolicName": "org.neverplayed.config-admin",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
   "Configuration": {
@@ -8,5 +8,7 @@
       "business-channel-web", "retail-channel-app"
     ],
     "sidebar": true
-  }
+  },
+  "Bundle-Name": "Universe Settings UI",
+  "Bundle-Description": "Core ConfigAdmin UI for managing system properties and realms."
 }

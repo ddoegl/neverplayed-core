@@ -5,7 +5,7 @@ export default class Activator {
 
     this.logger.log('Bundle B - Activator');
 
-    context.registerService('@neverplayed/bundle-b/StringInverter', stringInverterImpl);
+    context.registerService('org.neverplayed.bundle-b/StringInverter', stringInverterImpl);
   }
 
   async stop(context) {

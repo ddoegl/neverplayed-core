@@ -1,7 +1,7 @@
 
 {
   "Bundle-ManifestVersion": "1",
-  "Bundle-SymbolicName": "@neverplayed/dashboard-flow",
+  "Bundle-SymbolicName": "org.neverplayed.dashboard-flow",
   "Bundle-Name": "Dashboard Flow",
   "Bundle-Version": "0.1.0",
   "Bundle-Activator": "./activator.js",

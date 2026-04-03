@@ -1,47 +1,56 @@
 import { 
     FLOW_SERVICE, 
-    SESSION_SERVICE, 
     SHELL_HOST_SERVICE 
 } from "core-types";
-import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
+import { CoreAlpineActivator } from "alpine-base";
 
-const Alpine = globalThis.Alpine;
+export default class Activator extends CoreAlpineActivator {
+    onCoreStart(context) {
+        this.logger.info("Shell Host: Starting...");
 
-export default class Activator {
-    start(context) {
-        console.log("Shell Host: Starting...");
-
-        // Pull dynamic configuration for the "Realm" (embedded in manifest headers)
         const headers = context.getBundle().getHeaders();
         const config = headers.Configuration || {};
         const bootCapability = config.bootCapability || "sys:cli";
-        const mountPoint = config.mountPoint || "#flow-content";
+        const mountPoint = config.mountPoint || "#shell-host-root";
 
-        // Register the Alpine Component
-        Alpine.data("shellHost", () => ({
+        // Register the host service
+        context.registerService(SHELL_HOST_SERVICE, {
+            getAlpineDataName: () => `${(this.bsn || "unknown").replace(/[\.\-]/g, "_")}_controller`
+        });
+
+        // 1. Initial State (Reactive via initStore)
+        this.initStore('shell_host_state', {
             ready: false,
             status: "Orchestrator Active",
             activeFlowId: null,
             bootCapability,
-            mountPoint,
+            mountPoint
+        });
 
+        // 2. Render Host UI (Atomic)
+        this.render(mountPoint, 'templates/host.html', () => ({
+            get state() { return globalThis.Alpine.store('shell_host_state'); },
+            
             init() {
-                console.log(`Shell Host: Initializing Realm for capability: ${this.bootCapability}`);
+                this.logger.info(`Shell Host: Initializing Realm for capability: ${this.state.bootCapability}`);
                 
-                // Minimal Session Mock if not already registered
-                const sessionRef = context.getServiceReference(SESSION_SERVICE);
-                if (!sessionRef) {
-                    const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
-                    const _pm = context.getService(pmRef);
-                    const session = Alpine.reactive({
-                        environment: "desktop",
-                        scopedUsers: { "global": { id: "guest", alias: "Guest" } },
-                        activeFlowId: null
-                    });
-                    context.registerService(SESSION_SERVICE, session);
-                }
+                // Track Flow Discovery
+                this.track(`(objectClass=${FLOW_SERVICE})`, {
+                    addingService: (ref) => {
+                        const svc = context.getService(ref);
+                        const id = svc.id || ref.getProperty("flow.id");
+                        const capability = ref.getProperty("capability");
+                        
+                        this.logger.debug(`Shell Host: Flow discovered: ${id} (Capability: ${capability || 'none'})`);
+                        
+                        if (capability === this.state.bootCapability) {
+                            setTimeout(() => this.launch(id, svc), 500);
+                        }
+                        return svc;
+                    }
+                });
 
-                // Add Listener for cross-flow launch requests (Rule 11)
+                // Add Listener for cross-flow launch requests
                 globalThis.addEventListener("shell-launch-flow", (e) => {
                     const reqId = e.detail.id;
                     const reqParams = e.detail.params || {};
@@ -55,75 +64,61 @@ export default class Activator {
                         }
                     }
                     if (reqFlowSvc) {
-                        console.log(`Shell Host: Processing shell-launch-flow for ${reqId}`, reqParams);
+                        this.logger.info(`Shell Host: Processing shell-launch-flow for ${reqId}`, reqParams);
                         this.launch(reqId, reqFlowSvc, reqParams);
-                    } else {
-                        console.warn(`Shell Host: Flow ${reqId} not found for shell-launch-flow request!`);
                     }
                 });
-
-                // Flow Discovery & Auto-Launch
-                context.trackService(`(objectClass=${FLOW_SERVICE})`, {
-                    addingService: (ref) => {
-                        const svc = context.getService(ref);
-                        const id = svc.id || ref.getProperty("flow.id");
-                        const capability = ref.getProperty("capability");
-                        
-                        console.log(`Shell Host: Flow discovered: ${id} (Capability: ${capability || 'none'})`);
-                        
-                        if (capability === this.bootCapability) {
-                            // Delay launch slightly to ensure Alpine has finished initializing the component
-                            setTimeout(() => this.launch(id, svc), 500);
-                        }
-                        return svc;
-                    }
-                }).open();
             },
 
             async launch(id, flow, params = {}) {
-                if (this.activeFlowId === id && Object.keys(params).length === 0) {
-                    console.log(`Shell Host: Flow ${id} already active with no new params, skipping clear.`);
-                    return;
-                }
+                if (this.state.activeFlowId === id && Object.keys(params).length === 0) return;
 
-                console.log(`Shell Host: Launching ${id} into Realm`);
+                this.logger.info(`Shell Host: Provisioning stage for ${id}`);
                 
-                // Use the mount point from config or fallback to ref
-                const container = document.querySelector(this.mountPoint) || this.$refs.flowContent;
-                if (!container) {
-                    console.error(`Shell Host: Mount point ${this.mountPoint} not found!`);
+                const hostStage = this.$refs.flowContent || document.querySelector("#flow-mount-point");
+                if (!hostStage) {
+                    this.logger.error(`Shell Host: Internal mount point not found!`);
                     return;
                 }
                 
-                // Non-destructive tick
-                this.activeFlowId = id;
-                container.innerHTML = ""; 
-                container.removeAttribute('data-bsn'); // Clear the Focus Guard attribute to ensure the new/returning flow can render
+                // CRITICAL: We completely re-create the child element to purge the Alpine _x_dataStack
+                // that might linger from the previous flow on the same DOM node.
+                hostStage.innerHTML = "";
+                const target = document.createElement('div');
+                target.id = "flow-active-stage";
+                target.className = "h-full w-full opacity-0 transition-opacity duration-300";
+                hostStage.appendChild(target);
+
+                this.state.activeFlowId = id;
+                this.state.ready = false;
+
+                await globalThis.Alpine.nextTick();
                 
-                console.log(`[${Date.now()}] Shell Host: Container cleared, attribute removed. Waiting for nextTick...`);
-                await Alpine.nextTick();
-                
-                console.log(`[${Date.now()}] Shell Host: Calling flow.launch...`);
                 if (typeof flow.launch === 'function') {
-                    await flow.launch(container, params);
-                    this.ready = true; 
-                    this.status = `Realm Active: ${id}`;
-                    console.log(`[${Date.now()}] Shell Host: flow.launch completed.`);
+                    const sameFlow = this.state.activeFlowId === id;
+                    
+                    try {
+                        await flow.launch(target, params);
+                        target.classList.remove('opacity-0');
+                        this.state.ready = true; 
+                        this.state.activeFlowId = id;
+                        this.state.status = `Realm Active: ${id}`;
+
+                        if (!sameFlow && typeof flow.onActivate === 'function') {
+                            this.logger.debug(`Shell Host: Triggering onActivate for ${id}...`);
+                            flow.onActivate(this.state);
+                        }
+                    } catch (err) {
+                        this.logger.error(`Shell Host: Launch failed for ${id}:`, err);
+                        target.innerHTML = `<div class="p-10 text-red-500 font-mono">Launch Error: ${err.message}</div>`;
+                    }
                 } else {
-                    console.error(`Shell Host: Flow ${id} does not provide a launch() method!`);
-                    this.status = `ERR: Flow Incompatible: ${id}`;
-                    this.ready = true; // Still ready to avoid infinite loader, but with error status
+                    this.logger.error(`Shell Host: Flow ${id} does not provide a launch() method!`);
                 }
             }
-        }));
-
-        // Register the Host Service itself
-        context.registerService(SHELL_HOST_SERVICE, {
-            getAlpineDataName: () => "shellHost"
+        }), {
+            "id": "shell-host-root",
+            "class": "h-full w-full bg-slate-900 overflow-hidden shadow-inner"
         });
-    }
-
-    stop(_context) {
-        console.log("Shell Host: Stopped.");
     }
 }

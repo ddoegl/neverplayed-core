@@ -33,6 +33,7 @@ export default class Activator extends BaseActivator {
     _discoveryPromise = null;
     _recoveryPromise = null;
     _isRecovering = false;
+    _lock = Promise.resolve(); // Orchestration lock
     _bootReadyPromise = new Promise(r => this._bootReadyResolve = r);
     _registrationBuffer = []; // Buffer for early discovery events (Step 1)
 
@@ -454,6 +455,10 @@ export default class Activator extends BaseActivator {
                 // Default Fallback: Real-Life Universe
                 this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to 'org.neverplayed.realm.real-life'...`);
                 await this._switchRealm(context, "org.neverplayed.realm.real-life");
+            } else if (this._realms.has("org.neverplayed.realm.core")) {
+                // Minimum fallback: Core Realm
+                this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to 'org.neverplayed.realm.core'...`);
+                await this._switchRealm(context, "org.neverplayed.realm.core");
             }
         } finally {
             this._isRecovering = false;
@@ -461,52 +466,49 @@ export default class Activator extends BaseActivator {
     }
 
     _registerRealm(manifest) {
-        if (!manifest.id) throw new Error("Realm manifest must have a unique ID.");
-        this._realms.set(manifest.id, manifest);
-        if (!this._orderedRealmIds.includes(manifest.id)) {
-            this._orderedRealmIds.push(manifest.id);
-        }
-        this.logger?.info(`Realm Manager: Registered universe '${manifest.id}' (${manifest.title})`);
+        // Enforce lock for registration to prevent duplicates during concurrent discovery/recovery
+        this._lock = this._lock.then(async () => {
+            if (!manifest.id) throw new Error("Realm manifest must have a unique ID.");
+            this._realms.set(manifest.id, manifest);
+            if (!this._orderedRealmIds.includes(manifest.id)) {
+                this._orderedRealmIds.push(manifest.id);
+            }
+            this.logger?.info(`Realm Manager: Registered universe '${manifest.id}' (${manifest.title})`);
 
-        // 1.9 Resilience: Unregister old service if it exists (prevents duplication in UI)
-        const oldReg = this._realmRegs.get(manifest.id);
-        if (oldReg) {
-            try { oldReg.unregister(); } catch (_e) { /* ignore */ }
-        }
+            // 1.9 Resilience: Unregister old service if it exists (prevents duplication in UI)
+            const oldReg = this._realmRegs.get(manifest.id);
+            if (oldReg) {
+                try { oldReg.unregister(); } catch (_e) { /* ignore */ }
+            }
 
-        const serviceProps = {
-            "realm.id": manifest.id,
-            "realm.title": manifest.title,
-            "realm.icon": manifest.icon || "fas fa-universe",
-            "realm.active": manifest.id === this._activeRealmId
-        };
-
-        const registration = this.context.registerService(REALM_SERVICE, {
-            getId: () => manifest.id,
-            getManifest: () => ({ ...manifest }),
-            switch: (interactive = false) => this._switchRealm(this.context, manifest.id, interactive)
-        }, serviceProps);
-        
-        this._realmRegs.set(manifest.id, registration);
-
-        // Broadcast discovery (Step 1)
-        if (this._eventAdmin && this._eventFactory) {
-            this.logger?.info(`Realm Manager: Broadcasting realm registration for '${manifest.id}'`);
-            const event = this._eventFactory.build(REALM_REGISTERED_TOPIC, {
+            const serviceProps = {
                 "realm.id": manifest.id,
                 "realm.title": manifest.title,
-                "realm.icon": manifest.icon || "fas fa-universe"
-            });
-            this._eventAdmin.postEvent(event);
-        } else {
-            // Diagnostic Bridge
-            this.logger?.warn(`[RealmManager] Broadcast skipped for '${manifest.id}'. Reason: Event Fabric incomplete.`);
-            this.logger?.debug(`[RealmManager] - EventAdmin ready: ${!!this._eventAdmin} (${EVENT_ADMIN_SERVICE})`);
-            this.logger?.debug(`[RealmManager] - EventFactory ready: ${!!this._eventFactory} (${EVENT_FACTORY_SERVICE})`);
+                "realm.icon": manifest.icon || "fas fa-universe",
+                "realm.active": manifest.id === this._activeRealmId
+            };
+
+            const registration = this.context.registerService(REALM_SERVICE, {
+                getId: () => manifest.id,
+                getManifest: () => ({ ...manifest }),
+                switch: (interactive = false) => this._switchRealm(this.context, manifest.id, interactive)
+            }, serviceProps);
             
-            // Buffer it if services are still booting
-            this._registrationBuffer.push(manifest);
-        }
+            this._realmRegs.set(manifest.id, registration);
+
+            // Broadcast discovery (Step 1)
+            if (this._eventAdmin && this._eventFactory) {
+                this.logger?.info(`Realm Manager: Broadcasting realm registration for '${manifest.id}'`);
+                const event = this._eventFactory.build(REALM_REGISTERED_TOPIC, {
+                    "realm.id": manifest.id,
+                    "realm.title": manifest.title,
+                    "realm.icon": manifest.icon || "fas fa-universe"
+                });
+                this._eventAdmin.postEvent(event);
+            } else {
+                this._registrationBuffer.push(manifest);
+            }
+        });
     }
 
     _flushRegistrationBuffer() {
@@ -550,47 +552,49 @@ export default class Activator extends BaseActivator {
         }
     }
 
-    async _switchRealm(context, id, interactive = false) {
-        if (this._pendingTransition) {
-            throw new Error("A transition is already in progress. Type '/realm next' to proceed or '/realm abort' to cancel.");
-        }
-
-        try {
-            this.logger?.info(`Realm Manager: Initiating Context Transition to universe '${id}'...`);
-            
-            // 1. Resolve Hierarchy
-            const hierarchy = await this._resolveHierarchy(id);
-            if (hierarchy.length === 0) throw new Error(`Realm '${id}' not found.`);
-
-            const manifest = this._realms.get(id);
-
-            // 2. Prepare Surge Plan (Reconciliation)
-            const surgePlan = await this._prepareSurgePlan(context, hierarchy);
-
-            this._pendingTransition = {
-                id,
-                manifest,
-                hierarchy,
-                surgePlan,
-                currentPhase: 'PLAN_READY',
-                milestone: 'RESOLVED',
-                auto: !interactive
-            };
-
-            if (interactive) {
-                return { 
-                    status: 'RESOLVED', 
-                    message: `Hierarchy resolved for '${id}'. Delta: ${surgePlan.toInstall.length} to install, ${surgePlan.toKeep.length} sticky.`,
-                    plan: surgePlan 
-                };
+    _switchRealm(context, id, interactive = false) {
+        return this._lock = this._lock.then(async () => {
+            if (this._pendingTransition) {
+                throw new Error("A transition is already in progress. Type '/realm next' to proceed or '/realm abort' to cancel.");
             }
 
-            return this._executeTransitionPhase('ONTOLOGY');
-        } catch (err) {
-            this._pendingTransition = null;
-            this.logger?.error(`Realm Manager: Switch failed for '${id}':`, err.message);
-            throw err;
-        }
+            try {
+                this.logger?.info(`Realm Manager: Initiating Context Transition to universe '${id}'...`);
+                
+                // 1. Resolve Hierarchy
+                const hierarchy = await this._resolveHierarchy(id);
+                if (hierarchy.length === 0) throw new Error(`Realm '${id}' not found.`);
+
+                const manifest = this._realms.get(id);
+
+                // 2. Prepare Surge Plan (Reconciliation)
+                const surgePlan = await this._prepareSurgePlan(context, hierarchy);
+
+                this._pendingTransition = {
+                    id,
+                    manifest,
+                    hierarchy,
+                    surgePlan,
+                    currentPhase: 'PLAN_READY',
+                    milestone: 'RESOLVED',
+                    auto: !interactive
+                };
+
+                if (interactive) {
+                    return { 
+                        status: 'RESOLVED', 
+                        message: `Hierarchy resolved for '${id}'. Delta: ${surgePlan.toInstall.length} to install, ${surgePlan.toKeep.length} sticky.`,
+                        plan: surgePlan 
+                    };
+                }
+
+                return this._executeTransitionPhase('ONTOLOGY');
+            } catch (err) {
+                this._pendingTransition = null;
+                this.logger?.error(`Realm Manager: Switch failed for '${id}':`, err.message);
+                throw err;
+            }
+        });
     }
 
     async _prepareSurgePlan(context, hierarchy) {
@@ -630,10 +634,10 @@ export default class Activator extends BaseActivator {
 
         // Protection Shield: Only protect core infrastructure that MUST stay alive 
         const protectedBSNs = [
-            "@neverplayed/realm-manager", "org.neverplayed.realm-manager",
-            "@neverplayed/shell-cli", "org.neverplayed.shell-cli",
-            "@neverplayed/osgi-base", "org.neverplayed.osgi-base",
-            "@neverplayed/backoffice-host", "org.neverplayed.backoffice-host"
+            "org.neverplayed.realm-manager", "org.neverplayed.realm-manager",
+            "org.neverplayed.shell-cli", "org.neverplayed.shell-cli",
+            "org.neverplayed.osgi-base", "org.neverplayed.osgi-base",
+            "org.neverplayed.backoffice-host", "org.neverplayed.backoffice-host"
         ].map(b => BaseActivator.normalizeBSN(b));
 
         for (const b of activeBundles) {
@@ -672,7 +676,7 @@ export default class Activator extends BaseActivator {
             // Intelligent fallback: map folder names to expected BSN patterns
             const parts = url.split('/');
             const folder = parts.find(p => p.includes('org.neverplayed'));
-            if (folder) return folder.replace('org.neverplayed.', '@neverplayed/');
+            if (folder) return folder.replace('org.neverplayed.', 'org.neverplayed.');
             return url.split('/').pop().replace(/.json$/, '');
         }
     }

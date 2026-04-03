@@ -1,6 +1,6 @@
 {
   "Bundle-ManifestVersion": "1",
-  "Bundle-SymbolicName": "@neverplayed/bundle-a",
+  "Bundle-SymbolicName": "org.neverplayed.bundle-a",
   "Bundle-Name": "Bundle A",
   "Bundle-Version": "0.1.0",
   "Bundle-Description": "Bundle-a!",

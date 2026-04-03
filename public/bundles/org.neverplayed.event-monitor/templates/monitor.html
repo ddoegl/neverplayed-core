@@ -1,0 +1,32 @@
+<div class="p-8 bg-slate-900 text-green-400 font-mono h-full overflow-hidden flex flex-col text-xs">
+    <div class="mb-4 border-b border-green-900/50 pb-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span class="font-bold uppercase tracking-[0.2em]">[SYSTEM] Event Stream</span>
+        </div>
+        <div class="flex items-center space-x-4 opacity-50 text-[9px]">
+            <span>Verbosity: <span x-text="verbosity"></span></span>
+            <span>Buffer: <span x-text="logs.length"></span>/100</span>
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto space-y-1 custom-scrollbar pr-4">
+        <template x-for="(log, index) in logs" :key="index">
+            <div class="border-b border-green-900/20 pb-1.5 pt-0.5 leading-relaxed group hover:bg-green-500/5 transition-colors">
+                <span class="text-green-700 select-none mr-2" x-text="(logs.length - index).toString().padStart(3, '0')"></span>
+                <span x-text="log"></span>
+            </div>
+        </template>
+        <template x-if="logs.length === 0">
+            <div class="h-full flex items-center justify-center opacity-30 italic">
+                Waiting for reality events...
+            </div>
+        </template>
+    </div>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #065f46; border-radius: 10px; }
+    </style>
+</div>

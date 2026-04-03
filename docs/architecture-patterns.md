@@ -1555,79 +1555,74 @@ This ensures Alpine's discovery engine sees a fully context-aware and "Hydrated"
 
 ---
 
-## 20. Realms As Services (Universal Orchestration)
+## 20. The AlpineActivator Pattern (Recommended)
 
-To achieve a fully reactive and decoupled multi-universe architecture, Realms are registered as first-class OSGi services. This ensures that the Shell (Header, Sidebar, CLI) can discover and interact with the active universe without direct dependencies.
+To eliminate boilerplate and ensure robust UI lifecycle management, all UI bundles should extend `AlpineActivator` (from `alpine-base.js`) instead of the low-level `BaseActivator`.
 
-### The Problem: Static Manifest Fragmentation
+### Features
 
-When realms are only defined as static JSON files, the UI must manually fetch and parse them, leading to race conditions between discovery and rendering. Furthermore, switching universes often requires the UI to reload or "know" too much about the bundle lifecycle.
+- **Atomic Hydration**: The built-in `render()` method uses an ID-based `data-initialized` attribute as a lock to prevent duplicate DOM injections if a bundle is started multiple times.
+- **Store Management**: `initStore()` ensures global stores are created only once and provides consistent access across lifecycle restarts.
+- **Auto-Cleanup**: The `track()` helper automatically registers trackers for the `onStop` phase, ensuring all Service Trackers are closed without manual boilerplate.
+- **Reactive Sync**: `syncStore()` surgically updates specific store properties, maintaining fine-grained reactivity.
+- **Direct Attr Mapping**: `render()` accepts an `attrMap` to move root element styling and directives (like `x-show`) from the template into the activator, preventing double-nesting.
 
-### The Solution: The `REALM_SERVICE` Interface
-
-Each realm is registered as a service with a standardized set of Service Properties:
-- `realm.id`: Unique identifier (e.g., `org.neverplayed.realm.core`).
-- `realm.title`: User-friendly name.
-- `realm.icon`: Font-Awesome icon class.
-- `realm.active`: Boolean flag (true for the current universe).
-
-**Example: Switch Logic delegation**
+**Example: Standard Activator**
 
 ```javascript
-// Provider (Realm Manager)
-context.registerService(REALM_SERVICE, {
-    getId: () => manifest.id,
-    switch: (interactive) => this._switchRealm(context, manifest.id, interactive)
-}, serviceProps);
+import { AlpineActivator } from "alpine-base";
+import { MY_SERVICE } from "core-types";
 
-// Consumer (Shell Header)
-const svc = context.getService(realmRef);
-await svc.switch(true); // Triggers the central manager's logic
-```
+export default class Activator extends AlpineActivator {
+    async onStart(context) {
+        // 1. Setup Reactive Store
+        this.initStore('my_feature', { data: [] });
+        
+        // 2. Track & Sync Automatically
+        this.track(`(objectClass=${MY_SERVICE})`, {
+            addingService: (ref) => { 
+                this.syncStore('my_feature', { data: context.getService(ref).all() });
+                return context.getService(ref);
+            }
+        });
 
-### Benefits
-
-- **Identity Propagation**: UI components (Header) use a `ServiceTracker` to dynamically build the "Universe Switcher" list.
-- **Atomic Discovery**: Adding a new `.json` manifest to the `realms/` directory automatically populates the UI via discovery-to-service mapping.
-- **Decoupled Switching**: Any bundle can trigger a universe leap by interacting with the `REALM_SERVICE`.
-
----
-
-## 21. Atomic UI Initialization (Hydration Guard)
-
-In a dynamic OSGi environment where bundles can be restarted or hot-swapped, UI components must defensively manage their injection into the DOM to prevent "Hydration Ghosting" (duplicate elements or event listeners).
-
-### The Problem: Double-Start Race Conditions
-
-If a bundle is started manually by a bootstrapper (for early interactivity) and then started again by a realm manifest (to satisfy dependencies), it may attempt to inject its template into the same DOM target twice. Alpine.js will re-parse the tree, potentially creating duplicate reactive nodes.
-
-### The Solution: The Initialization Guard
-
-We use a `data-*` attribute on the DOM target element as an atomic lock.
-
-**Activator Implementation:**
-
-```javascript
-_initUI() {
-    const target = document.getElementById('shell-header');
-    if (!target) return;
-
-    // Atomic Lock: Skip if already initialized by a previous instance
-    if (target.dataset.shellHeaderInitialized === 'true') {
-        this.logger?.warn("Shell Header already initialized on this DOM. Skipping injection.");
-        this._syncStore(); // Still sync state but don't blow away the DOM
-        return;
+        // 3. Render Atomic UI
+        await this.render('#target-id', 'templates/view.html', () => ({
+            get items() { return Alpine.store('my_feature').data; }
+        }), {
+            "class": "p-4 bg-slate-900 rounded-xl",
+            "x-show": "items.length > 0"
+        });
     }
-    target.dataset.shellHeaderInitialized = 'true';
-
-    // Proceed with injection...
-    target.innerHTML = `<div x-data="headerController">${template}</div>`;
-    Alpine.initTree(target);
 }
 ```
 
+---
+
+## 21. Alpine-OSGi Bridge (Reactive Magics & Directives)
+
+The `org.neverplayed.alpine-bridge` bundle exposes the OSGi Service Registry directly to HTML templates, enabling "Zero-Code" reactivity for simple data visualizations.
+
+### Custom Magics
+
+- **`$service(ID)`**: Performs an on-demand lookup of an OSGi service instance from the registry.
+- **`$context`**: Provides raw access to the bundle's `BundleContext` for advanced lookups.
+
+### Custom Directives
+
+- **`x-service="ID"`**: Declarative service injection. It automatically injects the service instance into the local Alpine scope under a sanitized variable name (e.g., `selection_service`). It reactively updates if the service is swapped or removed by the OSGi registry.
+
+**Example: Zero-Code Template**
+
+```html
+<div x-data x-service="org.neverplayed.selection.service">
+    <!-- The selection_service variable is automatically provided by the directive -->
+    <span x-text="selection_service?.getSelectedId() || 'No Selection'"></span>
+</div>
+```
+
 ### Benefits
 
-- **Flicker-Free Transitions**: Prevents the UI from being "nuked and paved" if it's already functional.
-- **Identity Integrity**: Ensures event listeners and Alpine stores are bound to a single, stable DOM tree.
-- **Hot-Reload Safety**: Makes the UI resilient to rapid bundle lifecycle transitions.
+- **Expressiveness**: Domain services become global template utilities.
+- **Performance**: Skips redundant `trackService` calls in activator code for simple read-only UI.
+- **Self-Healing**: UI components automatically recover if the providing service bundle is restarted.

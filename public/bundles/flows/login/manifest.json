@@ -3,5 +3,7 @@
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
   "Bundle-Assets": "templates/dashboard.html, templates/sca-selection.html",
-  "Provide-Capability": "@neverplayed/flow-service;version=\"1.0.0\";flow.id=\"login\""
+  "Provide-Capability": "org.neverplayed.flow.Service;version=\"1.0.0\";flow.id=\"login\"",
+  "Bundle-Name": "Login Flow",
+  "Bundle-Description": "Authentication entry point (Gold Standard)."
 }

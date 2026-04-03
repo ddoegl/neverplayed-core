@@ -1,6 +1,6 @@
 {
   "Bundle-ManifestVersion": "1",
-  "Bundle-SymbolicName": "@neverplayed/backoffice/business/functions",
+  "Bundle-SymbolicName": "org.neverplayed.backoffice/business/functions",
   "Bundle-Name": "Business Functions Management",
   "Bundle-Description": "Backoffice UI for Organizational Business Functions",
   "Bundle-Version": "1.0.0",

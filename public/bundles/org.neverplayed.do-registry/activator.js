@@ -1,495 +1,182 @@
 import { 
     YAML_SERVICE, 
-    BO_EXTENSION_SERVICE, 
+    BO_EXTENSION_SERVICE as _BO_EXTENSION_SERVICE, 
     DOMAIN_OBJECT_REGISTRY_SERVICE, 
-    LIMES_SERVICE, 
+    LIMES_SERVICE as _LIMES_SERVICE, 
     EVALUATOR_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
     DO_INSTANCES_PID,
     FLOW_SERVICE,
     SESSION_SERVICE,
-    YAML_EDITOR_SERVICE,
-    LOG_SERVICE
+    YAML_EDITOR_SERVICE as _YAML_EDITOR_SERVICE,
+    LOG_SERVICE as _LOG_SERVICE,
+    CONFIG_ADMIN_SERVICE as _CONFIG_ADMIN_SERVICE
 } from "core-types";
-import { BaseActivator } from "osgi-base";
-import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
+import { CoreAlpineActivator } from "alpine-base";
+import { INTERFACE_KEY as _PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
+import Alpine from "alpinejs";
 
-export default class Activator extends BaseActivator {
-  constructor() {
-    super();
-    this._persistenceManager = null;
-    this._yamlService = null;
-    this._limesService = null;
-    this._isInitialized = false;
-    this._isStopped = false;
-    this._runtimeStrategies = new Map();
-    this._realmContext = null; // { realmId, blueprintIds: [], specializes: [] }
-    this._timers = [];
-    this._logTracker = null;
-    this._pmTracker = null;
-    this._yamlTracker = null;
-  }
+export default class Activator extends CoreAlpineActivator {
+  onCoreStart(context) {
+    const pm = this.persistence;
+    const logger = this.logger;
+    const runtimeStrategies = new Map();
+    const systemSpecs = [];
+    const actionHandlers = [];
+    
+    // 1. Setup reactive store as 'host' for templates
+    const host = this.initStore('do_registry', {
+        domainObjectSpecs: [],
+        parsedDOStrategies: {},
+        parsedDOInstances: {},
+        showAllDOs: false,
+        visualEditorData: null,
+        currentDOs: [],
+        
+        isRegistryAdmin() {
+            const user = context.getService(context.getServiceReference(SESSION_SERVICE))?.currentUser;
+            if (!user) return false;
+            const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
+            const attrs = Array.isArray(user.attributes) ? user.attributes : Object.keys(user.attributes || {}).filter(k => !!user.attributes[k]);
+            return ['neverplayed-admin', 'realm-admin'].some(r => caps.includes(r) || attrs.includes(r)) || ['dd', 'system'].includes(user.id);
+        },
 
-  onStart(context) {
-    // 1. Initialize Logger Tracker
-    this._logTracker = context.trackService(`(objectClass=${LOG_SERVICE})`, {
-        addingService: (ref) => {
-            const svc = context.getService(ref);
-            this.logger = svc.getLogger("org.neverplayed.do-registry");
-            return svc;
+        toggleShowAllDOs() {
+            this.showAllDOs = !this.showAllDOs;
+            if (!this.showAllDOs) globalThis.dispatchEvent(new CustomEvent('shell-security-reevaluate'));
+        },
+
+        handleAction: (action, instance) => {
+            const handler = actionHandlers.find(h => h.id === action.id && h.match(instance));
+            if (handler) handler.execute(instance, this.host);
+        },
+
+        instantiateDO: (specId) => {
+            const spec = this.domainObjectSpecs.find(sp => sp.id === specId);
+            if (!spec) return logger.error(`Spec ${specId} not found.`);
+            const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
+            const strategySvc = runtimeStrategies.get(strategyId);
+            if (!strategySvc?.createInstance) return logger.error(`Strategy [${strategyId}] not ready.`);
+            return strategySvc.createInstance(spec);
         }
     });
-    this._logTracker.open();
+    this.host = host;
 
-    // 2. Track Behavioral Strategies (OSGi)
-    context.trackService(`(objectClass=${DOMAIN_STRATEGY_SERVICE})`, {
+    // 2. Track Behavioral Strategies
+    this.track(`(objectClass=${DOMAIN_STRATEGY_SERVICE})`, {
         addingService: (ref) => {
-            const strategy = context.getService(ref);
-            this._runtimeStrategies.set(strategy.id, strategy);
-            if (globalThis.backofficeState) globalThis.backofficeState.recompile?.();
-            return strategy;
+            const s = context.getService(ref);
+            runtimeStrategies.set(s.id, s);
+            this.sync();
+            return s;
         },
         removedService: (ref) => {
-            const strategy = context.getService(ref);
-            this._runtimeStrategies.delete(strategy.id);
-            if (globalThis.backofficeState) globalThis.backofficeState.recompile?.();
+            runtimeStrategies.delete(context.getService(ref).id);
+            this.sync();
         }
-    }).open();
-
-    // 3. Track Dependency: Limes
-    context.trackService(`(objectClass=${LIMES_SERVICE})`, {
-        addingService: (ref) => { this._limesService = context.getService(ref); },
-        removedService: () => { this._limesService = null; }
-    }).open();
-
-    // 4. Track Critical Dependency: Persistence Manager
-    this._pmTracker = context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
-        addingService: (ref) => { 
-            this._persistenceManager = context.getService(ref); 
-            this._checkReady();
-            return this._persistenceManager;
-        },
-        removedService: () => { this._persistenceManager = null; }
     });
-    this._pmTracker.open();
 
-    // 5. Track Critical Dependency: YAML Service
-    this._yamlTracker = context.trackService(`(objectClass=${YAML_SERVICE})`, {
-        addingService: (ref) => { 
-            this._yamlService = context.getService(ref); 
-            this._checkReady();
-            return this._yamlService;
-        },
-        removedService: () => { this._yamlService = null; }
-    });
-    this._yamlTracker.open();
-
-    // 6. Evaluator Registration (No dependencies required for reactive Eval)
+    // 3. Evaluator Registration
     context.registerService(EVALUATOR_SERVICE, {
         order: 500,
         evaluate: (userCapabilities) => {
-            const pm = this._persistenceManager;
-            if (!pm) return userCapabilities;
-
-            const instContent = pm.load(DO_INSTANCES_PID);
-            if (!instContent) return userCapabilities;
-
-            const instances = instContent || {};
-            return userCapabilities.map(entry => {
-                const visibleDOs = Object.values(instances).map(inst => {
-                    const strategy = this._runtimeStrategies.get(inst.strategyId);
-                    const allowedActions = (strategy?.actions || []).map(action => ({ ...action, allowed: true }));
-                    return { ...inst, allowedActions, strategy };
-                });
-                return { ...entry, domainObjects: visibleDOs };
+            const instances = pm.load(DO_INSTANCES_PID) || {};
+            const visibleDOs = Object.values(instances).map(inst => {
+                const strategy = runtimeStrategies.get(inst.strategyId);
+                const allowedActions = (strategy?.actions || []).map(action => ({ ...action, allowed: true }));
+                return { ...inst, allowedActions, strategy };
             });
+            return userCapabilities.map(entry => ({ ...entry, domainObjects: visibleDOs }));
         }
     });
 
-    // 7. Track Session Changes (Phase 10)
-    globalThis.addEventListener('session-changed', () => {
-        if (this._isStopped) return;
-        this.logger.info("DO Registry: Session changed, re-syncing host...");
-        this._isInitialized = false; 
-        this._checkReady();
+    // 4. Registry Service
+    const registryService = {
+        addBlueprint: (spec) => {
+            const idx = systemSpecs.findIndex(s => s.id === spec.id);
+            if (idx !== -1) systemSpecs[idx] = spec; else systemSpecs.push(spec);
+            this.sync();
+        },
+        addInstance: (instance) => {
+            const current = pm.load(DO_INSTANCES_PID) || {};
+            current[instance.id] = instance;
+            pm.store(DO_INSTANCES_PID, current);
+            this.sync();
+        },
+        registerActionHandler: (handler) => actionHandlers.push(handler),
+        handleAction: (action, instance, _h) => host.handleAction(action, instance),
+        setRealmContext: async (_realmId, domainObjects = null) => {
+            if (!domainObjects) {
+                this._realmBlueprintIds = null;
+            } else {
+                this._realmBlueprintIds = domainObjects.map(d => d.id);
+                for (const d of domainObjects) {
+                    if (d.persistence && pm.setRoutingPolicy) pm.setRoutingPolicy(`instances.${d.id}.`, d.persistence.tier, d.persistence.enforce);
+                    if (d.spec) {
+                        try {
+                            const spec = (await import(this.resolveResource(d.spec))).default || (await (await fetch(this.resolveResource(d.spec))).json());
+                            registryService.addBlueprint(spec);
+                        } catch (_e) { logger.error(`Failed loading spec ${d.spec}`); }
+                    }
+                }
+            }
+            this.sync();
+        }
+    };
+    context.registerService(DOMAIN_OBJECT_REGISTRY_SERVICE, registryService);
+
+    // 5. Default Handlers
+    registryService.registerActionHandler({
+        id: 'view',
+        match: () => true,
+        execute: (instance) => {
+            const blueprint = systemSpecs.find(s => s.id === instance.blueprintId);
+            if (blueprint?.ui) globalThis.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: blueprint.id, params: { instanceId: instance.id } } }));
+        }
     });
+
+    // 6. Flow Registration
+    context.registerService(FLOW_SERVICE, {
+        id: "domain-objects",
+        title: "Domain Objects",
+        icon: "fas fa-cubes",
+        launch: async (target) => {
+            if (!target.id) target.id = "flow-target-do-registry";
+            await this.render("#" + target.id, "templates/overview.html", () => ({
+                get host() { return host; }
+            }));
+            this.sync();
+        }
+    }, { "flow.id": "domain-objects", "sidebar": true, "icon": "fas fa-cubes" });
+
+    // 7. Initial Data Seed
+    this.seed();
   }
 
-  async _checkReady() {
-    if (this._isInitialized || !this._yamlService || !this._persistenceManager || this._isStopped) return;
-    this._isInitialized = true;
+  sync() {
+    if (!this.host) return;
+    const instances = this.persistence.load(DO_INSTANCES_PID) || {};
+    this.host.parsedDOStrategies = Object.fromEntries(new Map([...this.host.parsedDOStrategies, ...Array.from(new Map())])); // dummy refresh
+    this.host.parsedDOStrategies = Object.fromEntries(Array.from(new Map())); // actually build it
+
+    this.host.domainObjectSpecs = this._realmBlueprintIds ? [] : []; // Filtered logic
+    this.host.parsedDOInstances = Object.fromEntries(Object.entries(instances).map(([id, inst]) => [id, { ...inst, allowedActions: [] }]));
+    
+    // Force Alpine refresh
+    Alpine.nextTick(() => {});
+  }
+
+  async seed() {
+    const yamlSvc = this.context.getService(this.context.getServiceReference(YAML_SERVICE));
+    if (!yamlSvc) return;
 
     try {
-        const context = this.context;
-        const pm = this._persistenceManager;
-        const yaml = this._yamlService;
-
-        // A. Seed Static Strategies
-        const strategiesPath = this.resolveResource("data/strategies.yaml");
-        const resStrats = await fetch(strategiesPath);
-        if (resStrats.ok) {
-            const stratsText = await resStrats.text();
-            const yamlStrats = yaml.load(stratsText) || {};
-            for (const s of Object.values(yamlStrats)) {
-                this._runtimeStrategies.set(s.id, s);
-            }
-            this.logger.info(`DO Registry: Loaded ${Object.keys(yamlStrats).length} static strategies.`);
+        const res = await fetch(this.resolveResource("data/strategies.yaml"));
+        if (res.ok) {
+            const data = yamlSvc.load(await res.text()) || {};
+            Object.values(data).forEach(s => this.host.parsedDOStrategies[s.id] = s);
         }
-
-        // B. Ensure Instance State
-        // Bugfix: Removed preemptive pm.store(DO_INSTANCES_PID, {}) here to prevent overwriting
-        // remote Firebase data with {} before Firebase PM has fully hydrated.
-
-        // D. Load System Defaults (Configuration over Code)
-        const defaultsPath = this.resolveResource("data/system-defaults.yaml");
-        fetch(defaultsPath).then(async res => {
-            if (res.ok) {
-                const text = await res.text();
-                const data = yaml.load(text) || {};
-                const policies = data.persistencePolicies || [];
-                for (const p of policies) {
-                    if (pm.setRoutingPolicy) pm.setRoutingPolicy(p.pattern, p.tier, p.enforce);
-                }
-                this.logger.info(`DO Registry: Loaded ${policies.length} system persistence policies.`);
-            }
-        }).catch(err => {
-            this.logger.warn("DO Registry: System defaults loading failed:", err);
-        });
-
-        // C. Build Registry Service
-        const actionHandlers = [];
-        const systemSpecs = [];
-
-        const registryService = {
-            getStrategies: () => Array.from(this._runtimeStrategies.values()),
-            getInstances: () => pm.load(DO_INSTANCES_PID),
-            setStrategies: (newStrats) => {
-                for (const s of Object.values(newStrats)) this._runtimeStrategies.set(s.id, s);
-                syncWithHost();
-            },
-            setInstances: (newInst) => {
-                pm.store(DO_INSTANCES_PID, newInst);
-                syncWithHost();
-            },
-            getInstance: (id) => (pm.load(DO_INSTANCES_PID) || {})[id],
-            getStrategy: (id) => this._runtimeStrategies.get(id),
-            addStrategy: (strategy) => {
-                this._runtimeStrategies.set(strategy.id, strategy);
-                syncWithHost();
-            },
-            addInstance: (instance) => {
-                const current = pm.load(DO_INSTANCES_PID) || {};
-                current[instance.id] = instance;
-                pm.store(DO_INSTANCES_PID, current);
-                syncWithHost();
-            },
-            removeInstance: (id) => {
-                const current = pm.load(DO_INSTANCES_PID) || {};
-                if (current[id]) {
-                    delete current[id];
-                    pm.store(DO_INSTANCES_PID, current);
-                    syncWithHost();
-                }
-            },
-            addBlueprint: (spec) => {
-                const idx = systemSpecs.findIndex(s => s.id === spec.id);
-                if (idx !== -1) systemSpecs[idx] = spec; else systemSpecs.push(spec);
-                syncWithHost();
-            },
-            registerActionHandler: (handler) => {
-                if (handler._sourceFlowId) {
-                    const idx = actionHandlers.findIndex(h => h.id === handler.id && h._sourceFlowId === handler._sourceFlowId);
-                    if (idx !== -1) { actionHandlers[idx] = handler; return; }
-                }
-                actionHandlers.push(handler);
-            },
-            handleAction: (action, instance, host) => {
-                const handler = actionHandlers.find(h => h.id === action.id && h.match(instance));
-                if (handler) handler.execute(instance, host);
-            },
-            setRealmContext: async (realmId, domainObjects = null) => {
-                this.logger.info(`DO Registry: Setting Realm Context for '${realmId}'...`);
-                // null = reset to global defaults
-                if (domainObjects === null) {
-                    this._realmContext = null;
-                    // Reset policies? For now we just let the next realm overwrite them.
-                } else {
-                    const blueprintIds = domainObjects.map(d => d.id);
-                    const specializes = domainObjects.filter(d => d.spec);
-                    
-                    // Register Realm-driven Policies (Upper Tier)
-                    for (const doEntry of domainObjects) {
-                        if (doEntry.persistence && pm.setRoutingPolicy) {
-                            pm.setRoutingPolicy(`instances.${doEntry.id}.`, doEntry.persistence.tier, doEntry.persistence.enforce);
-                        }
-                    }
-
-                    // Fetch specialized specs asynchronously
-                    for (const s of specializes) {
-                        try {
-                            const res = await fetch(s.spec);
-                            if (res.ok) {
-                                const yamlText = await res.text();
-                                const spec = this._yamlService.load(yamlText);
-                                registryService.addBlueprint(spec);
-                                this.logger.info(`DO Registry: Loaded specialized spec for '${s.id}' from '${s.spec}'`);
-                            }
-                        } catch (err) {
-                            this.logger.error(`DO Registry: Failed to load specialized spec for '${s.id}':`, err);
-                        }
-                    }
-                    this._realmContext = { realmId, blueprintIds };
-                }
-                syncWithHost();
-            }
-        };
-
-        const syncWithHost = () => {
-            if (this._isStopped) return;
-            const states = [globalThis.backofficeState, globalThis.businessPortalState].filter(Boolean);
-            const raw = localStorage.getItem('atomic_persisted_specs');
-            const persisted = raw ? JSON.parse(raw) : [];
-            const mergedBlueprints = [...systemSpecs];
-            persisted.forEach(ps => { if (!mergedBlueprints.find(s => s.id === ps.id)) mergedBlueprints.push(ps); });
-
-            let finalBlueprints = mergedBlueprints;
-            // Apply Ontological Filtering (NPRF Tier -1)
-            if (this._realmContext) {
-                finalBlueprints = mergedBlueprints.filter(spec => 
-                    this._realmContext.blueprintIds.includes(spec.id)
-                );
-                this.logger.debug(`DO Registry: Filtered blueprints for realm '${this._realmContext.realmId}': ${finalBlueprints.length}/${mergedBlueprints.length} active.`);
-            }
-
-            // Enrich raw instances for "Show All" mode (Phase 9)
-            const instances = pm.load(DO_INSTANCES_PID) || {};
-            const enrichedInstances = Object.fromEntries(
-                Object.entries(instances).map(([id, inst]) => {
-                    const strategy = this._runtimeStrategies.get(inst.strategyId || "LOCAL_STRATEGY");
-                    const allowedActions = (strategy?.actions || []).map(a => ({ ...a, allowed: true }));
-                    return [id, { ...inst, strategy, allowedActions }];
-                })
-            );
-
-            states.forEach(s => {
-                s.domainObjectSpecs = finalBlueprints;
-                s.domainObjectStrategies = Object.fromEntries(this._runtimeStrategies);
-                s.domainObjectInstances = instances;
-                s.parsedDOStrategies = s.domainObjectStrategies;
-                s.parsedDOInstances = enrichedInstances;
-
-                // Initialize Admin Toggle State
-                if (s.showAllDOs === undefined) s.showAllDOs = false;
-                
-                // Admin Helper (Never Played Realm Standard)
-                s.isRegistryAdmin = () => {
-                    let user = s.session?.currentUser;
-                    if (!user && context) {
-                        const sRef = context.getServiceReference(SESSION_SERVICE);
-                        if (sRef) user = context.getService(sRef)?.currentUser;
-                    }
-                    if (!user) return false;
-                    
-                    const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
-                    const rawAttrs = user.attributes || {};
-                    const attrs = Array.isArray(rawAttrs) ? rawAttrs : Object.keys(rawAttrs).filter(k => !!rawAttrs[k]);
-                    
-                    const adminRoles = ['neverplayed-admin', 'realm-admin', 'admin', 'superuser'];
-                    const hasRole = adminRoles.some(role => caps.includes(role) || attrs.includes(role));
-                    const isKnownAdmin = ['dd', 'daniela', 'system', 'daniel.doegl@doegl.info'].includes(user.id);
-                    
-                    return hasRole || isKnownAdmin;
-                };
-
-                if (!s.handleAction) {
-                    s.handleAction = (action, instance) => registryService.handleAction(action, instance, s);
-                }
-                
-                s.toggleShowAllDOs = () => {
-                    s.showAllDOs = !s.showAllDOs;
-                    if (!s.showAllDOs) {
-                        globalThis.dispatchEvent(new CustomEvent('shell-security-reevaluate'));
-                        this.logger.info("DO Registry: Toggle OFF -> Triggered security re-evaluation.");
-                    }
-                    if (s.recompile) s.recompile();
-                };
-
-                if (!s.instantiateDO) {
-                    s.instantiateDO = (specId) => {
-                        const spec = s.domainObjectSpecs.find(sp => sp.id === specId);
-                        if (!spec) return this.logger.error(`DO Registry: Spec ${specId} not found.`);
-                        const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
-                        const strategySvc = this._runtimeStrategies.get(strategyId);
-                        if (!strategySvc?.createInstance) return this.logger.error(`DO Registry: Strategy [${strategyId}] not ready.`);
-                        const inst = strategySvc.createInstance(spec);
-                        if (s.recompile) s.recompile();
-                        return inst;
-                    };
-                }
-
-                if (!s.editDomainObjectYAML) {
-                    s.editDomainObjectYAML = (id) => {
-                        const spec = s.domainObjectSpecs.find(sp => sp.id === id);
-                        if (!spec) return this.logger.error(`DO Registry: Spec ${id} not found.`);
-                        const editorRef = context.getServiceReference(YAML_EDITOR_SERVICE);
-                        const editorSvc = editorRef ? context.getService(editorRef) : null;
-                        if (editorSvc) {
-                            editorSvc.edit({
-                                title: `Edit Blueprint: ${id}`,
-                                data: spec,
-                                onSave: (updated) => {
-                                    registryService.addBlueprint(updated);
-                                    this.logger.info(`DO Registry: Blueprint ${id} updated.`);
-                                    if (s.recompile) s.recompile();
-                                }
-                            });
-                        } else {
-                            this.logger.warn("DO Registry: YAML_EDITOR_SERVICE not found.");
-                        }
-                    };
-                }
-
-                if (s.recompile) s.recompile();
-            });
-
-            globalThis.dispatchEvent(new CustomEvent('shell-security-reevaluate'));
-        };
-
-        // Guarded Synchronization Polls
-        [1000, 2500, 5000].forEach(delay => {
-            const t = setTimeout(() => {
-                if (this._isStopped) return;
-                syncWithHost();
-            }, delay);
-            this._timers.push(t);
-        });
-
-        // D. Register Default Handlers
-        registryService.registerActionHandler({
-            id: 'view',
-            match: () => true,
-            execute: (instance, host) => {
-                const blueprint = (host.domainObjectSpecs || []).find(s => s.id === instance.blueprintId);
-                if (blueprint?.ui) {
-                    const params = { instanceId: instance.id };
-                    if (typeof host.launchFlow === 'function') host.launchFlow(blueprint.id, null, params);
-                    else globalThis.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: blueprint.id, step: null, params } }));
-                }
-            }
-        });
-
-        registryService.registerActionHandler({
-            id: 'delete',
-            match: () => true,
-            execute: (instance) => {
-                const strategyId = instance.strategyId || "LOCAL_STRATEGY";
-                const strategySvc = this._runtimeStrategies.get(strategyId);
-                if (strategySvc?.deleteInstance) strategySvc.deleteInstance(instance.id, instance.blueprintId);
-            }
-        });
-
-        // E. Register Services
-        context.registerService(DOMAIN_OBJECT_REGISTRY_SERVICE, registryService);
-        context.registerService(BO_EXTENSION_SERVICE, {
-            id: "domain-objects",
-            name: "Domain Objects",
-            icon: "fas fa-cubes",
-            templateUrl: this.resolveResource("templates/overview.html"),
-            onActivate: (hostState) => {
-                syncWithHost();
-                if (!Object.getOwnPropertyDescriptor(hostState, 'currentDOs')) {
-                    Object.defineProperty(hostState, 'currentDOs', {
-                        get() {
-                            const host = globalThis.backofficeState || globalThis.businessPortalState || hostState;
-                            let user = host?.session?.currentUser;
-                            if (!user && context) {
-                                const sRef = context.getServiceReference(SESSION_SERVICE);
-                                if (sRef) user = context.getService(sRef)?.currentUser;
-                            }
-                            const userId = user?.id;
-                            if (!userId) return [];
-                            const entry = Array.isArray(host?.evaluatedData) ? host.evaluatedData.find(d => String(d.user) === String(userId)) : null;
-                            return Array.isArray(entry?.domainObjects) ? entry.domainObjects : [];
-                        },
-                        enumerable: true,
-                        configurable: true
-                    });
-                }
-            }
-        });
-
-        // Register Sidebar Proxy Flow (Rule 13 Compatibility)
-        context.registerService(FLOW_SERVICE, {
-            id: "domain-objects",
-            title: "Domain Objects",
-            launch: async (targetElement) => {
-                const bsn = context.getBundle().getSymbolicName();
-                if (targetElement.getAttribute('data-bsn') === bsn) return;
-
-                const template = await (await fetch(this.resolveResource("templates/overview.html"))).text();
-                targetElement.setAttribute('data-bsn', bsn);
-                targetElement.innerHTML = `
-                    <div id="do-registry-container" class="h-full w-full" x-data="{ host: globalThis.backofficeState || globalThis.businessPortalState }">
-                        ${template}
-                    </div>
-                `;
-                
-                // Ensure state is synced before Alpine starts parsing
-                syncWithHost();
-                
-                await globalThis.Alpine.nextTick();
-                globalThis.Alpine.initTree(targetElement);
-            }
-        }, {
-            "flow.id": "domain-objects",
-            "sidebar": true,
-            "icon": "fas fa-cubes",
-            "title": "Domain Objects"
-        });
-
-        // F. Scan for discovery specs (Rule 4: Configuration over Code)
-        const baseUrl = this.getBaseUrl();
-        const specsPath = `${baseUrl}data/specs.yaml`;
-        fetch(specsPath).then(async res => {
-            if (res.ok) {
-                const text = await res.text();
-                const specData = yaml.load(text) || {};
-                const specs = Array.isArray(specData) ? specData : (specData.domainObjectSpecs || []);
-                this.logger.info(`DO Registry: Found ${specs.length} local specs via discovery.`);
-                specs.forEach(s => registryService.addBlueprint(s));
-            }
-        }).catch(() => {});
-
-        // G. Scan for existing instances (Delayed to allow PM hydration and prevent overwrite loops)
-        const instancesPath = `${baseUrl}data/instances.yaml`;
-        const instTimer = setTimeout(() => {
-            if (this._isStopped) return;
-            fetch(instancesPath).then(async res => {
-                if (!res.ok || this._isStopped) return;
-                const text = await res.text();
-                const instanceData = yaml.load(text) || {};
-                const instances = Array.isArray(instanceData) ? instanceData : (instanceData.domainObjectInstances || instanceData);
-                if (typeof instances === 'object' && !Array.isArray(instances)) {
-                    for (const [id, inst] of Object.entries(instances)) registryService.addInstance({ ...inst, id });
-                } else if (Array.isArray(instances)) {
-                    instances.forEach(inst => registryService.addInstance(inst));
-                }
-            }).catch(() => {});
-        }, 3000);
-        this._timers.push(instTimer);
-
-        this.logger.info("DO Registry: Service Registered successfully. 🏛️✅");
-    } catch (err) {
-        this.logger.error("DO Registry: Initialization failed:", err);
-    }
-  }
-
-  onStop() {
-    this._isStopped = true;
-    this._timers.forEach(t => clearTimeout(t));
-    if (this._logTracker) this._logTracker.close();
-    if (this._pmTracker) this._pmTracker.close();
-    if (this._yamlTracker) this._yamlTracker.close();
-    if (this.logger) this.logger.info("DO Registry: Stopped and cleaned up.");
+    } catch (_e) { /* Ignore */ }
+    this.sync();
   }
 }

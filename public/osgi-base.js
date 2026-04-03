@@ -24,6 +24,43 @@ export class BaseActivator {
         this.persistence = null;
         this.bsn = "unknown";
         this.isHeadless = !!globalThis.Deno || !globalThis.document?.body;
+        this._trackers = [];
+    }
+
+    /**
+     * dispatch
+     * Harmonized global event signaling for cross-bundle coordination.
+     */
+    dispatch(name, detail = {}) {
+        const event = new CustomEvent(name, { 
+            detail,
+            bubbles: true,
+            cancelable: true
+        });
+        globalThis.dispatchEvent(event);
+        return event;
+    }
+
+    /**
+     * trackService (Helper)
+     * Automatically tracks and cleans up a service reference.
+     */
+    track(sid, options) {
+        if (!this.context) throw new Error("Cannot track before start()");
+        const tracker = this.context.trackService(sid, options);
+        tracker.open();
+        this._trackers.push(tracker);
+        return tracker;
+    }
+
+    /**
+     * trackRealm
+     * Standardized listener for Universe/Context transitions.
+     */
+    trackRealm(callback) {
+        const handler = (e) => callback(e.detail);
+        globalThis.addEventListener('realm-switched', handler);
+        return () => globalThis.removeEventListener('realm-switched', handler);
     }
 
     /**
@@ -39,7 +76,7 @@ export class BaseActivator {
     /**
      * normalizeBSN
      * Standardizes BSNs to a point-separated format for robust comparison.
-     * Maps @neverplayed/foo to org.neverplayed.foo
+     * Maps org.neverplayed.foo to org.neverplayed.foo
      */
     static normalizeBSN(bsn) {
         if (!bsn) return "";
@@ -148,6 +185,11 @@ export class BaseActivator {
     }
 
     async stop(context) {
+        // Auto-cleanup OSGi trackers
+        this._trackers.forEach(t => { 
+            try { t.close(); } catch (_e) { /* ignore */ }
+        });
+
         await this.onStop(context);
         this.logger.info(`Activator: Stopped ${this.bsn}`);
     }
@@ -161,6 +203,18 @@ export class BaseActivator {
 
     async onStop(_context) {
         // To be implemented by subclasses
+    }
+
+    /**
+     * onActivate / onDeactivate (Pattern 7)
+     * Standardized hooks for UI flows being switched into/out of the Realm stage.
+     */
+    onActivate(_stageState) {
+        this.logger?.debug(`[${this.bsn}] Activated into Stage.`);
+    }
+
+    onDeactivate() {
+        this.logger?.debug(`[${this.bsn}] Deactivated from Stage.`);
     }
 
     /**

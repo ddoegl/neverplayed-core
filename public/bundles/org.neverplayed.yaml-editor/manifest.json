@@ -1,5 +1,5 @@
 {
-  "Bundle-SymbolicName": "@neverplayed/yaml-editor",
+  "Bundle-SymbolicName": "org.neverplayed.yaml-editor",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
   "Configuration": {

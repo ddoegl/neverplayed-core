@@ -1,6 +1,6 @@
 {
   "Bundle-ManifestVersion": "1",
-  "Bundle-SymbolicName": "@neverplayed/shell-cli",
+  "Bundle-SymbolicName": "org.neverplayed.shell-cli",
   "Bundle-Name": "Shell CLI",
   "Bundle-Description": "In-app Terminal for Universe Management",
   "Bundle-Version": "1.0.0",

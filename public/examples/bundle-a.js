@@ -2,7 +2,7 @@ export default class Activator {
   async start(context) {
     this.loggerReference = context.getServiceReference('@pandino/pandino/Logger');
     this.logger = context.getService(this.loggerReference);
-    this.inverterReference = context.getServiceReference('@neverplayed/bundle-b/StringInverter');
+    this.inverterReference = context.getServiceReference('org.neverplayed.bundle-b/StringInverter');
     this.inverter = context.getService(this.inverterReference);
 
     this.logger.log('Bundle A - Activator');

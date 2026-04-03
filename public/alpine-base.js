@@ -1,4 +1,4 @@
-import { BaseActivator } from "osgi-base";
+import { BaseActivator, CoreActivator } from "osgi-base";
 import Alpine from "alpinejs";
 
 /**
@@ -18,14 +18,12 @@ export class AlpineActivator extends BaseActivator {
      * track
      * Wraps context.trackService with automatic closing during onStop.
      */
+    /**
+     * track
+     * Overrides base track to ensure availability in controllers.
+     */
     track(sid, options) {
-        if (!this.context) {
-            throw new Error("[AlpineActivator] Cannot track service before start(). Call track() inside onStart().");
-        }
-        const tracker = this.context.trackService(sid, options);
-        this._trackers.push(tracker);
-        tracker.open();
-        return tracker;
+        return super.track(sid, options);
     }
 
     /**
@@ -80,7 +78,7 @@ export class AlpineActivator extends BaseActivator {
         }
 
         // Atomic Hydration Guard: Prevent double-booting
-        const sanitizedBsn = (this.bsn || "unknown").replace(/[\.\-]/g, "_");
+        const sanitizedBsn = (this.bsn || "unknown").replace(/[^a-zA-Z0-9]/g, "_");
         const initializedKey = `initialized_${sanitizedBsn}`;
         
         if (target.dataset[initializedKey] === 'true') {
@@ -99,7 +97,21 @@ export class AlpineActivator extends BaseActivator {
         
         // Register the data factory
         // Use an arrow function to ensure 'this' refers to the Activator instance
-        Alpine.data(controllerName, (...args) => controllerFactory.apply(this, args));
+        Alpine.data(controllerName, (...args) => {
+            const controller = controllerFactory.apply(this, args);
+            
+            // Inject Activator Utilities as non-enumerable to prevent Alpine recursion
+            Object.defineProperties(controller, {
+                logger: { value: this.logger, enumerable: false, writable: true, configurable: true },
+                track: { value: this.track?.bind(this), enumerable: false, writable: true, configurable: true },
+                initStore: { value: this.initStore?.bind(this), enumerable: false, writable: true, configurable: true },
+                syncStore: { value: this.syncStore?.bind(this), enumerable: false, writable: true, configurable: true },
+                bsn: { value: this.bsn, enumerable: false, writable: true, configurable: true },
+                context: { value: this.context, enumerable: false, writable: true, configurable: true }
+            });
+            
+            return controller;
+        });
 
         // Apply Attributes
         Object.entries(attrMap).forEach(([key, val]) => target.setAttribute(key, val));
@@ -111,24 +123,115 @@ export class AlpineActivator extends BaseActivator {
         
         // Ensure Alpine parses the new DOM
         await Alpine.nextTick();
-        Alpine.initTree(target);
+
+        // 2.4 Safety Guard: Only initialize if Alpine hasn't already picked it up via MutationObserver
+        if (!target._x_dataStack) {
+            this.logger?.debug(`[Alpine] Explicit initTree for ${controllerName}`);
+            globalThis.Alpine.initTree(target);
+        } else {
+            this.logger?.debug(`[Alpine] ${controllerName} already initialized via observer.`);
+        }
         
         this.logger?.info(`[Alpine] UI Component '${controllerName}' mounted on '${targetSelector}'`);
         return target;
     }
 
+
     async stop(context) {
-        // 1. Close all tracked services
-        this._trackers.forEach(t => {
-            try { t.close(); } catch (_e) { /* ignore */ }
-        });
-        
-        // 2. Stop all effects
         this._effects.forEach(cleanup => {
             try { cleanup(); } catch (_e) { /* ignore */ }
         });
 
-        // 3. Standard lifecycle
+        // Clear hydration flag to allow re-render on next start
+        const sanitizedBsn = (this.bsn || "unknown").replace(/[^a-zA-Z0-9]/g, "_");
+        const initializedKey = `initialized_${sanitizedBsn}`;
+        document.querySelectorAll(`[data-${initializedKey}]`).forEach(el => {
+             delete el.dataset[initializedKey];
+        });
+
+        // Standard lifecycle (handles tracker cleanup)
+        await super.stop(context);
+    }
+}
+
+/**
+ * CoreAlpineActivator
+ * Hybrid activator that merges Core OSGi features (Security/Limes) with Alpine UI patterns.
+ */
+export class CoreAlpineActivator extends CoreActivator {
+    constructor() {
+        super();
+        this._trackers = [];
+        this._effects = [];
+    }
+
+    // Mixin the AlpineActivator features... 
+    // Since JS doesn't support multiple inheritance, we'll manually proxy the key methods
+    // OR just duplicate them for reliability in this specific environment.
+    
+    track(sid, options) {
+        const tracker = this.context.trackService(sid, options);
+        this._trackers.push(tracker);
+        tracker.open();
+        return tracker;
+    }
+
+    initStore(name, defaults) {
+        if (!Alpine.store(name)) {
+            Alpine.store(name, { ...defaults });
+        }
+        return Alpine.store(name);
+    }
+
+    syncStore(name, data) {
+        const store = Alpine.store(name);
+        if (store) Object.assign(store, data);
+    }
+
+    async render(targetSelector, templatePath, controllerFactory, attrMap = {}) {
+        const target = document.querySelector(targetSelector);
+        if (!target) return null;
+
+        const sanitizedBsn = (this.bsn || "unknown").replace(/[^a-zA-Z0-9]/g, "_");
+        const initializedKey = `initialized_${sanitizedBsn}`;
+        if (target.dataset[initializedKey] === 'true') return target;
+        target.dataset[initializedKey] = 'true';
+
+        const url = this.resolveResource(templatePath);
+        const template = await (await fetch(url)).text();
+        const controllerName = `${sanitizedBsn}_controller`;
+        
+        Alpine.data(controllerName, (...args) => {
+            const controller = controllerFactory.apply(this, args);
+            
+            // Inject Activator Utilities as non-enumerable to prevent Alpine recursion
+            Object.defineProperties(controller, {
+                logger: { value: this.logger, enumerable: false, writable: true, configurable: true },
+                track: { value: this.track?.bind(this), enumerable: false, writable: true, configurable: true },
+                initStore: { value: this.initStore?.bind(this), enumerable: false, writable: true, configurable: true },
+                syncStore: { value: this.syncStore?.bind(this), enumerable: false, writable: true, configurable: true },
+                bsn: { value: this.bsn, enumerable: false, writable: true, configurable: true },
+                context: { value: this.context, enumerable: false, writable: true, configurable: true }
+            });
+            
+            return controller;
+        });
+        Object.entries(attrMap).forEach(([key, val]) => target.setAttribute(key, val));
+
+        target.setAttribute('x-data', controllerName);
+        target.setAttribute('x-cloak', '');
+        target.innerHTML = template;
+        
+        await Alpine.nextTick();
+        if (!target._x_dataStack) {
+            globalThis.Alpine.initTree(target);
+        }
+        return target;
+    }
+
+    async stop(context) {
+        this._trackers.forEach(t => { try { t.close(); } catch (_e) { /* Ignore */ } });
+        this._effects.forEach(c => { try { c(); } catch (_e) { /* Ignore */ } });
         await super.stop(context);
     }
 }

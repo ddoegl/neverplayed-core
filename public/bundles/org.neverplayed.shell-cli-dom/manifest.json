@@ -1,12 +1,14 @@
 {
-    "Bundle-SymbolicName": "@neverplayed/shell-cli-dom",
+    "Bundle-SymbolicName": "org.neverplayed.shell-cli-dom",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "activator.js",
     "Import-Service": [
-        "@neverplayed/shell-cli/service"
+        "org.neverplayed.shell.ShellCLI"
     ],
-  "Configuration": {
-    "flowType": "service-flow",
-    "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
-  }
+    "Configuration": {
+        "flowType": "service-flow",
+        "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
+    },
+    "Bundle-Name": "Shell CLI DOM",
+    "Bundle-Description": "HTML-based terminal renderer for the shell ecosystem."
 }

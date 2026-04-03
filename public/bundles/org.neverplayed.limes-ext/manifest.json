@@ -1,10 +1,10 @@
 {
-    "Bundle-SymbolicName": "@neverplayed/limes-ext",
+    "Bundle-SymbolicName": "org.neverplayed.limes-ext",
     "Bundle-Version": "1.0.0",
-    "Bundle-Name": "Limes Legacy Extensions",
-    "Bundle-Description": "Legacy and non-core security strategies for Limes",
-    "Bundle-Activator": "./activator.js",
-    "Require-Bundle": "@neverplayed/limes",
-    "Import-Service": "@neverplayed/limes/service",
+    "Bundle-Name": "Limes Extensions",
+    "Bundle-Description": "Extended security strategies and rule providers.",
+    "Bundle-Activator": "activator.js",
+    "Require-Bundle": "org.neverplayed.limes",
+    "Import-Service": "org.neverplayed.limes.LimesService",
     "Export-Package": ""
 }

@@ -1,5 +1,5 @@
 {
-  "Bundle-SymbolicName": "@neverplayed/event-monitor",
+  "Bundle-SymbolicName": "org.neverplayed.event-monitor",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
   "Configuration": {

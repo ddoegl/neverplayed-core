@@ -4,5 +4,7 @@
   "Bundle-Activator": "activator.js",
   "Bundle-Assets": "templates/sca-selection.html",
   "channels": ["business-channel-web", "retail-channel-app"],
-  "Provide-Capability": "@neverplayed/flow-service;version=\"1.0.0\";flow.id=\"signing\""
+  "Provide-Capability": "org.neverplayed.flow.Service;version=\"1.0.0\";flow.id=\"signing\"",
+  "Bundle-Name": "Signing Flow",
+  "Bundle-Description": "Digital signature orchestration."
 }

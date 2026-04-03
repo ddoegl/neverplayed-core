@@ -1,4 +1,4 @@
-import { AtomicComponentBase } from "@neverplayed/shared-ui/components/atomic-component-base.js";
+import { AtomicComponentBase } from "org.neverplayed.shared-ui/components/atomic-component-base.js";
 import { YAML_SERVICE, YAML_EDITOR_SERVICE, UI_FACTORY_SERVICE, ACTION_REGISTRY_SERVICE, ATOMIC_SPEC_INGESTION_SERVICE } from "shared-types";
 
 /**

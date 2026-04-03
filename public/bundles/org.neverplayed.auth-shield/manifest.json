@@ -1,5 +1,5 @@
 {
-    "Bundle-SymbolicName": "@neverplayed/auth-shield",
+    "Bundle-SymbolicName": "org.neverplayed.auth-shield",
     "Bundle-Version": "1.0.0",
     "Bundle-Name": "Auth Shield",
     "Bundle-Description": "Firebase-based Google Authentication & Authorization layer",

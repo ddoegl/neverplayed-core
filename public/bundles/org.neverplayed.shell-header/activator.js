@@ -3,7 +3,8 @@ import {
     REALM_MANAGER_SERVICE,
     CONFIG_ADMIN_UI_FLOW,
     SYSTEM_RESET_SERVICE,
-    SESSION_SERVICE 
+    SESSION_SERVICE,
+    PERSISTENCE_MANAGER_SERVICE
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
@@ -19,12 +20,37 @@ export default class Activator extends AlpineActivator {
     }
 
     async onStart(context) {
+        this.ctx = context;
+        this.pm = null;
+        const UI_STORAGE_PID = "org.neverplayed.shell.ui.context";
+
         // 1. Initialize Global UI Context Store
-        this.initStore('shell_context', {
+        const store = this.initStore('shell_context', {
             activeRealm: { id: 'loading', title: 'Loading...', icon: 'fas fa-circle-notch fa-spin' },
             realms: [],
             user: { alias: 'Guest', avatar: '?' },
-            sidebarOpen: true
+            sidebarOpen: true,
+            sidebarState: 0 // 0: Expanded, 1: Icons, 2: Hidden
+        });
+
+        // Track Persistence Manager for Gold Standard Persistence (Pattern 4)
+        this.track(`(objectClass=${PERSISTENCE_MANAGER_SERVICE})`, {
+            addingService: (ref) => {
+                this.pm = context.getService(ref);
+                this._restoreUIState(UI_STORAGE_PID, store);
+                
+                // Reactive sync to persistence
+                this.effect(() => {
+                    const data = {
+                        sidebarOpen: store.sidebarOpen,
+                        sidebarState: store.sidebarState,
+                        lastRealmId: store.activeRealm?.id
+                    };
+                    this.pm.store(UI_STORAGE_PID, data);
+                    this.logger?.debug(`[Persistence] UI State synchronized to PM:`, data);
+                });
+                return this.pm;
+            }
         });
 
         // 2. Track Realm Services (Fully reactive via syncStore)
@@ -52,12 +78,12 @@ export default class Activator extends AlpineActivator {
 
         // 4. Render UI (Atomic & Guarded)
         await this.render('#shell-header', 'templates/header.html', () => ({
-            get shell() { return globalThis.Alpine.store('shell_context'); },
+            get shell() { return globalThis.Alpine.store('shell_context') || { realms: [], activeRealm: {}, user: { alias: 'Guest', avatar: '?' } }; },
             get activeFlow() { return globalThis.backofficeState?.activeFlow || globalThis.businessPortalState?.activeFlow; },
             
             toggleSidebar() {
                 this.shell.sidebarOpen = !this.shell.sidebarOpen;
-                globalThis.dispatchEvent(new CustomEvent('shell-header:sidebar-toggle'));
+                globalThis.dispatchEvent(new CustomEvent('shell:sidebar-toggle', { detail: { open: this.shell.sidebarOpen } }));
             },
 
             async switchRealm(id) {
@@ -104,40 +130,62 @@ export default class Activator extends AlpineActivator {
      * Maps available OSGi Realm Services to the Alpine Switcher.
      */
     _syncRealms() {
+        // Diagnostic: Ground Truth
         const refs = this.context.getServiceReferences(REALM_SERVICE) || [];
+        this.logger?.debug(`Header Diagnostic: Service Registry reports ${refs.length} realm services.`);
         
-        // Deduplicate by realm.id (Prevent duplicates from race conditions)
-        const unique = Array.from(new Map(refs.map(ref => [ref.getProperty('realm.id'), ref])).values());
+        // Build the raw list of IDs and their bundle sources
+        const rawInfo = refs.map(ref => `[ID: ${ref.getProperty('realm.id')} (#${ref.getBundle().id})]`).join(', ');
+        this.logger?.debug(`Header Diagnostic: Raw IDs: ${rawInfo}`);
+
+        // Deduplicate
+        const uniqueMap = new Map();
+        for (const ref of refs) {
+            const id = ref.getProperty('realm.id');
+            if (id && !uniqueMap.has(id)) uniqueMap.set(id, ref);
+        }
         
-        // Handle Active State
-        const activeRef = unique.find(ref => ref.getProperty('realm.active')) || unique[0];
-        
+        const realms = Array.from(uniqueMap.values()).map(ref => ({
+            id: ref.getProperty('realm.id'),
+            title: ref.getProperty('realm.title') || 'Untitled',
+            icon: ref.getProperty('realm.icon') || 'fas fa-universe',
+            active: !!ref.getProperty('realm.active'),
+            bundleId: ref.getBundle().id
+        }));
+
         this.syncStore('shell_context', {
-            realms: unique.map(ref => ({
-                id: ref.getProperty('realm.id'),
-                title: ref.getProperty('realm.title'),
-                icon: ref.getProperty('realm.icon') || 'fas fa-universe',
-                active: !!ref.getProperty('realm.active')
-            })),
-            activeRealm: activeRef ? {
-                id: activeRef.getProperty('realm.id'),
-                title: activeRef.getProperty('realm.title'),
-                icon: activeRef.getProperty('realm.icon') || 'fas fa-universe'
-            } : { id: 'none', title: 'Unknown Layer', icon: 'fas fa-ghost' }
+            realms: JSON.parse(JSON.stringify(realms)), // Break proxy references
+            activeRealm: realms.find(r => r.active) || realms[0] || { id: 'none', title: 'Loading...' }
         });
     }
 
-    /**
-     * _updateSession
-     * Maps the OSGi Session to the Alpine UI profile.
-     */
     _updateSession() {
-        const user = this._session?.currentUser || null;
-        this.syncStore('shell_context', {
-            user: {
-                alias: typeof user === 'object' ? (user?.alias || user?.firstname || 'User') : (user || 'Guest'),
-                avatar: (typeof user === 'object' ? (user?.alias || user?.firstname || '?') : (user || '?')).charAt(0).toUpperCase()
+        if (this._session) {
+            const user = this._session.currentUser;
+            this.syncStore('shell_context', {
+                user: { 
+                    alias: user?.alias || user?.email || 'Explorer', 
+                    avatar: (user?.alias || user?.email || 'E')[0].toUpperCase()
+                }
+            });
+        } else {
+            this.syncStore('shell_context', {
+                user: { alias: 'Guest', avatar: '?' }
+            });
+        }
+    }
+
+    async _restoreUIState(pid, store) {
+        if (!this.pm) return;
+        try {
+            const saved = await this.pm.load(pid);
+            if (saved) {
+                this.logger?.info(`[Persistence] Restoring UI State:`, saved);
+                if (saved.sidebarOpen !== undefined) store.sidebarOpen = saved.sidebarOpen;
+                if (saved.sidebarState !== undefined) store.sidebarState = saved.sidebarState;
             }
-        });
+        } catch (err) {
+            this.logger?.error(`[Persistence] Failed to restore UI context:`, err.message);
+        }
     }
 }
