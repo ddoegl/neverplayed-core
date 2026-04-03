@@ -32,6 +32,8 @@
     "shared-types": "./public/shared-types.js",
     "core-types": "./public/core-types.js",
     "osgi-base": "./public/osgi-base.js",
+    "alpine-base": "./public/alpine-base.js",
+    "alpinejs": "https://esm.sh/alpinejs@3.13.5",
     "@neverplayed/shared-ui/": "./public/bundles/org.neverplayed.shared-ui/",
     "@neverplayed/selection-service/": "./public/bundles/org.neverplayed.selection-service/",
     "@neverplayed/do-registry/": "./public/bundles/org.neverplayed.do-registry/",

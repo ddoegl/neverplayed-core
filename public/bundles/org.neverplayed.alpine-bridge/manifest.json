@@ -1,0 +1,9 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.alpine-bridge",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Alpine.js OSGi Bridge",
+    "Bundle-Description": "Registers custom Alpine.js magics ($context, $service) and directives (x-service) for OSGi integration.",
+    "Bundle-Activator": "activator.js",
+    "Configuration": {
+    }
+}
