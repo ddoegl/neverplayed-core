@@ -127,7 +127,7 @@
       import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
       import Pandino from "https://esm.sh/@pandino/pandino@0.8.33";
       import Alpine from "https://esm.sh/alpinejs@3.13.5";
-      import { REALM_MANAGER_SERVICE } from "shared-types";
+      import { REALM_MANAGER_SERVICE } from "core-types";
 
       // 1. Initialize Central Orchestration State
       Alpine.store("platform", { kernelReady: false });
@@ -156,9 +156,14 @@
               "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
             );
             if (eaBundle.getState() < 32) await eaBundle.start();
-            console.log(`[Pandino] Total Services: ${context.getServiceReferences().length}`);
-            context.getServiceReferences().forEach(ref => {
-              console.log(`[Registry] from ${ref.getBundle().getSymbolicName()}:`, ref.getProperty("objectClass"));
+            console.log(
+              `[Pandino] Total Services: ${context.getServiceReferences().length}`,
+            );
+            context.getServiceReferences().forEach((ref) => {
+              console.log(
+                `[Registry] from ${ref.getBundle().getSymbolicName()}:`,
+                ref.getProperty("objectClass"),
+              );
             });
 
             // 3. Load Orchestrator

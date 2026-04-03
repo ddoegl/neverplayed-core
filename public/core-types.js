@@ -22,6 +22,7 @@ export const PERSISTENCE_SELECTOR_BUNDLE = "@neverplayed/persistence-selector";
 export const PERSISTENCE_LOCALSTORAGE_BUNDLE = "@neverplayed/persistence-deno-localstorage";
 export const PLEXUS_ENGINE_SERVICE = "@neverplayed/plexus/engine";
 export const REALM_MANAGER_SERVICE = "@neverplayed/realm-manager/service";
+export const REALM_SERVICE = "@neverplayed/realm/service";
 export const DOMAIN_OBJECT_REGISTRY_SERVICE = "@neverplayed/domain-object-registry/service";
 export const ACTION_SERVICE = "@neverplayed/action-service";
 export const SHELL_HOST_SERVICE = "@neverplayed/shell-host/service";

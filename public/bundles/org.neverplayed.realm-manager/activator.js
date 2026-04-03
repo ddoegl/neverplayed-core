@@ -1,5 +1,6 @@
 import { 
     REALM_MANAGER_SERVICE, 
+    REALM_SERVICE,
     LOG_SERVICE, 
     SESSION_SERVICE, 
     DOMAIN_OBJECT_REGISTRY_SERVICE, 
@@ -23,6 +24,7 @@ export default class Activator extends BaseActivator {
     _eventAdmin = null;
     _eventFactory = null;
     _realmCommandReg = null;
+    _realmRegs = new Map(); // id -> ServiceRegistration
     _bsnCache = new Map(); // url -> bsn
     _manualBSNs = new Set();
     _pendingTransition = null; 
@@ -184,19 +186,21 @@ export default class Activator extends BaseActivator {
     async _discoverRealms() {
         try {
             // 1. Fetch Environment (for Provider Injection)
-            const envResp = await fetch("./env.json");
+            const root = globalThis.location.origin + '/';
+            const envResp = await fetch(new URL("./env.json", root).href);
             const envConfig = envResp.ok ? await envResp.json() : { persistence_mode: "local" };
             const isFirebase = envConfig.persistence_mode === "firebase";
 
             // 2. Fetch Discovery Index
-            const resp = await fetch("./realms/index.json");
+            const resp = await fetch(new URL("./realms/index.json", root).href);
             if (!resp.ok) return;
             const files = await resp.json();
             
             for (const file of files) {
                 try {
-                    this.logger?.debug(`Realm Manager: Fetching ./realms/${file}...`);
-                    const r = await fetch(`./realms/${file}`);
+                    const realmUrl = new URL(`./realms/${file}`, root).href;
+                    this.logger?.debug(`Realm Manager: Fetching ${realmUrl}...`);
+                    const r = await fetch(realmUrl);
                     if (r.ok) {
                         const manifest = await r.json();
                         
@@ -464,6 +468,27 @@ export default class Activator extends BaseActivator {
         }
         this.logger?.info(`Realm Manager: Registered universe '${manifest.id}' (${manifest.title})`);
 
+        // 1.9 Resilience: Unregister old service if it exists (prevents duplication in UI)
+        const oldReg = this._realmRegs.get(manifest.id);
+        if (oldReg) {
+            try { oldReg.unregister(); } catch (_e) { /* ignore */ }
+        }
+
+        const serviceProps = {
+            "realm.id": manifest.id,
+            "realm.title": manifest.title,
+            "realm.icon": manifest.icon || "fas fa-universe",
+            "realm.active": manifest.id === this._activeRealmId
+        };
+
+        const registration = this.context.registerService(REALM_SERVICE, {
+            getId: () => manifest.id,
+            getManifest: () => ({ ...manifest }),
+            switch: (interactive = false) => this._switchRealm(this.context, manifest.id, interactive)
+        }, serviceProps);
+        
+        this._realmRegs.set(manifest.id, registration);
+
         // Broadcast discovery (Step 1)
         if (this._eventAdmin && this._eventFactory) {
             this.logger?.info(`Realm Manager: Broadcasting realm registration for '${manifest.id}'`);
@@ -507,6 +532,13 @@ export default class Activator extends BaseActivator {
 
         this._realms.delete(id);
         this._orderedRealmIds = this._orderedRealmIds.filter(rid => rid !== id);
+        
+        const registration = this._realmRegs.get(id);
+        if (registration) {
+            try { registration.unregister(); } catch (_e) { /* ignore */ }
+            this._realmRegs.delete(id);
+        }
+
         this.logger?.info(`Realm Manager: Unregistered universe '${id}'`);
 
         // Broadcast removal (Step 1)
@@ -596,12 +628,12 @@ export default class Activator extends BaseActivator {
             }
         }
 
-        // 2. Identify Purge Set (Orphans)
-        // Protection Shield
+        // Protection Shield: Only protect core infrastructure that MUST stay alive 
         const protectedBSNs = [
             "@neverplayed/realm-manager", "org.neverplayed.realm-manager",
             "@neverplayed/shell-cli", "org.neverplayed.shell-cli",
-            "@neverplayed/osgi-base", "org.neverplayed.osgi-base"
+            "@neverplayed/osgi-base", "org.neverplayed.osgi-base",
+            "@neverplayed/backoffice-host", "org.neverplayed.backoffice-host"
         ].map(b => BaseActivator.normalizeBSN(b));
 
         for (const b of activeBundles) {
@@ -762,8 +794,13 @@ export default class Activator extends BaseActivator {
                             }
 
                             this.logger?.debug(`Purging bundle: ${bsn} (#${item.id})`);
-                            await bundle.stop();
-                            await bundle.uninstall();
+                            const state = bundle.getState();
+                            if (state !== 1) { // 1 = UNINSTALLED
+                                if (state > 1) { // Start/Resolved/Active
+                                     try { await bundle.stop(); } catch (_e) { /* already stopped */ }
+                                }
+                                try { await bundle.uninstall(); } catch (_e) { /* already gone */ }
+                            }
                         } catch (err) {
                             this.logger?.error(`Failed to purge '${item.bsn}':`, err.message);
                         }
@@ -797,6 +834,17 @@ export default class Activator extends BaseActivator {
             this._activeRealmId = pt.id;
             this.logger?.info(`Realm Manager: Context Transition Successful. Universe '${pt.id}' is now active. 🌌`);
             
+            // Update Service Properties for all Realms
+            for (const [id, reg] of this._realmRegs.entries()) {
+                const manifest = this._realms.get(id);
+                reg.setProperties({ 
+                    "realm.id": id,
+                    "realm.title": manifest.title,
+                    "realm.icon": manifest.icon || "fas fa-universe",
+                    "realm.active": id === pt.id 
+                });
+            }
+
             // Global Event (Alpine/Vanilla)
             globalThis.dispatchEvent(new CustomEvent("realm-switched", { detail: { id: pt.id, manifest: pt.manifest } }));
 
