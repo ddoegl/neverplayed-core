@@ -10,7 +10,8 @@ import {
     EVENT_FACTORY_SERVICE, 
     REALM_CHANGED_TOPIC, 
     REALM_REGISTERED_TOPIC, 
-    REALM_UNREGISTERED_TOPIC 
+    REALM_UNREGISTERED_TOPIC,
+    AUTH_SHIELD_SERVICE
 } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import { BaseActivator } from "osgi-base";
@@ -131,6 +132,19 @@ export default class Activator extends BaseActivator {
         const efRef = context.getServiceReference(EVENT_FACTORY_SERVICE);
         if (efRef) this._eventFactory = context.getService(efRef);
 
+        // 1.7 Track Auth Shield (Global Account)
+        this._authTracker = context.trackService(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
+            addingService: (ref) => {
+                this.auth = context.getService(ref);
+                this.logger?.info("Realm Manager: Connected to Auth Shield (Global Identity).");
+                const targetId = this._activeRealmId || this._pendingTransition?.id;
+                if (targetId) this._syncPrivileges(targetId);
+                return this.auth;
+            },
+            removedService: () => { this.auth = null; }
+        });
+        this._authTracker.open();
+
         // Final attempt to flush if services were already ready
         this._flushRegistrationBuffer();
 
@@ -181,6 +195,7 @@ export default class Activator extends BaseActivator {
         if (this._registryTracker) this._registryTracker.close();
         if (this._eventTracker) this._eventTracker.close();
         if (this._factoryTracker) this._factoryTracker.close();
+        if (this._authTracker) this._authTracker.close();
         if (this.logger) this.logger.info("Realm Manager: Stopped.");
     }
 
@@ -237,16 +252,36 @@ export default class Activator extends BaseActivator {
         const manifest = this._realms.get(realmId);
         if (!manifest || !manifest.privileges || !manifest.privileges["realm-admins"]) return;
 
-        const currentUser = this.session.scopedUsers?.["global"]?.id || this.session.currentUser?.id;
-        const isAdmin = manifest.privileges["realm-admins"].includes(currentUser);
+        const admins = manifest.privileges["realm-admins"];
         
-        if (isAdmin) {
-            this.logger?.info(`Realm Manager: Elevated privileges for '${currentUser}' in '${realmId}'. Injecting 'realm-admin'.`);
+        // 1. Resolve Global Identity (Auth Shield / Layer 1)
+        const globalUser = this.auth?.getCurrentUser ? this.auth.getCurrentUser() : null;
+        
+        // 2. Resolve Session User (Domain / Layer 3)
+        const sessionUser = this.session.scopedUsers?.["global"] || this.session.currentUser;
+        
+        const isGlobalAdmin = globalUser && (admins.includes(globalUser.id) || (globalUser.email && admins.includes(globalUser.email)));
+        const isSessionAdmin = sessionUser && (admins.includes(sessionUser.id) || (sessionUser.email && admins.includes(sessionUser.email)));
+
+        if (isGlobalAdmin || isSessionAdmin) {
+            this.logger?.info(`Realm Manager: Elevated privileges in '${realmId}'. Injecting 'realm-admin'.`);
             
             // Identity Guard: Ensure scopedUsers and global entry are initialized
             if (!this.session.scopedUsers) this.session.scopedUsers = {};
-            if (!this.session.scopedUsers["global"]) this.session.scopedUsers["global"] = { id: currentUser };
+            if (!this.session.scopedUsers["global"]) {
+                this.session.scopedUsers["global"] = { id: 'guest' };
+            }
             
+            const target = this.session.scopedUsers["global"];
+            
+            // Sanitize Identity: If it is a guest-level auto-elevation, reset to a clean state to trigger reactivity
+            if (target.id === 'guest') {
+                this.session.scopedUsers["global"] = { 
+                    id: 'guest',
+                    attributes: target.attributes || {}
+                };
+            }
+
             this.session.scopedUsers["global"].attributes = this.session.scopedUsers["global"].attributes || {};
             this.session.scopedUsers["global"].attributes["realm-admin"] = true;
         } else {
@@ -467,7 +502,7 @@ export default class Activator extends BaseActivator {
 
     _registerRealm(manifest) {
         // Enforce lock for registration to prevent duplicates during concurrent discovery/recovery
-        this._lock = this._lock.then(async () => {
+        this._lock = this._lock.then(() => {
             if (!manifest.id) throw new Error("Realm manifest must have a unique ID.");
             this._realms.set(manifest.id, manifest);
             if (!this._orderedRealmIds.includes(manifest.id)) {

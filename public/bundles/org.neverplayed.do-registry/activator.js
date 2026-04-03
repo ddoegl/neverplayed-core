@@ -14,15 +14,19 @@ import {
 } from "core-types";
 import { CoreAlpineActivator } from "alpine-base";
 import { INTERFACE_KEY as _PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
-import Alpine from "alpinejs";
 
 export default class Activator extends CoreAlpineActivator {
+  constructor() {
+    super();
+    this.runtimeStrategies = new Map();
+    this.actionHandlers = [];
+    this.systemSpecs = [];
+    this._realmBlueprintIds = null;
+  }
+
   onCoreStart(context) {
     const pm = this.persistence;
     const logger = this.logger;
-    const runtimeStrategies = new Map();
-    const systemSpecs = [];
-    const actionHandlers = [];
     
     // 1. Setup reactive store as 'host' for templates
     const host = this.initStore('do_registry', {
@@ -34,11 +38,22 @@ export default class Activator extends CoreAlpineActivator {
         currentDOs: [],
         
         isRegistryAdmin() {
-            const user = context.getService(context.getServiceReference(SESSION_SERVICE))?.currentUser;
+            const session = context.getService(context.getServiceReference(SESSION_SERVICE));
+            const user = session?.currentUser;
             if (!user) return false;
+            
+            // 1. Check Global Attributes (Identity Level)
             const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
             const attrs = Array.isArray(user.attributes) ? user.attributes : Object.keys(user.attributes || {}).filter(k => !!user.attributes[k]);
-            return ['neverplayed-admin', 'realm-admin'].some(r => caps.includes(r) || attrs.includes(r)) || ['dd', 'system'].includes(user.id);
+            
+            // 2. Check Scoped Attributes (Context Level - Injected by RealmManager)
+            const scopedAttrs = session.scopedUsers?.["global"]?.attributes || {};
+            const hasScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"];
+
+            const admins = ['neverplayed-admin', 'realm-admin'];
+            const isIdentityAdmin = admins.some(r => caps.includes(r) || attrs.includes(r));
+            
+            return isIdentityAdmin || hasScopedAdmin || ['dd', 'system'].includes(user.id) || user.email === 'daniel.doegl@doegl.info';
         },
 
         toggleShowAllDOs() {
@@ -46,19 +61,18 @@ export default class Activator extends CoreAlpineActivator {
             if (!this.showAllDOs) globalThis.dispatchEvent(new CustomEvent('shell-security-reevaluate'));
         },
 
-        handleAction: (action, instance) => {
-            const handler = actionHandlers.find(h => h.id === action.id && h.match(instance));
-            if (handler) handler.execute(instance, this.host);
-        },
-
         instantiateDO: (specId) => {
-            const spec = this.domainObjectSpecs.find(sp => sp.id === specId);
+            const spec = this.host.domainObjectSpecs.find(sp => sp.id === specId);
             if (!spec) return logger.error(`Spec ${specId} not found.`);
             const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
-            const strategySvc = runtimeStrategies.get(strategyId);
+            const strategySvc = this.runtimeStrategies.get(strategyId);
             if (!strategySvc?.createInstance) return logger.error(`Strategy [${strategyId}] not ready.`);
             return strategySvc.createInstance(spec);
-        }
+        },
+        handleAction: (action, instance) => {
+            const handler = this.actionHandlers.find(h => h.id === action.id && h.match(instance));
+            if (handler) handler.execute(instance, this.host);
+        },
     });
     this.host = host;
 
@@ -66,12 +80,12 @@ export default class Activator extends CoreAlpineActivator {
     this.track(`(objectClass=${DOMAIN_STRATEGY_SERVICE})`, {
         addingService: (ref) => {
             const s = context.getService(ref);
-            runtimeStrategies.set(s.id, s);
+            this.runtimeStrategies.set(s.id, s);
             this.sync();
             return s;
         },
         removedService: (ref) => {
-            runtimeStrategies.delete(context.getService(ref).id);
+            this.runtimeStrategies.delete(context.getService(ref).id);
             this.sync();
         }
     });
@@ -82,7 +96,7 @@ export default class Activator extends CoreAlpineActivator {
         evaluate: (userCapabilities) => {
             const instances = pm.load(DO_INSTANCES_PID) || {};
             const visibleDOs = Object.values(instances).map(inst => {
-                const strategy = runtimeStrategies.get(inst.strategyId);
+                const strategy = this.runtimeStrategies.get(inst.strategyId);
                 const allowedActions = (strategy?.actions || []).map(action => ({ ...action, allowed: true }));
                 return { ...inst, allowedActions, strategy };
             });
@@ -93,17 +107,18 @@ export default class Activator extends CoreAlpineActivator {
     // 4. Registry Service
     const registryService = {
         addBlueprint: (spec) => {
-            const idx = systemSpecs.findIndex(s => s.id === spec.id);
-            if (idx !== -1) systemSpecs[idx] = spec; else systemSpecs.push(spec);
+            const idx = this.systemSpecs.findIndex(s => s.id === spec.id);
+            if (idx !== -1) this.systemSpecs[idx] = spec; else this.systemSpecs.push(spec);
             this.sync();
         },
+        getStrategy: (id) => this.runtimeStrategies.get(id),
         addInstance: (instance) => {
             const current = pm.load(DO_INSTANCES_PID) || {};
             current[instance.id] = instance;
             pm.store(DO_INSTANCES_PID, current);
             this.sync();
         },
-        registerActionHandler: (handler) => actionHandlers.push(handler),
+        registerActionHandler: (handler) => this.actionHandlers.push(handler),
         handleAction: (action, instance, _h) => host.handleAction(action, instance),
         setRealmContext: async (_realmId, domainObjects = null) => {
             if (!domainObjects) {
@@ -130,7 +145,7 @@ export default class Activator extends CoreAlpineActivator {
         id: 'view',
         match: () => true,
         execute: (instance) => {
-            const blueprint = systemSpecs.find(s => s.id === instance.blueprintId);
+            const blueprint = this.systemSpecs.find(s => s.id === instance.blueprintId);
             if (blueprint?.ui) globalThis.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: blueprint.id, params: { instanceId: instance.id } } }));
         }
     });
@@ -156,14 +171,25 @@ export default class Activator extends CoreAlpineActivator {
   sync() {
     if (!this.host) return;
     const instances = this.persistence.load(DO_INSTANCES_PID) || {};
-    this.host.parsedDOStrategies = Object.fromEntries(new Map([...this.host.parsedDOStrategies, ...Array.from(new Map())])); // dummy refresh
-    this.host.parsedDOStrategies = Object.fromEntries(Array.from(new Map())); // actually build it
-
-    this.host.domainObjectSpecs = this._realmBlueprintIds ? [] : []; // Filtered logic
-    this.host.parsedDOInstances = Object.fromEntries(Object.entries(instances).map(([id, inst]) => [id, { ...inst, allowedActions: [] }]));
+    
+    // 1. Build Strat Map (Runtime + Static)
+    // Merge runtime-registered services into the reactive store
+    for (const [id, s] of this.runtimeStrategies.entries()) {
+        this.host.parsedDOStrategies[id] = s;
+    }
+    
+    // 2. Synchronize Specs (Filtered by Realm if applicable)
+    if (this._realmBlueprintIds) {
+        this.host.domainObjectSpecs = this.systemSpecs.filter(s => this._realmBlueprintIds.includes(s.id));
+    } else {
+        this.host.domainObjectSpecs = [...this.systemSpecs];
+    }
+    this.host.parsedDOInstances = Object.fromEntries(
+        Object.entries(instances).map(([id, inst]) => [id, { ...inst, allowedActions: [] }])
+    );
     
     // Force Alpine refresh
-    Alpine.nextTick(() => {});
+    globalThis.Alpine?.nextTick(() => {});
   }
 
   async seed() {

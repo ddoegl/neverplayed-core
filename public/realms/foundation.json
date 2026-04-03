@@ -3,6 +3,9 @@
     "title": "NPRF Semantic Foundation",
     "extends": ["org.neverplayed.realm.core"],
     "description": "Layer 2: Context, State, and Registration foundations.",
+    "privileges": {
+        "realm-admins": ["daniel.doegl@doegl.info"]
+    },
     "bundles": [
         "./bundles/org.neverplayed.selection-service/manifest.json",
         "./bundles/org.neverplayed.global-state/manifest.json",

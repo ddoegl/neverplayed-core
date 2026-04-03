@@ -9,7 +9,7 @@ import {
     BO_EXTENSION_SERVICE,
     LIMES_SERVICE, 
     SIGNING_DATA_SERVICE,
-    LOG_SERVICE,
+    LOG_SERVICE as _LOG_SERVICE,
     ATOMIC_SPEC_INGESTION_SERVICE,
     UI_FACTORY_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
@@ -351,27 +351,30 @@ export default class Activator extends BaseActivator {
             
             // Register Strategy if defined
             if (domainObject.strategyId) {
-                const existingStrat = doRegistry.getStrategy(domainObject.strategyId);
-                if (!existingStrat) {
-                    // Default Actions if UI exists but no actions defined
-                    let actions = domainObject.actions || [];
-                    if (actions.length === 0 && ui) {
-                        actions = [{ id: "view", label: "View Details", icon: "fas fa-eye" }];
-                    }
-
-                    doRegistry.addStrategy({
+                const existing = doRegistry.getStrategy(domainObject.strategyId);
+                if (!existing) {
+                    // Standard OSGi Service Registration for Strategy
+                    trackReg(context.registerService(DOMAIN_STRATEGY_SERVICE, {
                         id: domainObject.strategyId,
                         label: domainObject.label || id,
                         limesPrefix: domainObject.limesPrefix || id.split('-')[0].toUpperCase(),
                         actions
-                    });
+                    }));
                 }
             }
 
             // Register the Blueprint (Specification) itself
-            if (doRegistry.addBlueprint) {
-                doRegistry.addBlueprint(spec);
-            }
+            const registerBlueprint = () => {
+                const registry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
+                if (registry && registry.addBlueprint) {
+                    console.log(`Atomic Orchestrator: Successfully registered blueprint for ${id}`);
+                    registry.addBlueprint(spec);
+                } else {
+                    console.warn(`Atomic Orchestrator: DO Registry not ready for blueprint registration (${id}). Retrying...`);
+                    setTimeout(registerBlueprint, 500);
+                }
+            };
+            registerBlueprint();
 
             // Register Action Handler for 'view' if UI exists
             if (ui) {

@@ -1,7 +1,6 @@
 import { 
     FLOW_SERVICE, 
     CONFIG_ADMIN_SERVICE, 
-    AUTH_SHIELD_SERVICE, 
     SHELL_HOST_SERVICE, 
     SHELL_COMMAND_SERVICE 
 } from "core-types";
@@ -59,10 +58,10 @@ export default class Activator extends AlpineActivator {
             };
 
             return {
+                get shell() { return shell; },
                 get state() { return shell.sidebarState; },
                 get flows() { return sidebarState.flows; },
                 get activeFlowId() { return sidebarState.activeFlowId; },
-                get user() { return shell.user; },
 
                 toggleCollapse() {
                     shell.sidebarState = (shell.sidebarState + 1) % 3;
@@ -81,23 +80,6 @@ export default class Activator extends AlpineActivator {
                         removedService: () => { caSvc = null; syncFlows(); }
                     });
 
-                    // Track Auth Shield for sidebar-specific user info (if needed)
-                    this.track(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
-                        addingService: (ref) => {
-                            const svc = context.getService(ref);
-                            const user = svc.getCurrentUser();
-                            if (user) {
-                                // Project into global shell user
-                                shell.user = { 
-                                    alias: user.alias || user.email || 'Explorer', 
-                                    email: user.email || '',
-                                    uid: user.uid || 'guest',
-                                    isSuperuser: !!user.isSuperuser
-                                };
-                            }
-                            return svc;
-                        }
-                    });
 
                     // Track Shell Host
                     this.track(`(objectClass=${SHELL_HOST_SERVICE})`, {

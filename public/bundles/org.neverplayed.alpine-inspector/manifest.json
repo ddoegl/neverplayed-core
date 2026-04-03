@@ -1,0 +1,10 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.alpine-inspector",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Name": "Alpine Inspector",
+    "Description": "Dumps and inspects Alpine.js stores and components via Browser CLI.",
+    "Capabilities": {
+        "shell:command": ["/alpine"]
+    }
+}

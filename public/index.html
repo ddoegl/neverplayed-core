@@ -473,6 +473,13 @@
           await headerBundle.start();
         }
 
+        const inspectorBundle = await context.installBundle(
+          "./bundles/org.neverplayed.alpine-inspector/manifest.json",
+        );
+        if (inspectorBundle.state === 2 || inspectorBundle.state === 4) {
+          await inspectorBundle.start();
+        }
+
         // Infrastructure: Event Admin
         const eaBundle = await context.installBundle(
           "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
@@ -510,14 +517,6 @@
           addingService: (ref) => {
             const svc = context.getService(ref);
             Object.assign(sessionService, svc);
-
-            // Promotion logic for superusers
-            if (
-              authenticatedUser && authenticatedUser.isSuperuser &&
-              typeof svc.promoteUser === "function"
-            ) {
-              svc.promoteUser(authenticatedUser);
-            }
 
             console.log(
               "Shell Boot: Session Service connected and synchronized. 🛡️",
@@ -604,7 +603,7 @@
               this.logger.info("Shell: Navigating home...");
             } else console.log("Shell: Navigating home...");
             if (this.session && this.session.scopedUsers) {
-              delete this.session.scopedUsers["global"];
+              this.session.scopedUsers["global"] = { id: 'guest', attributes: {} };
             }
 
             if (this.envType === "mobile") {

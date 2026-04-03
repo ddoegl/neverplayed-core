@@ -107,9 +107,12 @@
             const rmBundle = await context.installBundle("./bundles/org.neverplayed.realm-manager/manifest.json");
             if (rmBundle.getState() < 32) await rmBundle.start();
             
-            this.bootStatus = "Synthesizing Shell Interface...";
             const headerBundle = await context.installBundle("./bundles/org.neverplayed.shell-header/manifest.json");
             if (headerBundle.getState() < 32) await headerBundle.start();
+
+            this.bootStatus = "Igniting Diagnostics Layer...";
+            const inspectorBundle = await context.installBundle("./bundles/org.neverplayed.alpine-inspector/manifest.json");
+            if (inspectorBundle.getState() < 32) await inspectorBundle.start();
 
             // 3. Handshake
             const rmRef = context.getServiceReference(REALM_MANAGER_SERVICE);

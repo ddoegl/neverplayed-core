@@ -4,7 +4,8 @@ import {
     CONFIG_ADMIN_UI_FLOW,
     SYSTEM_RESET_SERVICE,
     SESSION_SERVICE,
-    PERSISTENCE_MANAGER_SERVICE
+    PERSISTENCE_MANAGER_SERVICE,
+    AUTH_SHIELD_SERVICE
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
@@ -29,6 +30,7 @@ export default class Activator extends AlpineActivator {
             activeRealm: { id: 'loading', title: 'Loading...', icon: 'fas fa-circle-notch fa-spin' },
             realms: [],
             user: { alias: 'Guest', avatar: '?' },
+            globalUser: null,
             sidebarOpen: true,
             sidebarState: 0 // 0: Expanded, 1: Icons, 2: Hidden
         });
@@ -67,12 +69,31 @@ export default class Activator extends AlpineActivator {
         this.track(`(objectClass=${SESSION_SERVICE})`, {
             addingService: (ref) => {
                 this._session = context.getService(ref);
-                this._updateSession();
+                
+                // Gold Standard Reactivity: Track the reactive session properties
+                this.effect(() => {
+                    if (this._session) {
+                        this._updateSession();
+                    }
+                });
                 return this._session;
             },
             removedService: () => { 
                 this._session = null;
                 this._updateSession();
+            }
+        });
+
+        // 3.2 Track Auth Shield (Global Identity)
+        this.track(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
+            addingService: (ref) => {
+                const auth = context.getService(ref);
+                const gUser = auth.getCurrentUser ? auth.getCurrentUser() : null;
+                this.syncStore('shell_context', { globalUser: gUser });
+                return auth;
+            },
+            removedService: () => {
+                this.syncStore('shell_context', { globalUser: null });
             }
         });
 
@@ -169,10 +190,12 @@ export default class Activator extends AlpineActivator {
     _updateSession() {
         if (this._session) {
             const user = this._session.currentUser;
+            const isGuest = !user || user.id === 'guest';
+            this.logger?.info(`[Header] Sync: id='${user?.id}', email='${user?.email}', isGuest=${isGuest}`);
             this.syncStore('shell_context', {
                 user: { 
-                    alias: user?.alias || user?.email || 'Explorer', 
-                    avatar: (user?.alias || user?.email || 'E')[0].toUpperCase()
+                    alias: isGuest ? 'Guest' : (user.alias || user.email || 'Explorer'), 
+                    avatar: (isGuest ? 'G' : (user.alias || user.email || 'E'))[0].toUpperCase()
                 }
             });
         } else {

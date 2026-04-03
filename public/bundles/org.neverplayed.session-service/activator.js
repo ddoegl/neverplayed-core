@@ -48,6 +48,16 @@ export default class Activator {
             }
         };
 
+        // Universal Identity Purity Guard:
+        // Always strip identity-leaking metadata from persisted state on boot.
+        // These will be re-populated by the Realm Manager or explicit login if needed.
+        if (persistedState.scopedUsers?.global) {
+            persistedState.scopedUsers.global = {
+                id: 'guest',
+                attributes: {}
+            };
+        }
+
         // Create Reactive Session State
         this._session = Alpine.reactive({
             ...persistedState,
@@ -77,6 +87,7 @@ export default class Activator {
             },
 
             login(user, scope = 'global') {
+                this._logger?.info(`Session: LOGIN requested for scope '${scope}' (id: ${user.uid || user.id})`);
                 this.scopedUsers[scope] = { 
                     id: user.uid || user.id, 
                     email: user.email,
@@ -90,6 +101,7 @@ export default class Activator {
             },
 
             logout(scope = 'global') {
+                this._logger?.info(`Session: LOGOUT requested for scope '${scope}'`);
                 const user = this.scopedUsers[scope] || this.scopedUsers["global"];
                 
                 // --- SCA Bootstrap Logic ---
@@ -141,6 +153,7 @@ export default class Activator {
 
             promoteUser(user) {
                 if (user && user.isSuperuser) {
+                    this._logger?.info("Session: PROMOTE requested for superuser", user.email);
                     this.scopedUsers["backoffice-web"] = {
                         id: "dd",
                         firstname: "Daniel Daniela",
@@ -159,9 +172,22 @@ export default class Activator {
         // Set up Persistence Sync
         Alpine.effect(() => {
             if (this._pm && this._session) {
-                // We stringify/parse to strip the reactive proxy and functions
-                const stateToStore = JSON.parse(JSON.stringify(this._session));
-                this._pm.store(SESSION_PID, stateToStore);
+                // Identity Purity Sink:
+                // Never persist identity meta-data for unauthenticated guest sessions
+                const raw = JSON.parse(JSON.stringify(this._session));
+                if (raw.scopedUsers) {
+                    Object.values(raw.scopedUsers).forEach(user => {
+                        if (user.id === 'guest') {
+                            delete user.email;
+                            delete user.alias;
+                            delete user.firstname;
+                            delete user.lastname;
+                            delete user.avatar;
+                        }
+                    });
+                }
+                
+                this._pm.store(SESSION_PID, raw);
             }
         });
     }

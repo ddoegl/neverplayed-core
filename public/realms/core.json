@@ -2,6 +2,9 @@
     "id": "org.neverplayed.realm.core",
     "title": "Institutional Core Infrastructure",
     "description": "Layer 1: Security, Logging, and Persistence Foundations.",
+    "privileges": {
+        "realm-admins": ["daniel.doegl@doegl.info"]
+    },
     "bundles": [
         "./bundles/org.neverplayed.system-logger/manifest.json",
         "./bundles/org.neverplayed.alpine-bridge/manifest.json",
@@ -20,6 +23,7 @@
         "./bundles/org.neverplayed.system-reset/manifest.json",
         "./bundles/org.neverplayed.config-admin/manifest.json",
         "./bundles/org.neverplayed.event-monitor/manifest.json",
+        "./bundles/org.neverplayed.alpine-inspector/manifest.json",
         "./bundles/org.neverplayed.atomic.showcase/manifest.json"
     ]
 }

@@ -32,6 +32,11 @@ export class AlpineActivator extends BaseActivator {
      */
     initStore(name, defaults) {
         this._storeName = name;
+        
+        // Track stores globally for the /alpine inspector
+        globalThis.__ALPINO_STORES__ = globalThis.__ALPINO_STORES__ || new Set();
+        globalThis.__ALPINO_STORES__.add(name);
+
         if (!Alpine.store(name)) {
             Alpine.store(name, {
                 ...defaults,
@@ -51,6 +56,9 @@ export class AlpineActivator extends BaseActivator {
     syncStore(name, data) {
         const store = Alpine.store(name);
         if (store) {
+            if (name === 'shell_context' && data.user) {
+                this.logger?.debug(`[Alpine] SyncStore '${name}':`, data.user);
+            }
             Object.assign(store, data);
         }
     }

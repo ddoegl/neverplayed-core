@@ -104,51 +104,58 @@
   </div>
 
   <div class="flex items-center space-x-6">
-    <!-- Session Info -->
-    <div x-show="shell.user" class="flex items-center space-x-3">
-      <div class="text-right hidden sm:block">
-        <div
-          class="text-[10px] uppercase text-slate-400 font-bold leading-none mb-1"
-        >
-          Authenticated as
+    <!-- Session & Identity Info -->
+    <div class="flex items-center space-x-6">
+      
+      <!-- Layer 1: Infrastructure Identity (Auth Shield) -->
+      <div x-show="shell.globalUser" class="flex items-center space-x-2 border-l border-slate-700/50 pl-6 group">
+          <div class="text-right hidden sm:block">
+              <div class="text-[9px] uppercase text-slate-500 font-bold leading-none mb-0.5 tracking-tighter">Global Account</div>
+              <div class="text-[11px] font-mono text-blue-400/80 group-hover:text-blue-400 transition-colors" x-text="shell.globalUser?.email || 'N/A'"></div>
+          </div>
+          <div class="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 transition-all">
+              <i class="fas fa-id-badge text-[10px]"></i>
+          </div>
+      </div>
+
+      <!-- Layer 3: Domain Session (Session Service) -->
+      <div x-show="shell.user" class="flex items-center space-x-3 border-l border-slate-700/50 pl-6">
+        <div class="text-right hidden sm:block">
+          <div class="text-[10px] uppercase text-slate-400 font-bold leading-none mb-1">
+            Session User
+          </div>
+          <div class="text-sm font-semibold" :class="shell.user.alias === 'Guest' ? 'text-slate-500 italic' : 'text-white'" x-text="shell.user.alias"></div>
         </div>
-        <div
-          class="text-sm font-semibold"
-          x-text="shell.user.alias"
-        >
+        <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold border border-slate-700 shadow-lg text-white transition-transform hover:scale-105" :class="shell.user.alias === 'Guest' ? 'grayscale opacity-50' : ''">
+          <span x-text="shell.user.avatar"></span>
         </div>
       </div>
-      <div
-        class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold border-2 border-slate-800 shadow-lg text-white"
-      >
-        <span x-text="shell.user.avatar"></span>
-      </div>
+
       <!-- System Controls -->
-      <div class="flex items-center space-x-2 mr-2">
+      <div class="flex items-center space-x-2 border-l border-slate-700/50 pl-6">
         <button
           @click="launchConfig()"
           class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-blue-400 transition-all border border-slate-700 shadow-inner group"
           title="Universe Settings"
         >
-          <i
-            class="fas fa-cog transition-transform group-hover:rotate-90"
-          ></i>
+          <i class="fas fa-cog transition-transform group-hover:rotate-90 text-sm"></i>
         </button>
         <button
           @click="triggerReset()"
           class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-red-400 transition-all border border-slate-700 shadow-inner"
           title="Factory Reset Reality"
         >
-          <i class="fas fa-undo-alt"></i>
+          <i class="fas fa-undo-alt text-sm"></i>
+        </button>
+
+        <button
+          @click="logout()"
+          class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800/50 hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all border border-transparent hover:border-red-500/20"
+          title="Sign Out"
+        >
+          <i class="fas fa-sign-out-alt text-sm"></i>
         </button>
       </div>
-
-      <button
-        @click="logout()"
-        class="text-slate-400 hover:text-red-400 transition-colors"
-      >
-        <i class="fas fa-sign-out-alt"></i>
-      </button>
     </div>
     <div x-show="!shell.user">
       <div class="text-slate-400 text-sm italic">Guest Session</div>
