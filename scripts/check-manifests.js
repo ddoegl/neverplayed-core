@@ -39,7 +39,7 @@ for await (const entry of walk(BUNDLE_ROOT, {
 
         // 1. Prefix Violation
         if (bsn && !bsn.startsWith(BSN_PREFIX)) {
-            smells.push(`[${reportId}] BSN '${bsn}' does not use official prefix '${BSN_PREFIX}'.`);
+            violations.push(`[${reportId}] BSN '${bsn}' must use official prefix '${BSN_PREFIX}'.`);
         }
 
         // 2. Directory Mismatch
@@ -55,8 +55,8 @@ for await (const entry of walk(BUNDLE_ROOT, {
         }
 
         // 4. Metadata
-        if (!name) smells.push(`[${reportId}] Missing 'Bundle-Name'.`);
-        if (!description) smells.push(`[${reportId}] Missing bundle description.`);
+        if (!name) violations.push(`[${reportId}] Missing 'Bundle-Name'.`);
+        if (!description) violations.push(`[${reportId}] Missing 'Bundle-Description'.`);
 
         // 5. Activator Format
         if (activator && activator.startsWith("./")) {

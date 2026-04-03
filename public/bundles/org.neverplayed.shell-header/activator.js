@@ -113,7 +113,14 @@ export default class Activator extends AlpineActivator {
             
             triggerReset() {
                 const ref = context.getServiceReference(SYSTEM_RESET_SERVICE);
-                if (ref) context.getService(ref).reset();
+                if (ref) {
+                    const svc = context.getService(ref);
+                    if (typeof svc.factoryReset === 'function') {
+                        svc.factoryReset();
+                    } else if (typeof svc.reset === 'function') {
+                        svc.reset();
+                    }
+                }
             },
             
             launchConfig() {

@@ -36,3 +36,9 @@ Manifests must reside at the root of their bundle directory:
 2.  **Relative Resolution**: `Bundle-Activator` must point to an existing JS file.
 3.  **Schema Validation**: Mandatory fields must be present and not empty.
 4.  **BSN Path Sync**: The directory name MUST match the `Bundle-SymbolicName` exactly.
+
+## 5. Reactive Flows (Governance)
+
+Bundles providing UI flows should support the **Reactive Flow Governance Pattern**. This requires:
+1.  **Activator Listeners**: Tracking `config-updated` to refresh service properties.
+2.  **Metadata Parity**: Providing `title` and `icon` in the `Configuration` header to ensure visibility in the central governance UI before the service is fully registered.

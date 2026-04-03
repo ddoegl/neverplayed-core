@@ -64,11 +64,10 @@ export default class Activator extends BaseActivator {
             }
         }).open();
 
-        // 3. Track Logger
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
-                this.logger = svc.getLogger("neverplayed.persistence-firebase");
+                this.logger = svc.getLogger(this.bsn);
                 this.logger.info("Firebase Persistence: Connected to System Logger.");
                 return svc;
             }

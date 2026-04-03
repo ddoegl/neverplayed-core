@@ -1,6 +1,8 @@
 {
   "Bundle-SymbolicName": "org.neverplayed.event-monitor",
   "Bundle-Version": "1.0.0",
+  "Bundle-Name": "Event Monitor",
+  "Bundle-Description": "Real-time observer for OSGi EventAdmin and platform signaling.",
   "Bundle-Activator": "activator.js",
   "Configuration": {
     "flowType": "system-flow",

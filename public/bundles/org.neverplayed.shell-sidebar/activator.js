@@ -141,6 +141,7 @@ export default class Activator extends AlpineActivator {
                     // Global Listeners (Harmonized topics)
                     globalThis.addEventListener('shell:sidebar-toggle', () => this.toggleCollapse());
                     globalThis.addEventListener('shell:flows-updated', () => syncFlows());
+                    globalThis.addEventListener('config-updated', () => syncFlows());
                     
                     globalThis.addEventListener('realm-switched', () => {
                         this.logger?.debug("Shell Sidebar: Realm changed, syncing flows...");

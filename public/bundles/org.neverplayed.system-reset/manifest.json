@@ -1,5 +1,7 @@
 {
   "Bundle-SymbolicName": "org.neverplayed.system-reset",
   "Bundle-Version": "1.0.0",
+  "Bundle-Name": "System Reset",
+  "Bundle-Description": "Governance tool for nuclear factory resets and state purging.",
   "Bundle-Activator": "activator.js"
 }

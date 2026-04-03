@@ -25,9 +25,19 @@ export default class Activator extends AlpineActivator {
                 });
 
                 // Register Flow Service
-                context.registerService(FLOW_SERVICE, {
+                const getFlowProps = () => ({
+                    "flow.id": SHELL_CLI_PID,
+                    "flow.title": this.config.title || "Shell CLI",
+                    "flow.icon": this.config.icon || "fas fa-terminal",
+                    "flowType": this.config.flowType || BUNDLE_TYPE_SERVICE,
+                    "sidebar": this.config.sidebar !== undefined ? this.config.sidebar : true,
+                    "channels": this.config.channels || ["real-life", "business-portal", "web-browser", "business-channel-web"],
+                    "capability": "sys:cli"
+                });
+
+                const registration = context.registerService(FLOW_SERVICE, {
                     id: SHELL_CLI_PID,
-                    title: "Shell CLI",
+                    title: this.config.title || "Shell CLI",
                     launch: async (target) => {
                         if (!target.id) target.id = `flow-target-${SHELL_CLI_PID.replace(/\./g, '_')}`;
                         await this.render(`#${target.id}`, 'templates/shell.html', () => ({
@@ -50,13 +60,14 @@ export default class Activator extends AlpineActivator {
                             "class": "h-full border border-blue-900 shadow-2xl rounded-xl overflow-hidden animate-fade-in"
                         });
                     }
-                }, {
-                    "flow.id": SHELL_CLI_PID,
-                    "flowType": BUNDLE_TYPE_SERVICE,
-                    "sidebar": true,
-                    "icon": "fas fa-terminal",
-                    "channels": ["real-life", "business-portal", "web-browser", "business-channel-web"],
-                    "capability": "sys:cli"
+                }, getFlowProps());
+
+                // Listen for config updates to reactively update sidebar visibility
+                globalThis.addEventListener('config-updated', (ev) => {
+                    if (ev.detail?.pid === this.bsn || ev.detail?.pid === SHELL_CLI_PID) {
+                        this.logger?.debug(`[${this.bsn}] Configuration updated, refreshing flow properties...`);
+                        registration.setProperties(getFlowProps());
+                    }
                 });
 
                 return shellService;

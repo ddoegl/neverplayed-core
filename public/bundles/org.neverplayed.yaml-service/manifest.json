@@ -1,5 +1,7 @@
 {
   "Bundle-SymbolicName": "org.neverplayed.yaml-service",
   "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "./activator.js"
+  "Bundle-Name": "YAML Parser Service",
+  "Bundle-Description": "High-performance YAML/JSON translation layer for declarative universe specs.",
+  "Bundle-Activator": "activator.js"
 }

@@ -4,6 +4,7 @@ import { CoreActivator } from "osgi-base";
 export default class Activator extends CoreActivator {
     onCoreStart(_context) {
         const resetService = {
+            reset: () => resetService.factoryReset(), // Unified alias
             factoryReset: () => {
                 if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
                     alert("Access Denied: You do not have the 'neverplayed-admin' attribute required for this operation.");

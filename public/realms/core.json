@@ -20,6 +20,6 @@
         "./bundles/org.neverplayed.system-reset/manifest.json",
         "./bundles/org.neverplayed.config-admin/manifest.json",
         "./bundles/org.neverplayed.event-monitor/manifest.json",
-        "./bundles/org.neverplayed.showcase/manifest.json"
+        "./bundles/org.neverplayed.atomic.showcase/manifest.json"
     ]
 }

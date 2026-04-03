@@ -1,9 +1,5 @@
 import { 
     CONFIG_ADMIN_UI_FLOW, 
-    BUNDLE_TYPE_ORDER,
-    BUNDLE_TYPE_SYSTEM,
-    BUNDLE_TYPE_ADMIN,
-    BUNDLE_TYPE_REGISTRY,
     EVENT_ADMIN_SERVICE,
     EVENT_FACTORY_SERVICE,
     EVENT_HANDLER_INTERFACE,
@@ -11,23 +7,14 @@ import {
     CONFIG_ADMIN_SERVICE, 
     FLOW_SERVICE,
     SYSTEM_RESET_SERVICE,
-    SHELL_CONFIG_PID,
     SHELL_COMMAND_SERVICE,
     LOG_LEVEL_PROP,
-    CONFIG_UPDATED_TOPIC,
-    BUNDLE_TYPE_SERVICE
+    CONFIG_UPDATED_TOPIC
 } from "core-types";
 import { CoreAlpineActivator } from "alpine-base";
 import Alpine from "alpinejs";
 
-const BUNDLE_TYPE_CONFIG = {
-    [BUNDLE_TYPE_ORDER]: { title: "Order Pipeline", color: "orange", icon: "fas fa-shopping-cart" },
-    [BUNDLE_TYPE_SYSTEM]: { title: "System Fabric", color: "slate", icon: "fas fa-microchip" },
-    [BUNDLE_TYPE_ADMIN]: { title: "Administrative", color: "blue", icon: "fas fa-shield-alt" },
-    [BUNDLE_TYPE_REGISTRY]: { title: "Registries", color: "indigo", icon: "fas fa-database" },
-    [BUNDLE_TYPE_SERVICE]: { title: "Services", color: "purple", icon: "fas fa-cube" },
-    'component': { title: "Components", color: "emerald", icon: "fas fa-puzzle-piece" }
-};
+
 
 export default class Activator extends CoreAlpineActivator {
     onCoreStart(context) {
@@ -36,14 +23,7 @@ export default class Activator extends CoreAlpineActivator {
         const configs = new Map();
         const flowMetadataCache = new Map();
 
-        const getBundleType = (pid, meta, props) => {
-            if (meta.flowType) return meta.flowType;
-            if (props.flowType) return props.flowType;
-            if (meta.orderFlow || pid.includes('order')) return BUNDLE_TYPE_ORDER;
-            if (pid.includes('admin') || pid === CONFIG_ADMIN_UI_FLOW || pid === SHELL_CONFIG_PID) return BUNDLE_TYPE_ADMIN;
-            if (pid.includes('event.monitor') || pid.includes('registry') || pid.includes('system') || pid.includes('logger')) return BUNDLE_TYPE_SYSTEM;
-            return 'component';
-        };
+
 
         const deepMerge = (target, source) => {
             for (const key in source) {
@@ -65,7 +45,17 @@ export default class Activator extends CoreAlpineActivator {
                     const primingData = typeof configPriming === 'string' ? JSON.parse(configPriming) : configPriming;
                     const bsn = bundle.getSymbolicName();
                     const existingMeta = flowMetadataCache.get(bsn) || {};
-                    flowMetadataCache.set(bsn, { ...existingMeta, name: headers['Bundle-Name'], flowType: primingData.flowType });
+                    
+                    // Unified metadata capture from both manifest headers and Configuration block
+                    flowMetadataCache.set(bsn, { 
+                        ...existingMeta, 
+                        name: headers['Bundle-Name'], 
+                        description: headers['Bundle-Description'],
+                        title: primingData.title || headers['Bundle-Name'],
+                        icon: primingData.icon || (primingData.flowType ? 'fas fa-puzzle-piece' : null),
+                        flowType: primingData.flowType 
+                    });
+
                     const processPriming = (pid, defaults) => {
                         const config = service.getConfiguration(pid);
                         const current = config.getProperties();
@@ -127,37 +117,88 @@ export default class Activator extends CoreAlpineActivator {
             title: "Universe Settings",
             icon: "fas fa-cog",
             launch: async (targetElement) => {
-                // Determine CSS target (Ensure target has an ID for our renderer)
                 if (!targetElement.id) targetElement.id = `flow-target-${CONFIG_ADMIN_UI_FLOW.replace(/\./g, '_')}`;
                 
                 await this.render(`#${targetElement.id}`, 'templates/settings-ui.html', () => ({
                     cfgs: [],
+                    realms: [],
+                    search: '',
                     init() {
-                        this.cfgs = service.listConfigurations().map(pid => {
-                            const props = service.getConfiguration(pid).getProperties() || {};
+                        const shell = Alpine.store('shell_context');
+                        this.realms = shell.realms || [];
+                        const allBundles = context.getBundles();
+                        
+                        this.cfgs = allBundles.map(bundle => {
+                            const pid = bundle.getSymbolicName();
+                            const headers = bundle.getHeaders();
                             const meta = flowMetadataCache.get(pid) || {};
-                            const type = getBundleType(pid, meta, props);
-                             return { pid, properties: props, name: meta.name || meta.title || pid, title: meta.title || pid, icon: meta.icon || BUNDLE_TYPE_CONFIG[type]?.icon || 'fas fa-cube', type };
+                            
+                            // 1. Get RAW configuration (Persistent)
+                            const config = service.getConfiguration(pid);
+                            const props = config.getProperties() || {};
+                            
+                            // 2. Extract MANIFEST defaults (Rule 4)
+                            let manifestDefaults = {};
+                            const configHeader = Object.keys(headers).find(k => k.toLowerCase() === 'configuration');
+                            if (configHeader) {
+                                try {
+                                    const raw = headers[configHeader];
+                                    manifestDefaults = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                                } catch (_e) { /* ignore */ }
+                            }
+
+                            // 3. MERGED STATE: Persistent > Runtime Metadata > Manifest Defaults
+                            const mergedSidebar = props.sidebar !== undefined 
+                                ? props.sidebar 
+                                : (meta.sidebar !== undefined ? meta.sidebar : (manifestDefaults.sidebar || false));
+
+                            const realm = this.realms.find(r => 
+                                (r.bundles || []).some(b => b.includes(pid))
+                            ) || { id: 'org.neverplayed.realm.orphaned', title: 'Standalone / Plug-in' };
+
+                            return { 
+                                pid, 
+                                properties: { ...props, sidebar: mergedSidebar }, 
+                                name: meta.name || headers['Bundle-Name'] || pid, 
+                                description: meta.description || headers['Bundle-Description'] || 'No description available.',
+                                icon: meta.icon || (manifestDefaults.flowType ? (meta.icon || 'fas fa-puzzle-piece') : 'fas fa-cube'),
+                                realmId: realm.id,
+                                realmTitle: realm.title,
+                                // Criteria for UI Governance: Must have Title/ID/Icon in Metadata OR explicitly support sidebars
+                                hasFlow: !!meta.title || !!meta.id || !!manifestDefaults.sidebar || (manifestDefaults.flowType && manifestDefaults.flowType.includes('flow'))
+                            };
                         });
                     },
                     get categorized() {
-                        const types = [...new Set(this.cfgs.map(c => c.type))];
-                        const order = Object.keys(BUNDLE_TYPE_CONFIG);
-                        return types.sort((a, b) => {
-                            const idxA = order.indexOf(a), idxB = order.indexOf(b);
+                        const filtered = this.search.trim() 
+                            ? this.cfgs.filter(c => 
+                                c.name.toLowerCase().includes(this.search.toLowerCase()) || 
+                                c.pid.toLowerCase().includes(this.search.toLowerCase())
+                              )
+                            : this.cfgs;
+
+                        const realmIds = [...new Set(filtered.map(c => c.realmId))];
+                        const hierarchy = ['org.neverplayed.realm.core', 'org.neverplayed.realm.foundation', 'org.neverplayed.realm.showcase'];
+                        
+                        return realmIds.sort((a, b) => {
+                            const idxA = hierarchy.indexOf(a), idxB = hierarchy.indexOf(b);
                             if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                            if (idxA !== -1) return -1;
+                            if (idxB !== -1) return 1;
                             return a.localeCompare(b);
-                        }).map(type => ({
-                            type,
-                            ...(BUNDLE_TYPE_CONFIG[type] || { title: type, color: "slate", icon: "fas fa-cube" }),
-                            items: this.cfgs.filter(c => (c.type === 'component' ? BUNDLE_TYPE_ADMIN : c.type) === type)
-                        }));
+                        }).map(id => {
+                            const first = this.cfgs.find(c => c.realmId === id);
+                            return {
+                                id,
+                                title: first.realmTitle,
+                                items: filtered.filter(c => c.realmId === id)
+                            };
+                        });
                     },
-                    toggleChannel(pid, channel, enabled) {
+                    toggleSidebar(pid) {
                         const cfg = service.getConfiguration(pid);
                         const props = cfg.getProperties() || {};
-                        const channels = props.channels || [];
-                        cfg.update({ ...props, channels: enabled ? [...new Set([...channels, channel])] : channels.filter(c => c !== channel) });
+                        cfg.update({ ...props, sidebar: !props.sidebar });
                         this.init();
                     },
                     setLogLevel(pid, level) {
@@ -177,7 +218,21 @@ export default class Activator extends CoreAlpineActivator {
             }
         };
 
-        context.registerService(FLOW_SERVICE, flowMetadata, { ...this.config, "flow.id": CONFIG_ADMIN_UI_FLOW, "sidebar": true });
+                const getFlowProps = () => ({
+                    ...this.config, 
+                    "flow.id": CONFIG_ADMIN_UI_FLOW, 
+                    "sidebar": this.config.sidebar !== undefined ? this.config.sidebar : true,
+                    "icon": this.config.icon || "fas fa-wrench",
+                    "title": this.config.title || "Universe Settings"
+                });
+
+                const registration = context.registerService(FLOW_SERVICE, flowMetadata, getFlowProps());
+
+                globalThis.addEventListener('config-updated', (ev) => {
+                    if (ev.detail?.pid === this.bsn || ev.detail?.pid === CONFIG_ADMIN_UI_FLOW) {
+                        registration.setProperties(getFlowProps());
+                    }
+                });
 
         context.trackService(`(objectClass=${FLOW_SERVICE})`, {
             addingService: (ref) => {

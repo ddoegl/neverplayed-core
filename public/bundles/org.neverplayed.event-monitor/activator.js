@@ -38,10 +38,18 @@ export default class Activator extends AlpineActivator {
         }, { [EVENT_TOPIC]: ["backoffice/invitations/*", "backoffice/cases/*", "org/neverplayed/config/*", "neverplayed/realm/*"] });
 
         // 3. Register Flow UI
-        context.registerService(FLOW_SERVICE, {
+        const getFlowProps = () => ({
+            ...this.config, 
+            "flow.id": EVENT_MONITOR_PID, 
+            "sidebar": this.config.sidebar !== undefined ? this.config.sidebar : true,
+            "icon": this.config.icon || "fas fa-satellite",
+            "title": this.config.title || "Event Monitor"
+        });
+
+        const registration = context.registerService(FLOW_SERVICE, {
             id: EVENT_MONITOR_PID,
-            title: "Event Monitor",
-            icon: "fas fa-terminal",
+            title: this.config.title || "Event Monitor",
+            icon: this.config.icon || "fas fa-satellite",
             launch: async (target) => {
                 if (!target.id) target.id = `flow-target-${EVENT_MONITOR_PID.replace(/\./g, '_')}`;
                 await this.render(`#${target.id}`, 'templates/monitor.html', () => ({
@@ -49,6 +57,12 @@ export default class Activator extends AlpineActivator {
                     verbosity
                 }));
             }
-        }, { ...this.config, "flow.id": EVENT_MONITOR_PID, "sidebar": true });
+        }, getFlowProps());
+
+        globalThis.addEventListener('config-updated', (ev) => {
+            if (ev.detail?.pid === this.bsn || ev.detail?.pid === EVENT_MONITOR_PID) {
+                registration.setProperties(getFlowProps());
+            }
+        });
     }
 }

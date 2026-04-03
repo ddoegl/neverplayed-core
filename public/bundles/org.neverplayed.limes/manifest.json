@@ -1,8 +1,9 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.limes",
     "Bundle-Name": "Limes Guarding Service",
+    "Bundle-Description": "High-performance capability guarding and privilege elevation engine (Gold Standard).",
     "Bundle-Version": "1.0.0",
-    "Bundle-Activator": "./activator.js",
+    "Bundle-Activator": "activator.js",
     "Configuration": {
         "log-level": "WARN"
     }

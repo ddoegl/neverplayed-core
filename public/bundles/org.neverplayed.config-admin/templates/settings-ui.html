@@ -1,202 +1,107 @@
-<div class="w-full h-full bg-slate-50 flex flex-col overflow-auto">
+<div class="w-full h-full bg-slate-50 flex flex-col overflow-auto font-sans">
   <!-- Content -->
-  <div class="flex-1 p-8 space-y-12 max-w-6xl mx-auto w-full">
-    <!-- Global Governance Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <!-- Sidebar Toggle -->
-      <div
-        class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-400 transition-all"
-      >
-        <div class="flex items-center space-x-4">
-          <div
-            class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-xl transition-transform group-hover:scale-110"
-          >
-            <i class="fas fa-columns"></i>
-          </div>
-          <div>
-            <h3 class="font-bold text-slate-900">Shell Sidebar</h3>
-            <p
-              class="text-[10px] text-slate-500 uppercase font-black tracking-widest"
-            >
-              Global Navigation
-            </p>
-          </div>
+  <div class="flex-1 p-8 space-y-8 max-w-6xl mx-auto w-full transition-all duration-500">
+    
+    <!-- Header & Search -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4">
+        <div>
+            <div class="text-blue-500 font-mono text-[10px] uppercase tracking-[0.4em] mb-2">Governance Console</div>
+            <h1 class="text-4xl font-black text-slate-900 tracking-tighter">Universe Settings</h1>
         </div>
-        <button
-          @click="toggleChannel('shell.config', 'showSidebar', !(cfgs.find(c => c.pid === 'shell.config')?.properties.showSidebar))"
-          :class="(cfgs.find(c => c.pid === 'shell.config')?.properties.showSidebar) ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'"
-          class="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider border transition-all active:scale-95"
-          x-text="(cfgs.find(c => c.pid === 'shell.config')?.properties.showSidebar) ? 'Active' : 'Inactive'"
-        >
-        </button>
-      </div>
 
+        <div class="relative w-full md:w-96 group">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                <i class="fas fa-search text-sm"></i>
+            </div>
+            <input 
+                type="text" 
+                x-model="search"
+                placeholder="Search bundles, PIDs or realms..."
+                class="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-11 pr-4 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm"
+            >
+        </div>
+    </div>
+
+    <!-- Global Actions Row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Factory Reset -->
-      <div
-        class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-red-400 transition-all"
-      >
-        <div class="flex items-center space-x-4">
-          <div
-            class="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center text-xl transition-transform group-hover:scale-110"
-          >
-            <i class="fas fa-trash-alt"></i>
+      <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-red-400/50 transition-all duration-500">
+        <div class="flex items-center space-x-5">
+          <div class="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center text-xl shadow-inner transition-transform group-hover:scale-110">
+            <i class="fas fa-undo-alt"></i>
           </div>
           <div>
-            <h3 class="font-bold text-slate-900">Factory Reset</h3>
-            <p
-              class="text-[10px] text-slate-500 uppercase font-black tracking-widest"
-            >
-              Wipe Reality
-            </p>
+            <h3 class="font-black text-slate-900 tracking-tight">Universe Reset</h3>
+            <p class="text-[9px] text-slate-400 uppercase font-black tracking-[0.2em] mt-1 text-center">Factory Default</p>
           </div>
         </div>
         <button
           @click="$dispatch('shell-system-reset')"
-          class="px-4 py-2 bg-slate-900 hover:bg-red-600 text-white text-[10px] font-black rounded-xl transition-all shadow-md active:scale-95 uppercase tracking-widest"
+          class="px-5 py-2 bg-slate-950 hover:bg-red-600 text-white text-[9px] font-black rounded-xl transition-all shadow-lg active:scale-95 uppercase tracking-[0.2em]"
         >
-          Reset
+          Wipe
         </button>
       </div>
-
-      <!-- Evaluator Link -->
-      <div
-        class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-indigo-400 transition-all"
-      >
-        <div class="flex items-center space-x-4">
-          <div
-            class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl transition-transform group-hover:scale-110"
-          >
-            <i class="fas fa-microscope"></i>
-          </div>
-          <div>
-            <h3 class="font-bold text-slate-900">Plexus Tracing</h3>
-            <p
-              class="text-[10px] text-slate-500 uppercase font-black tracking-widest"
-            >
-              Engine Diagnostics
-            </p>
-          </div>
-        </div>
-        <button
-          @click="$dispatch('shell-launch-flow', { id: 'plexus.tracing.ui' })"
-          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black rounded-xl transition-all shadow-md active:scale-95 uppercase tracking-widest"
-        >
-          Inspect
-        </button>
+      
+      <!-- Stats / Placeholder (Optional) -->
+      <div class="md:col-span-2 flex items-center justify-end space-x-8 px-8">
+           <div class="text-right">
+                <div class="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-1">Managed Bundles</div>
+                <div class="text-2xl font-black text-slate-900" x-text="cfgs.length"></div>
+           </div>
+           <div class="w-px h-8 bg-slate-200"></div>
+           <div class="text-right">
+                <div class="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-1">Active Realms</div>
+                <div class="text-2xl font-black text-slate-900" x-text="realms.length"></div>
+           </div>
       </div>
     </div>
 
-    <!-- Bundle Governance Table -->
-    <div
-      class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden"
-    >
-      <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-        <h3
-          class="font-bold text-slate-900 flex items-center uppercase tracking-widest text-xs"
-        >
-          <i class="fas fa-vial text-blue-500 mr-2"></i> Flow Governance
-          Pipeline
-        </h3>
-      </div>
+    <!-- Realm Hierarchy Table -->
+    <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
       <table class="w-full text-left border-collapse">
         <thead class="bg-slate-50/80 border-b border-slate-200">
           <tr>
-            <th
-              class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest"
-            >
-              Flow / Reality
-            </th>
-            <th
-              class="px-2 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
-            >
-              Type
-            </th>
-            <th
-              class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
-            >
-              Log Level
-            </th>
-            <th
-              class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
-            >
-              Biz Web
-            </th>
-            <th
-              class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
-            >
-              Biz App
-            </th>
-            <th
-              class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
-            >
-              Retail Web
-            </th>
-            <th
-              class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
-            >
-              Retail App
-            </th>
-            <th
-              class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
-            >
-              Real Life
-            </th>
+            <th class="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Platform Bundle</th>
+            <th class="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Log Level</th>
+            <th class="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center w-48 text-center">Governance</th>
           </tr>
         </thead>
-        <template x-for="category in categorized" :key="category.type">
-          <tbody
-            class="divide-y divide-slate-100"
-            x-show="category.items.length > 0"
-          >
-            <!-- Category Header -->
-            <tr class="bg-slate-50/30">
-              <td
-                colspan="7"
-                class="px-6 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]"
-                x-text="category.title"
-              >
+        
+        <template x-for="category in categorized" :key="category.id">
+          <tbody class="divide-y divide-slate-100">
+            <!-- Realm Header -->
+            <tr class="bg-slate-50/50">
+              <td colspan="3" class="px-10 py-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-2 h-2 rounded-full" :class="{
+                        'bg-blue-500': category.id === 'org.neverplayed.realm.core',
+                        'bg-purple-500': category.id === 'org.neverplayed.realm.foundation',
+                        'bg-emerald-500': category.id === 'org.neverplayed.realm.showcase',
+                        'bg-slate-300': category.id.includes('orphaned')
+                    }"></div>
+                    <span class="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]" x-text="category.title"></span>
+                </div>
               </td>
             </tr>
 
-            <!-- Category Items -->
+            <!-- Bundle Rows -->
             <template x-for="cfg in category.items" :key="cfg.pid">
-              <tr class="hover:bg-blue-50/30 transition-colors group">
-                <td class="px-6 py-4">
-                  <div class="flex items-center space-x-4">
-                    <div
-                      class="w-10 h-10 bg-white rounded-lg border border-slate-100 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors"
-                    >
-                      <i :class="cfg.icon || 'fas fa-cube'"></i>
+              <tr class="hover:bg-slate-50/30 transition-all group">
+                <td class="px-10 py-5">
+                  <div class="flex items-center space-x-5">
+                    <div class="w-12 h-12 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-center text-slate-300 group-hover:text-blue-500 group-hover:border-blue-100 transition-all duration-300">
+                      <i :class="cfg.icon || 'fas fa-cube'" class="text-lg"></i>
                     </div>
                     <div>
-                      <div
-                        class="font-bold text-slate-900 leading-tight"
-                        x-text="cfg.name"
-                      >
-                      </div>
-                      <div
-                        class="text-[9px] font-mono text-slate-400 mt-0.5"
-                        x-text="cfg.pid"
-                      >
-                      </div>
+                      <div class="font-black text-slate-900 leading-tight text-sm tracking-tight" x-text="cfg.name"></div>
+                      <div class="text-[9px] font-mono text-slate-400 mt-1" x-text="cfg.pid"></div>
+                      <div class="text-[10px] text-slate-500 mt-2 max-w-sm line-clamp-1 group-hover:line-clamp-none transition-all" x-text="cfg.description"></div>
                     </div>
                   </div>
                 </td>
-                <td class="px-2 py-4 text-center">
-                  <span
-                    class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
-                    :class="{
-                          'bg-orange-100 text-orange-700': category.color === 'orange',
-                          'bg-blue-100 text-blue-700': category.color === 'blue',
-                          'bg-indigo-100 text-indigo-700': category.color === 'indigo',
-                          'bg-slate-100 text-slate-700': category.color === 'slate',
-                          'bg-purple-100 text-purple-700': category.color === 'purple',
-                          'bg-emerald-100 text-emerald-700': category.color === 'emerald'
-                        }"
-                    x-text="category.type.replace('-flow', '').replace('component', 'tool')"
-                  ></span>
-                </td>
-                <td class="px-4 py-4 text-center">
+                
+                <td class="px-10 py-5 text-center">
                   <select
                     @change="setLogLevel(cfg.pid, $event.target.value)"
                     :class="{
@@ -206,41 +111,32 @@
                         'text-red-600 bg-red-50 border-red-200': cfg.properties['log-level'] === 'ERROR',
                         'text-slate-400 bg-slate-50 border-slate-200': cfg.properties['log-level'] === 'NONE'
                     }"
-                    class="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border outline-none transition-all focus:ring-2 focus:ring-blue-400/20"
+                    class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border outline-none transition-all focus:ring-4 focus:ring-blue-400/10 appearance-none cursor-pointer min-w-[120px] text-center"
                   >
-                    <template
-                      x-for="lvl in ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE']"
-                    >
-                      <option
-                        :value="lvl"
-                        x-text="lvl"
-                        :selected="cfg.properties['log-level'] === lvl"
-                      >
-                      </option>
+                    <template x-for="lvl in ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE']">
+                      <option :value="lvl" x-text="lvl" :selected="cfg.properties['log-level'] === lvl"></option>
                     </template>
-                    <option value="" :selected="!cfg.properties['log-level']">
-                      Default (INFO)
-                    </option>
+                    <option value="" :selected="!cfg.properties['log-level']">DEFAULT</option>
                   </select>
                 </td>
-                <template
-                  x-for="channel in ['business-channel-web', 'business-channel-app', 'retail-channel-web', 'retail-channel-app', 'real-life']"
-                >
-                  <td
-                    class="px-4 py-4 text-center"
-                    :class="channel.includes('business') ? 'bg-blue-50/5' : (channel.includes('retail') ? 'bg-purple-50/5' : 'bg-emerald-50/5')"
-                  >
-                    <div class="flex justify-center">
-                      <button
-                        @click="toggleChannel(cfg.pid, channel, !(cfg.properties.channels || []).includes(channel))"
-                        :class="(cfg.properties.channels || []).includes(channel) ? (channel.includes('business') ? 'bg-blue-50 text-blue-600 border-blue-200' : (channel.includes('retail') ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200')) : 'bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-100'"
-                        class="px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider border transition-all active:scale-95 whitespace-nowrap"
-                        x-text="(cfg.properties.channels || []).includes(channel) ? 'Active' : 'Inactive'"
-                      >
-                      </button>
+
+                <td class="px-10 py-5 text-center">
+                    <div class="flex justify-center min-h-[40px]">
+                        <template x-if="cfg.hasFlow">
+                            <button
+                                @click="toggleSidebar(cfg.pid)"
+                                :class="cfg.properties.sidebar ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-300 border-slate-100'"
+                                class="flex items-center px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all active:scale-95 whitespace-nowrap"
+                            >
+                                <i class="fas fa-columns mr-2" :class="cfg.properties.sidebar ? 'text-blue-500' : 'text-slate-200'"></i>
+                                <span x-text="cfg.properties.sidebar ? 'In Sidebar' : 'Hidden'"></span>
+                            </button>
+                        </template>
+                         <template x-if="!cfg.hasFlow">
+                            <span class="text-[8px] font-bold text-slate-300 uppercase tracking-widest opacity-40">N/A (Tool)</span>
+                        </template>
                     </div>
-                  </td>
-                </template>
+                </td>
               </tr>
             </template>
           </tbody>

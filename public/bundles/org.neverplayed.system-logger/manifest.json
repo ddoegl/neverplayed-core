@@ -2,7 +2,7 @@
   "Bundle-ManifestVersion": "2",
   "Bundle-SymbolicName": "org.neverplayed.system-logger",
   "Bundle-Name": "System Logger",
-  "Bundle-Description": "Provides the @pandino/pandino/Logger service",
+  "Bundle-Description": "Platform-wide logging service with reactive level filtering and console integration (Gold Standard).",
   "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "./activator.js"
+  "Bundle-Activator": "activator.js"
 }

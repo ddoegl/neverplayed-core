@@ -1626,3 +1626,48 @@ The `org.neverplayed.alpine-bridge` bundle exposes the OSGi Service Registry dir
 - **Expressiveness**: Domain services become global template utilities.
 - **Performance**: Skips redundant `trackService` calls in activator code for simple read-only UI.
 - **Self-Healing**: UI components automatically recover if the providing service bundle is restarted.
+
+---
+
+## 20. Reactive Flow Governance Pattern
+
+To enable "Configuration over Code" for the Backoffice Shell, bundles providing UI flows must follow a reactive pattern that allows central governance (e.g. via `ConfigAdmin`) to toggle visibility and metadata without bundle restarts.
+
+### The Problem
+
+Traditional OSGi service registrations are static. If a bundle registers a `FLOW_SERVICE` with `"sidebar": true`, that property remains until the bundle is stopped or re-registered. This prevents the user from toggling sidebar visibility in real-time from a governance UI.
+
+### The Solution: The `config-updated` Signal
+
+Bundles must listen to the global `config-updated` EventAdmin topic and reactively update their service properties.
+
+**Pattern: Reactive Activator Implementation**
+
+```javascript
+onStart(context) {
+    // 1. Define a property factory
+    const getFlowProps = () => ({
+        "flow.id": "my-id",
+        "flow.title": this.config.title || "My Flow",
+        "sidebar": this.config.sidebar !== undefined ? this.config.sidebar : true,
+        "icon": this.config.icon || "fas fa-cube"
+    });
+
+    // 2. Register with initial properties
+    const registration = context.registerService(FLOW_SERVICE, flowSvc, getFlowProps());
+
+    // 3. Listen and Update
+    globalThis.addEventListener('config-updated', (ev) => {
+        if (ev.detail?.pid === this.bsn) {
+            this.logger.debug("Configuration changed, updating flow properties.");
+            registration.setProperties(getFlowProps());
+        }
+    });
+}
+```
+
+### Benefits
+
+- **Instant UI Feedback**: Sidebars and navigation menus update immediately when the user clicks "Toggle" in `ConfigAdmin`.
+- **Centralized Control**: The Shell Header or Sidebar doesn't need to know bundle-specific logic; it simply tracks services and filters by the updated properties.
+- **Persistence First**: Since `ConfigAdmin` persists changes to the `PersistenceManager`, the UI state is automatically restored on the next boot while remaining runtime-reactive.

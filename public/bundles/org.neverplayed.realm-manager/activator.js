@@ -42,7 +42,7 @@ export default class Activator extends BaseActivator {
         this._logTracker = context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
-                this.logger = svc.getLogger("neverplayed.realm-manager");
+                this.logger = svc.getLogger(this.bsn);
                 this.logger.info(`Realm Manager: Bridge Active [ID: ${this._instanceId}]. Configuration synchronized.`);
                 return svc;
             }
