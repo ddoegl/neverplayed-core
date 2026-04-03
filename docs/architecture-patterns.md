@@ -1552,3 +1552,82 @@ Always establish the Alpine `x-data` attribute and the internal state registry *
 3.  **Ignite Children**: Only then append the child template/element to the DOM.
 
 This ensures Alpine's discovery engine sees a fully context-aware and "Hydrated" parent from the very first frame of the mutation.
+
+---
+
+## 20. Realms As Services (Universal Orchestration)
+
+To achieve a fully reactive and decoupled multi-universe architecture, Realms are registered as first-class OSGi services. This ensures that the Shell (Header, Sidebar, CLI) can discover and interact with the active universe without direct dependencies.
+
+### The Problem: Static Manifest Fragmentation
+
+When realms are only defined as static JSON files, the UI must manually fetch and parse them, leading to race conditions between discovery and rendering. Furthermore, switching universes often requires the UI to reload or "know" too much about the bundle lifecycle.
+
+### The Solution: The `REALM_SERVICE` Interface
+
+Each realm is registered as a service with a standardized set of Service Properties:
+- `realm.id`: Unique identifier (e.g., `org.neverplayed.realm.core`).
+- `realm.title`: User-friendly name.
+- `realm.icon`: Font-Awesome icon class.
+- `realm.active`: Boolean flag (true for the current universe).
+
+**Example: Switch Logic delegation**
+
+```javascript
+// Provider (Realm Manager)
+context.registerService(REALM_SERVICE, {
+    getId: () => manifest.id,
+    switch: (interactive) => this._switchRealm(context, manifest.id, interactive)
+}, serviceProps);
+
+// Consumer (Shell Header)
+const svc = context.getService(realmRef);
+await svc.switch(true); // Triggers the central manager's logic
+```
+
+### Benefits
+
+- **Identity Propagation**: UI components (Header) use a `ServiceTracker` to dynamically build the "Universe Switcher" list.
+- **Atomic Discovery**: Adding a new `.json` manifest to the `realms/` directory automatically populates the UI via discovery-to-service mapping.
+- **Decoupled Switching**: Any bundle can trigger a universe leap by interacting with the `REALM_SERVICE`.
+
+---
+
+## 21. Atomic UI Initialization (Hydration Guard)
+
+In a dynamic OSGi environment where bundles can be restarted or hot-swapped, UI components must defensively manage their injection into the DOM to prevent "Hydration Ghosting" (duplicate elements or event listeners).
+
+### The Problem: Double-Start Race Conditions
+
+If a bundle is started manually by a bootstrapper (for early interactivity) and then started again by a realm manifest (to satisfy dependencies), it may attempt to inject its template into the same DOM target twice. Alpine.js will re-parse the tree, potentially creating duplicate reactive nodes.
+
+### The Solution: The Initialization Guard
+
+We use a `data-*` attribute on the DOM target element as an atomic lock.
+
+**Activator Implementation:**
+
+```javascript
+_initUI() {
+    const target = document.getElementById('shell-header');
+    if (!target) return;
+
+    // Atomic Lock: Skip if already initialized by a previous instance
+    if (target.dataset.shellHeaderInitialized === 'true') {
+        this.logger?.warn("Shell Header already initialized on this DOM. Skipping injection.");
+        this._syncStore(); // Still sync state but don't blow away the DOM
+        return;
+    }
+    target.dataset.shellHeaderInitialized = 'true';
+
+    // Proceed with injection...
+    target.innerHTML = `<div x-data="headerController">${template}</div>`;
+    Alpine.initTree(target);
+}
+```
+
+### Benefits
+
+- **Flicker-Free Transitions**: Prevents the UI from being "nuked and paved" if it's already functional.
+- **Identity Integrity**: Ensures event listeners and Alpine stores are bound to a single, stable DOM tree.
+- **Hot-Reload Safety**: Makes the UI resilient to rapid bundle lifecycle transitions.

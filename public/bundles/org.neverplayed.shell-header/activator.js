@@ -35,16 +35,9 @@ export default class Activator extends BaseActivator {
                 const id = ref.getProperty("realm.id");
                 const title = ref.getProperty("realm.title");
                 const active = ref.getProperty("realm.active");
-                const provider = ref.getBundle()?.getSymbolicName() || "Unknown";
-
-                console.log(`[Header] Realm Service Discovered: ID=[${id}] Title=[${title}] from Bundle=[${provider}] (Active: ${active})`);
                 
-                if (this._realms.has(id)) {
-                    console.warn(`[Header] COLLISION DETECTED for realm [${id}]. Overwriting old registration from ${this._realms.get(id).provider || 'Unknown'}`);
-                }
-
                 this.logger?.info(`[Header] Tracker found Realm: ${id} (Active: ${active})`);
-                this._processServiceArrival(ref, id, title, active, provider);
+                this._processServiceArrival(ref, id, title, active);
                 return context.getService(ref);
             },
             modifiedService: (ref) => {
@@ -77,7 +70,7 @@ export default class Activator extends BaseActivator {
                     const id = ref.getProperty("realm.id");
                     if (!this._realms.has(id)) {
                         console.log(`[Header] Deep Scan DISCOVERED MISSING SERVICE: ${id}`);
-                        this._processServiceArrival(ref, id, ref.getProperty("realm.title"), ref.getProperty("realm.active"), "DeepScan");
+                        this._processServiceArrival(ref, id, ref.getProperty("realm.title"), ref.getProperty("realm.active"));
                     }
                 });
             } else {
@@ -196,14 +189,13 @@ export default class Activator extends BaseActivator {
         globalThis.Alpine.initTree(target);
     }
 
-    _processServiceArrival(ref, id, title, active, provider) {
+    _processServiceArrival(ref, id, title, active) {
         this._realms.set(id, { 
             id, 
             title, 
             icon: ref.getProperty("realm.icon") || "fas fa-universe", 
             active: !!active, 
-            ref,
-            provider
+            ref 
         });
         this._syncStore();
     }
@@ -250,7 +242,7 @@ export default class Activator extends BaseActivator {
 
         const activeDisplay = active || { id: 'none', title: 'Unknown Layer', icon: 'fas fa-ghost' };
         
-        console.log(`[Header] Syncing Store. Unique: ${uniqueRealms.length} | IDs: [${uniqueRealms.map(r => r.id).join(', ')}] | Active: ${activeDisplay.id}`);
+        console.log(`[Header] Syncing Store. Unique: ${uniqueRealms.length} | Active: ${activeDisplay.id}`);
 
         store.activeRealm = {
             id: activeDisplay.id,
