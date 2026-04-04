@@ -7,6 +7,7 @@ import {
     DOMAIN_STRATEGY_SERVICE,
     ACTION_SERVICE,
     DOMAIN_OBJECT_INSTANCE_SERVICE,
+    DOMAIN_OBJECT_REGISTRY_SERVICE,
     LOG_SERVICE
 } from "core-types";
 
@@ -151,17 +152,21 @@ class UIFactory extends HTMLElement {
             addingService: (ref) => {
                 const id = ref.getProperty("instance.id");
                 if (id === this._instanceId) {
-                    this.logger.info(`UIFactory [${this._id}]: Matching Instance Service found: [${id}]. Hydrating...`);
-                    const instance = this._context.getService(ref);
-                    this.hydrateFromService(instance);
+                    this.logger.info(`UIFactory [${this._id}]: Matching Instance Service found: [${id}]. Hydrating (if not already done)...`);
+                    // Only hydrate if _createState didn't already pre-hydrate via _getFreshInstance
+                    if (this._state && !this._state._hydrated) {
+                        const fresh = this._getFreshInstance(id) || this._context.getService(ref);
+                        this.hydrateFromService(fresh);
+                    }
                 }
             },
             modifiedService: (ref) => {
+                // This fires every time we save (setProperties is called by addInstance).
+                // Do NOT re-hydrate here — it would apply the stale boot-time service object
+                // and reset uifStep back to the original step, breaking navigation.
                 const id = ref.getProperty("instance.id");
-                if (id === this._instanceId && !this._isHydrating) {
-                    this.logger.info(`UIFactory [${this._id}]: Matching Instance Service UPDATED: [${id}]. Re-hydrating...`);
-                    const instance = this._context.getService(ref);
-                    this.hydrateFromService(instance);
+                if (id === this._instanceId) {
+                    this.logger.debug(`UIFactory [${this._id}]: Instance Service updated [${id}] — save loopback acknowledged, not re-hydrating.`);
                 }
             },
             removedService: (ref) => {
@@ -229,6 +234,23 @@ class UIFactory extends HTMLElement {
         } catch (_e) {
             return globalThis.Services?.[id];
         }
+    }
+
+    /**
+     * Gets the freshest instance data from the DO Registry's live internal Map.
+     * Necessary because Pandino's context.getService(ref) returns the ORIGINAL
+     * object registered at boot-time — it is never updated when instance data changes.
+     */
+    _getFreshInstance(instanceId) {
+        if (!this._context || !instanceId) return null;
+        try {
+            const regRef = this._context.getServiceReference(DOMAIN_OBJECT_REGISTRY_SERVICE);
+            if (regRef) {
+                const registry = this._context.getService(regRef);
+                if (registry?.getInstance) return registry.getInstance(instanceId);
+            }
+        } catch (_e) { /* ignore */ }
+        return null;
     }
 
     set spec(value) { this.setSpec(value); }
@@ -499,17 +521,16 @@ class UIFactory extends HTMLElement {
         const instanceId = this._instanceId;
  
         if (instanceId) {
-            logger.info(`UIFactory [${this._id}]: Hydration request for ${instanceId}. Waiting for service...`);
-            // Attempt a synchronous peek first in case it's already registered
-            if (this._context) {
-                const refs = this._context.getServiceReferences(DOMAIN_OBJECT_INSTANCE_SERVICE, `(instance.id=${instanceId})`);
-                if (refs && refs.length > 0) {
-                    instance = this._context.getService(refs[0]);
-                    logger.info(`UIFactory [${this._id}]: Synchronous peek found instance service for ${instanceId}.`);
-                    instanceData = instance.properties || {};
-                    if (instance.currentStep) instanceStep = instance.currentStep;
-                    if (instance.history) instanceHistory = instance.history || [];
-                }
+            logger.info(`UIFactory [${this._id}]: Hydration request for ${instanceId}. Checking Registry...`);
+            // CRITICAL: Use Registry directly — context.getService(ref) returns the stale
+            // boot-time object whose .properties is always {}. The Registry map is always current.
+            const fresh = this._getFreshInstance(instanceId);
+            if (fresh) {
+                instance = fresh;
+                logger.info(`UIFactory [${this._id}]: Registry pre-hydration for ${instanceId}. Properties: [${Object.keys(fresh.properties || {}).join(', ')}]`);
+                instanceData = fresh.properties || {};
+                if (fresh.currentStep) instanceStep = fresh.currentStep;
+                if (fresh.history) instanceHistory = fresh.history || [];
             }
         }
  

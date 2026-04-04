@@ -52,23 +52,32 @@ export default class Activator extends CoreAlpineActivator {
                         const id = ref.getProperty("flow.id");
                         this.logger.debug(`Shell Host: Flow removed: ${id}`);
                         
-                        // If the currently active flow is uninstalled, fallback to core capability (CLI)
+                        // Rule 9: Hot-Reload Resilience - 200ms grace period to allow replacement services to arrive
                         if (this.state.activeFlowId === id) {
-                            this.logger.warn(`Shell Host: Active flow '${id}' uninstalled. Falling back to Core Shell.`);
-                            
-                            // Find the fallback flow (discovery by capability: sys:cli)
-                            const fallbackCapability = "sys:cli";
-                            const refs = context.getServiceReferences(FLOW_SERVICE, `(capability=${fallbackCapability})`);
-                            
-                            if (refs && refs.length > 0) {
-                                const fallbackSvc = context.getService(refs[0]);
-                                const fallbackId = refs[0].getProperty("flow.id") || fallbackSvc.id;
-                                this.launch(fallbackId, fallbackSvc);
-                            } else {
-                                // Last resort: Wipe stage to avoid zombie state
-                                const hostStage = this.$refs.flowContent || document.querySelector("#flow-mount-point");
-                                if (hostStage) hostStage.innerHTML = `<div class="p-10 text-slate-400 italic">No active flow available for this realm.</div>`;
-                            }
+                            setTimeout(() => {
+                                // Check if a replacement for the same flow id exists now
+                                const refs = context.getServiceReferences(FLOW_SERVICE, `(flow.id=${id})`);
+                                if (refs && refs.length > 0) {
+                                    this.logger.info(`Shell Host: Replacement flow found for '${id}'. Aborting CLI fallback.`);
+                                    return;
+                                }
+
+                                this.logger.warn(`Shell Host: Active flow '${id}' uninstalled. Falling back to Core Shell.`);
+                                
+                                // Find the fallback flow (discovery by capability: sys:cli)
+                                const fallbackCapability = "sys:cli";
+                                const fallbackRefs = context.getServiceReferences(FLOW_SERVICE, `(capability=${fallbackCapability})`);
+                                
+                                if (fallbackRefs && fallbackRefs.length > 0) {
+                                    const fallbackSvc = context.getService(fallbackRefs[0]);
+                                    const fallbackId = fallbackRefs[0].getProperty("flow.id") || fallbackSvc.id;
+                                    this.launch(fallbackId, fallbackSvc);
+                                } else {
+                                    // Last resort: Wipe stage to avoid zombie state
+                                    const hostStage = this.$refs.flowContent || document.querySelector("#flow-mount-point");
+                                    if (hostStage) hostStage.innerHTML = `<div class="p-10 text-slate-400 italic">No active flow available for this realm.</div>`;
+                                }
+                            }, 200);
                         }
                     }
                 });

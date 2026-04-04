@@ -1,6 +1,11 @@
 {
     "id": "org.neverplayed.realm.foundation",
     "startupFlow": "org.neverplayed.shell.cli",
+    "domainObjects": [
+        { "id": "about-do-registry" },
+        { "id": "sample-do" },
+        { "id": "atomic-showcase" }
+    ],
     "title": "NPRF Semantic Foundation",
     "extends": ["org.neverplayed.realm.core"],
     "description": "Layer 2: Context, State, and Registration foundations.",

@@ -13,7 +13,8 @@ import {
     ATOMIC_SPEC_INGESTION_SERVICE,
     UI_FACTORY_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
-    ACTION_SERVICE
+    ACTION_SERVICE,
+    SHELL_COMMAND_SERVICE
 } from "core-types";
 import { BaseActivator } from "osgi-base";
 
@@ -56,40 +57,60 @@ export default class Activator extends BaseActivator {
 
         const scanBundle = async (bundle) => {
             try {
+                if (!bundle) return;
+                const bsn = bundle.getSymbolicName();
+                const state = bundle.getState();
+                
                 const headers = bundle.getHeaders() || {};
                 const isAtomic = headers[ATOMIC_MARKER_HEADER] === "true" || 
                                (headers[ATOMIC_MARKER_HEADER.toLowerCase()] === "true") ||
                                (headers['x-atomic-bundle'] === "true") ||
                                (headers['X-Atomic-Bundle'] === "true");
                 
-                console.log(`[Atomic Orchestrator] Checking bundle ${bundle.getSymbolicName() || 'unknown'}: isAtomic=${isAtomic}`);
-
                 if (!isAtomic) return;
 
-                console.log(`Atomic Orchestrator: Processing bundle ${bundle.getSymbolicName()}`);
+                // Rule 11: Aggressive Ingestion - Process RESOLVED or ACTIVE bundles
+                if (state < 4) { // Below RESOLVED
+                    console.log(`Atomic Orchestrator: [WAIT] Bundle ${bsn} is in state ${state}. Waiting for RESOLVED/ACTIVE.`);
+                    return;
+                }
+
+                console.log(`Atomic Orchestrator: Processing bundle ${bsn} (State: ${state})`);
                 
-                // Robust Location Discovery (Rule 4: Configuration over Code)
                 const baseUrl = BaseActivator.getBundleBaseUrl(bundle);
+                if (!baseUrl) {
+                    console.warn(`Atomic Orchestrator: Could not resolve base URL for ${bsn}. Skipping.`);
+                    return;
+                }
+
                 const specUrl = `${baseUrl}spec.yaml`;
+                console.log(`Atomic Orchestrator: Fetching spec from ${specUrl}`);
 
                 const res = await fetch(specUrl);
-                if (!res.ok) throw new Error(`Spec not found at ${specUrl}`);
+                if (!res.ok) {
+                    console.error(`Atomic Orchestrator: Spec NOT found at ${specUrl} (Status: ${res.status})`);
+                    return;
+                }
                 
                 const text = await res.text();
                 const spec = yaml.load(text);
+                if (!spec || !spec.id) {
+                    console.error(`Atomic Orchestrator: Spec at ${specUrl} is malformed or missing ID.`);
+                    return;
+                }
                 
+                console.log(`Atomic Orchestrator: [INGEST] Successfully loaded spec '${spec.id}' from ${bsn}`);
                 this.registerAtomicComponents(context, bundle, spec);
             } catch (e) {
-                console.error(`Atomic Orchestrator: Failed to process ${bundle?.getSymbolicName ? bundle.getSymbolicName() : 'unknown'}`, e);
+                console.error(`Atomic Orchestrator: Exception during scan for ${bundle?.getSymbolicName ? bundle.getSymbolicName() : 'unknown'}: ${e.message}`, e);
             }
         };
 
         // Tracking for existing and new bundles
         context.addBundleListener({
             bundleChanged: (event) => {
-                // Trigger scan on installation or start
-                if (event.type === 1 || event.type === 32 || 
-                    event.type === "INSTALLED" || event.type === "STARTED") { 
+                if (event.type === 1 || event.type === 4 || event.type === 32 || 
+                    event.type === "INSTALLED" || event.type === "RESOLVED" || event.type === "STARTED") { 
                     scanBundle(event.bundle);
                 }
             }
@@ -118,7 +139,6 @@ export default class Activator extends BaseActivator {
                         const key = 'atomic_persisted_specs';
                         const currentRaw = localStorage.getItem(key);
                         const current = currentRaw ? JSON.parse(currentRaw) : [];
-                        // Avoid duplicates by ID
                         const filtered = current.filter(s => s.id !== spec.id);
                         filtered.push(spec);
                         localStorage.setItem(key, JSON.stringify(filtered));
@@ -131,6 +151,106 @@ export default class Activator extends BaseActivator {
                 this.registerAtomicComponents(context, null, spec, source);
             }
         });
+
+        // 5. Global Action Listener for Blueprint Persistence (Extended with feedback)
+        globalThis.addEventListener('atomic-default-action', (e) => {
+            const { action, spec, values: _values } = e.detail;
+            if (action === 'blueprint.save') {
+                console.log(`Atomic Orchestrator: Persistence request for blueprint ${spec?.id || 'unknown'}`);
+                if (!spec || !spec.id) return console.error("Atomic Orchestrator: Save aborted. Spec ID missing.");
+                
+                try {
+                    const key = 'atomic_persisted_specs';
+                    const currentRaw = localStorage.getItem(key);
+                    const current = currentRaw ? JSON.parse(currentRaw) : [];
+                    const filtered = current.filter(s => s.id !== spec.id);
+                    
+                    // Mark as persisted for registry bypass
+                    const persistedSpec = { ...spec, _isPersisted: true };
+                    filtered.push(persistedSpec);
+                    localStorage.setItem(key, JSON.stringify(filtered));
+                    console.log(`Atomic Orchestrator: Blueprint ${persistedSpec.id} saved to LocalStorage.`);
+                    
+                    // User Feedback
+                    alert(`Blueprint '${persistedSpec.id}' successfully saved to LocalStorage and registered.`);
+
+                    // Re-register to update UI immediately
+                    this.registerAtomicComponents(context, null, persistedSpec, "local-storage-sync");
+                } catch (err) {
+                    console.error("Atomic Orchestrator: Save failed.", err);
+                    alert(`Failed to save blueprint: ${err.message}`);
+                }
+            }
+        });
+
+        // 5.5 Global Persistence Bridge (Rule 8): Sync UIFactory changes to Registry
+        globalThis.addEventListener('uif-persist', (e) => {
+            const { instanceId, properties, currentStep } = e.detail;
+            const keys = Object.keys(properties || {});
+            console.log(`Atomic Orchestrator: [GLOBAL SYNC] Persistence pulse for ${instanceId}. Keys: [${keys.join(', ')}]`, properties);
+            
+            const registryRef = context.getServiceReference(DOMAIN_OBJECT_REGISTRY_SERVICE);
+            const registry = registryRef ? context.getService(registryRef) : null;
+            
+            if (registry) {
+                const instance = registry.getInstance(instanceId);
+                if (instance) {
+                    // Update instance in place and re-register
+                    instance.properties = { ...instance.properties, ...properties };
+                    if (currentStep) instance.currentStep = currentStep;
+                    registry.addInstance(instance);
+                    console.log(`Atomic Orchestrator: [GLOBAL SYNC] Successfully updated Registry for ${instanceId}. Step: ${instance.currentStep || 'intro'}. Keys: [${keys.join(', ')}]`);
+                }
+            }
+        });
+
+        // 6. Diagnostic CLI Command
+        context.registerService(SHELL_COMMAND_SERVICE, {
+            name: 'atomic:list',
+            description: 'List all blueprints registered by the Atomic Orchestrator',
+            execute: (_args, _ctx, log) => {
+                const filter = _args[0]?.toLowerCase();
+                const items = Object.values(this.specs);
+                log(`Atomic Specs Discovery Status (${items.length}):`);
+                items.forEach(({ id, spec, source }) => {
+                    const finalId = id || spec?.id || "unknown";
+                    if (!filter || finalId.toLowerCase().includes(filter)) {
+                        const icon = spec?._isPersisted ? "💾" : (spec?._isBundleBlueprint ? "📦" : "🌐");
+                        const src = source || (spec?._isBundleBlueprint ? "bundle" : "local");
+                        log(` ${icon} [${finalId.padEnd(20)}] Source: ${src.padEnd(15)} Label: ${spec?.label || 'n/a'}`);
+                    }
+                });
+            }
+        });
+
+        // 7. Refresh Command
+        context.registerService(SHELL_COMMAND_SERVICE, {
+            name: 'atomic:refresh',
+            description: 'Trigger a re-scan of all bundles for atomic specs',
+            execute: (_args, _ctx, log) => {
+                log("Atomic Orchestrator: Triggering full universe re-scan...");
+                const allBundles = context.getBundles() || [];
+                allBundles.forEach(b => scanBundle(b));
+                this.scanLocalStorage(context);
+                this.scanDomainObjects(context);
+                log("Re-scan initiated.");
+            }
+        });
+
+        // 8. Domain Object Registry Tracker (Rule 12: Registration Persistence)
+        context.trackService(`(objectClass=${DOMAIN_OBJECT_REGISTRY_SERVICE})`, {
+            addingService: (ref) => {
+                const registry = context.getService(ref);
+                const specCount = Object.keys(this.specs).length;
+                if (specCount > 0) {
+                    console.log(`Atomic Orchestrator: Registry [${ref.getProperty("service.id")}] arrived. Re-syncing ${specCount} blueprints...`);
+                    Object.values(this.specs).forEach(({ spec }) => {
+                        registry.addBlueprint(spec);
+                    });
+                }
+                return registry;
+            }
+        }).open();
 
     } catch (err) {
         console.error("Atomic Orchestrator: Unhandled error in start method:", err);
@@ -223,7 +343,8 @@ export default class Activator extends BaseActivator {
     
     for (const file of remotes) {
         try {
-            const res = await fetch(`./domain-objects/${file}`);
+            // Rule 4: Use absolute path for reliable discovery across bundle context relocations
+            const res = await fetch(`/domain-objects/${file}`);
             if (res.ok) {
                 const text = await res.text();
                 const spec = yaml.load(text);
@@ -255,6 +376,14 @@ export default class Activator extends BaseActivator {
 
   registerAtomicComponents(context, bundle, spec, source = "bundle") {
     const { id, label, ui, domainObject, actions, caseTypes } = spec;
+
+    // Rule 6: Source Attribution (Institutional vs. Volatile)
+    if (!bundle || source !== "bundle") {
+      spec._isPersisted = true;
+    } else {
+      spec._isBundleBlueprint = true;
+    }
+
     const bsn = bundle ? bundle.getSymbolicName() : `synthetic.${source}.${id}`;
     const headers = bundle ? bundle.getHeaders() : {};
     
@@ -263,10 +392,10 @@ export default class Activator extends BaseActivator {
     // Persist spec for re-registration after reset
     this.specs[id] = { bundle, spec, source };
 
-    // Cleanup previous registrations for this DO (e.g., during live-editing)
+    // Cleanup previous registrations for this ID (e.g., during live-editing)
     if (this.registrations[id]) {
-        console.log(`Atomic Orchestrator: Unregistering previous components for ${id}`);
-        this.registrations[id].forEach(reg => { try { reg.unregister(); } catch (_e) { /* ignore */ } });
+      console.log(`Atomic Orchestrator: Unregistering previous components for ${id}`);
+      this.registrations[id].forEach(reg => { try { reg.unregister(); } catch (_e) { /* ignore */ } });
     }
     this.registrations[id] = [];
     const trackReg = (reg) => { if (reg) this.registrations[id].push(reg); return reg; };
@@ -276,261 +405,177 @@ export default class Activator extends BaseActivator {
 
     // Helper to get service reference and service
     const getSvc = (svcId) => {
-        const ref = context.getServiceReference(svcId);
-        return ref ? context.getService(ref) : null;
+      const ref = context.getServiceReference(svcId);
+      return ref ? context.getService(ref) : null;
     };
 
     // Attempt to parse Configuration from manifest
     let manifestConfig = {};
     if (bundle) {
-        const configKey = Object.keys(headers).find(k => k.toLowerCase() === 'configuration');
-        const configRaw = headers[configKey];
-        if (configRaw) {
-            try {
-                manifestConfig = typeof configRaw === 'string' ? JSON.parse(configRaw) : configRaw;
-            } catch (e) {
-                console.warn(`Atomic Orchestrator: Failed to parse Configuration for ${bsn}`, e);
-            }
+      const configKey = Object.keys(headers).find(k => k.toLowerCase() === 'configuration');
+      const configRaw = headers[configKey];
+      if (configRaw) {
+        try {
+          manifestConfig = typeof configRaw === 'string' ? JSON.parse(configRaw) : configRaw;
+        } catch (e) {
+          console.warn(`Atomic Orchestrator: Failed to parse Configuration for ${bsn}`, e);
         }
+      }
     }
 
-    const flowType = manifestConfig.flowType || "atomic-flow";
-    const channels = manifestConfig.channels || ["business-channel-web"];
+    const flowType = manifestConfig.flowType || spec.flowType || "atomic-flow";
+    const channels = manifestConfig.channels || spec.channels || ["business-channel-web"];
 
-    // 4. Register Flow Service (UI-DSL)
-    if (ui) {
-        trackReg(context.registerService(FLOW_SERVICE, {
-            id,
-            title: label || id,
-            icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
-            launch: (container, params = {}) => {
-                const factoryRef = context.getServiceReference(UI_FACTORY_SERVICE);
-                const factorySvc = factoryRef ? context.getService(factoryRef) : null;
-
-                if (factorySvc) {
-                    const instanceId = params.instanceId;
-                    const el = factorySvc.create(spec, { ...params, instanceId });
-                    
-                    // 💾 Persistence Bridge: Capture state changes from UIFactory
-                    el.addEventListener('uif-persist', (e) => {
-                        const { instanceId, properties, currentStep } = e.detail;
-                        const registryRef = context.getServiceReference(DOMAIN_OBJECT_REGISTRY_SERVICE);
-                        const registrySvc = registryRef ? context.getService(registryRef) : null;
-                        
-                        if (registrySvc) {
-                            const instance = registrySvc.getInstance(instanceId);
-                            if (instance) {
-                                // Update properties and currentStep explicitly
-                                instance.properties = { ...instance.properties, ...properties };
-                                instance.currentStep = currentStep;
-                                registrySvc.addInstance(instance);
-                            }
-                        }
-                    });
-
-                    container.innerHTML = "";
-                    container.appendChild(el);
-                } else {
-                    container.innerHTML = `<div class="p-4 text-red-500">UI Factory service not available.</div>`;
-                }
-            }
-        }, {
-            "flow.id": id,
-            "flow.title": label || id,
-            "flow.icon": spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
-            "flowType": flowType,
-            "channels": channels,
-            "bundle.symbolicName": bsn
-        }));
-
-        // Register as Backoffice Extension
-        trackReg(context.registerService(BO_EXTENSION_SERVICE, {
-            id,
-            name: label || id,
-            icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
-            launch: (container, params = {}) => {
-                const factoryRef = context.getServiceReference(UI_FACTORY_SERVICE);
-                const factorySvc = factoryRef ? context.getService(factoryRef) : null;
-                if (factorySvc) {
-                    const el = factorySvc.create(spec, params);
-                    if (container) {
-                        this._managedContainers.add(container);
-                        container.innerHTML = "";
-                        container.appendChild(el);
-                    }
-                }
-            }
-        }, {
-            "bundle.symbolicName": bsn
-        }));
-    }
-
-    // 5. Register Domain Object Strategy & Instance
+    // 1. Register Domain Object Strategy
     if (domainObject) {
-        const doRegistry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
-        if (doRegistry) {
-            console.log(`Atomic Orchestrator: Registering DO for ${id}`);
-            
-            // Register Strategy if defined
-            if (domainObject.strategyId) {
-                const existing = doRegistry.getStrategy(domainObject.strategyId);
-                if (!existing) {
-                    // Standard OSGi Service Registration for Strategy
-                    trackReg(context.registerService(DOMAIN_STRATEGY_SERVICE, {
-                        id: domainObject.strategyId,
-                        label: domainObject.label || id,
-                        limesPrefix: domainObject.limesPrefix || id.split('-')[0].toUpperCase(),
-                        actions
-                    }));
-                }
-            }
-
-            // Register the Blueprint (Specification) itself
-            const registerBlueprint = () => {
-                const registry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
-                if (registry && registry.addBlueprint) {
-                    console.log(`Atomic Orchestrator: Successfully registered blueprint for ${id}`);
-                    registry.addBlueprint(spec);
-                } else {
-                    console.warn(`Atomic Orchestrator: DO Registry not ready for blueprint registration (${id}). Retrying...`);
-                    setTimeout(registerBlueprint, 500);
-                }
-            };
-            registerBlueprint();
-
-            // Register Action Handler for 'view' if UI exists
-            if (ui) {
-                const registerHandler = () => {
-                   const registry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
-                   if (registry && registry.registerActionHandler) {
-                       console.log(`Atomic Orchestrator: Registering 'view' handler for ${id}`);
-                       registry.registerActionHandler({
-                           id: "view",
-                           _sourceFlowId: id, // Used for deduplication during live-reloads
-                           match: (inst) => inst.blueprintId === id || inst.id === id, // Legacy support just in case
-                           execute: (_inst, host) => {
-                               console.log(`Atomic Orchestrator: [EXECUTE] Launching extension for ${id} (Instance: ${_inst.id})`);
-                               
-                               if (registry) {
-                                   if (host && host.loadStep) {
-                                       const hostName = host === globalThis.backofficeState ? "Backoffice" : "Business Portal";
-                                       console.log(`Atomic Orchestrator: Navigating to ${id} via active shell: ${hostName}`);
-                                       host.loadStep(id, { instanceId: _inst.id });
-                                   } else {
-                                       console.error("Atomic Orchestrator: [ERROR] Context missing in execute(). Host provided:", host ? typeof host : "undefined/null");
-                                       if (!host) {
-                                           console.warn("Atomic Orchestrator: [RECOVERY] Attempting fallback to DOM detection...");
-                                           const fallback = document.getElementById("backoffice-root-container") ? globalThis.backofficeState : globalThis.businessPortalState;
-                                           if (fallback && fallback.loadStep) {
-                                               console.log("Atomic Orchestrator: [RECOVERY] Navigating via fallback host:", fallback === globalThis.backofficeState ? "Backoffice" : "Business Portal");
-                                               fallback.loadStep(id, { instanceId: _inst.id });
-                                           }
-                                       }
-                                   }
-                               }
-                           }
-                       });
-                   } else {
-                       console.warn(`Atomic Orchestrator: DO Registry not ready for handler registration (${id}). Retrying...`);
-                       setTimeout(registerHandler, 500);
-                   }
-                };
-                registerHandler();
-               
-                const registerDeleteHandler = () => {
-                    const registry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
-                    if (registry && registry.registerActionHandler) {
-                        console.log(`Atomic Orchestrator: Registering 'delete' handler for ${id}`);
-                        registry.registerActionHandler({
-                            id: "delete",
-                            _sourceFlowId: id,
-                            match: (inst) => inst.blueprintId === id || inst.id === id,
-                            execute: (_inst, host) => {
-                                console.log(`Atomic Orchestrator: [EXECUTE] Deleting instance ${_inst.id}`);
-                                
-                                // Look up strategy
-                                const stratRefs = context.getServiceReferences(DOMAIN_STRATEGY_SERVICE) || [];
-                                let strategySvc = null;
-                                for (const ref of stratRefs) {
-                                    const svc = context.getService(ref);
-                                    if (svc && svc.id === _inst.strategyId) {
-                                        strategySvc = svc;
-                                        break;
-                                    }
-                                }
-
-                                if (strategySvc && strategySvc.deleteInstance) {
-                                    const success = strategySvc.deleteInstance(_inst.id, _inst.blueprintId);
-                                    if (success && host && host.recompile) {
-                                        host.recompile(); // Refresh UI
-                                    }
-                                } else {
-                                    console.error(`Atomic Orchestrator: [ERROR] Delete handler failed. Strategy ${_inst.strategyId} not found or missing deleteInstance().`);
-                                }
-                            }
-                        });
-                    } else {
-                        setTimeout(registerDeleteHandler, 500);
-                    }
-                };
-                registerDeleteHandler();
-            }
+      const doRegistry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
+      if (doRegistry && domainObject.strategyId) {
+        const existing = doRegistry.getStrategy(domainObject.strategyId);
+        if (!existing) {
+          trackReg(context.registerService(DOMAIN_STRATEGY_SERVICE, {
+            id: domainObject.strategyId,
+            label: domainObject.label || id,
+            limesPrefix: domainObject.limesPrefix || id.split('-')[0].toUpperCase(),
+            actions
+          }));
         }
+      }
     }
 
-    // 6. Register Case Types
+    // 2. Independent Handover - Register blueprint in DO Registry (Rule 12)
+    const registerBlueprint = () => {
+      const ref = context.getServiceReference(DOMAIN_OBJECT_REGISTRY_SERVICE);
+      const registry = ref ? context.getService(ref) : null;
+      if (registry && registry.addBlueprint) {
+        console.log(`Atomic Orchestrator: [SUCCESS] [Registry#${ref.getProperty("service.id")}] Registered blueprint [${id}] via ${source || 'bundle'}`);
+        registry.addBlueprint(spec);
+      } else {
+        console.warn(`Atomic Orchestrator: [WAIT] Registry not ready for blueprint [${id}]. Retrying...`);
+        setTimeout(registerBlueprint, 500);
+      }
+    };
+    registerBlueprint();
+
+    // 3. Register Flow Service (UI-DSL)
+    if (ui) {
+      trackReg(context.registerService(FLOW_SERVICE, {
+        id,
+        title: label || id,
+        icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
+        launch: (container, params = {}) => {
+          const factoryRef = context.getServiceReference(UI_FACTORY_SERVICE);
+          const factorySvc = factoryRef ? context.getService(factoryRef) : null;
+
+          if (factorySvc) {
+            const instanceId = params.instanceId;
+            const el = factorySvc.create(spec, { ...params, instanceId });
+            // 💾 Persistence Bridge (Rule 8): Captured via Global Listener in onStart
+            container.innerHTML = "";
+            container.appendChild(el);
+          } else {
+            container.innerHTML = `<div class="p-4 text-red-500">UI Factory service not available.</div>`;
+          }
+        }
+      }, {
+        "flow.id": id,
+        "flow.title": label || id,
+        "flow.icon": spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
+        "flowType": flowType,
+        "channels": channels,
+        "bundle.symbolicName": bsn
+      }));
+
+      // Register as Backoffice Extension
+      trackReg(context.registerService(BO_EXTENSION_SERVICE, {
+        id,
+        name: label || id,
+        icon: spec.flow?.icon || manifestConfig.icon || "fas fa-atom",
+        launch: (container, params = {}) => {
+          const factorySvc = getSvc(UI_FACTORY_SERVICE);
+          if (factorySvc) {
+            const el = factorySvc.create(spec, params);
+            if (container) {
+              this._managedContainers.add(container);
+              container.innerHTML = "";
+              container.appendChild(el);
+            }
+          }
+        }
+      }, {
+        "bundle.symbolicName": bsn
+      }));
+
+      // Register Action Handlers for 'view' and 'delete'
+      const registerHandlers = () => {
+        const registry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
+        if (registry && registry.registerActionHandler) {
+          console.log(`Atomic Orchestrator: Registering Action Handlers for ${id}`);
+          registry.registerActionHandler({
+            id: "view",
+            _sourceFlowId: id,
+            match: (inst) => inst.blueprintId === id || inst.id === id,
+            execute: (_inst, host) => {
+              if (host && host.loadStep) {
+                host.loadStep(id, { instanceId: _inst.id });
+              } else {
+                 // Recovery: DOM Detection 
+                 const fallback = document.getElementById("backoffice-root-container") ? globalThis.backofficeState : globalThis.businessPortalState;
+                 if (fallback?.loadStep) fallback.loadStep(id, { instanceId: _inst.id });
+              }
+            }
+          });
+          registry.registerActionHandler({
+            id: "delete",
+            _sourceFlowId: id,
+            match: (inst) => inst.blueprintId === id || inst.id === id,
+            execute: (inst) => {
+              const strategyId = inst.strategyId || "LOCAL_STRATEGY";
+              const _sSvc = getSvc(DOMAIN_STRATEGY_SERVICE); // Tracked for completeness
+              const registry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
+              const strategy = registry?.getStrategy(strategyId);
+              if (strategy?.deleteInstance) strategy.deleteInstance(inst.id, inst.blueprintId);
+            }
+          });
+        } else {
+          setTimeout(registerHandlers, 500);
+        }
+      };
+      registerHandlers();
+    }
+
+    // 4. Register Case Types
     if (caseTypes) {
-        const signingSvc = getSvc(SIGNING_DATA_SERVICE);
-        if (signingSvc) {
-            console.log(`Atomic Orchestrator: Registering ${Object.keys(caseTypes).length} case types for ${id}`);
-            const current = signingSvc.getCaseTypes() || [];
-            const newTypes = Array.isArray(caseTypes) ? caseTypes : 
-                             Object.entries(caseTypes).map(([cid, val]) => ({ id: cid, ...val }));
-            
-            newTypes.forEach(nt => {
-                const idx = current.findIndex(t => t.id === nt.id);
-                if (idx === -1) current.push(nt);
-                else current[idx] = nt;
-            });
-            signingSvc.setCaseTypes(current);
-        }
+      const signingSvc = getSvc(SIGNING_DATA_SERVICE);
+      if (signingSvc) {
+        console.log(`Atomic Orchestrator: Registering case types for ${id}`);
+        const current = signingSvc.getCaseTypes() || [];
+        const newTypes = Array.isArray(caseTypes) ? caseTypes : [caseTypes];
+        newTypes.forEach(nt => {
+          const idx = current.findIndex(t => t.id === nt.id);
+          if (idx === -1) current.push(nt); else current[idx] = nt;
+        });
+        signingSvc.setCaseTypes(current);
+      }
     }
 
-    // 7. Register Action Services from Spec
+    // 5. Register Synthetic Actions
     if (actions) {
-        Object.entries(actions).forEach(([aid, actionSpec]) => {
-            console.log(`Atomic Orchestrator: Registering action service ${aid} for ${id}`);
-            
-            trackReg(context.registerService(ACTION_SERVICE, {
-                execute: async (params) => {
-                    // Find the underlying outreach service for API calls
-                    const outreachRef = context.getServiceReference(ACTION_SERVICE, "(action.id=apiService)");
-                    const outreachSvc = outreachRef ? context.getService(outreachRef) : null;
-                    
-                    if (outreachSvc && actionSpec.type === "API") {
-                        const mergedParams = JSON.parse(JSON.stringify({ ...actionSpec.params, ...params }));
-                        
-                        // Deep interpolation for synthetic actions
-                        const deepInterp = (obj) => {
-                            for (const k in obj) {
-                                if (typeof obj[k] === 'string') {
-                                    obj[k] = obj[k].replace(/\${(.+?)}/g, (_, varName) => mergedParams[varName] ?? "");
-                                } else if (typeof obj[k] === 'object' && obj[k] !== null) {
-                                    deepInterp(obj[k]);
-                                }
-                            }
-                        };
-                        deepInterp(mergedParams);
-
-                        return await outreachSvc.execute(mergedParams);
-                    }
-                    throw new Error(`Action handler for ${aid} (type: ${actionSpec.type}) not found.`);
-                }
-            }, {
-                "action.id": aid,
-                "bundle.symbolicName": bsn
-            }));
-        });
+      Object.entries(actions).forEach(([aid, actionSpec]) => {
+        trackReg(context.registerService(ACTION_SERVICE, {
+          execute: async (params) => {
+            const outreachRef = context.getServiceReference(ACTION_SERVICE, "(action.id=apiService)");
+            const outreachSvc = outreachRef ? context.getService(outreachRef) : null;
+            if (outreachSvc && actionSpec.type === "API") {
+              const merged = JSON.parse(JSON.stringify({ ...actionSpec.params, ...params }));
+              return await outreachSvc.execute(merged);
+            }
+            throw new Error(`Action handler for ${aid} (type: ${actionSpec.type}) not found.`);
+          }
+        }, {
+          "action.id": aid,
+          "bundle.symbolicName": bsn
+        }));
+      });
     }
 
     console.log(`Atomic Orchestrator: Successfully registered all components for ${bsn} (${id})`);
@@ -538,26 +583,17 @@ export default class Activator extends BaseActivator {
 
   onStop(context) {
     if (this._managedContainers) {
-        console.log(`Atomic Orchestrator: Stopping bundle. Purging ${this._managedContainers.size} active flow containers...`);
-        this._managedContainers.forEach(container => {
-            try {
-                if (container && (container.id || container.className)) {
-                    container.innerHTML = "";
-                }
-            } catch (_e) { /* ignore */ }
-        });
-        
-        // --- Broad Spectrum Purge: Ensure main stages are blank ---
-        const STAGES = ["#flow-stage", "#flow-root", ".atomic-root-container", ".flow-mount-point"];
-        STAGES.forEach(sel => {
-            try {
-                const el = document.querySelector(sel);
-                if (el) el.innerHTML = "";
-            } catch (_e) { /* ignore */ }
-        });
-
-        this._managedContainers.clear();
+      this._managedContainers.forEach(container => {
+        try { if (container) container.innerHTML = ""; } catch (_e) { /* ignore */ }
+      });
+      this._managedContainers.clear();
     }
+    
+    // Purge staging areas
+    ["#flow-stage", "#flow-root", ".atomic-root-container"].forEach(sel => {
+        try { const el = document.querySelector(sel); if (el) el.innerHTML = ""; } catch (_e) { /* ignore */ }
+    });
+
     console.log("Atomic Orchestrator: Stopped.");
     super.onStop(context);
   }

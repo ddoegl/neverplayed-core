@@ -269,8 +269,16 @@ export default class Activator extends CoreAlpineActivator {
 
     this.registryService = {
         addBlueprint: (spec) => {
+            if (!spec || !spec.id) return;
+            console.log(`DO Registry: Ingesting blueprint [${spec.id}] (Source: ${spec._isBundleBlueprint ? 'Bundle' : 'Persisted'})`);
             const idx = this.systemSpecs.findIndex(s => s.id === spec.id);
-            if (idx !== -1) this.systemSpecs[idx] = spec; else this.systemSpecs.push(spec);
+            if (idx !== -1) {
+                console.log(`DO Registry: Updating existing blueprint [${spec.id}]`);
+                this.systemSpecs[idx] = spec;
+            } else {
+                console.log(`DO Registry: Adding NEW blueprint [${spec.id}]`);
+                this.systemSpecs.push(spec);
+            }
             this.sync();
         },
         getStrategy: (id) => this.runtimeStrategies.get(id),
@@ -309,12 +317,33 @@ export default class Activator extends CoreAlpineActivator {
         },
         registerActionHandler: (handler) => this.actionHandlers.push(handler),
         handleAction: (action, instance) => this.state.handleAction(action, instance),
-        setRealmContext: (_realmId, domainObjects = null) => {
+        setRealmContext: (realmId, domainObjects = null) => {
+            console.log(`DO Registry: Setting Realm Context [${realmId}] with ${domainObjects?.length || 0} object filters.`);
+            this._activeRealmId = realmId;
             this._realmBlueprintIds = domainObjects ? domainObjects.map(d => d.id) : null;
             this.sync();
         }
     };
     context.registerService(DOMAIN_OBJECT_REGISTRY_SERVICE, this.registryService);
+
+    // 5. Diagnostic CLI Command
+    context.registerService(SHELL_COMMAND_SERVICE, {
+        name: 'do:list',
+        description: 'Verify internal Domain Object Registry state and realm filters',
+        execute: (_args, _ctx, log) => {
+            log(`Registry Diagnostics:`);
+            log(` - Total System Specs: ${this.systemSpecs.length}`);
+            log(` - Active Realm: ${this._activeRealmId || 'none'}`);
+            log(` - Realm Blueprint IDs: ${JSON.stringify(this._realmBlueprintIds || 'ALL')}`);
+            
+            const visible = this._realmBlueprintIds 
+                ? this.systemSpecs.filter(s => this._realmBlueprintIds.includes(s.id) || s._isPersisted || !s._isBundleBlueprint) 
+                : [...this.systemSpecs];
+            
+            log(` - Visible Blueprints (${visible.length}):`);
+            visible.forEach(s => log(`   - ${s.id} (Persisted: ${!!s._isPersisted}, Bundle: ${!!s._isBundleBlueprint})`));
+        }
+    });
 
     this.registryService.registerActionHandler({
         id: 'view',
@@ -414,7 +443,11 @@ export default class Activator extends CoreAlpineActivator {
 
   sync() {
     if (!this.state) return;
-    const finalBlueprints = this._realmBlueprintIds ? this.systemSpecs.filter(s => this._realmBlueprintIds.includes(s.id)) : [...this.systemSpecs];
+    
+    // Rule 7: Flexible Visibility - Merge Realm-mandated blueprints with Local/Cloud persisted ones
+    const finalBlueprints = this._realmBlueprintIds 
+        ? this.systemSpecs.filter(s => this._realmBlueprintIds.includes(s.id) || s._isPersisted || !s._isBundleBlueprint) 
+        : [...this.systemSpecs];
     const allActions = this._actionRegistry?.getActions() || [];
     const enrichedInstances = {};
     const instancesArray = [];

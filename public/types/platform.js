@@ -90,7 +90,7 @@ export const BUNDLE_TYPE_REGISTRY = {
 };
 
 export const NEVERPLAYED_PREFIX = "org.neverplayed.";
-export const ATOMIC_MARKER_HEADER = "X-Atomic-Component";
+export const ATOMIC_MARKER_HEADER = "X-Atomic-Bundle";
 
 // 9. Core Capabilities
 export const CAP_SYS = "sys:";

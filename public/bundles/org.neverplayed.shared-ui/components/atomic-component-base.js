@@ -14,12 +14,18 @@ export class AtomicComponentBase extends HTMLElement {
      * Standardized Hydration Lifecycle.
      */
     hydrate(spec, context, interpolator, resolver) {
+        // Rule 16: Zombie Guard - Clean up previous effects before re-binding
+        if (this._effectCleanup) {
+            this._effectCleanup();
+            this._effectCleanup = null;
+        }
+
         this._spec = spec;
         this._context = context;
         this._interpolator = interpolator || ((s) => s);
         this._resolver = resolver || ((s) => s);
 
-        // Auto-render when state changes
+        // Auto-render when state changes (Reactive Handover)
         if (globalThis.Alpine?.effect) {
             this._effectCleanup = globalThis.Alpine.effect(() => {
                 this.render();
