@@ -871,11 +871,62 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                     if (!part.options) part.options = [];
                     part.options.push({ label: `Option ${part.options.length + 1}`, value: `${part.options.length + 1}` });
                     this.saveToState();
+                    this.updatePreview();
                     renderOpts();
                 };
             }
             renderOpts();
             this.bindActionProperties(part, partFields);
+        }
+
+        if (part.kind === 'radio-input') {
+            const optsList = partFields.querySelector('#radio-opts-list');
+            const addOptBtn = partFields.querySelector('#add-radio-opt-btn');
+
+            const renderRadioOpts = () => {
+                if (!part.options) part.options = [];
+                optsList.innerHTML = part.options.map((opt, idx) => `
+                    <div class="flex gap-1 items-center">
+                        <sl-input value="${opt.label || ''}" class="radio-opt-label flex-1" size="small" placeholder="Label" data-idx="${idx}"></sl-input>
+                        <sl-input value="${opt.value || ''}" class="radio-opt-val w-16" size="small" placeholder="Val" data-idx="${idx}"></sl-input>
+                        <sl-button size="extra-small" variant="neutral" class="del-radio-opt-btn" outline circle data-idx="${idx}"><i class="fas fa-times"></i></sl-button>
+                    </div>
+                `).join('');
+
+                optsList.querySelectorAll('.radio-opt-label').forEach(el => {
+                    el.addEventListener('sl-input', (e) => {
+                        part.options[el.dataset.idx].label = e.target.value;
+                        this.saveToState();
+                        this.updatePreview();
+                    });
+                });
+                optsList.querySelectorAll('.radio-opt-val').forEach(el => {
+                    el.addEventListener('sl-input', (e) => {
+                        part.options[el.dataset.idx].value = e.target.value;
+                        this.saveToState();
+                        this.updatePreview();
+                    });
+                });
+                optsList.querySelectorAll('.del-radio-opt-btn').forEach(el => {
+                    el.onclick = () => {
+                        part.options.splice(parseInt(el.dataset.idx), 1);
+                        this.saveToState();
+                        this.updatePreview();
+                        renderRadioOpts();
+                    };
+                });
+            };
+
+            if (addOptBtn) {
+                addOptBtn.onclick = () => {
+                    if (!part.options) part.options = [];
+                    part.options.push({ label: `Option ${part.options.length + 1}`, value: `opt_${part.options.length + 1}` });
+                    this.saveToState();
+                    this.updatePreview();
+                    renderRadioOpts();
+                };
+            }
+            renderRadioOpts();
         }
 
         if (part.kind === 'command-button') {
