@@ -44,7 +44,8 @@ export class AlpineActivator extends BaseActivator {
             });
             this.logger?.debug(`[Alpine] Store '${name}' initialized.`);
         } else {
-            this.logger?.debug(`[Alpine] Store '${name}' already exists, preserving state.`);
+            this.logger?.debug(`[Alpine] Store '${name}' already exists, merging new logic...`);
+            Object.assign(Alpine.store(name), defaults);
         }
         return Alpine.store(name);
     }
@@ -187,6 +188,10 @@ export class CoreAlpineActivator extends CoreActivator {
     initStore(name, defaults) {
         if (!Alpine.store(name)) {
             Alpine.store(name, { ...defaults });
+            this.logger?.debug(`[Alpine] CoreStore '${name}' initialized.`);
+        } else {
+            this.logger?.debug(`[Alpine] CoreStore '${name}' already exists, merging new logic...`);
+            Object.assign(Alpine.store(name), defaults);
         }
         return Alpine.store(name);
     }

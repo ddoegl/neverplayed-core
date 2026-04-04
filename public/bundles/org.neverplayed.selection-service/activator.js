@@ -62,6 +62,77 @@ export default class Activator {
 
     context.registerService(SELECTION_SERVICE, state);
     console.log("SelectionService: Registered 🌌✨");
+
+    // --- State Contribution Pattern ---
+    context.trackService("(objectClass=org.neverplayed.global-state.ContributionService)", {
+      addingService: (ref) => {
+        const contributionSvc = context.getService(ref);
+        
+        const licenseGetters = {
+          currentLicense: {
+            get: function() {
+              if (typeof context.isValid === 'function' && !context.isValid()) return null;
+              const sel = context.getService(context.getServiceReference(SELECTION_SERVICE));
+              return sel?.getSelection('business')?.currentLicenseId || null;
+            },
+            configurable: true,
+            enumerable: true
+          },
+          activeLicense: {
+            get: function() {
+              if (typeof context.isValid === 'function' && !context.isValid()) return null;
+              const licenses = (this.parsedLicenses?.LICENSES || []);
+              const currentId = this.currentLicense;
+              if (!currentId) return null;
+              return licenses.find(l => String(l.id) === String(currentId));
+            },
+            configurable: true,
+            enumerable: true
+          },
+          persons: {
+            get: function() {
+              if (typeof context.isValid === 'function' && !context.isValid()) return [];
+              const ref = context.getServiceReference("org.neverplayed.PersonsService");
+              return ref ? context.getService(ref).getPersons() || [] : [];
+            },
+            configurable: true, enumerable: true
+          },
+          companies: {
+            get: function() {
+              if (typeof context.isValid === 'function' && !context.isValid()) return [];
+              const ref = context.getServiceReference("org.neverplayed.CompaniesService");
+              return ref ? context.getService(ref).getCompanies() || [] : [];
+            },
+            configurable: true, enumerable: true
+          },
+          allAvailableCustomers: {
+            get: function() {
+              return [
+                ...this.companies.map(c => ({ id: c.id, name: c.name, type: "Company" })),
+                ...this.persons.map(p => ({ id: p.id, name: `${p.firstname || ''} ${p.lastname || ''}`.trim(), type: "Person" }))
+              ];
+            },
+            configurable: true, enumerable: true
+          }
+        };
+
+        console.log("SelectionService: Contributing domain getters to platform stores...");
+        contributionSvc.contribute('backoffice', licenseGetters);
+        
+        // --- Business Portal Handshake ---
+        contributionSvc.contribute('business', {
+          ...licenseGetters,
+          parsedLicenses: {
+            get: function() {
+              return globalThis.backofficeState?.parsedLicenses || { LICENSES: [] };
+            },
+            configurable: true, enumerable: true
+          }
+        });
+        
+        return contributionSvc;
+      }
+    }).open();
   }
 
   async stop(_context) {}

@@ -1,5 +1,6 @@
 {
     "id": "org.neverplayed.realm.core",
+    "startupFlow": "org.neverplayed.shell.cli",
     "domainObjects": [
         { "id": "about-do-registry" },
         { "id": "sample-do" },

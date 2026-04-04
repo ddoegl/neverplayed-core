@@ -11,7 +11,8 @@ import {
     REALM_CHANGED_TOPIC, 
     REALM_REGISTERED_TOPIC, 
     REALM_UNREGISTERED_TOPIC,
-    AUTH_SHIELD_SERVICE
+    AUTH_SHIELD_SERVICE,
+    FLOW_SERVICE
 } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import { BaseActivator } from "osgi-base";
@@ -37,6 +38,9 @@ export default class Activator extends BaseActivator {
     _lock = Promise.resolve(); // Orchestration lock
     _bootReadyPromise = new Promise(r => this._bootReadyResolve = r);
     _registrationBuffer = []; // Buffer for early discovery events (Step 1)
+    _flowService = null;
+    _flowTracker = null;
+    _flows = new Map(); // Store discovered flows: id -> service
 
     onStart(context) {
         // 1. Initialize Logger
@@ -148,6 +152,42 @@ export default class Activator extends BaseActivator {
         // Final attempt to flush if services were already ready
         this._flushRegistrationBuffer();
 
+        // 1.8 Track & Sync FLOW_SERVICE (Startup Policy Manager)
+        this._flowTracker = context.trackService(`(objectClass=${FLOW_SERVICE})`, {
+            addingService: (ref) => {
+                const svc = context.getService(ref);
+                const id = ref.getProperty("flow.id") || svc.id;
+                if (id) this._flows.set(id, svc);
+                
+                // Synthesize a high-level Flow Manager if unavailable
+                if (!this._flowService) {
+                    this._flowService = {
+                        launch: async (flowId, params = {}) => {
+                                const targetFlow = this._flows.get(flowId);
+                                if (targetFlow) {
+                                    const containerId = params.containerId || 'flow-active-stage';
+                                    const el = await this._waitForElement(containerId);
+                                    if (el) {
+                                        this.logger?.info(`[RealmManager] Policy Launch: ${flowId} -> #${containerId}`);
+                                        await targetFlow.launch(el, params);
+                                    } else {
+                                        this.logger?.warn(`[RealmManager] Policy Launch Failed: #${containerId} not found after timeout.`);
+                                    }
+                                } else {
+                                    this.logger?.warn(`[RealmManager] Policy Launch Delayed: Flow ${flowId} not (yet) in registry.`);
+                                }
+                        }
+                    };
+                }
+                return svc;
+            },
+            removedService: (ref) => {
+                const id = ref.getProperty("flow.id");
+                if (id) this._flows.delete(id);
+            }
+        });
+        this._flowTracker.open();
+
         this._registerCLI(context);
 
         // Pre-initialize promises to prevent waitReady race (Step 1)
@@ -196,6 +236,7 @@ export default class Activator extends BaseActivator {
         if (this._eventTracker) this._eventTracker.close();
         if (this._factoryTracker) this._factoryTracker.close();
         if (this._authTracker) this._authTracker.close();
+        if (this._flowTracker) this._flowTracker.close();
         if (this.logger) this.logger.info("Realm Manager: Stopped.");
     }
 
@@ -907,6 +948,14 @@ export default class Activator extends BaseActivator {
             pt.milestone = 'COMPLETE';
             if (!pt.auto) return { status: 'COMPLETE', message: `Infrastructure transition to '${pt.id}' finished.` };
             
+            // 3. Policy-Driven Startup Flow
+            if (pt.manifest.startupFlow && this._flowService) {
+                this.logger?.info(`[RealmManager] Triggering Startup Flow Policy: ${pt.manifest.startupFlow}`);
+                setTimeout(() => {
+                    this._flowService.launch(pt.manifest.startupFlow, { containerId: 'flow-active-stage' });
+                }, 150); // Delay allows Shell Host to bake its initial stage
+            }
+
             this._pendingTransition = null;
             return { status: 'COMPLETE', message: `Universe '${pt.id}' is now active 🌌` };
         }
@@ -933,5 +982,15 @@ export default class Activator extends BaseActivator {
         }
         
         return hierarchy;
+    }
+
+    async _waitForElement(id, timeout = 2500) {
+        const start = Date.now();
+        while (Date.now() - start < timeout) {
+            const el = document.getElementById(id);
+            if (el) return el;
+            await new Promise(r => setTimeout(r, 75));
+        }
+        return null;
     }
 }

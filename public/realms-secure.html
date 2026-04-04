@@ -2,6 +2,7 @@
 <html>
   <head>
     <title>Never Played - Secure Bridge</title>
+    <link rel="icon" type="image/png" href="favicon.png">
     <script type="importmap">
       {
         "imports": {
@@ -28,18 +29,33 @@
         }
       }
     </script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/themes/light.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/shoelace-autoloader.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/themes/light.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/shoelace-autoloader.js"
+    ></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     />
     <style>
-      [x-cloak] { display: none !important; }
-      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-      .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+      [x-cloak] {
+        display: none !important;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 10px;
+      }
     </style>
   </head>
 
@@ -61,16 +77,23 @@
 
       <!-- Main Content -->
       <main class="flex-1 overflow-y-auto relative bg-slate-50">
-        <div id="shell-host-root" x-show="kernelReady" class="h-full w-full"></div>
+        <div id="shell-host-root" x-show="kernelReady" class="h-full w-full">
+        </div>
 
         <!-- Kernel Boot Progress -->
-        <div x-show="!kernelReady" class="h-full flex flex-col items-center justify-center space-y-4">
+        <div
+          x-show="!kernelReady"
+          class="h-full flex flex-col items-center justify-center space-y-4"
+        >
           <i class="fas fa-shield-alt fa-spin text-blue-400 text-2xl"></i>
-          <span class="text-slate-400 text-[10px] font-mono uppercase tracking-widest text-center" x-text="bootStatus"></span>
+          <span
+            class="text-slate-400 text-[10px] font-mono uppercase tracking-widest text-center"
+            x-text="bootStatus"
+          ></span>
           <template x-if="error">
             <div class="text-red-500 text-xs font-mono mt-4 text-center px-10">
-                <p class="font-bold uppercase tracking-wider">Kernel Panic</p>
-                <p x-text="error"></p>
+              <p class="font-bold uppercase tracking-wider">Kernel Panic</p>
+              <p x-text="error"></p>
             </div>
           </template>
         </div>
@@ -102,23 +125,37 @@
             globalThis.pandinoContext = context;
 
             // 1. Load Event Admin
-            const eaBundle = await context.installBundle("https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json");
+            const eaBundle = await context.installBundle(
+              "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
+            );
             if (eaBundle.getState() < 32) await eaBundle.start();
 
             // 2. Load Orchestrator & UI Bridge
             this.bootStatus = "Loading Orchestration Layer...";
-            const rmBundle = await context.installBundle("./bundles/org.neverplayed.realm-manager/manifest.json");
+            const rmBundle = await context.installBundle(
+              "./bundles/org.neverplayed.realm-manager/manifest.json",
+            );
             if (rmBundle.getState() < 32) await rmBundle.start();
-            
-            const headerBundle = await context.installBundle("./bundles/org.neverplayed.shell-header/manifest.json");
-            if (headerBundle.getState() < 32) await headerBundle.start();
+
+            const headerBundle = await context.installBundle(
+              "./bundles/org.neverplayed.shell-header/manifest.json",
+            );
+            if (headerBundle.getState() < 32) {
+              await headerBundle.start();
+            }
 
             this.bootStatus = "Igniting Diagnostics Layer...";
-            const inspectorBundle = await context.installBundle("./bundles/org.neverplayed.alpine-inspector/manifest.json");
-            if (inspectorBundle.getState() < 32) await inspectorBundle.start();
+            const inspectorBundle = await context.installBundle(
+              "./bundles/org.neverplayed.alpine-inspector/manifest.json",
+            );
+            if (inspectorBundle.getState() < 32) {
+              await inspectorBundle.start();
+            }
 
             // 3. Handshake
-            const rmRef = context.getServiceReference(REALM_MANAGER_SERVICE);
+            const rmRef = context.getServiceReference(
+              REALM_MANAGER_SERVICE,
+            );
             if (rmRef) {
               await context.getService(rmRef).waitReady();
             }
@@ -128,7 +165,7 @@
           } catch (err) {
             this.error = err.message;
           }
-        }
+        },
       }));
 
       Alpine.start();

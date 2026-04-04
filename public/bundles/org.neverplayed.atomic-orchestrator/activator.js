@@ -546,6 +546,16 @@ export default class Activator extends BaseActivator {
                 }
             } catch (_e) { /* ignore */ }
         });
+        
+        // --- Broad Spectrum Purge: Ensure main stages are blank ---
+        const STAGES = ["#flow-stage", "#flow-root", ".atomic-root-container", ".flow-mount-point"];
+        STAGES.forEach(sel => {
+            try {
+                const el = document.querySelector(sel);
+                if (el) el.innerHTML = "";
+            } catch (_e) { /* ignore */ }
+        });
+
         this._managedContainers.clear();
     }
     console.log("Atomic Orchestrator: Stopped.");

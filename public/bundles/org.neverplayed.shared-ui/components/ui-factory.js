@@ -54,6 +54,7 @@ class UIFactory extends HTMLElement {
         this._instanceId = null;
         this._instanceTracker = null;
         this._isHydrating = false;
+        this._lastFingerprint = null; // Fingerprint to prevent recursion
         this._logger = null; 
         this.logger.info(`UIFactory [${this._id}]: Instance created`);
     }
@@ -192,12 +193,23 @@ class UIFactory extends HTMLElement {
         if (instance.history) this._state.history = instance.history || [];
         this._state._hydrated = true;
         
+        // Sync fingerprint after hydration to block redundant loopback
+        const rawValues = globalThis.Alpine?.raw ? globalThis.Alpine.raw(this._state.uifValues) : { ...this._state.uifValues };
+        const capturedValues = {};
+        const BLACKLIST = ['activeLicense', 'activeLicenseStatus', 'fellowsData', 'companies', 'persons', 'currentUser', 'currentMembers', 'currentFellows'];
+        Object.keys(rawValues).forEach(key => { if (!BLACKLIST.includes(key)) capturedValues[key] = rawValues[key]; });
+        
+        this._lastFingerprint = JSON.stringify({
+            step: this._state.uifStep,
+            props: capturedValues,
+            history: (this._state.history || [])
+        });
+
         this.logger.info(`UIFactory [${this._id}]: Hydration complete. Keys: ${keysBefore} -> ${Object.keys(this._state.uifValues).length}. Rerunning guards...`);
         this.resolveGuards(this._state);
         
         // Finalize hydration in next tick to allow loop to settle
         globalThis.Alpine?.nextTick(() => { 
-             this._state.uifValues = { ...this._state.uifValues }; 
              this._isHydrating = false;
         });
     }
@@ -652,73 +664,82 @@ class UIFactory extends HTMLElement {
 
         // --- Live Portals Sync (Dual-Portal Aware) ---
         const syncEffect = globalThis.Alpine.effect(() => {
-            if (this._isDisconnected || this._isHydrating) return;
-            if (this._context && typeof this._context.isValid === 'function' && !this._context.isValid()) return;
-            const state = this._state.uifValues;
-            const globalHostData = globalThis.backofficeState || globalThis.businessPortalState || {};
-            const hActive = globalHostData.activeLicense || null;
-            const hFellows = globalHostData.fellowsData || null;
-            const hCompanies = globalHostData.companies || [];
-            const hPersons = globalHostData.persons || [];
-            const rCurrentUser = globalHostData.currentUser || globalHostData.currentUser || this._getService(SESSION_SERVICE)?.currentUser || {};
+            try {
+                if (this._isDisconnected || this._isHydrating) return;
+                if (this._context && typeof this._context.isValid === 'function' && !this._context.isValid()) return;
+                
+                const state = this._state.uifValues;
+                const globalHostData = globalThis.backofficeState || globalThis.businessPortalState || {};
+                
+                // Fail-safe: if no platform state is available, skip sync
+                if (!globalHostData || Object.keys(globalHostData).length === 0) return;
 
-            if (hActive && hActive.id && state.activeLicense?.id !== hActive.id) {
-                this.logger.info(`UIFactory [${this._id}]: Syncing activeLicense (New ID: ${hActive.id})`);
-                state.activeLicense = hActive;
-            }
-            if (hActive && hActive.id && state.activeLicenseStatus !== hActive.status) {
-                this.logger.info(`UIFactory [${this._id}]: Syncing activeLicenseStatus (New Status: ${hActive.status})`);
-                state.activeLicenseStatus = hActive.status;
-            }
-            if (hFellows && state.fellowsData !== hFellows) {
-                state.fellowsData = hFellows;
-            }
-            // Use length + first ID + second ID as a simple fingerprint for change
-            const companiesFingerprint = (hCompanies.length || 0) + (hCompanies[0]?.id || '') + (hCompanies[1]?.id || '');
-            if (state._companiesFingerprint !== companiesFingerprint) {
-                state.companies = hCompanies;
-                state._companiesFingerprint = companiesFingerprint;
-            }
-            const personsFingerprint = (hPersons.length || 0) + (hPersons[0]?.id || '') + (hPersons[1]?.id || '');
-            if (state._personsFingerprint !== personsFingerprint) {
-                state.persons = hPersons;
-                state._personsFingerprint = personsFingerprint;
-            }
-            if (rCurrentUser && rCurrentUser.id && state.currentUser?.id !== rCurrentUser.id) {
-                state.currentUser = rCurrentUser;
-            }
+                const hActive = globalHostData.activeLicense || null;
+                const hFellows = globalHostData.fellowsData || null;
+                const hCompanies = globalHostData.companies || [];
+                const hPersons = globalHostData.persons || [];
+                const rCurrentUser = globalHostData.currentUser || globalHostData.currentUser || this._getService(SESSION_SERVICE)?.currentUser || {};
 
-            // 1. Derive Members from current License Customers (Reactive)
-            const customers = (state.activeLicense?.customers || []);
-            const newMembers = customers.map(id => {
-                const entity = (state.companies || []).find(c => String(c.id) === String(id)) || 
-                               (state.persons || []).find(p => String(p.id) === String(id));
-                return {
-                    id: String(id),
-                    displayName: entity ? (entity.name || `${entity.firstname || ''} ${entity.lastname || ''}`.trim()) : id
-                };
-            });
-            if (JSON.stringify(state.currentMembers) !== JSON.stringify(newMembers)) {
-                state.currentMembers = newMembers;
-            }
+                if (hActive && hActive.id && state.activeLicense?.id !== hActive.id) {
+                    this.logger.info(`UIFactory [${this._id}]: Syncing activeLicense (New ID: ${hActive.id})`);
+                    state.activeLicense = hActive;
+                }
+                if (hActive && hActive.id && state.activeLicenseStatus !== hActive.status) {
+                    this.logger.info(`UIFactory [${this._id}]: Syncing activeLicenseStatus (New Status: ${hActive.status})`);
+                    state.activeLicenseStatus = hActive.status;
+                }
+                if (hFellows && state.fellowsData !== hFellows) {
+                    state.fellowsData = hFellows;
+                }
+                // Use length + first ID + second ID as a simple fingerprint for change
+                const companiesFingerprint = (hCompanies.length || 0) + (hCompanies[0]?.id || '') + (hCompanies[1]?.id || '');
+                if (state._companiesFingerprint !== companiesFingerprint) {
+                    state.companies = hCompanies;
+                    state._companiesFingerprint = companiesFingerprint;
+                }
+                const personsFingerprint = (hPersons.length || 0) + (hPersons[0]?.id || '') + (hPersons[1]?.id || '');
+                if (state._personsFingerprint !== personsFingerprint) {
+                    state.persons = hPersons;
+                    state._personsFingerprint = personsFingerprint;
+                }
+                if (rCurrentUser && rCurrentUser.id && state.currentUser?.id !== rCurrentUser.id) {
+                    state.currentUser = rCurrentUser;
+                }
 
-            // 2. Derive Fellows from selected Member (Reactive)
-            const selectedMemberId = state.selectedMember || state.selectedMemberId;
-            if (selectedMemberId) {
-                const allFellows = state.fellowsData?.FELLOWS || [];
-                const filteredFellows = allFellows.filter(f => String(f.fellowOf) === String(selectedMemberId));
-                const newFellows = filteredFellows.map(f => {
-                    const person = (state.persons || []).find(p => String(p.id) === String(f.personId));
+                // 1. Derive Members from current License Customers (Reactive)
+                const customers = (state.activeLicense?.customers || []);
+                const newMembers = customers.map(id => {
+                    const entity = (state.companies || []).find(c => String(c.id) === String(id)) || 
+                                   (state.persons || []).find(p => String(p.id) === String(id));
                     return {
-                        id: f.personId,
-                        displayName: person ? `${person.firstname || ''} ${person.lastname || ''}`.trim() : f.personId
+                        id: String(id),
+                        displayName: entity ? (entity.name || `${entity.firstname || ''} ${entity.lastname || ''}`.trim()) : id
                     };
                 });
-                if (JSON.stringify(state.currentFellows) !== JSON.stringify(newFellows)) {
-                    state.currentFellows = newFellows;
+                if (JSON.stringify(state.currentMembers) !== JSON.stringify(newMembers)) {
+                    state.currentMembers = newMembers;
                 }
-            } else {
-                state.currentFellows = [];
+
+                // 2. Derive Fellows from selected Member (Reactive)
+                const selectedMemberId = state.selectedMember || state.selectedMemberId;
+                if (selectedMemberId) {
+                    const allFellows = state.fellowsData?.FELLOWS || [];
+                    const filteredFellows = allFellows.filter(f => String(f.fellowOf) === String(selectedMemberId));
+                    const newFellows = filteredFellows.map(f => {
+                        const person = (state.persons || []).find(p => String(p.id) === String(f.personId));
+                        return {
+                            id: f.personId,
+                            displayName: person ? `${person.firstname || ''} ${person.lastname || ''}`.trim() : f.personId
+                        };
+                    });
+                    if (JSON.stringify(state.currentFellows) !== JSON.stringify(newFellows)) {
+                        state.currentFellows = newFellows;
+                    }
+                } else {
+                    state.currentFellows = [];
+                }
+            } catch (_e) {
+                // Fail-Silent: The platform state is likely tearing down
             }
         });
         this._effects.push(syncEffect);
@@ -743,7 +764,7 @@ class UIFactory extends HTMLElement {
         const spec = this._spec || {};
         const strategyId = spec.domainObject?.strategyId || (spec.ui || spec).domainObject?.strategyId || "LOCAL_STRATEGY";
 
-        // --- Improved Capture Engine: Grab the entire property bag but exclude synced global state ---
+        // --- Improved Capture Engine ---
         const BLACKLIST = [
             'activeLicense', 'activeLicenseStatus', 'fellowsData', 
             'companies', '_companiesFingerprint', 'persons', '_personsFingerprint', 
@@ -759,8 +780,15 @@ class UIFactory extends HTMLElement {
             }
         });
 
+        // 1. Change Guard: Deep-Fingerprint check to prevent Loop Recursion
+        const currentFingerprint = JSON.stringify({
+            step: state.uifStep,
+            props: capturedValues,
+            history: (state.history || [])
+        });
+        if (currentFingerprint === this._lastFingerprint) return;
+
         // Safety: Avoid overwriting with empty properties during initial boot
-        // We MUST have successfully hydrated from the service at least once before persisting (if instanceId is present)
         if (this._instanceId && !state._hydrated) {
             this.logger.debug(`UIFactory [${this._id}]: Persistence deferred. Waiting for initial hydration.`);
             return;
@@ -785,6 +813,7 @@ class UIFactory extends HTMLElement {
                 properties: capturedValues,
                 history: globalThis.Alpine?.raw ? globalThis.Alpine.raw(state.history || []) : [...(state.history || [])]
             });
+            this._lastFingerprint = currentFingerprint;
         }
     }
 

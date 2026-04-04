@@ -1,5 +1,5 @@
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
-import { PERSONS_SERVICE, COMPANIES_SERVICE, SELECTION_SERVICE, PLEXUS_ENGINE_SERVICE, LICENSES_PID, TENANTS_PID, BO_SESSION_PID, BUSINESS_SESSION_PID, RETAIL_SESSION_PID } from "core-types";
+import { LICENSES_PID, TENANTS_PID, BO_SESSION_PID, BUSINESS_SESSION_PID, RETAIL_SESSION_PID } from "core-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -75,71 +75,6 @@ export default class Activator {
             selectedTopicStrategyIndex: 0,
 
             get host() { return this; },
-            get currentLicense() {
-                const ref = context.getServiceReference(SELECTION_SERVICE);
-                const sel = ref ? context.getService(ref).getSelection('business') : null;
-                return sel?.currentLicenseId || null;
-            },
-            get activeLicense() {
-                const licenses = (sharedData.parsedLicenses?.LICENSES || []);
-                const currentId = this.currentLicense;
-                if (!currentId) return null;
-                return licenses.find(l => String(l.id) === String(currentId));
-            },
-            get persons() {
-                if (sharedData.persons.length) return sharedData.persons;
-                const ref = context.getServiceReference(PERSONS_SERVICE);
-                const list = ref ? context.getService(ref).getPersons() || [] : [];
-                if (list.length) sharedData.persons = list;
-                return list;
-            },
-            get companies() {
-                if (sharedData.companies.length) return sharedData.companies;
-                const ref = context.getServiceReference(COMPANIES_SERVICE);
-                const list = ref ? context.getService(ref).getCompanies() || [] : [];
-                if (list.length) sharedData.companies = list;
-                return list;
-            },
-            isCompany(id) {
-                return this.companies.some(c => String(c.id) === String(id));
-            },
-            get spaCustomers() {
-                return [
-                    ...this.companies.map(c => ({ id: c.id, name: c.name, type: "Company" })),
-                    ...this.persons.map(p => ({ id: p.id, name: `${p.firstname} ${p.lastname}`, type: "Person" }))
-                ];
-            },
-            get allAvailableCustomers() {
-                return this.spaCustomers;
-            },
-
-            get availableFeatures() {
-                if (!this.parsedFeatures || typeof this.parsedFeatures !== 'object') return [];
-                try {
-                    return Object.keys(this.parsedFeatures).sort();
-                } catch (_e) {
-                    return [];
-                }
-            },
-
-            get availableRoles() {
-                const roles = (this.parsedBusinessFunctions || []).map(f => ({ 
-                    id: f.id, 
-                    label: f.label || f.id, 
-                    type: f.type || 'BF' 
-                }));
-                return roles.sort((a,b) => a.id.localeCompare(b.id));
-            },
-
-            get availablePrimitives() {
-                const ref = context.getServiceReference(PLEXUS_ENGINE_SERVICE);
-                if (ref) {
-                    const engine = context.getService(ref);
-                    return engine.getMatcherEngine?.().getPrimitives() || [];
-                }
-                return ["matchAlways", "matchRole", "matchFeature", "matchProperty"];
-            },
-
             init() {
                 Alpine.effect(() => {
                     const toPersist = {
@@ -162,6 +97,20 @@ export default class Activator {
         await state.init();
         console.log("Global State Bundle: Initialized backofficeState (Host only).");
 
+        // --- Contribution Service ---
+        const contributionSvc = {
+            contribute: (portalId, definitions) => {
+                const target = portalId === 'backoffice' ? globalThis.backofficeState :
+                               portalId === 'business' ? globalThis.businessPortalState :
+                               portalId === 'retail' ? globalThis.retailPortalState : null;
+                if (!target) return;
+                
+                console.log(`Global State [${portalId}]: Receiving contribution:`, Object.keys(definitions));
+                Object.defineProperties(target, definitions);
+            }
+        };
+        context.registerService("org.neverplayed.global-state.ContributionService", contributionSvc);
+
         // --- Business Portal State ---
         if (!globalThis.businessPortalState) {
             const businessSession = pm.load(BUSINESS_SESSION_PID) || {};
@@ -173,17 +122,6 @@ export default class Activator {
                 session: null,
                 renderedHTML: "",
                 pluginOverlays: [],
-
-                get currentLicense() {
-                    const ref = context.getServiceReference(SELECTION_SERVICE);
-                    const sel = ref ? context.getService(ref).getSelection('business') : null;
-                    return sel?.currentLicenseId || null;
-                },
-                get activeLicense() {
-                    return state.activeLicense; // Point to backofficeState's getter (shared result)
-                },
-                get persons() { return state.persons; },
-                get companies() { return state.companies; },
                 
                 init() {
                     Alpine.effect(() => {
@@ -220,5 +158,10 @@ export default class Activator {
         }
     }
 
-    async stop(_context) {}
+    stop(_context) {
+        console.log("Global State Bundle: Stopping. Nullifying global state stores.");
+        globalThis.backofficeState = null;
+        globalThis.businessPortalState = null;
+        globalThis.retailPortalState = null;
+    }
 }
