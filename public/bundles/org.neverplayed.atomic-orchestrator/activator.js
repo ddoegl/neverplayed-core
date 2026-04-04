@@ -22,6 +22,7 @@ export default class Activator extends BaseActivator {
       super();
       this.registrations = {};
       this.specs = {}; // Store all specs for re-registration after reset
+      this._managedContainers = new Set();
   }
 
   async onStart(context) {
@@ -305,11 +306,30 @@ export default class Activator extends BaseActivator {
             launch: (container, params = {}) => {
                 const factoryRef = context.getServiceReference(UI_FACTORY_SERVICE);
                 const factorySvc = factoryRef ? context.getService(factoryRef) : null;
+
                 if (factorySvc) {
-                    const el = factorySvc.create(spec, params);
+                    const instanceId = params.instanceId;
+                    const el = factorySvc.create(spec, { ...params, instanceId });
+                    
+                    // 💾 Persistence Bridge: Capture state changes from UIFactory
+                    el.addEventListener('uif-persist', (e) => {
+                        const { instanceId, properties, currentStep } = e.detail;
+                        const registryRef = context.getServiceReference(DOMAIN_OBJECT_REGISTRY_SERVICE);
+                        const registrySvc = registryRef ? context.getService(registryRef) : null;
+                        
+                        if (registrySvc) {
+                            const instance = registrySvc.getInstance(instanceId);
+                            if (instance) {
+                                // Update properties and currentStep explicitly
+                                instance.properties = { ...instance.properties, ...properties };
+                                instance.currentStep = currentStep;
+                                registrySvc.addInstance(instance);
+                            }
+                        }
+                    });
+
                     container.innerHTML = "";
                     container.appendChild(el);
-                    if (el.render) el.render();
                 } else {
                     container.innerHTML = `<div class="p-4 text-red-500">UI Factory service not available.</div>`;
                 }
@@ -333,9 +353,11 @@ export default class Activator extends BaseActivator {
                 const factorySvc = factoryRef ? context.getService(factoryRef) : null;
                 if (factorySvc) {
                     const el = factorySvc.create(spec, params);
-                    container.innerHTML = "";
-                    container.appendChild(el);
-                    if (el.render) el.render();
+                    if (container) {
+                        this._managedContainers.add(container);
+                        container.innerHTML = "";
+                        container.appendChild(el);
+                    }
                 }
             }
         }, {
@@ -388,22 +410,24 @@ export default class Activator extends BaseActivator {
                            match: (inst) => inst.blueprintId === id || inst.id === id, // Legacy support just in case
                            execute: (_inst, host) => {
                                console.log(`Atomic Orchestrator: [EXECUTE] Launching extension for ${id} (Instance: ${_inst.id})`);
-
-                               if (host && host.loadStep) {
-                                   const hostName = host === globalThis.backofficeState ? "Backoffice" : "Business Portal";
-                                   console.log(`Atomic Orchestrator: Navigating to ${id} via active shell: ${hostName}`);
-                                   host.loadStep(id, { instanceId: _inst.id });
-                                } else {
-                                    console.error("Atomic Orchestrator: [ERROR] Context missing in execute(). Host provided:", host ? typeof host : "undefined/null");
-                                    if (!host) {
-                                        console.warn("Atomic Orchestrator: [RECOVERY] Attempting fallback to DOM detection...");
-                                        const fallback = document.getElementById("backoffice-root-container") ? globalThis.backofficeState : globalThis.businessPortalState;
-                                        if (fallback && fallback.loadStep) {
-                                            console.log("Atomic Orchestrator: [RECOVERY] Navigating via fallback host:", fallback === globalThis.backofficeState ? "Backoffice" : "Business Portal");
-                                            fallback.loadStep(id, { instanceId: _inst.id });
-                                        }
-                                    }
-                                }
+                               
+                               if (registry) {
+                                   if (host && host.loadStep) {
+                                       const hostName = host === globalThis.backofficeState ? "Backoffice" : "Business Portal";
+                                       console.log(`Atomic Orchestrator: Navigating to ${id} via active shell: ${hostName}`);
+                                       host.loadStep(id, { instanceId: _inst.id });
+                                   } else {
+                                       console.error("Atomic Orchestrator: [ERROR] Context missing in execute(). Host provided:", host ? typeof host : "undefined/null");
+                                       if (!host) {
+                                           console.warn("Atomic Orchestrator: [RECOVERY] Attempting fallback to DOM detection...");
+                                           const fallback = document.getElementById("backoffice-root-container") ? globalThis.backofficeState : globalThis.businessPortalState;
+                                           if (fallback && fallback.loadStep) {
+                                               console.log("Atomic Orchestrator: [RECOVERY] Navigating via fallback host:", fallback === globalThis.backofficeState ? "Backoffice" : "Business Portal");
+                                               fallback.loadStep(id, { instanceId: _inst.id });
+                                           }
+                                       }
+                                   }
+                               }
                            }
                        });
                    } else {
@@ -512,7 +536,19 @@ export default class Activator extends BaseActivator {
     console.log(`Atomic Orchestrator: Successfully registered all components for ${bsn} (${id})`);
   }
 
-  stop(_context) {
+  onStop(context) {
+    if (this._managedContainers) {
+        console.log(`Atomic Orchestrator: Stopping bundle. Purging ${this._managedContainers.size} active flow containers...`);
+        this._managedContainers.forEach(container => {
+            try {
+                if (container && (container.id || container.className)) {
+                    container.innerHTML = "";
+                }
+            } catch (_e) { /* ignore */ }
+        });
+        this._managedContainers.clear();
+    }
     console.log("Atomic Orchestrator: Stopped.");
+    super.onStop(context);
   }
 }

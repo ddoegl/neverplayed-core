@@ -1,82 +1,245 @@
 import { 
     YAML_SERVICE, 
-    BO_EXTENSION_SERVICE as _BO_EXTENSION_SERVICE, 
     DOMAIN_OBJECT_REGISTRY_SERVICE, 
-    LIMES_SERVICE as _LIMES_SERVICE, 
-    EVALUATOR_SERVICE,
+    DOMAIN_OBJECT_INSTANCE_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
     DO_INSTANCES_PID,
     FLOW_SERVICE,
     SESSION_SERVICE,
+    SHELL_COMMAND_SERVICE,
+    ACTION_REGISTRY_SERVICE,
+    ACTION_SERVICE,
+    PERSISTENCE_MANAGER_SERVICE,
     YAML_EDITOR_SERVICE as _YAML_EDITOR_SERVICE,
-    LOG_SERVICE as _LOG_SERVICE,
-    CONFIG_ADMIN_SERVICE as _CONFIG_ADMIN_SERVICE
+    LOG_SERVICE as _LOG_SERVICE
 } from "core-types";
 import { CoreAlpineActivator } from "alpine-base";
-import { INTERFACE_KEY as _PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator extends CoreAlpineActivator {
   constructor() {
     super();
+    this._instances = new Map();
     this.runtimeStrategies = new Map();
     this.actionHandlers = [];
     this.systemSpecs = [];
+    this._registrations = new Map();
     this._realmBlueprintIds = null;
+    this._actionRegistry = null;
+    this._pm = null;
+    this._pmTracker = null;
   }
 
-  onCoreStart(context) {
+  async onCoreStart(context) {
     const pm = this.persistence;
     const logger = this.logger;
-    
-    // 1. Setup reactive store as 'host' for templates
-    const host = this.initStore('do_registry', {
+
+    // 1. Initialize Store as 'state' to avoid base class collision
+    this.state = this.initStore('do_registry', {
         domainObjectSpecs: [],
         parsedDOStrategies: {},
         parsedDOInstances: {},
-        showAllDOs: false,
+        showAllDOs: pm.load('do:show-all') === true,
         visualEditorData: null,
         currentDOs: [],
+        sessionAvailable: false,
+        loadingData: true,
         
-        isRegistryAdmin() {
-            const session = context.getService(context.getServiceReference(SESSION_SERVICE));
-            const user = session?.currentUser;
-            if (!user) return false;
-            
-            // 1. Check Global Attributes (Identity Level)
-            const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
-            const attrs = Array.isArray(user.attributes) ? user.attributes : Object.keys(user.attributes || {}).filter(k => !!user.attributes[k]);
-            
-            // 2. Check Scoped Attributes (Context Level - Injected by RealmManager)
-            const scopedAttrs = session.scopedUsers?.["global"]?.attributes || {};
-            const hasScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"];
-
-            const admins = ['neverplayed-admin', 'realm-admin'];
-            const isIdentityAdmin = admins.some(r => caps.includes(r) || attrs.includes(r));
-            
-            return isIdentityAdmin || hasScopedAdmin || ['dd', 'system'].includes(user.id) || user.email === 'daniel.doegl@doegl.info';
+        isRegistryAdmin: () => {
+            if (!this._session) return false;
+            try {
+                const user = this._session.currentUser;
+                if (!user) return false;
+                const scopedAttrs = this._session.scopedUsers?.["global"]?.attributes || {};
+                const isScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"];
+                const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
+                const isIdentityAdmin = ['neverplayed-admin', 'realm-admin'].some(r => caps.includes(r));
+                return isIdentityAdmin || isScopedAdmin || ['dd', 'system'].includes(user.id) || user.email === 'daniel.doegl@doegl.info';
+            } catch (_e) { return false; }
         },
 
-        toggleShowAllDOs() {
-            this.showAllDOs = !this.showAllDOs;
-            if (!this.showAllDOs) globalThis.dispatchEvent(new CustomEvent('shell-security-reevaluate'));
+        toggleShowAllDOs: () => {
+            this.state.showAllDOs = !this.state.showAllDOs;
+            pm.store('do:show-all', this.state.showAllDOs);
+            this.sync();
         },
 
         instantiateDO: (specId) => {
-            const spec = this.host.domainObjectSpecs.find(sp => sp.id === specId);
+            const spec = this.state.domainObjectSpecs.find(sp => sp.id === specId);
             if (!spec) return logger.error(`Spec ${specId} not found.`);
             const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
             const strategySvc = this.runtimeStrategies.get(strategyId);
             if (!strategySvc?.createInstance) return logger.error(`Strategy [${strategyId}] not ready.`);
             return strategySvc.createInstance(spec);
         },
-        handleAction: (action, instance) => {
-            const handler = this.actionHandlers.find(h => h.id === action.id && h.match(instance));
-            if (handler) handler.execute(instance, this.host);
-        },
-    });
-    this.host = host;
 
-    // 2. Track Behavioral Strategies
+        handleAction: async (action, instance) => {
+            const handler = this.actionHandlers.find(h => h.id === action.id && (!h.match || h.match(instance)));
+            if (handler) return await handler.execute(instance, this.state);
+
+            const actionId = action.id;
+            const refs = context.getServiceReferences(ACTION_SERVICE, `(action.id=${actionId})`);
+            if (refs && refs.length > 0) {
+                const svc = context.getService(refs[0]);
+                if (svc && typeof svc.execute === 'function') {
+                    return await svc.execute({ ...action.params, targetId: instance.id, context: instance });
+                }
+            }
+            logger.error(`No handler or service found for action: ${actionId}`);
+        },
+
+        editDomainObjectYAML: (specId) => {
+            const spec = this.state.domainObjectSpecs.find(s => s.id === specId);
+            const yamlSvc = context.getService(context.getServiceReference(YAML_SERVICE));
+            const editorSvc = context.getService(context.getServiceReference(_YAML_EDITOR_SERVICE));
+            if (spec && yamlSvc && editorSvc) {
+                editorSvc.edit({
+                    title: `Edit Blueprint: ${specId}`,
+                    data: spec,
+                    onSave: (val) => {
+                        try { this.registryService.addBlueprint(val); } catch (e) { alert(e.message); }
+                    }
+                });
+            }
+        },
+        createDomainObjectYAML: () => {
+            const yamlSvc = context.getService(context.getServiceReference(YAML_SERVICE));
+            const editorSvc = context.getService(context.getServiceReference(_YAML_EDITOR_SERVICE));
+            if (yamlSvc && editorSvc) {
+                editorSvc.edit({
+                    title: "Create Blueprint",
+                    data: { id: 'new-do', label: 'New DO', domainObject: { strategyId: 'LOCAL_STRATEGY' } },
+                    onSave: (val) => {
+                        try { this.registryService.addBlueprint(val); } catch (e) { alert(e.message); }
+                    }
+                });
+            }
+        },
+        openDOStrategiesEditor: () => {
+             const editorSvc = context.getService(context.getServiceReference(_YAML_EDITOR_SERVICE));
+             if (editorSvc) editorSvc.edit({ title: "Strategies", data: Object.fromEntries(this.runtimeStrategies), onSave: () => {} });
+        },
+        openDOInstancesEditor: () => {
+            const yamlSvc = context.getService(context.getServiceReference(YAML_SERVICE));
+            const editorSvc = context.getService(context.getServiceReference(_YAML_EDITOR_SERVICE));
+            if (yamlSvc && editorSvc) {
+                editorSvc.edit({
+                    title: "Instances",
+                    data: pm.load(DO_INSTANCES_PID) || {},
+                    onSave: (val) => {
+                        try { pm.store(DO_INSTANCES_PID, val); this.sync(); } catch (e) { alert(e.message); }
+                    }
+                });
+            }
+        },
+        editDomainObjectVisual: (specId) => {
+            const spec = this.state.domainObjectSpecs.find(s => s.id === specId);
+            if (spec) {
+                this.state.visualEditorData = JSON.parse(JSON.stringify(spec));
+                const props = [];
+                if (spec.domainObject?.properties) Object.entries(spec.domainObject.properties).forEach(([key, value]) => props.push({ key, value }));
+                this.state.visualEditorData.properties = props;
+                this.sync();
+            }
+        },
+        createDomainObjectVisual: () => {
+            this.state.visualEditorData = { id: 'new-do', label: 'New DO', domainObject: { strategyId: 'LOCAL_STRATEGY' }, steps: [], properties: [] };
+            this.sync();
+        },
+        closeVisualEditor: () => { this.state.visualEditorData = null; this.sync(); },
+        moveItem: (arr, idx, delta) => {
+            const newIdx = idx + delta;
+            if (newIdx >= 0 && newIdx < arr.length) {
+                const item = arr.splice(idx, 1)[0];
+                arr.splice(newIdx, 0, item);
+            }
+            this.sync();
+        },
+        saveVisualEditor: () => {
+            const data = this.state.visualEditorData;
+            if (data) {
+                const props = {};
+                (data.properties || []).forEach(p => { if (p.key) props[p.key] = p.value; });
+                const blueprint = { ...data, domainObject: { ...data.domainObject, properties: props } };
+                delete blueprint.properties;
+                this.registryService.addBlueprint(blueprint);
+                this.state.visualEditorData = null;
+                this.sync();
+            }
+        },
+        ingestFromServer: () => this.seed()
+    });
+
+    this._sessionTracker = context.trackService(`(objectClass=${SESSION_SERVICE})`, {
+        addingService: (ref) => {
+            if (this._sessionTimeout) clearTimeout(this._sessionTimeout);
+            this._session = context.getService(ref);
+            if (this.state) this.state.sessionAvailable = true;
+            this.sync();
+            return this._session;
+        },
+        removedService: () => {
+            this._sessionTimeout = setTimeout(() => {
+                this._session = null;
+                if (this.state) this.state.sessionAvailable = false;
+                this.sync();
+            }, 500);
+        }
+    });
+    this._sessionTracker.open();
+    
+    this._pmTracker = context.trackService(`(objectClass=${PERSISTENCE_MANAGER_SERVICE})`, {
+        addingService: (ref) => {
+            this._pm = context.getService(ref);
+            this.logger.info("DO Registry: Persistence Manager discovered. Syncing...");
+            
+            if (this.state) {
+                this.state.loadingData = false;
+                // NEW: Register explicit Local routing policy for Domain Objects
+                if (typeof this._pm.setRoutingPolicy === 'function') {
+                    this._pm.setRoutingPolicy("realm.do", "local", true);
+                }
+            }
+            
+            this.refreshMaster(true);
+            this.sync();
+            return this._pm;
+        },
+        removedService: () => {
+            this._pm = null;
+            if (this.state) this.state.loadingData = true;
+            this.sync();
+        }
+    });
+    this._pmTracker.open();
+
+    globalThis.addEventListener('pm-hydrated', () => {
+        this.logger.info("DO Registry: Persistence Hydration detected. Refreshing Master Map.");
+        this.refreshMaster();
+    });
+
+    context.registerService(SHELL_COMMAND_SERVICE, {
+        name: "do:inspect",
+        description: "Deep-inspect the Domain Object registry and hydration state.",
+        execute: (args, _ctx, log) => {
+            const out = ["--- DOMAIN OBJECT REGISTRY INSPECTION ---"];
+            const insts = this.registryService.getInstances();
+            const filter = args && args[0] ? args[0].toLowerCase() : null;
+            Object.entries(insts).forEach(([id, inst]) => {
+                if (filter && !id.toLowerCase().includes(filter) && !inst.blueprintId?.toLowerCase().includes(filter)) return;
+                const props = inst.properties || {};
+                const keys = Object.keys(props);
+                out.push(`[${id.padEnd(20)}] -> Blueprint: ${inst.blueprintId || 'N/A'}`);
+                out.push(`  - State: ${keys.length > 0 ? 'WARM' : 'COLD'} (${keys.length} properties)`);
+                if (keys.length > 0) out.push(`  - Keys: ${keys.join(', ')}`);
+                out.push(`  - Step: ${inst.currentStep || 'intro'}`);
+            });
+            if (Object.keys(insts).length === 0) out.push("NO INSTANCES REGISTERED.");
+            const result = out.join("\n");
+            if (log) log(result);
+            return result;
+        }
+    }, { "shell.command": "do:inspect" });
+
     this.track(`(objectClass=${DOMAIN_STRATEGY_SERVICE})`, {
         addingService: (ref) => {
             const s = context.getService(ref);
@@ -90,119 +253,204 @@ export default class Activator extends CoreAlpineActivator {
         }
     });
 
-    // 3. Evaluator Registration
-    context.registerService(EVALUATOR_SERVICE, {
-        order: 500,
-        evaluate: (userCapabilities) => {
-            const instances = pm.load(DO_INSTANCES_PID) || {};
-            const visibleDOs = Object.values(instances).map(inst => {
-                const strategy = this.runtimeStrategies.get(inst.strategyId);
-                const allowedActions = (strategy?.actions || []).map(action => ({ ...action, allowed: true }));
-                return { ...inst, allowedActions, strategy };
-            });
-            return userCapabilities.map(entry => ({ ...entry, domainObjects: visibleDOs }));
+    this.track(`(objectClass=${ACTION_REGISTRY_SERVICE})`, {
+        addingService: (ref) => {
+            this._actionRegistry = context.getService(ref);
+            this._actionRegistry.register({ id: 'view', label: 'View', icon: 'fas fa-eye' });
+            this._actionRegistry.register({ id: 'delete', label: 'Delete', icon: 'fas fa-trash', variant: 'danger' });
+            this.sync();
+            return this._actionRegistry;
+        },
+        removedService: () => {
+            this._actionRegistry = null;
+            this.sync();
         }
     });
 
-    // 4. Registry Service
-    const registryService = {
+    this.registryService = {
         addBlueprint: (spec) => {
             const idx = this.systemSpecs.findIndex(s => s.id === spec.id);
             if (idx !== -1) this.systemSpecs[idx] = spec; else this.systemSpecs.push(spec);
             this.sync();
         },
         getStrategy: (id) => this.runtimeStrategies.get(id),
+        getInstances: () => {
+            this.refreshMaster(false);
+            return Object.fromEntries(this._instances);
+        },
+        getInstance: (id) => {
+            if (!this._instances.has(id)) {
+                const pmData = (this._pm || this.persistence).load(DO_INSTANCES_PID) || {};
+                if (pmData[id]) this._instances.set(id, { ...pmData[id], id });
+            }
+            return this._instances.get(id) || null;
+        },
         addInstance: (instance) => {
-            const current = pm.load(DO_INSTANCES_PID) || {};
-            current[instance.id] = instance;
-            pm.store(DO_INSTANCES_PID, current);
+            const existing = this._instances.get(instance.id);
+            const newCount = Object.keys(instance.properties || {}).length;
+            const oldCount = existing ? Object.keys(existing.properties || {}).length : 0;
+            if (existing && newCount === 0 && oldCount > 0) {
+                this.logger.warn(`DO Registry: Blocked 'Cold Overwrite' attempt for ${instance.id}. Registry is Warm (${oldCount} props), UI is Cold (0 props).`);
+                return;
+            }
+            this._instances.set(instance.id, { ...instance });
+            this.registerInstanceService(instance.id, instance);
+            (this._pm || this.persistence).store(DO_INSTANCES_PID, Object.fromEntries(this._instances));
+            this.sync();
+        },
+        removeInstance: (id) => {
+            this._instances.delete(id);
+            if (this._registrations.has(id)) {
+                this._registrations.get(id).unregister();
+                this._registrations.delete(id);
+            }
+            (this._pm || this.persistence).store(DO_INSTANCES_PID, Object.fromEntries(this._instances));
             this.sync();
         },
         registerActionHandler: (handler) => this.actionHandlers.push(handler),
-        handleAction: (action, instance, _h) => host.handleAction(action, instance),
-        setRealmContext: async (_realmId, domainObjects = null) => {
-            if (!domainObjects) {
-                this._realmBlueprintIds = null;
-            } else {
-                this._realmBlueprintIds = domainObjects.map(d => d.id);
-                for (const d of domainObjects) {
-                    if (d.persistence && pm.setRoutingPolicy) pm.setRoutingPolicy(`instances.${d.id}.`, d.persistence.tier, d.persistence.enforce);
-                    if (d.spec) {
-                        try {
-                            const spec = (await import(this.resolveResource(d.spec))).default || (await (await fetch(this.resolveResource(d.spec))).json());
-                            registryService.addBlueprint(spec);
-                        } catch (_e) { logger.error(`Failed loading spec ${d.spec}`); }
-                    }
-                }
-            }
+        handleAction: (action, instance) => this.state.handleAction(action, instance),
+        setRealmContext: (_realmId, domainObjects = null) => {
+            this._realmBlueprintIds = domainObjects ? domainObjects.map(d => d.id) : null;
             this.sync();
         }
     };
-    context.registerService(DOMAIN_OBJECT_REGISTRY_SERVICE, registryService);
+    context.registerService(DOMAIN_OBJECT_REGISTRY_SERVICE, this.registryService);
 
-    // 5. Default Handlers
-    registryService.registerActionHandler({
+    this.registryService.registerActionHandler({
         id: 'view',
         match: () => true,
         execute: (instance) => {
-            const blueprint = this.systemSpecs.find(s => s.id === instance.blueprintId);
-            if (blueprint?.ui) globalThis.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: blueprint.id, params: { instanceId: instance.id } } }));
+            const spec = this.state.domainObjectSpecs.find(s => s.id === instance.blueprintId);
+            if (spec?.ui) globalThis.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: spec.id, params: { instanceId: instance.id } } }));
+        }
+    });
+    
+    this.registryService.registerActionHandler({
+        id: 'delete',
+        match: () => true,
+        execute: (instance) => {
+            const strategyId = instance.strategyId || "LOCAL_STRATEGY";
+            const strategySvc = this.runtimeStrategies.get(strategyId);
+            if (strategySvc?.deleteInstance) strategySvc.deleteInstance(instance.id, instance.blueprintId);
+            else {
+                this._instances.delete(instance.id);
+                (this._pm || this.persistence).store(DO_INSTANCES_PID, Object.fromEntries(this._instances));
+                this.sync();
+            }
         }
     });
 
-    // 6. Flow Registration
     context.registerService(FLOW_SERVICE, {
         id: "domain-objects",
         title: "Domain Objects",
         icon: "fas fa-cubes",
         launch: async (target) => {
-            if (!target.id) target.id = "flow-target-do-registry";
-            await this.render("#" + target.id, "templates/overview.html", () => ({
-                get host() { return host; }
+            const registry = this.state;
+            await this.render("#" + (target.id || "flow-target-do-registry"), "templates/overview.html", () => ({
+                registry
             }));
             this.sync();
-        }
-    }, { "flow.id": "domain-objects", "sidebar": true, "icon": "fas fa-cubes" });
+        },
+        onActivate: (_hostState) => this.sync()
+    }, { "flow.id": "domain-objects", "sidebar": true });
 
-    // 7. Initial Data Seed
+    await this.refreshMaster(true);
     this.seed();
+    this.sync();
+  }
+
+  refreshMaster(triggerSync = true) {
+     const pm = this._pm || this.persistence;
+     if (!pm) return;
+     
+     let data = pm.load(DO_INSTANCES_PID) || {};
+     
+     // --- Strategic Migration Check (Anti-Gravity Fallback) ---
+     const legacyKey = "org.neverplayed.do.instances";
+     if (Object.keys(data).length === 0) {
+         const legacyData = pm.load(legacyKey) || {};
+         if (Object.keys(legacyData).length > 0) {
+             this.logger.info(`[Registry] Migrating ${Object.keys(legacyData).length} instances from legacy key ${legacyKey}`);
+             data = legacyData;
+             pm.store(DO_INSTANCES_PID, data); // Promote to new Local Tier
+         }
+     }
+
+     this.logger.info(`[Registry] Refreshing from PM. Found ${Object.keys(data).length} instances in bucket ${DO_INSTANCES_PID}`);
+     
+     const countBefore = this._instances.size;
+     Object.entries(data).forEach(([id, inst]) => {
+         if (inst && id) {
+             const existing = this._instances.get(id);
+             const propsCount = Object.keys(inst.properties || {}).length;
+             const existingPropsCount = existing ? Object.keys(existing.properties || {}).length : 0;
+             if (existing && existingPropsCount > 0 && propsCount === 0) return;
+             const instance = { ...inst, id };
+             this._instances.set(id, instance);
+             this.registerInstanceService(id, instance);
+         }
+     });
+     if (triggerSync || this._instances.size !== countBefore) this.sync();
+  }
+
+  registerInstanceService(id, instance) {
+      if (this._registrations.has(id)) {
+          this._registrations.get(id).setProperties({
+              "instance.id": id,
+              "blueprint.id": instance.blueprintId,
+              "strategy.id": instance.strategyId || "LOCAL_STRATEGY",
+              "instance.updated": Date.now()
+          });
+          return;
+      }
+      const reg = this.context.registerService(DOMAIN_OBJECT_INSTANCE_SERVICE, instance, {
+          "instance.id": id,
+          "blueprint.id": instance.blueprintId,
+          "strategy.id": instance.strategyId || "LOCAL_STRATEGY",
+          "instance.updated": Date.now()
+      });
+      this._registrations.set(id, reg);
   }
 
   sync() {
-    if (!this.host) return;
-    const instances = this.persistence.load(DO_INSTANCES_PID) || {};
-    
-    // 1. Build Strat Map (Runtime + Static)
-    // Merge runtime-registered services into the reactive store
-    for (const [id, s] of this.runtimeStrategies.entries()) {
-        this.host.parsedDOStrategies[id] = s;
-    }
-    
-    // 2. Synchronize Specs (Filtered by Realm if applicable)
-    if (this._realmBlueprintIds) {
-        this.host.domainObjectSpecs = this.systemSpecs.filter(s => this._realmBlueprintIds.includes(s.id));
-    } else {
-        this.host.domainObjectSpecs = [...this.systemSpecs];
-    }
-    this.host.parsedDOInstances = Object.fromEntries(
-        Object.entries(instances).map(([id, inst]) => [id, { ...inst, allowedActions: [] }])
-    );
-    
-    // Force Alpine refresh
-    globalThis.Alpine?.nextTick(() => {});
+    if (!this.state) return;
+    const finalBlueprints = this._realmBlueprintIds ? this.systemSpecs.filter(s => this._realmBlueprintIds.includes(s.id)) : [...this.systemSpecs];
+    const allActions = this._actionRegistry?.getActions() || [];
+    const enrichedInstances = {};
+    const instancesArray = [];
+    this._instances.forEach((inst, id) => {
+        const strategy = this.runtimeStrategies.get(inst.strategyId || "LOCAL_STRATEGY");
+        const actionMap = new Map();
+        allActions.forEach(a => { if (a?.id && this.actionHandlers.some(h => h.id === a.id && (!h.match || h.match(inst)))) actionMap.set(a.id, { ...a }); });
+        if (strategy?.actions) strategy.actions.forEach(a => { if (a?.id) actionMap.set(a.id, { ...a }); });
+        const enriched = { ...inst, strategy, allowedActions: Array.from(actionMap.values()).map(a => ({ ...a, label: a.label || a.id, icon: a.icon || "fas fa-play" })) };
+        enrichedInstances[id] = enriched;
+        instancesArray.push(enriched);
+    });
+    this.state.domainObjectSpecs = finalBlueprints;
+    this.state.parsedDOStrategies = Object.fromEntries(this.runtimeStrategies);
+    this.state.parsedDOInstances = enrichedInstances;
+    this.state.currentDOs = this.state.showAllDOs ? instancesArray : (this._realmBlueprintIds ? instancesArray.filter(inst => this._realmBlueprintIds.includes(inst.blueprintId)) : instancesArray);
   }
 
   async seed() {
     const yamlSvc = this.context.getService(this.context.getServiceReference(YAML_SERVICE));
     if (!yamlSvc) return;
-
     try {
         const res = await fetch(this.resolveResource("data/strategies.yaml"));
         if (res.ok) {
             const data = yamlSvc.load(await res.text()) || {};
-            Object.values(data).forEach(s => this.host.parsedDOStrategies[s.id] = s);
+            Object.values(data).forEach(s => { if (this.state) this.state.parsedDOStrategies[s.id] = s; });
         }
-    } catch (_e) { /* Ignore */ }
+    } catch (e) {
+        this.logger.warn(`DO Registry: Seeding failed (this is expected in local-only mode): ${e.message}`);
+    }
     this.sync();
+  }
+
+  onStop(_context) {
+    if (this._pmTracker) this._pmTracker.close();
+    if (this._sessionTracker) this._sessionTracker.close();
+    this.logger.info("DO Registry: Stopped.");
   }
 }

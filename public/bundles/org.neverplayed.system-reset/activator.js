@@ -5,7 +5,7 @@ export default class Activator extends CoreActivator {
     onCoreStart(_context) {
         const resetService = {
             reset: () => resetService.factoryReset(), // Unified alias
-            factoryReset: () => {
+            factoryReset: async () => {
                 if (!this.isAllowed("SYSTEM_ADMIN_REQUIRED")) {
                     alert("Access Denied: You do not have the 'neverplayed-admin' attribute required for this operation.");
                     return;
@@ -18,14 +18,16 @@ export default class Activator extends CoreActivator {
                     if (pmRef) {
                         const pm = this.context.getService(pmRef);
                         if (typeof pm.clear === 'function') {
-                            pm.clear();
+                            await pm.clear();
                         } else {
                             localStorage.clear();
                         }
                     } else {
                         localStorage.clear();
                     }
-                    setTimeout(() => location.reload(), 500);
+                    
+                    this.logger.info("SystemReset: Persistence cleared. Reloading in 1s...");
+                    setTimeout(() => location.reload(), 1000);
                 }
             }
         };

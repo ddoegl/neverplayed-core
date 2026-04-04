@@ -47,6 +47,29 @@ export default class Activator extends CoreAlpineActivator {
                             setTimeout(() => this.launch(id, svc), 500);
                         }
                         return svc;
+                    },
+                    removedService: (ref) => {
+                        const id = ref.getProperty("flow.id");
+                        this.logger.debug(`Shell Host: Flow removed: ${id}`);
+                        
+                        // If the currently active flow is uninstalled, fallback to core capability (CLI)
+                        if (this.state.activeFlowId === id) {
+                            this.logger.warn(`Shell Host: Active flow '${id}' uninstalled. Falling back to Core Shell.`);
+                            
+                            // Find the fallback flow (discovery by capability: sys:cli)
+                            const fallbackCapability = "sys:cli";
+                            const refs = context.getServiceReferences(FLOW_SERVICE, `(capability=${fallbackCapability})`);
+                            
+                            if (refs && refs.length > 0) {
+                                const fallbackSvc = context.getService(refs[0]);
+                                const fallbackId = refs[0].getProperty("flow.id") || fallbackSvc.id;
+                                this.launch(fallbackId, fallbackSvc);
+                            } else {
+                                // Last resort: Wipe stage to avoid zombie state
+                                const hostStage = this.$refs.flowContent || document.querySelector("#flow-mount-point");
+                                if (hostStage) hostStage.innerHTML = `<div class="p-10 text-slate-400 italic">No active flow available for this realm.</div>`;
+                            }
+                        }
                     }
                 });
 
@@ -118,7 +141,7 @@ export default class Activator extends CoreAlpineActivator {
             }
         }), {
             "id": "shell-host-root",
-            "class": "h-full w-full bg-slate-900 overflow-hidden shadow-inner"
+            "class": "h-full w-full bg-slate-50 overflow-hidden shadow-inner"
         });
     }
 }

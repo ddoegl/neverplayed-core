@@ -1,5 +1,10 @@
 {
     "id": "org.neverplayed.realm.core",
+    "domainObjects": [
+        { "id": "about-do-registry" },
+        { "id": "sample-do" },
+        { "id": "atomic-showcase" }
+    ],
     "title": "Institutional Core Infrastructure",
     "description": "Layer 1: Security, Logging, and Persistence Foundations.",
     "privileges": {
@@ -24,6 +29,8 @@
         "./bundles/org.neverplayed.config-admin/manifest.json",
         "./bundles/org.neverplayed.event-monitor/manifest.json",
         "./bundles/org.neverplayed.alpine-inspector/manifest.json",
-        "./bundles/org.neverplayed.atomic.showcase/manifest.json"
+        "./bundles/org.neverplayed.atomic.showcase/manifest.json",
+        "./bundles/org.neverplayed.shared-domain-strategies/manifest.json",
+        "./bundles/org.neverplayed.atomic-orchestrator/manifest.json"
     ]
 }

@@ -29,6 +29,12 @@ export class AtomicComponentBase extends HTMLElement {
         }
     }
 
+    connectedCallback() {
+        if (this._spec) {
+            this.render();
+        }
+    }
+
     disconnectedCallback() {
         if (this._effectCleanup) {
             this._effectCleanup();

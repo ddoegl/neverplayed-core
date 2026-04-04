@@ -74,13 +74,17 @@ export default class Activator {
              * Gravity is resolved via Hierarchy (Tier 0-4).
              */
             createInstance: (blueprint) => {
+                const registry = this._registry;
+                if (!registry) throw new Error("Registry not available. Persistence deferred.");
+
                 const policy = this._resolver ? this._resolver.resolve({ blueprintSpec: blueprint }) : { tier: 'local' };
                 const pm = this._pms.get(policy.tier) || this._pms.get('local');
 
                 if (!pm) throw new Error(`Persistence Manager for tier '${policy.tier}' not available.`);
 
                 const pmKey = policy.bucket || blueprint.id;
-                const storageKey = `do_instances_${pmKey}`;
+                const storageKey = `realm.do.instances_${pmKey}`;
+                const legacyKey = `do_instances_${pmKey}`;
 
                 const instanceId = `${blueprint.id}-${generateId()}`;
                 const newInstance = {
@@ -96,7 +100,17 @@ export default class Activator {
                     createdAt: new Date().toISOString()
                 };
 
-                const currentBucket = pm.load(storageKey) || {};
+                let currentBucket = pm.load(storageKey) || {};
+                
+                // One-time migration check
+                if (Object.keys(currentBucket).length === 0) {
+                    const legacyData = pm.load(legacyKey) || {};
+                    if (Object.keys(legacyData).length > 0) {
+                        currentBucket = legacyData;
+                        pm.store(storageKey, currentBucket);
+                    }
+                }
+
                 currentBucket[instanceId] = newInstance;
                 pm.store(storageKey, currentBucket);
 
@@ -106,14 +120,29 @@ export default class Activator {
             },
 
             updateInstance: (instanceId, blueprintId, patch) => {
-                const instance = this._registry.getInstance(instanceId);
+                const registry = this._registry;
+                if (!registry) return;
+                const instance = registry.getInstance(instanceId);
                 if (!instance) return;
 
                 const policy = instance.persistence || { tier: 'local' };
                 const pm = this._pms.get(policy.tier) || this._pms.get('local');
                 
-                const storageKey = instance.bucketKey || `do_instances_${blueprintId}`;
-                const currentBucket = pm.load(storageKey) || {};
+                const storageKey = instance.bucketKey && instance.bucketKey.startsWith('realm.') 
+                    ? instance.bucketKey 
+                    : `realm.do.instances_${blueprintId}`;
+                
+                const legacyKey = `do_instances_${blueprintId}`;
+                let currentBucket = pm.load(storageKey) || {};
+
+                // Migration check during update
+                if (Object.keys(currentBucket).length === 0) {
+                    const legacyData = pm.load(legacyKey) || {};
+                    if (Object.keys(legacyData).length > 0) {
+                        currentBucket = legacyData;
+                        pm.store(storageKey, currentBucket);
+                    }
+                }
                 const oldInstance = currentBucket[instanceId];
 
                 if (oldInstance) {
@@ -130,22 +159,43 @@ export default class Activator {
             },
 
             getInstance: (instanceId, blueprintId) => {
-                const instance = this._registry.getInstance(instanceId);
+                const registry = this._registry;
+                if (!registry) return null;
+                const instance = registry.getInstance(instanceId);
                 const policy = instance?.persistence || { tier: 'local' };
                 const pm = this._pms.get(policy.tier) || this._pms.get('local');
                 
-                const storageKey = instance?.bucketKey || `do_instances_${blueprintId}`;
-                const bucket = pm.load(storageKey) || {};
+                const storageKey = instance?.bucketKey && instance.bucketKey.startsWith('realm.')
+                    ? instance.bucketKey
+                    : `realm.do.instances_${blueprintId}`;
+                
+                const legacyKey = `do_instances_${blueprintId}`;
+                let bucket = pm.load(storageKey) || {};
+
+                // Migration check during load
+                if (Object.keys(bucket).length === 0) {
+                    const legacyData = pm.load(legacyKey) || {};
+                    if (Object.keys(legacyData).length > 0) {
+                        bucket = legacyData;
+                        pm.store(storageKey, bucket);
+                    }
+                }
+
                 return bucket[instanceId];
             },
 
             deleteInstance: (instanceId, blueprintId) => {
-                const instance = this._registry.getInstance(instanceId);
+                const registry = this._registry;
+                if (!registry) return false;
+                const instance = registry.getInstance(instanceId);
                 const policy = instance?.persistence || { tier: 'local' };
                 const pm = this._pms.get(policy.tier) || this._pms.get('local');
 
-                const storageKey = instance?.bucketKey || `do_instances_${blueprintId}`;
-                const currentBucket = pm.load(storageKey) || {};
+                const storageKey = instance?.bucketKey && instance.bucketKey.startsWith('realm.')
+                    ? instance.bucketKey
+                    : `realm.do.instances_${blueprintId}`;
+                
+                const currentBucket = pm.load(storageKey) || pm.load(`do_instances_${blueprintId}`) || {};
                 
                 if (currentBucket[instanceId]) {
                     delete currentBucket[instanceId];
@@ -160,7 +210,9 @@ export default class Activator {
              * Move an instance between persistence tiers (The Gravity Shift).
              */
             migrateInstance: async (instanceId, targetTier) => {
-                const instance = this._registry.getInstance(instanceId);
+                const registry = this._registry;
+                if (!registry) return false;
+                const instance = registry.getInstance(instanceId);
                 if (!instance) return false;
 
                 const currentPolicy = instance.persistence || { tier: 'local' };

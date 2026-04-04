@@ -1,5 +1,11 @@
-import { AtomicComponentBase } from "org.neverplayed.shared-ui/components/atomic-component-base.js";
-import { YAML_SERVICE, YAML_EDITOR_SERVICE, UI_FACTORY_SERVICE, ACTION_REGISTRY_SERVICE, ATOMIC_SPEC_INGESTION_SERVICE } from "shared-types";
+import { AtomicComponentBase } from "../../org.neverplayed.shared-ui/components/atomic-component-base.js";
+import { 
+    YAML_SERVICE, 
+    YAML_EDITOR_SERVICE, 
+    UI_FACTORY_SERVICE, 
+    ACTION_REGISTRY_SERVICE, 
+    ATOMIC_SPEC_INGESTION_SERVICE 
+} from "core-types";
 
 /**
  * atomic-visual-editor: The core WYSIWYG builder for Atomic Flows.
@@ -31,7 +37,9 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 addingService: (ref) => { 
                     this._registry = this._context.getService(ref);
                     // Re-render if property panel is open
-                    if (this._activePartId) this.editPart(this._activeStepId, this._activePartId);
+                    if (this._activePartId && this.editStep) {
+                        this.editStep(this._activeStepId);
+                    }
                 },
                 removedService: () => { this._registry = null; }
             }).open();
@@ -1129,6 +1137,7 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         const addParamBtn = container.querySelector(`#${prefix}-add-param-btn`);
 
         const renderParams = () => {
+            if (!paramsList) return;
             if (!target.action) target.action = { call: '', params: {} };
             const params = target.action.params || {};
             const sids = Object.keys(this._draftSpec.ui?.steps || {});
@@ -1153,33 +1162,35 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 `;
             }).join('');
 
-            paramsList.querySelectorAll('.param-key').forEach(el => {
-                el.addEventListener('sl-change', (e) => {
-                    const oldKey = el.dataset.oldKey;
-                    const newKey = e.target.value;
-                    const val = target.action.params[oldKey];
-                    delete target.action.params[oldKey];
-                    target.action.params[newKey] = val;
-                    this.saveToState();
-                    renderParams();
+            if (paramsList) {
+                paramsList.querySelectorAll('.param-key').forEach(el => {
+                    el.addEventListener('sl-change', (e) => {
+                        const oldKey = el.dataset.oldKey;
+                        const newKey = e.target.value;
+                        const val = target.action.params[oldKey];
+                        delete target.action.params[oldKey];
+                        target.action.params[newKey] = val;
+                        this.saveToState();
+                        renderParams();
+                    });
                 });
-            });
-            paramsList.querySelectorAll('.param-val').forEach(el => {
-                const update = (e) => {
-                    target.action.params[el.dataset.key] = e.target.value;
-                    this.saveToState();
-                    this.updatePreview();
-                };
-                el.addEventListener('sl-input', update);
-                el.addEventListener('sl-change', update);
-            });
-            paramsList.querySelectorAll('.del-param-btn').forEach(el => {
-                el.onclick = () => {
-                    delete target.action.params[el.dataset.key];
-                    this.saveToState();
-                    renderParams();
-                };
-            });
+                paramsList.querySelectorAll('.param-val').forEach(el => {
+                    const update = (e) => {
+                        target.action.params[el.dataset.key] = e.target.value;
+                        this.saveToState();
+                        this.updatePreview();
+                    };
+                    el.addEventListener('sl-input', update);
+                    el.addEventListener('sl-change', update);
+                });
+                paramsList.querySelectorAll('.del-param-btn').forEach(el => {
+                    el.onclick = () => {
+                        delete target.action.params[el.dataset.key];
+                        this.saveToState();
+                        renderParams();
+                    };
+                });
+            }
         };
 
         if (callSelect) {
@@ -1188,9 +1199,9 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 if (!target.action) target.action = { call: '', params: {} };
                 
                 if (val === 'CUSTOM') {
-                    customContainer.classList.remove('hidden');
+                    if (customContainer) customContainer.classList.remove('hidden');
                 } else {
-                    customContainer.classList.add('hidden');
+                    if (customContainer) customContainer.classList.add('hidden');
                     target.action.call = val;
                 }
 

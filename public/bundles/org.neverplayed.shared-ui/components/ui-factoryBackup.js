@@ -8,7 +8,7 @@ import {
     ACTION_SERVICE,
     DOMAIN_OBJECT_INSTANCE_SERVICE,
     LOG_SERVICE
-} from "core-types";
+} from "shared-types";
 
 // Decoupled from Domain-specific listeners. Logic moved to domain orchestrators.
 
@@ -70,12 +70,8 @@ class UIFactory extends HTMLElement {
         this.logger.info(`UIFactory [${this._id}]: disconnected from DOM. Cleaning up ${this._effects.length} effects.`);
         this._isDisconnected = true;
         
-        // Final save on disconnection - GUARDED
-        if (this._context && typeof this._context.isValid === 'function' && this._context.isValid()) {
-            this.saveInstance();
-        } else {
-            this.logger.warn(`UIFactory [${this._id}]: Bundle Context invalid during disconnect. Skipping save.`);
-        }
+        // Final save on disconnection
+        this.saveInstance();
 
         // Cleanup global listeners
         if (this._caseUpdateHandler) {
@@ -109,24 +105,16 @@ class UIFactory extends HTMLElement {
         this._context.trackService(`(objectClass=${ATOMIC_COMPONENT_REGISTRY_SERVICE})`, {
             addingService: (ref) => {
                 this._registryService = this._context.getService(ref);
-                this.logger.info(`UIFactory [${this._id}]: Component Registry arrived. Re-syncing atomic tags...`);
-                // Pattern 17: Non-destructive sync. Don't reset _rendered.
+                this.logger.info(`UIFactory [${this._id}]: Component Registry arrived. Re-rendering...`);
                 this.render();
                 return this._registryService;
             },
             modifiedService: () => {
-                this.logger.info(`UIFactory [${this._id}]: Component Registry UPDATED. Re-syncing...`);
+                this.logger.info(`UIFactory [${this._id}]: Component Registry UPDATED. Re-rendering...`);
                 this.render();
             },
             removedService: () => { this._registryService = null; }
         }).open();
-
-        // 🚀 Synchronous Registry Peek: Handshake immediately if already registered
-        const regRef = this._context.getServiceReference(ATOMIC_COMPONENT_REGISTRY_SERVICE);
-        if (regRef) {
-            this._registryService = this._context.getService(regRef);
-            this.logger.info(`UIFactory [${this._id}]: Component Registry found synchronously. Matching Truth.`);
-        }
 
         this.logger.info(`UIFactory [${this._id}]: Bundle Context received. Setting up service trackers...`);
         
@@ -170,11 +158,6 @@ class UIFactory extends HTMLElement {
             }
         });
         this._instanceTracker.open();
-
-        // 🚀 CRITICAL: Perform an immediate check in case it was already registered
-        if (this._instanceId) {
-            this._checkHydration();
-        }
     }
 
     hydrateFromService(instance) {
@@ -231,16 +214,7 @@ class UIFactory extends HTMLElement {
         this._params = value || {};
         if (this._params.instanceId) {
             this._instanceId = this._params.instanceId;
-            this._checkHydration();
-        }
-    }
-
-    _checkHydration() {
-        if (!this._context || !this._instanceId) return;
-        const refs = this._context.getServiceReferences(DOMAIN_OBJECT_INSTANCE_SERVICE, `(instance.id=${this._instanceId})`);
-        if (refs && refs.length > 0) {
-            this.logger.info(`UIFactory [${this._id}]: Synchronous check found service for ${this._instanceId}`);
-            this.hydrateFromService(this._context.getService(refs[0]));
+            // If context is already set, the tracker is already listening for this ID
         }
     }
 
@@ -271,17 +245,22 @@ class UIFactory extends HTMLElement {
 
         if (this._spec) this.render();
 
-        // Ensure Alpine discovery in complex/nested DOM insertion contexts (Passive)
+        // Ensure Alpine discovery in complex/nested DOM insertion contexts (Delayed & Safe)
         setTimeout(() => {
-            const root = this.querySelector('.ui-f-root');
-            if (this._state && globalThis.Alpine) {
-                if (root && (root.__x || root._x_dataStack)) {
-                    this.logger.info(`UIFactory [${this._id}]: Alpine discovery successful on root div.`);
-                } else {
-                    this.logger.warn(`UIFactory [${this._id}]: Alpine not yet connected to root div. Check for x-cloak blocking.`);
+            if (this._state && globalThis.Alpine && globalThis.Alpine.initTree) {
+                // If it already has a data stack, Alpine has already initialized it or its parent.
+                if (this._x_dataStack) {
+                    this.logger.info(`UIFactory [${this._id}]: Alpine already initialized.`);
+                    return;
+                }
+                this.logger.info(`UIFactory [${this._id}]: Forcing Alpine init...`);
+                try {
+                    globalThis.Alpine.initTree(this);
+                } catch (_e) {
+                    this.logger.warn(`UIFactory [${this._id}]: Alpine initTree failed:`, _e);
                 }
             }
-        }, 800);
+        }, 100);
     }
 
     render(newSpec = null) {
@@ -321,14 +300,12 @@ class UIFactory extends HTMLElement {
             globalThis.__UI_FACTORY_REGISTRY.set(this._id, this._state);
         }
 
-        // 2.1 Critical Sync: IDs and Metadata only on the host. 
-        // x-data MOVES to the root in 2.2
+        // 2.1 Critical Sync: Ensure x-data is set BEFORE children are injected
         this.setAttribute('data-uif-id', this._id);
+        this.setAttribute('x-data', `globalThis.__UI_FACTORY_REGISTRY.get('${this._id}')`);
         
         root = document.createElement('div');
         root.className = 'ui-f-root relative min-h-[50px]';
-        // 🚀 ATOMIC BINDING: Move x-data to the stable inner root
-        root.setAttribute('x-data', `globalThis.__UI_FACTORY_REGISTRY.get('${this._id}')`);
         
         body = document.createElement('div');
         body.className = 'uif-body flex flex-col gap-4'; 
@@ -355,14 +332,6 @@ class UIFactory extends HTMLElement {
         }
         
         this._rendered = true;
-        
-        // 🚀 Pattern 2/17: Force Alpine Discovery Pulse (Non-destructive)
-        // Ensure child atomic tags are picked up even if the mutation observer is lagging.
-        if (globalThis.Alpine) {
-            this.logger.debug(`UIFactory [${this._id}]: Pulsing Alpine tree discovery...`);
-            globalThis.Alpine.initTree(this.container || root);
-        }
-
         setTimeout(() => this.resolveGuards(this._state), 200);
     }
 
@@ -390,12 +359,8 @@ class UIFactory extends HTMLElement {
                     if (!existingH3) {
                         const h3 = document.createElement('h3');
                         h3.className = "uif-step-title text-lg font-black mb-6 text-gray-800 tracking-tight";
-                        // Rule 5: Segmented Variable Resolution
-                        const titleHtml = s.title.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
-                            const path = k1 || k2;
-                            return `<span x-text="$uifResolve('${path.replace(/'/g, "\\'")}')"></span>`;
-                        });
-                        h3.innerHTML = titleHtml;
+                        const titleText = s.title.replace(/\${this\.(.+?)}/g, `<span x-text="uifValues.$1"></span>`);
+                        h3.innerHTML = titleText;
                         stepWrapper.prepend(h3);
                     }
                 } else if (existingH3) {
@@ -632,7 +597,6 @@ class UIFactory extends HTMLElement {
         // --- Standard Reactive Engine (Persistence & Guards) ---
         const masterEffect = globalThis.Alpine.effect(() => {
             if (this._isDisconnected || this._isHydrating) return;
-            if (this._context && typeof this._context.isValid === 'function' && !this._context.isValid()) return;
             const state = this._state;
             
             // 1. Reactive Tracking (Deep)
@@ -652,8 +616,6 @@ class UIFactory extends HTMLElement {
 
         // --- Live Portals Sync (Dual-Portal Aware) ---
         const syncEffect = globalThis.Alpine.effect(() => {
-            if (this._isDisconnected || this._isHydrating) return;
-            if (this._context && typeof this._context.isValid === 'function' && !this._context.isValid()) return;
             const state = this._state.uifValues;
             const globalHostData = globalThis.backofficeState || globalThis.businessPortalState || {};
             const hActive = globalHostData.activeLicense || null;
@@ -730,13 +692,8 @@ class UIFactory extends HTMLElement {
      * Explicitly persists the current state to the Domain Object registry/strategy.
      */
     saveInstance(state = this._state) {
-        if (!state || !this._context) return;
+        if (!state) return;
         
-        // OSGi Lifecycle Guard
-        if (typeof this._context.isValid === 'function' && !this._context.isValid()) {
-            return;
-        }
-
         const instanceId = this.getAttribute('instance-id') || this._params?.instanceId;
         if (!instanceId) return;
 
@@ -1083,12 +1040,7 @@ class UIFactory extends HTMLElement {
                     h4.className = "uif-card-label text-xs uppercase font-black tracking-widest mb-4 opacity-50";
                     container.prepend(h4);
                 }
-                // Rule 5: Segmented Variable Resolution
-                const labelHtml = p.label.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
-                    const path = k1 || k2;
-                    return `<span x-text="$uifResolve('${path.replace(/'/g, "\\'")}')"></span>`;
-                });
-                h4.innerHTML = labelHtml;
+                h4.innerText = this.interpolate(p.label, this._state);
             } else if (h4) {
                 h4.remove();
             }
@@ -1162,10 +1114,10 @@ class UIFactory extends HTMLElement {
                     
                     // CRITICAL: Decode HTML entities (like &#39;) introduced by marked.parse
                     const temp = document.createElement('div');
-                    temp.innerHTML = seg.path.replace(/&amp;/g, '&'); // Presync common entities
-                    const decodedPath = temp.textContent || temp.innerText || seg.path;
+                    temp.innerHTML = seg.path;
+                    const decodedPath = temp.textContent;
 
-                    const escapedPath = decodedPath.replace(/'/g, "\\'"); // Rule 5: Standardized magic resolution
+                    const escapedPath = decodedPath.replace(/'/g, "\\'"); // Single backslash for setAttribute
                     span.setAttribute('x-text', `((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))($uifResolve('${escapedPath}'))`);
                 }
             });
@@ -1291,15 +1243,20 @@ if (!customElements.get("ui-factory")) {
 if (globalThis.Alpine && !globalThis.Alpine._uifResolveRegistered) {
     globalThis.Alpine.magic('uifResolve', (el, { Alpine }) => {
         return (expr) => {
-            // 1. Traverse Alpine data stack for nearest uifResolve handler
+            // 1. Try to find local uifResolve in Alpine data stack
             const dataStack = Alpine.closestDataStack(el);
             for (const scope of dataStack) {
                 if (typeof scope.uifResolve === 'function') {
                     return scope.uifResolve(expr);
                 }
+                // Fallback: If it's a proxy for uifValues, check the factory bridge
+                if (scope.uifId) {
+                    const factory = document.querySelector(`ui-factory[data-uif-id="${scope.uifId}"]`);
+                    if (factory?._state?.uifResolve) return factory._state.uifResolve(expr);
+                }
             }
-            // 2. Cascade lookup to nearest UIFactory component instance
-            const factoryEl = el.closest('ui-factory') || document.querySelector(`ui-factory[data-uif-id="${el.closest('[data-uif-id]')?.getAttribute('data-uif-id')}"]`);
+            // 2. Fallback: Search for nearest UIFactory component in DOM
+            const factoryEl = el.closest('ui-factory');
             if (factoryEl?._state?.uifResolve) {
                 return factoryEl._state.uifResolve(expr);
             }

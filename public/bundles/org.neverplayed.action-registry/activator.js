@@ -1,4 +1,4 @@
-import { ACTION_REGISTRY_SERVICE, LOG_SERVICE } from "core-types";
+import { ACTION_REGISTRY_SERVICE, ACTION_SERVICE, LOG_SERVICE } from "core-types";
 
 class ActionRegistry {
     constructor(logger) {
@@ -32,6 +32,32 @@ export default class Activator {
     start(context) {
         let logger = null;
         let registry = null;
+        
+        // Initialize/Update registry with logger
+        const initRegistry = (logSvc) => {
+            if (!registry) {
+                registry = new ActionRegistry(logSvc);
+                context.registerService(ACTION_REGISTRY_SERVICE, registry);
+                
+                // Track all ACTION_SERVICE registrations
+                context.trackService(`(objectClass=${ACTION_SERVICE})`, {
+                    addingService: (ref) => {
+                        const id = ref.getProperty("action.id");
+                        if (id) {
+                            registry.register({
+                                id,
+                                label: ref.getProperty("action.label") || id,
+                                description: ref.getProperty("action.description") || "",
+                                icon: ref.getProperty("action.icon") || "fas fa-play",
+                                metadata: ref.getProperty("action.metadata") || {}
+                            });
+                        }
+                    }
+                }).open();
+            } else {
+                registry._logger = logSvc;
+            }
+        };
 
         // Track LogService for standardized logging
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
@@ -39,14 +65,7 @@ export default class Activator {
                 const logAdmin = context.getService(ref);
                 logger = logAdmin.getLogger("action-registry");
                 logger.info("Log Service connected");
-                
-                // Initialize/Update registry with logger
-                if (!registry) {
-                    registry = new ActionRegistry(logger);
-                    context.registerService(ACTION_REGISTRY_SERVICE, registry);
-                } else {
-                    registry._logger = logger;
-                }
+                initRegistry(logger);
             },
             removedService: () => { 
                 logger = null; 
@@ -54,11 +73,8 @@ export default class Activator {
             }
         }).open();
 
-        // Fallback if no logger joins quickly (unlikely but safe)
-        if (!registry) {
-            registry = new ActionRegistry(null);
-            context.registerService(ACTION_REGISTRY_SERVICE, registry);
-        }
+        // Fallback if no logger joins quickly
+        setTimeout(() => { if (!registry) initRegistry(null); }, 500);
     }
 
     stop(_context) {

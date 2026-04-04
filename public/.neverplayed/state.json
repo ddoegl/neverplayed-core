@@ -96,5 +96,16 @@
   },
   "identities.test": {
     "user": "deno-test"
+  },
+  "config.org.neverplayed.yaml-editor": {
+    "flowType": "backoffice-flow",
+    "channels": [
+      "backoffice-web"
+    ]
+  },
+  "config.org.neverplayed.visual-editor": {
+    "channels": [
+      "business-channel-web"
+    ]
   }
 }

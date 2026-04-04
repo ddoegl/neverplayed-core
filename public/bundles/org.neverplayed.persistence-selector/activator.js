@@ -14,10 +14,25 @@ export default class Activator {
     _currentMode = "normal"; // normal, stealth, privacy
     logger = console;
     _policies = new Map(); // keyPattern -> { tier, enforce }
+    _envTier = "cloud"; // Default
 
-    start(context) {
+    async start(context) {
         this.context = context;
         const bsn = context.getBundle().getSymbolicName();
+
+        // 0. Load Environment Configurations (Authority for Tiering)
+        try {
+            const root = globalThis.NEVERPLAYED_BASE_URL || globalThis.location?.href || './';
+            const envResp = await fetch(new URL("./env.json", root).href);
+            if (envResp.ok) {
+                const env = await envResp.json();
+                if (env.persistence_mode) {
+                    this._envTier = env.persistence_mode;
+                }
+            }
+        } catch (e) {
+            console.warn("Persistence Selector: Failed to load env.json", e);
+        }
 
         // 1. Setup Logger (Reactive)
         this._logTracker = context.trackService(`(objectClass=${LOG_SERVICE})`, {
@@ -55,17 +70,25 @@ export default class Activator {
             load: (key) => this._routeAndLoad(key),
             store: (key, val) => this._routeAndStore(key, val),
             clear: async () => {
-                this.logger.warn("Persistence Selector: Global CLEAR requested. Broadcasting to all providers...");
-                for (const svc of this._providers.values()) {
+                this.logger.warn("Persistence Selector: Global CLEAR requested. Broadcasting to all providers in parallel...");
+                const clearTasks = Array.from(this._providers.values()).map(async (svc) => {
                     if (typeof svc.clear === 'function') {
                         try {
                             await svc.clear();
                         } catch (err) {
-                            this.logger.error(`Persistence Selector: Clear failed on provider: ${err.message}`);
+                            this.logger.error(`Persistence Selector: Clear failed on a provider: ${err.message}`);
                         }
                     }
-                }
+                });
+
+                await Promise.allSettled(clearTasks);
                 this._volatileStore.clear();
+                
+                // Final Safety: Explicitly target literal localStorage regardless of providers
+                try {
+                    globalThis.localStorage?.clear();
+                } catch (_e) { /* ignore */ }
+                
                 this.logger.info("Persistence Selector: Global clear complete.");
             },
             setMode: (mode) => {
@@ -156,7 +179,8 @@ export default class Activator {
         if (key.startsWith("security.")) return "volatile";
         if (key.startsWith("identities.")) return "local";
         if (key.startsWith("config.")) return "cloud";
-        return "cloud"; // Default to cloud for global persistence
+        
+        return this._envTier; // Respect env.json (Rule 4: Configuration over Code)
     }
 
 

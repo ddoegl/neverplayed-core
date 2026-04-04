@@ -37,7 +37,7 @@ export const SHELL_CLI_PID = "org.neverplayed.shell.cli";
 export const SYSTEM_LOGGER_PID = "org.neverplayed.system.logger";
 export const REALM_STORAGE_PID = "org.neverplayed.realm.storage";
 export const EVENT_MONITOR_PID = "org.neverplayed.event.monitor";
-export const DO_INSTANCES_PID = "org.neverplayed.do.instances";
+export const DO_INSTANCES_PID = "realm.do.instances";
 export const LIMES_STRATEGIES_PID = "org.neverplayed.limes.strategies";
 export const LOG_LEVEL_PROP = "log-level";
 
@@ -62,6 +62,7 @@ export const ACTION_REGISTRY_SERVICE = "org.neverplayed.action.ActionRegistry";
 export const ACTION_SERVICE = "org.neverplayed.action.ActionService";
 export const PLEXUS_ENGINE_SERVICE = "org.neverplayed.plexus.Engine";
 export const DOMAIN_OBJECT_REGISTRY_SERVICE = "org.neverplayed.domain.Registry";
+export const DOMAIN_OBJECT_INSTANCE_SERVICE = "org.neverplayed.domain.Instance";
 export const DOMAIN_STRATEGY_SERVICE = "org.neverplayed.domain.Strategy";
 export const ATOMIC_COMPONENT_REGISTRY_SERVICE = "org.neverplayed.atomic.ComponentRegistry";
 export const ATOMIC_SPEC_INGESTION_SERVICE = "org.neverplayed.atomic.SpecIngestion";
