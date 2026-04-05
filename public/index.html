@@ -476,7 +476,9 @@
         const inspectorBundle = await context.installBundle(
           "./bundles/org.neverplayed.alpine-inspector/manifest.json",
         );
-        if (inspectorBundle.state === 2 || inspectorBundle.state === 4) {
+        if (
+          inspectorBundle.state === 2 || inspectorBundle.state === 4
+        ) {
           await inspectorBundle.start();
         }
 
@@ -603,7 +605,10 @@
               this.logger.info("Shell: Navigating home...");
             } else console.log("Shell: Navigating home...");
             if (this.session && this.session.scopedUsers) {
-              this.session.scopedUsers["global"] = { id: 'guest', attributes: {} };
+              this.session.scopedUsers["global"] = {
+                id: "guest",
+                attributes: {},
+              };
             }
 
             if (this.envType === "mobile") {

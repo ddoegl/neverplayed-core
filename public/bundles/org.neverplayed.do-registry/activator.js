@@ -189,20 +189,29 @@ export default class Activator extends CoreAlpineActivator {
     
     this._pmTracker = context.trackService(`(objectClass=${PERSISTENCE_MANAGER_SERVICE})`, {
         addingService: (ref) => {
-            this._pm = context.getService(ref);
-            this.logger.info("DO Registry: Persistence Manager discovered. Syncing...");
+            const pm = context.getService(ref);
+            this._pm = pm;
+            this.logger.info("DO Registry: Persistence Manager discovered. Checking hydration status...");
             
-            if (this.state) {
-                this.state.loadingData = false;
-                // NEW: Register explicit Local routing policy for Domain Objects
-                if (typeof this._pm.setRoutingPolicy === 'function') {
-                    this._pm.setRoutingPolicy("realm.do", "local", true);
+            // Rule 4: Decoupled Hydration - Do not assume data is ready immediately
+            (async () => {
+                if (typeof pm.waitReady === 'function') {
+                    this.logger.info(`DO Registry: Awaiting PM readiness for bucket ${DO_INSTANCES_PID}...`);
+                    await pm.waitReady(DO_INSTANCES_PID);
                 }
-            }
-            
-            this.refreshMaster(true);
-            this.sync();
-            return this._pm;
+                
+                if (this.state) {
+                    this.state.loadingData = false;
+                    // NEW: Register explicit Local routing policy for Domain Objects
+                    if (typeof this._pm.setRoutingPolicy === 'function') {
+                        this._pm.setRoutingPolicy("realm.do", "local", true);
+                    }
+                    this.refreshMaster(true);
+                    this.sync();
+                }
+            })();
+
+            return pm;
         },
         removedService: () => {
             this._pm = null;

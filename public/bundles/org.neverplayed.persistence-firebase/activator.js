@@ -93,6 +93,7 @@ export default class Activator extends BaseActivator {
                 this.logger.info("Firebase Persistence: No existing cloud state found.");
             }
             this._resolveReady();
+            globalThis.dispatchEvent(new CustomEvent('pm-hydrated', { detail: { tier: 'cloud', implementation: 'firebase' } }));
         }, async (err) => {
             this.logger.error(`Firebase Persistence: Sync error (Transport reset likely):`, err);
             
@@ -114,6 +115,7 @@ export default class Activator extends BaseActivator {
             // Critical transition: Now that we've tried both SDK and Fallback, we are as ready as we'll ever be.
             this._isHydrating = false;
             this._resolveReady();
+            globalThis.dispatchEvent(new CustomEvent('pm-hydrated', { detail: { tier: 'cloud', implementation: 'firebase', error: true } }));
         });
     }
 

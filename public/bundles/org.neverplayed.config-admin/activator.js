@@ -36,7 +36,8 @@ export default class Activator extends CoreAlpineActivator {
             return target;
         };
 
-        const primeBundle = (bundle) => {
+        const primeBundle = async (bundle) => {
+            if (pm.waitReady) await pm.waitReady();
             const headers = bundle.getHeaders();
             const configKey = Object.keys(headers).find(k => k.toLowerCase() === 'configuration');
             const configPriming = headers[configKey];

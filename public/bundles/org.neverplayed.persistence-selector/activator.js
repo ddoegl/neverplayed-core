@@ -67,6 +67,7 @@ export default class Activator {
 
         // 3. Register the Virtual Selector Service
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
+            waitReady: (key) => this._waitReady(key),
             load: (key) => this._routeAndLoad(key),
             store: (key, val) => this._routeAndStore(key, val),
             clear: async () => {
@@ -111,6 +112,25 @@ export default class Activator {
     _performInitialSync(_newTier, _newSvc) {
         // If we are in 'normal' mode and a Cloud provider arrives, 
         // it may already have state that should supersede local config.
+    }
+    
+    async _waitReady(key) {
+        if (key) {
+            const tier = this._getPreferredTierForKey(key);
+            const provider = this._providers.get(tier) || this._providers.get("local");
+            if (provider && typeof provider.waitReady === 'function') {
+                this.logger.info(`Persistence Selector: Waiting for '${tier}' provider to be ready for key '${key}'...`);
+                return await provider.waitReady();
+            }
+        } else {
+            const tasks = Array.from(this._providers.values())
+                .filter(p => typeof p.waitReady === 'function')
+                .map(p => p.waitReady());
+            if (tasks.length > 0) {
+                 this.logger.info(`Persistence Selector: Waiting for ${tasks.length} providers to be ready...`);
+                 await Promise.allSettled(tasks);
+            }
+        }
     }
 
     _routeAndLoad(key) {
