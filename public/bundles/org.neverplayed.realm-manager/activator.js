@@ -246,7 +246,6 @@ export default class Activator extends BaseActivator {
             const root = globalThis.location.origin + '/';
             const envResp = await fetch(new URL("./env.json", root).href);
             const envConfig = envResp.ok ? await envResp.json() : { persistence_mode: "local" };
-            const isFirebase = envConfig.persistence_mode === "firebase";
 
             // 2. Fetch Discovery Index
             const resp = await fetch(new URL("./realms/index.json", root).href);
@@ -266,11 +265,21 @@ export default class Activator extends BaseActivator {
                             // Defensive Initializer: Ensure bundles array exists
                             manifest.bundles = Array.isArray(manifest.bundles) ? manifest.bundles : [];
                             
+                            const mode = envConfig.persistence_mode;
+                            const isFirebase = mode === "firebase";
+                            const isLocalFs = mode === "local-fs";
+                            const isLocalBrowser = mode === "local-browser" || mode === "local";
+                            const isMemory = mode === "memory";
+
                             if (isFirebase) {
                                 manifest.bundles.push("./bundles/org.neverplayed.persistence-firebase/manifest.json");
-                            } else {
+                            } else if (isLocalFs) {
                                 manifest.bundles.push("https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json");
                                 manifest.bundles.push("./bundles/org.neverplayed.persistence-fs-sync/manifest.json");
+                            } else if (isLocalBrowser) {
+                                manifest.bundles.push("https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json");
+                            } else if (isMemory) {
+                                this.logger?.info("Realm Manager: Persistence Phase skipped (Memory Mode). Data resides in Volatile Store.");
                             }
                         }
                         

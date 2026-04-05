@@ -20,6 +20,7 @@
         "./bundles/org.neverplayed.action-registry/manifest.json",
         "./bundles/org.neverplayed.outreach/manifest.json",
         "./bundles/org.neverplayed.atomic-orchestrator/manifest.json",
+        "./bundles/org.neverplayed.atomic.showcase/manifest.json",
         "./bundles/org.neverplayed.yaml-editor/manifest.json",
         "./bundles/org.neverplayed.visual-editor/manifest.json",
         "./bundles/org.neverplayed.persistence-resolver/manifest.json"

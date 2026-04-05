@@ -1,6 +1,6 @@
 {
   "pandino.pm.managed-keys": [
-    "org.neverplayed.limes/strategies"
+    "*"
   ],
   "org.neverplayed.limes/strategies": [
     {
@@ -107,5 +107,11 @@
     "channels": [
       "business-channel-web"
     ]
+  },
+  "config.org.neverplayed.atomic.showcase": {
+    "channels": [
+      "business-channel-web"
+    ],
+    "sidebar": true
   }
 }

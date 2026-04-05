@@ -13,6 +13,7 @@ export default class Activator {
     _volatileStore = new Map();
     _currentMode = "normal"; // normal, stealth, privacy
     logger = console;
+    _managedKeys = new Set(); // pandino.pm.managed-keys tracking
     _policies = new Map(); // keyPattern -> { tier, enforce }
     _envTier = "cloud"; // Default
 
@@ -49,9 +50,9 @@ export default class Activator {
         this._providerTracker = context.trackService(`(&(objectClass=${PERSISTENCE_MANAGER_SERVICE})(!(implementation=selector-proxy)))`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
-                const tier = ref.getProperty("persistence.tier") || "unknown";
+                const tier = ref.getProperty("persistence.tier") || "local"; // Authority Fallback
                 this._providers.set(tier, svc);
-                this.logger.info(`Persistence Selector: Tracked provider tier='${tier}' from ${ref.bundle.getSymbolicName()}`);
+                this.logger.info(`Persistence Selector: Tracked provider tier='${tier}' from ${ref.bundle.getSymbolicName()}. (Total: ${this._providers.size})`);
                 
                 // Initial Sync Logic: Cloud wins for config, Local wins for identities
                 this._performInitialSync(tier, svc);
@@ -106,7 +107,40 @@ export default class Activator {
             "service.ranking": 1000
         });
 
+        // 4. Prime Managed Keys (Rule 3: Infrastructure Handshake)
+        this._loadManagedKeys();
+        
         this.logger.info("Persistence Selector (Data Guardian): ACTIVE.");
+    }
+
+    _loadManagedKeys() {
+        try {
+            // Priority 1: Browser localStorage (immediate)
+            const raw = globalThis.localStorage?.getItem('pandino.pm.managed-keys');
+            if (raw) {
+                const keys = JSON.parse(raw);
+                if (Array.isArray(keys)) keys.forEach(k => this._managedKeys.add(k));
+            }
+        } catch (_e) { /* ignore */ }
+    }
+
+    async _ensureManaged(key, provider) {
+        if (this._managedKeys.has('*')) return;
+        if (this._managedKeys.has(key)) return;
+        if (key === 'pandino.pm.managed-keys') return;
+
+        this.logger.debug(`Persistence Selector: Registering '${key}' as a managed key in LocalStorage...`);
+        this._managedKeys.add(key);
+        
+        try {
+            const list = Array.from(this._managedKeys);
+            // We use the raw provider to avoid recursion in the selector itself
+            await provider.store('pandino.pm.managed-keys', list);
+            // Safety: also sync to native localStorage if possible to help next boot
+            globalThis.localStorage?.setItem('pandino.pm.managed-keys', JSON.stringify(list));
+        } catch (e) {
+            this.logger.warn(`Persistence Selector: Failed to register managed key '${key}': ${e.message}`);
+        }
     }
 
     _performInitialSync(_newTier, _newSvc) {
@@ -161,6 +195,11 @@ export default class Activator {
         const provider = this._providers.get(finalTier) || this._providers.get("local");
 
         if (provider) {
+            // 💾 Security Bridge: Ensure key is managed if using the LocalStorage PM
+            if (finalTier === "local") {
+                await this._ensureManaged(key, provider);
+            }
+
             let timer;
             try {
                 // Set a timeout to prevent absolute hang during tests/headless mode
@@ -190,17 +229,31 @@ export default class Activator {
     }
 
     _getPreferredTierForKey(key) {
-        // 1. Check Dynamic Policies (Policy Tier)
+        // 1. Check Dynamic Policies (Policy Tier) - Authority Layer
         const policy = this._getPolicyForKey(key);
         if (policy) return policy.tier;
 
-        // 2. Default Prefix-based Routing (System Tier)
-        if (key.startsWith("realm.")) return "local";
+        // 2. Mode-Based Default Tiering (Rule 4: Configuration over Code)
+        if (this._envTier === "memory") return "volatile";
         if (key.startsWith("security.")) return "volatile";
+        
+        if (this._envTier === "local-fs" || this._envTier === "local-browser") {
+             // In Local modes, all non-volatile data is unified in the 'local' tier
+             return "local";
+        }
+        
+        if (this._envTier === "firebase") {
+             // In Firebase mode, we follow the Hybrid Cloud policy
+             if (key.startsWith("realm.") || key.startsWith("identities.")) return "local";
+             return "cloud";
+        }
+
+        // 3. Legacy Fallback (Normal mode)
+        if (key.startsWith("realm.")) return "local";
         if (key.startsWith("identities.")) return "local";
         if (key.startsWith("config.")) return "cloud";
         
-        return this._envTier; // Respect env.json (Rule 4: Configuration over Code)
+        return this._envTier || "local";
     }
 
 

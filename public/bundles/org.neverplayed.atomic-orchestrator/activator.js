@@ -24,6 +24,7 @@ export default class Activator extends BaseActivator {
       this.registrations = {};
       this.specs = {}; // Store all specs for re-registration after reset
       this._managedContainers = new Set();
+      this._warnedBlueprints = new Set(); // Track quiet retries
   }
 
   async onStart(context) {
@@ -449,9 +450,13 @@ export default class Activator extends BaseActivator {
       if (registry && registry.addBlueprint) {
         console.log(`Atomic Orchestrator: [SUCCESS] [Registry#${ref.getProperty("service.id")}] Registered blueprint [${id}] via ${source || 'bundle'}`);
         registry.addBlueprint(spec);
+        this._warnedBlueprints.delete(id);
       } else {
-        console.warn(`Atomic Orchestrator: [WAIT] Registry not ready for blueprint [${id}]. Retrying...`);
-        setTimeout(registerBlueprint, 500);
+        if (!this._warnedBlueprints.has(id)) {
+           console.info(`Atomic Orchestrator: [WAITING] Core Registry not found for [${id}]. Entering quiet retry mode (2s)...`);
+           this._warnedBlueprints.add(id);
+        }
+        setTimeout(registerBlueprint, 2000);
       }
     };
     registerBlueprint();
@@ -509,7 +514,7 @@ export default class Activator extends BaseActivator {
       const registerHandlers = () => {
         const registry = getSvc(DOMAIN_OBJECT_REGISTRY_SERVICE);
         if (registry && registry.registerActionHandler) {
-          console.log(`Atomic Orchestrator: Registering Action Handlers for ${id}`);
+          console.log(`Atomic Orchestrator: [SUCCESS] Registered Action Handlers for ${id}`);
           registry.registerActionHandler({
             id: "view",
             _sourceFlowId: id,
@@ -537,7 +542,7 @@ export default class Activator extends BaseActivator {
             }
           });
         } else {
-          setTimeout(registerHandlers, 500);
+          setTimeout(registerHandlers, 2000);
         }
       };
       registerHandlers();
