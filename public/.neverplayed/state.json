@@ -1,6 +1,7 @@
 {
   "pandino.pm.managed-keys": [
-    "*"
+    "identities.test",
+    "config.privacy_test"
   ],
   "org.neverplayed.limes/strategies": [
     {
@@ -113,5 +114,8 @@
       "business-channel-web"
     ],
     "sidebar": true
+  },
+  "config.privacy_test": {
+    "secret": "hidden"
   }
 }

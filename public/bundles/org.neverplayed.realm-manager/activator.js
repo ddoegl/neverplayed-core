@@ -283,7 +283,7 @@ export default class Activator extends BaseActivator {
                             }
                         }
                         
-                        this._registerRealm(manifest);
+                        await this._registerRealm(manifest);
                     }
                 } catch (err) {
                     this.logger?.error(`Realm Manager: Failed to load context from './realms/${file}':`, err.message);
@@ -551,8 +551,7 @@ export default class Activator extends BaseActivator {
     }
 
     _registerRealm(manifest) {
-        // Enforce lock for registration to prevent duplicates during concurrent discovery/recovery
-        this._lock = this._lock.then(() => {
+        return this._lock = this._lock.then(() => {
             if (!manifest.id) throw new Error("Realm manifest must have a unique ID.");
             this._realms.set(manifest.id, manifest);
             if (!this._orderedRealmIds.includes(manifest.id)) {

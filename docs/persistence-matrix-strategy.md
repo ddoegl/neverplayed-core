@@ -8,139 +8,61 @@ This document establishes the official strategy for state management and data pe
 
 We categorize our persistence capabilities across four primary dimensions: **Memory**, **Web Storage**, **Local Filesystem**, and **Cloud Firestore**.
 
-| Mode | Technology | Best For | Security Profile | Network Req |
+| Mode | Technology | Intent | Implementation | Polling |
 | :--- | :--- | :--- | :--- | :--- |
-| **In-Memory** | JS Map/Variables | Transient state, caches | **Highest** (Volatile) | None (Offline) |
-| **Local (Web)** | `localStorage` | Browsers, UI state | **Medium** (Unencrypted) | None (Offline) |
-| **Local (Deno)** | `localStorage` | Headless CLI, Micro-agents | **Medium** (Isolated) | None (Offline) |
-| **Local (FS)** | `Deno.write` | Local Dev, Config Twin | **High** (User-Owned) | None (Offline) |
-| **Cloud** | Firebase Firestore | Cross-device, Persistence | **Standard** (Encrypted) | Reliable (Online) |
-| **Twin Sync** | FS Sync Bundle | Syncing UI with Headless | **Hybrid** (Developer-Only) | Local (Offline) |
+| **`local-fs`** | `Deno.write` | Local Dev, Sync with CLI | `localstorage` PM + `fs-sync` | **Yes** (5s) |
+| **`local-browser`** | `localStorage` | Pure Privacy, Browser-only | `localstorage` PM bundle | No |
+| **`firebase`** | Firestore | Collaboration, Persistence | `persistence-firebase` bundle | No |
+| **`memory`** | JS Map | Transient, Guest sessions | Selector's `_volatileStore` | No |
 
 ---
 
-## 2. Context-Sensitive Selection
+## 2. Strategic Selection: `env.json`
 
-Choosing the right persistence mode is determined by **Gravity**, **Privacy**, and **Environment**.
+The system's "Data Gravity" is determined by the `persistence_mode` property in `public/env.json`. This is the single source of truth for the system's boot-time orchestration.
 
-### 🛠️ Static Selection (Configuration Time)
-Defined in `public/env.json`. Use this for deployment-wide defaults.
-*   **Production Cloud**: `persistence_mode: "firebase"` (Global sync).
-*   **Local Workbench**: `persistence_mode: "local"` (Privacy first, offline dev).
-
-### 🧠 Dynamic Adaptation (The Shunting Logic)
-
-The goal is to move from a hardcoded choice to a **Context-Aware Shunt**. This logic determines the "Data Gravity" at runtime.
-
-#### The Air-Gapped Shunting Flow:
-
-1.  **Discovery Phase**: Upon boot, the `PersistenceSelector` queries the OSGi registry for all `PersistenceManager` implementations.
-2.  **Environment Sensing**: 
-    *   **Connectivity**: Does `persistence-firebase` report a "Ready" state?
-    *   **Policy**: Does `env.json` or a local `.lock` file enforce an `internal-only` policy?
-3.  **The Shunt Decision**:
-    *   **Mode: SYNCED**: If Firebase is ready and Policy is "Global", data flows to Cloud Firestore. 
-    *   **Mode: CACHED**: If Firebase is intermittent, data shunts to `localStorage` and cues up a "Sync-Pending" state.
-    *   **Mode: AIR-GAPPED**: If Policy is "High-Security" or the environment is restricted, the Cloud bundle is bypassed entirely. Data is shunted to a **Deno-Only FS** or **Volatile Memory**.
+*   **`local-fs`**: Standard development mode. Synchronizes browser state with `./.neverplayed/state.json`.
+*   **`local-browser`**: Air-gapped browser mode. No data leaves the browser.
+*   **`firebase`**: Managed cloud mode for cross-device synchronization.
+*   **`memory`**: Volatile guest mode. All metadata and configurations are lost on reload.
 
 ---
 
-## 3. Reflection: The `LOCAL_STRATEGY` Pattern
+## 3. The Data Guardian: `PersistenceSelector`
 
-In our `backoffice-do-registry`, we utilize a default strategy known as **`LOCAL_STRATEGY`**. This acts as a critical architectural buffer for Domain Objects.
+The **Persistence Selector** acts as a Strategic Data Shunt (Rule 3: Decoupling). It tracks all available `PersistenceManager` services and routes data based on key prefixes.
 
-### How it operates:
-*   **Default Behavior**: Any blueprint missing an explicit `strategyId` defaults to `LOCAL_STRATEGY`.
-*   **Abstraction**: The registry doesn't know *where* `LOCAL_STRATEGY` stores its data. It simply tracks a service implementing `DOMAIN_STRATEGY_SERVICE`.
-*   **The Shunt Integration**: When `LOCAL_STRATEGY` calls `pm.store()`, it triggers the `PersistenceManager` active in the environment.
-    *   In an **Air-Gapped** setup, `LOCAL_STRATEGY` writes to the local Deno filesystem.
-    *   In a **Synced** setup, it unknowingly writes to Firebase via the `persistence-firebase` provider.
+### Routing Tiers:
+- **`volatile`**: Targeted by `security.*`. Never leaves memory.
+- **`local`**: Targeted by `realm.*`, `identities.*`. Persisted in the browser/disk.
+- **`cloud`**: Targeted by `config.*` (in Firebase mode). Persisted in the cloud.
 
-### Why this is powerful:
-It allows us to build **Universal Flows**. A "User Onboarding" flow can be designed once. Depending on which persistence bundles are started, the data either stays on the device (Privacy Mode) or travels to the cloud (Collaboration Mode), without changing a single line of business logic in the flow itself.
-
----
-
-## 4. The Orchestration Layer: `PersistenceSelector`
-
-To make these choices usable, we utilize the **OSGi Service Registry**. All persistence bundles must register the `PERSISTENCE_MANAGER_SERVICE`, but with specific **Service Properties**.
-
-**Example: A bundle looking for "Local First" persistence:**
-```javascript
-const filter = "(&(objectClass=PersistenceManager)(capability=sys:persistence)(implementation=deno-fs))";
-const ref = context.getServiceReferences(filter)[0];
-```
-
-### Proposed: The Persistence Guardian
-We advocate for a `PersistenceSelector` bundle that acts as a **Proxy Service**:
-*   It tracks all available `PersistenceManager` services.
-*   It exposed its own `PersistenceManager` interface to the rest of the system.
-*   It implements the logic to "shard" data:
-    *   Key `identities/*` -> Write to **Local FS Only**.
-    *   Key `config/*` -> Write to **Firebase** (if available).
-    *   Key `ui/*` -> Write to **localStorage**.
+### Transparent Managed-Keys Handshake:
+To satisfy the security requirements of standard persistence managers (like the LocalStorage PM) without hardcoding every possible PID, the Selector implements an **Automatic Key Registration** logic:
+1.  **Intercept**: Before storing a new key, the Selector checks if the provider is "Managed."
+2.  **Authorize**: If the key is new, it automatically updates the provider's `managed-keys` list.
+3.  **Silence**: This eliminates "Unmanaged Key" warnings from the console.
 
 ---
 
-## 4. Environment-Specific Guidelines
+## 4. Realm Layering & Persistence Influence
 
-### 🖥️ Headless Deno Agents
-Deno agents typically lack a UI and often operate in constrained environments.
-*   **Standard**: Use `persistence-deno` (State stored in `./.neverplayed/state.json`).
-*   **Hardened**: Use `persistence-deno-localstorage` for process-isolated storage that doesn't leak into the project directory.
+Following the **Institutional Architecture**, persistence is governed by the following hierarchy:
 
-### 🌐 Browser (Web)
-*   **Anonymous Mode**: Standard `localStorage`.
-*   **Authenticated Mode**: Firebase Firestore (enabling cross-device sync for multi-step flows).
-*   **Development Twin**: `persistence-fs-sync` (The bridge between your browser and the Deno agent running in the terminal).
+| Tier | Drive | Mode Influence |
+| :--- | :--- | :--- |
+| **0. Global** | Connectivity | Fallback to `local` if `firebase` is unreachable. |
+| **1. System** | Infrastructure | Defined in `env.json` (`local-fs` vs. `memory`). |
+| **2. Policy** | Security | Selector's `_policies` (e.g., `identities.*` pinned to `local`). |
 
-### 🔐 Sensitive Environments (Air-Gapped)
-In high-security contexts, ensure the `persistence-firebase` bundle is **removed from the manifest**. The system will naturally degrade to `localStorage` or In-Memory without a code change, maintaining the **Safety by Default** principle.
+### Safety by Default:
+If no persistence bundle arrives, the system naturally degrades to the **Memory (`volatile`)** tier of the Persistence Selector. No data is lost during the session, but nothing is persisted to the device or cloud, maintaining maximum privacy in restricted environments.
 
 ---
 
-## 5. The Hierarchy of Persistence Influence (Policy Stack)
-
-Data gravity is determined through a layered priority stack, allowing for granular control across different actors and environments.
-
-| Tier | Driver | Policy Source | Example |
-| :--- | :--- | :--- | :--- |
-| **0. Realm** | **Context** | `realm-manifest.json` | A "Confidential War Room" realm barring all Cloud sync. |
-| **1. System** | Infrastructure | `env.json`, Deployment | Node-wide "Air-Gapped" vs. "Cloud-Synced" strategy. |
-| **2. Bundle** | Developer | `manifest.json`, Activator | A "Secure Wallet" bundle enforcing `persistence.tier=local` for its payloads. |
-| **3. Blueprint** | Designer | `spec.yaml:domainObject` | "Employee Records" blueprint defaulting to Cloud for collaboration. |
-| **4. Instance** | User | `instance.persistenceSpec` | A specific "Personal Journal" instance pinned to Local storage by the user. |
-
-### Decision Logic (The Highest Priority Wins)
-If a **Realm (Tier 0)** enforces "Local-Only," it overrides all other participants including the user. If the Realm is permissive, the **Bundle (Tier 1)** or **User (Tier 4)** fallback logic applies.
-
----
-
-## 6. Security Enforcement (The Limes Guardian) 🔐
-
-In a "Persistence-Aware" architecture, **Limes** must move from being a simple UI guard to a **Policy Validator**:
-
-*   **Authorized Gravity**: Before a strategy moves data to the Cloud, Limes must verify the user possesses the `sys:persistence-cloud` capability.
-*   **Encrypted Tunnels**: High-tier persistence (Cloud/FS) must be governed by Limes-checked encryption keys provided via the identity session.
-*   **Audit Logging**: Every "Gravity Shift" (moving data between tiers) must be logged as a security event.
-
----
-
-## 7. Strategic Data Migration (Gravity Shifts) 🚀
-
-As policies or user choices evolve, instances may need to "Shift Gravity" between persistence managers.
-
-1.  **Promotion (Local ⮕ Cloud)**: An instance created offline in `localStorage` is moved to Firebase when a global "Sync All" policy is activated.
-2.  **Demotion (Cloud ⮕ Local)**: For privacy reasons, a user "unplugs" a specific instance from the cloud, moving its payload to the local device and wiping the remote copy.
-3.  **Wipe Logic**: Moving data **out** of a tier must always include a mandatory "Secure Wipe" of the source bucket to prevent data leaks.
-
----
-
-## 8. Strategic Summary: Gravity & Control
+## 5. Strategic Summary: Managed Gravity
 
 The Never Played persistence architecture is built on the principle of **Managed Gravity**. 
 
-*   **Gravity**: By default, data is drawn toward the **Cloud** for collaboration and persistence, but only if the environment is "Safe and Ready."
-*   **Control**: Both the **Bundle** (via Security Tiers) and the **User** (via Privacy Toggles) can exert an "Anti-Gravity" force to keep data safely shunted locally.
-
-This dual-layer approach ensures that as we build more complex **Universal Flows**, our security and privacy posture remains adaptive—never hardcoded, and always context-aware. 🏛️🌌✅
+*   **Gravity**: By default, data is drawn toward the **Local** or **Cloud** tiers for collaboration, but only if the environment is "Safe and Ready."
+*   **Control**: The **Persistence Selector** ensures that data only moves between tiers according to strictly defined architectural policies, never via coincidence. 🏛️🌌✅

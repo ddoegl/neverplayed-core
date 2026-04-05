@@ -9,8 +9,10 @@ import { BundleTestHarness } from "./test-harness.ts";
 // Mapping interface for easier access
 const SERVICES = {
     PERSISTENCE: "@pandino/persistence-manager/PersistenceManager",
-    REALM_MANAGER: "@neverplayed/realm-manager/service",
-    AUTH_SHIELD: "@neverplayed/auth-shield/service"
+    REALM_MANAGER: "org.neverplayed.realm.RealmManager",
+    REGISTRY: "org.neverplayed.domain.Registry",
+    YAML: "org.neverplayed.yaml.YamlService",
+    AUTH_SHIELD: "org.neverplayed.auth.AuthShield"
 };
 
 Deno.test({
@@ -28,8 +30,8 @@ Deno.test({
         if (urlStr.endsWith("/env.json")) {
             return {
                 ok: true,
-                text: () => Promise.resolve(JSON.stringify({ persistence_mode: "local" })),
-                json: () => Promise.resolve({ persistence_mode: "local" })
+                text: () => Promise.resolve(JSON.stringify({ persistence_mode: "local-fs" })),
+                json: () => Promise.resolve({ persistence_mode: "local-fs" })
             } as Response;
         }
         return await originalFetch(url, init);
@@ -70,12 +72,13 @@ Deno.test({
 
     interface PersistenceManager {
         store(key: string, val: unknown): Promise<void>;
-        load(key: string): Promise<Record<string, unknown>>;
+        load(key: string): Promise<any>;
         setMode(mode: string): Promise<void>;
     }
     interface RealmManager {
         waitReady(): Promise<void>;
         switchRealm(id: string): Promise<void>;
+        getRealms(): Promise<any[]>;
     }
 
     await t.step("Phase 2: System Tier Verification (Defaults)", async () => {

@@ -25,12 +25,23 @@ const _mockLocal = {
   clear: () => _mockLocal.store.clear()
 };
 
-// 2. Simplified Routing Logic (Emulating Activator)
-function routeToTier(key: string, mode: string = "normal") {
+// 2. Implementation-Aligned Routing Logic (Rule 4: Configuration over Code)
+function routeToTier(key: string, envTier: string = "local-fs", mode: string = "normal") {
   if (mode === "stealth") return "volatile";
   if (key.startsWith("security.")) return "volatile";
-  if (key.startsWith("identities.")) return "local";
-  if (key.startsWith("config.")) return mode === "privacy" ? "local" : "cloud";
+  
+  // 1. Memory Mode (Total Volatility)
+  if (envTier === "memory") return "volatile";
+  
+  // 2. Local Modes (Unified Local Storage)
+  if (envTier === "local-fs" || envTier === "local-browser") return "local";
+  
+  // 3. Cloud Mode (Hybrid Sync)
+  if (envTier === "firebase") {
+    if (key.startsWith("realm.") || key.startsWith("identities.")) return "local";
+    return "cloud";
+  }
+  
   return "cloud";
 }
 
@@ -62,19 +73,20 @@ shieldTests.forEach(t => {
 
 // 4. Test Cases
 const tests = [
-    { key: "config.shell", expected: "cloud", mode: "normal" },
-    { key: "identities.mcp", expected: "local", mode: "normal" },
-    { key: "security.token", expected: "volatile", mode: "normal" },
-    { key: "config.shell", expected: "local", mode: "privacy" },
-    { key: "any.key", expected: "volatile", mode: "stealth" }
+    { key: "config.shell", expected: "local", tier: "local-fs", mode: "normal" },
+    { key: "identities.mcp", expected: "local", tier: "local-fs", mode: "normal" },
+    { key: "security.token", expected: "volatile", tier: "local-fs", mode: "normal" },
+    { key: "config.shell", expected: "cloud", tier: "firebase", mode: "normal" },
+    { key: "identities.mcp", expected: "local", tier: "firebase", mode: "privacy" }, // Still local
+    { key: "any.key", expected: "volatile", tier: "local-fs", mode: "stealth" }
 ];
 
 console.log("\n--- ROUTING RESULTS ---");
 tests.forEach(test => {
-    const result = routeToTier(test.key, test.mode);
+    const result = routeToTier(test.key, test.tier, test.mode);
     const ok = result === test.expected;
     if (ok) passed++;
-    console.log(`${ok ? "✅" : "❌"} Key='${test.key}' [Mode=${test.mode}] -> Tier='${result}' (Expected: ${test.expected})`);
+    console.log(`${ok ? "✅" : "❌"} Key='${test.key}' [Tier=${test.tier}, Mode=${test.mode}] -> Result='${result}' (Expected: ${test.expected})`);
 });
 
 // 4. Test Broadcast Clear

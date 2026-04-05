@@ -15,6 +15,33 @@ export class BundleTestHarness {
     }
 
     private setupMocks() {
+        // deno-lint-ignore no-explicit-any
+        if (!(globalThis as any).Node) {
+            // deno-lint-ignore no-explicit-any
+            (globalThis as any).Node = class Node {
+                nodeType = 1;
+                appendChild() {}
+                addEventListener() {}
+            };
+        }
+        // deno-lint-ignore no-explicit-any
+        if (!(globalThis as any).Element) {
+            // deno-lint-ignore no-explicit-any
+            (globalThis as any).Element = class Element extends (globalThis as any).Node {
+                setAttribute() {}
+                getAttribute() { return null; }
+                querySelector() { return null; }
+                querySelectorAll() { return []; }
+            };
+        }
+        // deno-lint-ignore no-explicit-any
+        if (!(globalThis as any).HTMLElement) {
+            // deno-lint-ignore no-explicit-any
+            (globalThis as any).HTMLElement = class HTMLElement extends (globalThis as any).Element {
+                style = {};
+            };
+        }
+
         // Only mock document if not present
         // deno-lint-ignore no-explicit-any
         if (!(globalThis as any).document) {
@@ -55,7 +82,22 @@ export class BundleTestHarness {
         // deno-lint-ignore no-explicit-any
         if (!(globalThis as any).location) {
             // deno-lint-ignore no-explicit-any
-            (globalThis as any).location = { href: 'http://localhost/', hostname: 'localhost' };
+            (globalThis as any).location = { 
+                href: 'http://localhost/', 
+                origin: 'http://localhost', 
+                hostname: 'localhost' 
+            };
+        }
+
+        // deno-lint-ignore no-explicit-any
+        if (!(globalThis as any).MutationObserver) {
+            // deno-lint-ignore no-explicit-any
+            (globalThis as any).MutationObserver = class {
+                constructor(_callback: any) {}
+                disconnect() {}
+                observe(_element: any, _options: any) {}
+                takeRecords() { return []; }
+            };
         }
 
         // deno-lint-ignore no-explicit-any
@@ -85,7 +127,6 @@ export class BundleTestHarness {
             }
         };
 
-        // deno-lint-ignore no-explicit-any
         const originalFetch = (globalThis as any).fetch || fetch;
         // deno-lint-ignore no-explicit-any
         (globalThis as any).fetch = async (url: string | URL, init?: any) => {

@@ -138,27 +138,17 @@ and global Event Topics **must** be centralized in `public/shared-types.js`.
 
 ---
 
-## 4. Persistence Patterns
+## 4. Persistence Patterns (The Data Guardian)
 
-The project follows a "Local-First" persistence strategy using the OSGi
-`PersistenceManager`.
+The project follows a **Tiered Persistence Strategy** orchestrated by the `Persistence Selector`.
 
-1. **Bundle Configuration**: Use `ConfigAdmin` for settings (log levels, feature
-   flags). It handles defaults via `manifest.json` and dispatches
-   `config-updated` events.
-2. **Domain Data (Seed & Persist)**:
-   - **Attempt Load**: Try to load from `PersistenceManager` using a unique PID.
-   - **Fallback to Seed**: If empty, `fetch` the static YAML/JSON asset from the
-     bundle.
-   - **Hydrate & Store**: Parse and store it in PM to "lock" it for future
-     sessions.
-3. **Reactive Session Persistence**: Use
-   `Alpine.effect(() => { pm.store(ID, state); })` for global UI state to
-   automatically sync property changes to `localStorage`.
-4. **Cloud Parity & Real-Time Sync**: For Cloud providers (Firebase), use
-   **`onSnapshot`** to ensure the local `PersistenceManager` cache is reactively
-   updated when remote state (pushed by an MCP Agent) changes. This maintains a
-   "Digital Twin" between headless governance and the browser UI.
+1.  **Orchestration**: The `Persistence Selector` acts as a proxy for multiple `PersistenceManager` implementations (Cloud, Local, Memory).
+2.  **Key-Based Routing**: Data is routed to specific "Tiers" based on key prefixes:
+    -   `security.*` ⮕ **Volatile Tier** (Never leaves memory).
+    -   `identities.*`, `realm.*` ⮕ **Local Tier** (Stays on the device).
+    -   `config.*` ⮕ **Cloud Tier** (Synchronized via Firebase if available).
+3.  **Managed Keys Handshake**: To support standard persistence managers that require explicit key authorization, the Selector automatically registers new keys in the underlying provider's `managed-keys` list before storing. This ensures "Configuration over Code" without manual key management.
+4.  **Reactive Session Persistence**: Use `Alpine.effect(() => { pm.store(ID, state); })` for global UI state to automatically sync property changes to the active tier.
 
 ---
 
@@ -1671,3 +1661,23 @@ onStart(context) {
 - **Instant UI Feedback**: Sidebars and navigation menus update immediately when the user clicks "Toggle" in `ConfigAdmin`.
 - **Centralized Control**: The Shell Header or Sidebar doesn't need to know bundle-specific logic; it simply tracks services and filters by the updated properties.
 - **Persistence First**: Since `ConfigAdmin` persists changes to the `PersistenceManager`, the UI state is automatically restored on the next boot while remaining runtime-reactive.
+
+---
+
+## 20. Realm Hierarchy (Infrastructure vs. Semantics)
+
+To ensure system stability and clean boot sequences, the project enforces a strict **Layered Realm Architecture**.
+
+### Layer 1: The Core Realm (Infrastructure)
+The **Core Realm** is strictly for foundational services that must exist before any business logic is loaded.
+- **Responsibility**: Security, Logging, Persistence, Alpine Bridge, Shell Host.
+- **Constraint**: Must NOT depend on any domain-specific services (e.g., DO Registry).
+
+### Layer 2: The Foundation Realm (Semantics)
+The **Foundation Realm** builds upon Core to provide the system's "Understanding" of the world.
+- **Responsibility**: DO Registry, Atomic Orchestrator, Action Registry, Semantic Domain Strategies.
+- **Reasoning**: This separation prevents circular dependencies and ensure that the "Data Guardian" (Persistence Selector) is ready before any Domain Object tries to save itself.
+
+### The Dependency Rule
+> [!IMPORTANT]
+> **No Forward Dependencies**: A bundle in **Layer 1** must never reference or track a service defined in **Layer 2**. If a service is needed by both, it must be promoted to Layer 1 or decoupled via an Event-driven interface.
