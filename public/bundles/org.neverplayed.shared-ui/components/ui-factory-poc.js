@@ -3,7 +3,7 @@ import {
     LOG_SERVICE as _LOG_SERVICE,
     DOMAIN_OBJECT_INSTANCE_SERVICE,
     ATOMIC_COMPONENT_REGISTRY_SERVICE as _ATOMIC_COMPONENT_REGISTRY_SERVICE
-} from "shared-types";
+} from "core-types";
 
 class UIFactoryPOC extends HTMLElement {
     constructor() {
