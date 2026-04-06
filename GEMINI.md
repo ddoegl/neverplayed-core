@@ -30,3 +30,7 @@ This document establishes the core principles and architectural guidelines for t
 - **ADR Authority**: Before every task, the agent MUST scan `docs/adr/` to align with established decisions.
 - **Compliance**: All code generation must strictly adhere to 'Accepted' ADRs.
 - **Divergence Alert**: If a user request contradicts an ADR, do not execute immediately. Instead, pause and ask: "This request conflicts with ADR-XXXX. Should we follow the ADR, or should I draft a new ADR to supersede it?"
+
+### 7. Metadata Integrity
+- **Manifest Compliance**: All bundles must provide a `manifest.json` that strictly adheres to the standard defined in `docs/bundle-manifest-spec.md`.
+- **BSN Alignment**: The directory name of a bundle MUST match its `Bundle-SymbolicName` exactly to prevent discovery "ghosting".

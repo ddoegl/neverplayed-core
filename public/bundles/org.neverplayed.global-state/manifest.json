@@ -1,4 +1,6 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.global-state",
-    "Bundle-Activator": "./activator.js"
+    "Bundle-Version": "1.0.0",
+    "Bundle-Description": "Lightweight platform-level state container for cross-bundle synchronization.",
+    "Bundle-Activator": "activator.js"
 }

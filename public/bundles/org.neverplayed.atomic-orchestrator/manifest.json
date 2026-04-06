@@ -1,6 +1,7 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.atomic-orchestrator",
     "Bundle-Version": "1.0.0",
-    "Bundle-Activator": "./activator.js",
+    "Bundle-Description": "Orchestrates complex semantic flows and atomic rule evaluations.",
+    "Bundle-Activator": "activator.js",
     "Configuration": {}
 }

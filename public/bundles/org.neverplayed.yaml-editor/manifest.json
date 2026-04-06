@@ -2,6 +2,7 @@
   "Bundle-SymbolicName": "org.neverplayed.yaml-editor",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
+  "Bundle-Description": "Reactive Alpine.js-based YAML editor for semantic blueprints and system configurations.",
   "Configuration": {
     "flowType": "backoffice-flow",
     "channels": [
