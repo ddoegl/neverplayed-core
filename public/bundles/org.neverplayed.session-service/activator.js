@@ -14,7 +14,7 @@ export default class Activator {
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const logAdmin = context.getService(ref);
-                this._logger = logAdmin.getLogger("org.neverplayed.session-service");
+                this._logger = logAdmin.getLogger(context.getBundle().getSymbolicName());
                 this._logger.info("Session Service: Connected to Logger.");
                 return logAdmin;
             }

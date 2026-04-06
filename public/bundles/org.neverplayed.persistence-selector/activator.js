@@ -50,7 +50,7 @@ export default class Activator {
         this._providerTracker = context.trackService(`(&(objectClass=${PERSISTENCE_MANAGER_SERVICE})(!(implementation=selector-proxy)))`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
-                const tier = ref.getProperty("persistence.tier") || "local"; // Authority Fallback
+                const tier = ref.getProperty("persistence.tier") || "local-browser"; // Authority Fallback
                 this._providers.set(tier, svc);
                 this.logger.info(`Persistence Selector: Tracked provider tier='${tier}' from ${ref.bundle.getSymbolicName()}. (Total: ${this._providers.size})`);
                 
@@ -151,7 +151,7 @@ export default class Activator {
     async _waitReady(key) {
         if (key) {
             const tier = this._getPreferredTierForKey(key);
-            const provider = this._providers.get(tier) || this._providers.get("local");
+            const provider = this._getProvider(tier);
             if (provider && typeof provider.waitReady === 'function') {
                 this.logger.info(`Persistence Selector: Waiting for '${tier}' provider to be ready for key '${key}'...`);
                 return await provider.waitReady();
@@ -171,7 +171,7 @@ export default class Activator {
         if (this._currentMode === "stealth") return this._volatileStore.get(key) || null;
 
         const tier = this._getPreferredTierForKey(key);
-        const provider = this._providers.get(tier) || this._providers.get("local"); // fallback to local
+        const provider = this._getProvider(tier);
 
         if (provider) {
             return provider.load(key);
@@ -188,15 +188,15 @@ export default class Activator {
 
         const tier = this._getPreferredTierForKey(key);
         const policy = this._getPolicyForKey(key);
-        const finalTier = (this._currentMode === "privacy" && tier === "cloud" && !policy?.enforce) ? "local" : tier;
+        const finalTier = (this._currentMode === "privacy" && tier === "cloud" && !policy?.enforce) ? "local-browser" : tier;
         
         this.logger?.debug(`Persistence Selector: [${key}] -> Tier: ${finalTier}. Tracked providers: ${Array.from(this._providers.keys()).join(',')}`);
         
-        const provider = this._providers.get(finalTier) || this._providers.get("local");
+        const provider = this._getProvider(finalTier);
 
         if (provider) {
             // 💾 Security Bridge: Ensure key is managed if using the LocalStorage PM
-            if (finalTier === "local") {
+            if (finalTier === "local-browser" || finalTier === "local") {
                 await this._ensureManaged(key, provider);
             }
 
@@ -238,22 +238,36 @@ export default class Activator {
         if (key.startsWith("security.")) return "volatile";
         
         if (this._envTier === "local-fs" || this._envTier === "local-browser") {
-             // In Local modes, all non-volatile data is unified in the 'local' tier
-             return "local";
+             // In Local modes, all non-volatile data is unified in the 'local-browser' tier
+             return "local-browser";
         }
         
         if (this._envTier === "firebase") {
              // In Firebase mode, we follow the Hybrid Cloud policy
-             if (key.startsWith("realm.") || key.startsWith("identities.")) return "local";
+             if (key.startsWith("realm.") || key.startsWith("identities.")) return "local-browser";
              return "cloud";
         }
 
         // 3. Legacy Fallback (Normal mode)
-        if (key.startsWith("realm.")) return "local";
-        if (key.startsWith("identities.")) return "local";
+        if (key.startsWith("realm.")) return "local-browser";
+        if (key.startsWith("identities.")) return "local-browser";
         if (key.startsWith("config.")) return "cloud";
         
-        return this._envTier || "local";
+        return this._envTier || "local-browser";
+    }
+
+    /**
+     * Defensive Provider Resolution (Rule 3: ADR-0021)
+     */
+    _getProvider(tier) {
+        // Preferred Tier
+        if (this._providers.has(tier)) return this._providers.get(tier);
+        
+        // Tier Fallback Chain: Requested -> local-browser -> local (legacy)
+        if (this._providers.has("local-browser")) return this._providers.get("local-browser");
+        if (this._providers.has("local")) return this._providers.get("local");
+
+        return null;
     }
 
 
