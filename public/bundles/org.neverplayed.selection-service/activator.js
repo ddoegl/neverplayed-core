@@ -1,4 +1,4 @@
-import { SELECTION_SERVICE, SESSION_SERVICE } from "core-types";
+import { SELECTION_SERVICE, SESSION_SERVICE, CONTRIBUTION_SERVICE, PERSONS_SERVICE, COMPANIES_SERVICE } from "core-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -64,7 +64,7 @@ export default class Activator {
     console.log("SelectionService: Registered 🌌✨");
 
     // --- State Contribution Pattern ---
-    context.trackService("(objectClass=org.neverplayed.global-state.ContributionService)", {
+    context.trackService(`(objectClass=${CONTRIBUTION_SERVICE})`, {
       addingService: (ref) => {
         const contributionSvc = context.getService(ref);
         
@@ -92,7 +92,7 @@ export default class Activator {
           persons: {
             get: function() {
               if (typeof context.isValid === 'function' && !context.isValid()) return [];
-              const ref = context.getServiceReference("org.neverplayed.PersonsService");
+              const ref = context.getServiceReference(PERSONS_SERVICE);
               return ref ? context.getService(ref).getPersons() || [] : [];
             },
             configurable: true, enumerable: true
@@ -100,7 +100,7 @@ export default class Activator {
           companies: {
             get: function() {
               if (typeof context.isValid === 'function' && !context.isValid()) return [];
-              const ref = context.getServiceReference("org.neverplayed.CompaniesService");
+              const ref = context.getServiceReference(COMPANIES_SERVICE);
               return ref ? context.getService(ref).getCompanies() || [] : [];
             },
             configurable: true, enumerable: true

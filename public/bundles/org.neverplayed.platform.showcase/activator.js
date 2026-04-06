@@ -26,7 +26,7 @@ export default class Activator extends CoreAlpineActivator {
 
         // 2. Register as a Flow
         context.registerService(FLOW_SERVICE, this, {
-            "flow.id": "platform-showcase",
+            "flow.id": PLATFORM_SHOWCASE_FLOW,
             "flow.title": "Showcase Lab",
             "icon": "fas fa-flask",
             "sidebar": true

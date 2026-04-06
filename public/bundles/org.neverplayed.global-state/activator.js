@@ -1,5 +1,5 @@
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
-import { LICENSES_PID, TENANTS_PID, BO_SESSION_PID, BUSINESS_SESSION_PID, RETAIL_SESSION_PID } from "core-types";
+import { LICENSES_PID, TENANTS_PID, BO_SESSION_PID, BUSINESS_SESSION_PID, RETAIL_SESSION_PID, CONTRIBUTION_SERVICE } from "core-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
 export default class Activator {
@@ -109,7 +109,7 @@ export default class Activator {
                 Object.defineProperties(target, definitions);
             }
         };
-        context.registerService("org.neverplayed.global-state.ContributionService", contributionSvc);
+        context.registerService(CONTRIBUTION_SERVICE, contributionSvc);
 
         // --- Business Portal State ---
         if (!globalThis.businessPortalState) {

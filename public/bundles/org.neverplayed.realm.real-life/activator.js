@@ -62,7 +62,7 @@ export default class Activator extends AlpineActivator {
           const envSvc = context.getService(context.getServiceReferences(ENV_SERVICE, `(env.id=${id})`)[0]);
           if (envSvc) {
               envSvc.onActivate(context.getService(context.getServiceReference(SESSION_SERVICE)));
-              const flowId = (id === "mobile-device") ? MOBILE_LAUNCHER_FLOW : "web-springboard";
+              const flowId = (id === "mobile-device") ? MOBILE_LAUNCHER_FLOW : WEB_SPRINGBOARD_FLOW;
               globalThis.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: flowId } }));
           }
       }

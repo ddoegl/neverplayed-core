@@ -20,6 +20,9 @@
     "test:mcp": "deno run -A tests/test-mcp-client.ts",
     "test:security": "deno run -A tests/verify-security.ts",
     "test:persistence-matrix": "PERSISTENCE_MODE=local deno test -A tests/persistence-matrix.test.ts",
+    "lint:arch:core": "deno run -A scripts/lint-arch.ts --layer core",
+    "lint:arch:foundation": "deno run -A scripts/lint-arch.ts --layer foundation",
+    "lint:arch:domain": "deno run -A scripts/lint-arch.ts --layer domain",
     "mcp": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/mcp-server.ts"
   },
   "lint": {

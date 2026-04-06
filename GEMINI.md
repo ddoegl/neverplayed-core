@@ -34,3 +34,4 @@ This document establishes the core principles and architectural guidelines for t
 ### 7. Metadata Integrity
 - **Manifest Compliance**: All bundles must provide a `manifest.json` that strictly adheres to the standard defined in `docs/bundle-manifest-spec.md`.
 - **BSN Alignment**: The directory name of a bundle MUST match its `Bundle-SymbolicName` exactly to prevent discovery "ghosting".
+- **README Standard**: Every bundle MUST contain a `README.md` following the structure in `docs/bundle-readme-spec.md`, including "The Patterns" section for foundational layers.

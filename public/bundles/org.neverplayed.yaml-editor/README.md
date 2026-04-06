@@ -1,12 +1,18 @@
 # 🛡️ YAML Editor Bundle
 
-The **YAML Editor** is a foundational UI component for the Never Played ecosystem, providing a centralized interface for editing domain object blueprints, system configurations, and semantic state.
+The **YAML Editor** is a foundational UI component that provides a reactive, context-aware interface for editing domain object blueprints and system-level semantic state.
 
-## 🏛️ Architecture
+## 🏛️ Architecture & Implementation
 
 - **Service-Driven**: Registers the `YAML_EDITOR_SERVICE` (defined in `core-types.js`) to allow cross-bundle invocation.
 - **Reactive State**: Utilizes an Alpine.js global store (`$store.yamlEditor`) to manage visibility, content, and lifecycle callbacks.
-- **Direct Mounting**: The bundle's activator fetches a template from its own directory and mounts it directly to `document.body` on startup to ensure universal availability.
+- **Direct Mounting**: The bundle's activator fetches a template from its own directory and mounts it directly to `document.body` on startup to ensure universal availability from any realm context.
+
+## 🏛️ The Patterns (The State)
+
+- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Reactive State Synchronization** (Pattern 1/ADR-0002) and **Constant Compliance** (Pattern 3/ADR-0013).
+- **[ADR-0002: Reactive State Synchronization](../../docs/adr/0002-reactive-state-synchronization.md)**: Utilizes a global Alpine.js store (`$store.yamlEditor`) to manage visibility and content reactivity.
+- **Pattern**: Direct DOM mounting in `activator.js` to ensure the editor is decoupled from specific host routing.
 
 ## 🛠️ Components
 

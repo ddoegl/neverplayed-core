@@ -11,6 +11,9 @@ const EXCLUDED_FILES = ["manifest.json"];
 
 console.log("%c Architectural Audit: Checking for Magic Strings...", "color: blue; font-weight: bold;");
 
+const bundleArg = Deno.args.find(arg => arg.startsWith("--bundles="))?.split("=")[1];
+const allowedBundles = bundleArg ? new Set(bundleArg.split(",")) : null;
+
 let violationCount = 0;
 
 for await (const entry of walk(ROOT, { 
@@ -19,6 +22,12 @@ for await (const entry of walk(ROOT, {
 })) {
     if (EXCLUDED_DIRS.some(dir => entry.path.includes(dir))) continue;
     if (EXCLUDED_FILES.some(file => entry.path.endsWith(file))) continue;
+
+    // Filter by allowed bundles
+    if (allowedBundles) {
+        const isAllowed = Array.from(allowedBundles).some(bsn => entry.path.includes(`/${bsn}/`));
+        if (!isAllowed) continue;
+    }
 
     const content = await Deno.readTextFile(entry.path);
     const lines = content.split("\n");

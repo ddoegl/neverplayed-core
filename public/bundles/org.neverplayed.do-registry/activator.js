@@ -11,7 +11,8 @@ import {
     ACTION_SERVICE,
     PERSISTENCE_MANAGER_SERVICE,
     YAML_EDITOR_SERVICE as _YAML_EDITOR_SERVICE,
-    LOG_SERVICE as _LOG_SERVICE
+    LOG_SERVICE as _LOG_SERVICE,
+    DOMAIN_OBJECTS_FLOW
 } from "core-types";
 import { CoreAlpineActivator } from "alpine-base";
 
@@ -379,7 +380,7 @@ export default class Activator extends CoreAlpineActivator {
     });
 
     context.registerService(FLOW_SERVICE, {
-        id: "domain-objects",
+        id: DOMAIN_OBJECTS_FLOW,
         title: "Domain Objects",
         icon: "fas fa-cubes",
         launch: async (target) => {
@@ -390,7 +391,7 @@ export default class Activator extends CoreAlpineActivator {
             this.sync();
         },
         onActivate: (_hostState) => this.sync()
-    }, { "flow.id": "domain-objects", "sidebar": true });
+    }, { "flow.id": DOMAIN_OBJECTS_FLOW, "sidebar": true });
 
     await this.refreshMaster(true);
     this.seed();

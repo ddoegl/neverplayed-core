@@ -68,6 +68,7 @@ export const ATOMIC_COMPONENT_REGISTRY_SERVICE = "org.neverplayed.atomic.Compone
 export const ATOMIC_SPEC_INGESTION_SERVICE = "org.neverplayed.atomic.SpecIngestion";
 export const UI_COMPONENTS_SERVICE = "org.neverplayed.ui.Components";
 export const UI_FACTORY_SERVICE = "org.neverplayed.ui.Factory";
+export const CONTRIBUTION_SERVICE = "org.neverplayed.global-state.ContributionService";
 
 // 8. Bundle Typings
 export const BUNDLE_TYPE_ORDER = "order";
@@ -88,6 +89,10 @@ export const BUNDLE_TYPE_REGISTRY = {
     [BUNDLE_TYPE_ATOMIC]: { title: "Atomic Flows", icon: "fas fa-atom", color: "cyan" },
     "component": { title: "Bundle Components", icon: "fas fa-cube", color: "slate" }
 };
+
+export const PLATFORM_SHOWCASE_FLOW = "platform-showcase";
+export const DOMAIN_OBJECTS_FLOW = "domain-objects";
+export const WEB_SPRINGBOARD_FLOW = "web-springboard";
 
 export const NEVERPLAYED_PREFIX = "org.neverplayed.";
 export const ATOMIC_MARKER_HEADER = "X-Atomic-Bundle";

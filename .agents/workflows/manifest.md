@@ -12,5 +12,8 @@ Use this workflow to ensure that a bundle's metadata adheres to the **Never Play
    - `Bundle-Version`: Semver versioning (default `1.0.0`).
    - `Bundle-Activator`: Usually `activator.js`.
 3. **Add Configuration**: Include any necessary `Configuration` blocks (e.g., `capability`, `mountPoint`, `flowType`).
-4. **Compliance Check**: Verify against `docs/bundle-manifest-spec.md` before finalizing.
-5. **Verify File Exists**: Ensure both the `manifest.json` and the corresponding `activator.js` are in place.
+4. **Compliance Check**: Verify against `docs/bundle-manifest-spec.md` and `docs/bundle-readme-spec.md` before finalizing.
+5. **Draft README.md**: Generate a template `README.md` with:
+   - Mandatory Overview and Architecture sections.
+   - For Core/Foundation: "The Patterns" section linking to project ADRs.
+6. **Verify Files Exist**: Ensure `manifest.json`, `README.md`, and `activator.js` are in place.

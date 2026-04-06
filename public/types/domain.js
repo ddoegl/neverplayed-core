@@ -11,10 +11,10 @@ export const BACKOFFICE_WEB_FLOW = "org.neverplayed.backoffice.web";
 export const CAPABILITIES_DATA_SERVICE = "org.neverplayed.backoffice.capabilities.data";
 export const EVALUATOR_SERVICE = "org.neverplayed.backoffice.evaluator";
 export const BUSINESS_SESSION_PID = "org.neverplayed.backoffice.business.session";
-export const COMPANIES_SERVICE = "org.neverplayed.companies.Service";
+export const COMPANIES_SERVICE = "org.neverplayed.CompaniesService";
 export const FEATURE_DATA_SERVICE = "org.neverplayed.features.data";
 export const LICENSES_PID = "org.neverplayed.licenses";
-export const PERSONS_SERVICE = "org.neverplayed.persons.Service";
+export const PERSONS_SERVICE = "org.neverplayed.PersonsService";
 export const RETAIL_SESSION_PID = "org.neverplayed.retail.session";
 export const PERMISSION_DATA_SERVICE = "org.neverplayed.permissions.data";
 export const CASE_MONITOR_FLOW = "org.neverplayed.case.monitor";
@@ -27,6 +27,8 @@ export const MOBILE_LAUNCHER_FLOW = "org.neverplayed.mobile.launcher";
 export const PERSON_REGISTRY_FLOW = "org.neverplayed.person.registry";
 export const REALLIFE_FLOW = "org.neverplayed.real.life";
 export const TENANT_DATA_SERVICE = "org.neverplayed.tenants.data";
+
+export const BOOTSTRAP_LICENSE_FLOW = "bootstrap-license";
 
 // 2. Placeholder for Domain-specific Logic
 // Only purely application-specific constants should remain here.
