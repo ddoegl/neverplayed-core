@@ -1156,10 +1156,10 @@ class UIFactory extends HTMLElement {
             });
             return container;
         } else if (p.type === 'result') {
-            container.setAttribute('x-show', 'data');
+            container.setAttribute('x-show', "$uifResolve('data')");
             container.setAttribute('x-transition', '');
             container.className = "mb-4 p-6 bg-gray-900 rounded-3xl border border-gray-800 shadow-2xl overflow-auto max-h-80";
-            container.innerHTML = `<pre x-text="JSON.stringify(data, null, 2)" class="text-[10px] text-gray-400 font-mono leading-relaxed"></pre>`;
+            container.innerHTML = `<pre x-text="JSON.stringify($uifResolve('data'), null, 2)" class="text-[10px] text-gray-400 font-mono leading-relaxed"></pre>`;
             return container; 
         }
 

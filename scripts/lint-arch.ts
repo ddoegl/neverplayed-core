@@ -11,7 +11,6 @@ console.log("%c --------------------------------------------------", "color: gra
 
 const args = Deno.args;
 const targetLayer = getArgValue("--layer")?.toLowerCase();
-const _targetRealmFile = getArgValue("--realm");
 const isManifestOnly = args.includes("--manifest-only");
 const isDocsOnly = args.includes("--docs-only");
 const isFullAudit = !isManifestOnly && !isDocsOnly;
@@ -33,11 +32,18 @@ interface RealmDef {
     description?: string;
 }
 
-async function resolveBundlesForLayer(layerName: string): Promise<Set<string>> {
+/**
+ * Resolves bundles with CASCADING logic:
+ * - core: bundles in core.json
+ * - foundation: foundation.json + core.json
+ * - domain: all realms in index.json
+ */
+async function resolveBundlesForLayer(layerName: string): Promise<{ bundles: Set<string>, layerMap: Map<string, string> }> {
     const bundles = new Set<string>();
+    const layerMap = new Map<string, string>(); // bsn -> layer
     const processedRealms = new Set<string>();
 
-    async function processRealm(file: string) {
+    async function processRealm(file: string, layer: string) {
         if (processedRealms.has(file)) return;
         processedRealms.add(file);
 
@@ -49,41 +55,49 @@ async function resolveBundlesForLayer(layerName: string): Promise<Set<string>> {
             def.bundles.forEach(b => {
                 if (b.startsWith("./bundles/")) {
                     const parts = b.split("/");
-                    bundles.add(parts[parts.length - 2]); // BSN is the folder name
+                    const bsn = parts[parts.length - 2]; // BSN is the folder name
+                    bundles.add(bsn);
+                    layerMap.set(bsn, layer);
                 }
             });
 
-            // Process parents
+            // Process parents (Recursive discovery for cascading layers)
             if (def.extends) {
                 for (const parentId of def.extends) {
                     const parentFile = parentId.split(".").pop() + ".json";
-                    await processRealm(parentFile);
+                    // Parents are always "lower" layers
+                    const parentLayer = layer === "foundation" ? "core" : (layer === "domain" ? "foundation" : layer);
+                    await processRealm(parentFile, parentLayer);
                 }
             }
         } catch (_e) {
-            console.error(`%c[ERROR]%c Failed to process realm script: ${file}`, "color: red;", "color: reset;");
+            // console.error(`%c[ERROR]%c Failed to process realm script: ${file}`, "color: red;", "color: reset;");
         }
     }
 
-    if (layerName === "core") await processRealm("core.json");
-    else if (layerName === "foundation") await processRealm("foundation.json");
-    else if (layerName === "domain") {
-        // Domain includes everything in index.json except the primitives? 
-        // Or just all realms.
+    if (layerName === "core") {
+        await processRealm("core.json", "core");
+    } else if (layerName === "foundation") {
+        await processRealm("foundation.json", "foundation");
+    } else if (layerName === "domain") {
         const indexText = await Deno.readTextFile(join(REALM_ROOT, "index.json"));
         const realmFiles: string[] = JSON.parse(indexText);
-        for (const f of realmFiles) await processRealm(f);
-    } else {
-        // Default: Audit everything found in BUNDLE_ROOT
-        return new Set<string>(); 
+        for (const f of realmFiles) {
+            // Determine intrinsic layer by file name for top-level entry
+            let intrinsicLayer = "domain";
+            if (f === "core.json") intrinsicLayer = "core";
+            if (f === "foundation.json") intrinsicLayer = "foundation";
+            await processRealm(f, intrinsicLayer);
+        }
     }
 
-    return bundles;
+    return { bundles, layerMap };
 }
 
-const targetBundles = await resolveBundlesForLayer(targetLayer || "all");
+const { bundles: targetBundles, layerMap } = await resolveBundlesForLayer(targetLayer || "all");
+
 if (targetBundles.size > 0) {
-    console.log(`%c 🎯 Targeting Layer: ${targetLayer?.toUpperCase()} (${targetBundles.size} bundles resolved)`, "color: green;");
+    console.log(`%c 🎯 Targeting Layer: ${targetLayer?.toUpperCase()} (${targetBundles.size} bundles resolved via cascading discovery)`, "color: green;");
 } else if (targetLayer) {
     console.log(`%c 🎯 Targeting Layer: ${targetLayer?.toUpperCase()} (Scanning all via convention)`, "color: yellow;");
 }
@@ -97,13 +111,17 @@ async function auditBundles() {
       // Filter by resolved bundles if targeting a specific layer
       if (targetBundles.size > 0 && !targetBundles.has(bsn)) continue;
 
-      // 0. Layer Policy Enforcement (No Flows in Core/Foundation)
-      if (targetLayer === "core" || targetLayer === "foundation") {
-          const relativePath = path.replace(/\\/g, "/");
-          if (relativePath.includes("/flows/") || relativePath.includes("/user-clients/") || relativePath.includes("/system-clients/")) {
-              console.log(`%c[VIOLATION]%c ${bsn}: Flow inhabitant detected in ${targetLayer.toUpperCase()} layer!`, "color: red; font-weight: bold;", "color: reset;");
-              console.log(`  Path: ${path}`);
-              errors++;
+      const layer = layerMap.get(bsn) || "domain";
+
+      // 0. Layer Policy Enforcement (No Flows/Clients in Core/Foundation)
+      if (layer === "core" || layer === "foundation") {
+          const stats = await Deno.readDir(path);
+          for await (const item of stats) {
+              if (item.isDirectory && (item.name === "flows" || item.name === "user-clients" || item.name === "system-clients")) {
+                  console.log(`%c[VIOLATION]%c ${bsn}: Prohibited folder '${item.name}' detected in ${layer.toUpperCase()} layer!`, "color: red; font-weight: bold;", "color: reset;");
+                  console.log(`  Path: ${join(path, item.name)}`);
+                  errors++;
+              }
           }
       }
 
@@ -130,6 +148,7 @@ async function auditBundles() {
           const readme = await Deno.readTextFile(readmePath);
           
           if (!readme.includes("## 🏛️ The Patterns")) {
+            // Principle 7 requirement
             console.log(`%c[WARN]%c ${bsn}: README missing '## 🏛️ The Patterns' section`, "color: yellow; font-weight: bold;", "color: reset;");
             warnings++;
           }
@@ -155,8 +174,9 @@ async function auditBundles() {
 
 async function auditIdentifiers() {
     if (!isFullAudit) return;
-    console.log("%c\n 🕵️ Scanning for Magic Strings (Drift)...", "color: blue; font-weight: bold;");
+    console.log("%c\n 🕵️ Scanning for Magic String Drift (Identifier Audit)...", "color: blue; font-weight: bold;");
     
+    // Pass the resolved bundles to the identifier auditor
     const cmdArgs = ["run", "-A", "scripts/audit-identifiers.ts"];
     if (targetBundles.size > 0) {
         cmdArgs.push(`--bundles=${Array.from(targetBundles).join(",")}`);
@@ -164,16 +184,18 @@ async function auditIdentifiers() {
 
     const process = new Deno.Command("deno", {
         args: cmdArgs,
-        stdout: "piped",
-        stderr: "piped"
+        stdout: "inherit", 
+        stderr: "inherit"
     });
     
-    const { code, stdout, stderr } = await process.output();
-    console.log(new TextDecoder().decode(stdout));
-    console.log(new TextDecoder().decode(stderr));
+    const { code } = await process.output();
     
-    if (code !== 0) errors++;
-    else console.log("%c Identifiers: PASSED ✅", "color: green;");
+    if (code !== 0) {
+        errors++;
+        console.error("%c Identifiers: FAILED ❌", "color: red;");
+    } else {
+        console.log("%c Identifiers: PASSED ✅", "color: green;");
+    }
 }
 
 await auditBundles();
@@ -181,9 +203,9 @@ await auditIdentifiers();
 
 console.log("%c\n --------------------------------------------------", "color: gray;");
 if (errors > 0) {
-  console.log(`%c ❌ Architectural Linter FAILED: ${errors} errors, ${warnings} warnings`, "color: red; font-weight: bold;");
+  console.log(`%c ❌ Architectural Governance FAILED: ${errors} errors, ${warnings} warnings`, "color: red; font-weight: bold;");
   Deno.exit(1);
 } else {
-  console.log(`%c ✅ Architectural Linter PASSED: ${warnings} warnings detected`, "color: green; font-weight: bold;");
+  console.log(`%c ✅ Architectural Governance PASSED: ${warnings} warnings detected`, "color: green; font-weight: bold;");
   Deno.exit(0);
 }
