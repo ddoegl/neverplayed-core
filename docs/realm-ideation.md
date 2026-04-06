@@ -22,12 +22,12 @@ Realms are built using a layered hierarchy. Each layer inherits the semantic con
 
 | Layer | Type | Responsibility | Key Bundles |
 | :--- | :--- | :--- | :--- |
-| **L0: Kernel** | **Base** | OSGi, Logging, Base Types | `system-logger`, `osgi-base` |
-| **L1: Core Shell** | **Infrastructural** | Auth, Persistence, **Session**, YAML, **Shared UI** | `limes`, `auth-shield`, `session-service`, `persistence-selector`, `yaml-service`, `shared-ui-components` |
-| **L2: Foundation** | **Semantic** | Context, State, Execution, Actions, Messaging | `selection-service`, `global-state`, `do-registry`, `action-registry`, `outreach-service`, `atomic-orchestrator` |
-| **L3: Universe** | **Ontological** | Concepts like People, Companies, Tenants | `real-life/dashboard`, `person-registry`, `company-registry` |
+| **L0: Runtime** | **Nucleus** | Deno/Browser, Pandino Kernel | `pandino`, `osgi-base` |
+| **L1: Core Shell** | **Infrastructural** | Auth, Persistence, **Session**, YAML, **Shell UI** | `persistence-selector`, `auth-shield`, `session-service`, `limes`, `yaml-service`, `shell-host`, `shell-cli`, `config-admin` |
+| **L2: Foundation** | **Semantic** | Context, State, Execution, Actions, Messaging | `selection-service`, `global-state`, `do-registry`, `action-registry`, `outreach`, `atomic-orchestrator`, `persistence-resolver` |
+| **L3: Universe** | **Ontological** | Domain Concepts (People, Companies, Tenants) | `real-life/dashboard`, `person-registry`, `company-registry` |
 | **L4: Application** | **Functional** | Specialized business or retail logic | `backoffice-licenses`, `retail-flows`, `invitations` |
-| **L6: Inhabitant** | **Human-Centric** | Personal tools, manual overrides, Debug utilities | `/install` command results, `manually-installed` set |
+| **L6: Inhabitant** | **Human-Sovereign** | Personal tools, manual overrides, Debug utilities | `/install` command results, `manually-installed` set |
 
 ### 👤 Layer 6: The Inhabitant Layer (Human Sovereignty)
 The Inhabitant Layer represents the **Human Inhabitant's personal context**. Unlike the lower 5 layers, which are defined by the universe, the Inhabitant Layer is defined by **Sovereign Choice**. 
@@ -62,20 +62,25 @@ Realms are orchestrating using a declarative manifest that the `RealmManager` re
 
 ```json
 {
-  "id": "org.neverplayed.realm.backoffice",
-  "title": "Administrative Backoffice",
-  "extends": ["org.neverplayed.realm.real-life"],
-  "bundles": [
-    "./bundles/org.neverplayed.limes-ui/manifest.json",
-    "./bundles/system-services/backoffice-do-registry/manifest.json"
-  ],
-  "persistencePolicy": {
-    "tier": "local",
-    "enforce": true,
-    "description": "High-security realm: Data must never leave the local node."
+  "id": "org.neverplayed.realm.work",
+  "title": "Universal Ontology (Work)",
+  "extends": ["org.neverplayed.realm.foundation"],
+  "description": "Layer 3: Work concepts and specialized persistence policies.",
+  "privileges": {
+    "realm-admins": ["daniel.doegl@doegl.info"]
   },
-  "personas": [
-    { "id": "admin-sentry", "role": "Oversight", "strategy": "AUDIT_VIEW" }
+  "bundles": [
+    "./bundles/org.neverplayed.work-dashboard/manifest.json"
+  ],
+  "domainObjects": [
+    { 
+      "id": "visual-do-editor", 
+      "persistence": { "tier": "local", "enforce": true } 
+    },
+    { 
+      "id": "atomic-showcase", 
+      "persistence": { "tier": "local", "enforce": true } 
+    }
   ]
 }
 ```
@@ -106,7 +111,7 @@ Realms from different sources can interact via a standardized OSGi service bridg
 Since a BYOR bundle could execute code, a strict security framework is required:
 - **Manifest Signing**: Realms should be cryptographically signed by their provider.
 - **Capability Scoping**: Remote realms are restricted by the `Shell-Host` (via Limes) to only access the core services they are explicitly granted.
-- **User Permission**: The human citizen must "Invite" a realm into their shell, explicitly acknowledging the bundles it will install.
+- **Human Sovereignty**: The citizen must "Invite" a realm into their shell, explicitly acknowledging the bundles it will install.
 
 ### 4. Use Case: The "Professional Persona"
 A company provider hosts a specific "Professional Realm." A human citizen "loads" this realm into their private Never Played shell. The shell dynamically installs the company's specialized bundles (e.g., Internal CRM, Specialist Chat Agents), and the user can seamlessly transition to their "Work Identity" without ever leaving their personal digital twin.
@@ -125,10 +130,15 @@ Agents do not have "God Mode." They **Inhabit** specific realms.
 
 When a user or the system triggers a Realm Switch (e.g., via `/realm switch`), the `RealmManager` orchestrates a multi-phase transition to align the OSGi environment with the target universe's manifest.
 
-### Phase 1: Hierarchy Resolution
-The manager resolves the recursive `extends` chain. 
-- **Example**: `work` -> `foundation` -> `core`.
-- The result is a **Layer Stack**, where `core` is the base and the specific `realm` is the tip.
+### Phase 0: Environment Sync (The Provider Handshake)
+Before any bundles are installed, the `RealmManager` resolves `public/env.json`.
+- **Provider Injection**: Depending on the `persistence_mode` (e.g., `local-fs` vs `firebase`), the manager dynamically injects the appropriate persistence bundles into the the `core` realm.
+- **Nucleus Alignment**: This ensures the "Source of Truth" for data is established before any service registration occurs.
+
+### Phase 1: Synchronous Discovery (Index Handshake)
+The manager fetches `realms/index.json` from the root context.
+- **Recursive Resolution**: It resolves the recursive `extends` chain (e.g., `work` -> `foundation` -> `core`).
+- **The Boot Promise**: The manager exposes a `waitReady()` promise that only resolves once all discovered manifests are parsed and their registration promises (`_lock`) have cleared.
 
 ### Phase 2: Ontological Intersection
 The manager aggregates all `domainObjects` defined across the layer stack.
@@ -145,10 +155,25 @@ This is the most critical phase where the system's "bits and bytes" are aligned.
     - **NEW**: If not found or in a lower state, it is installed and started incrementally.
 
 ### Phase 4: Privilege & Policy Injection (Identity Guard)
-- **Tier -1 Persistence**: The `PersistenceResolver` is updated with realm-specific overrides (e.g., "In this realm, all `secure-note` objects MUST stay in `local` storage").
+### Phase 4: Persistence Shunting (The Managed Gravity Model)
+Persistence is governed by the **Data Guardian (Persistence Selector)**. Instead of a single hardcoded database, the system uses a **5-Tier Shunting Engine**:
+
+| Tier | Persistence Mode | Intent |
+| :--- | :--- | :--- |
+| **Cloud** | `firebase` | Shared, high-availability, remote state. |
+| **Local-FS** | `local-fs` | Node-specific files (`state.json`), manual sync. |
+| **Local-Browser** | `local-browser` | High-performance, isolated browser storage. |
+| **Memory** | `memory` | Session-only, vanishes on reload (Standard for Security). |
+| **Volatile** | `volatile` | Ephemeral, non-persistent fallback. |
+
+- **Managed Gravity**: Each Domain Object has a "Gravity" toward a specific tier.
+- **Active Shunting**: In a "Work" realm, a `secure-note` might be shunted to `memory` by override, while in "Real Life," it stays in `local-fs`.
+- **Wildcard Handshake**: The Selector automatically registers shunted keys with providers to prevent security warnings.
+
+### Phase 5: Identity & Privilege Injection (Identity Guard)
 - **Late-Join Identity Injection**: Because the `SessionService` may arrive asynchronously during a cold boot surge, the manager uses a **Phase-Aware Tracker**. If a realm is currently activating or already active when the session service arrives, the system injects realm-specific attributes (e.g., `realm-admin`) directly into the `global` user scope.
 
-### Phase 5: The "Talkative" Stepper & Healing Pass
+### Phase 6: The "Talkative" Stepper & Healing Pass
 Because context shifts are high-risk operations, the `RealmManager` provides an **Interactive Stepper** mode (`--step` flag):
 - **Milestones**: Resolves the plan and pauses for user review before applying the "Surge."
 - **Healing Pass**: After activation, the manager re-registers its own CLI commands. This ensures that even if a core bundle (like the Shell CLI) was re-shuffled or restarted during the surge, the management tools remain correctly bound to the current shell environment.
