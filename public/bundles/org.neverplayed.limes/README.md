@@ -1,4 +1,6 @@
 # 🛡️ Limes Security Kernel
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **Limes** bundle is the central authorization and access control engine for the Never Played ecosystem. It implements a hybrid RBAC (Role-Based) and ABAC (Attribute-Based) model using an AST-driven capability evaluator.
 

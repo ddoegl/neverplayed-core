@@ -1,6 +1,6 @@
 {
   "Bundle-SymbolicName": "org.neverplayed.shared-ui",
-  "Bundle-Version": "1.0.0",
+  "Bundle-Version": "1.1.0",
   "Bundle-Name": "Shared UI Library",
   "Bundle-Description": "Re-usable UI components and design system tokens for the shell.",
   "Bundle-Activator": "activator.js",

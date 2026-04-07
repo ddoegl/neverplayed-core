@@ -1,4 +1,6 @@
 # 🛡️ Auth Shield Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Peripheral bridge for authentication and authorization, primarily integrating with Firebase for identity services.
 

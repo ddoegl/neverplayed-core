@@ -1,4 +1,6 @@
 # 🛡️ Alpine Inspector Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 A specialized debugging inhabitant for visualizing the state of Alpine.js global stores and data-bound components.
 

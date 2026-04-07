@@ -1,4 +1,6 @@
 # 🌉 Alpine OSGi Bridge
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **Alpine Bridge** bundle provides the reactive "Glue" that connects the Pandino OSGi Service Registry to the Alpine.js UI layer. It allows HTML templates to react directly to service availability and state changes.
 

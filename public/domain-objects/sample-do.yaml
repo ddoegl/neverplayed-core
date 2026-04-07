@@ -89,7 +89,6 @@ ui:
           value: "Please enter a User ID. The input below is a native '<sl-input>' wrapped in our 'atomic-input' contract."
         user_id:
           kind: "text-input"
-          id: "targetId"
           label: "Global User ID"
           placeholder: "e.g. 7"
           value: "1"
@@ -113,14 +112,14 @@ ui:
       parts:
         summary:
           type: "text"
-          value: "You have selected User ID: **${this.targetId}**. Ready to dispatch the magic greeting?"
+          value: "You have selected User ID: **${this.user_id}**. Ready to dispatch the magic greeting?"
         action_btn:
           kind: "command-button"
           variant: "danger"
           label: "Send Magic Greeting"
           call: "synthetic.server.sample-do"
           params:
-            userId: "${this.targetId}"
+            userId: "${this.user_id}"
         result_area:
           type: "result"
         back_btn:

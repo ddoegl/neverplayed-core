@@ -1,4 +1,6 @@
 # 🛡️ Persistence Resolver Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **Decision Authority** for multi-layered persistence resolution, ensuring that data is shunted accurately between realms and storage providers.
 

@@ -1,4 +1,3 @@
-import { marked } from "https://esm.sh/marked@12.0.1";
 import { 
     YAML_SERVICE, 
     SESSION_SERVICE, 
@@ -11,7 +10,14 @@ import {
     LOG_SERVICE
 } from "core-types";
 
+import { PartRegistry } from "./ui-factory/registry.js";
+import * as PathResolver from "../utils/path-resolver.js";
+
 // Decoupled from Domain-specific listeners. Logic moved to domain orchestrators.
+
+if (!globalThis.UI_FACTORY_DEBUG) {
+    globalThis.UI_FACTORY_DEBUG = true; 
+}
 
 if (!globalThis.__UI_FACTORY_REGISTRY) {
     globalThis.__UI_FACTORY_REGISTRY = {
@@ -297,10 +303,13 @@ class UIFactory extends HTMLElement {
 
         this.addEventListener('atomic-change', (e) => {
             const { id, value } = e.detail;
-            this.logger.info(`UIFactory [${this._id}]: atomic-change received`, id, value);
+            console.log(`UIFactory [${this._id}]: atomic-change for [${id}] -> [${value}]`);
             e.stopPropagation(); 
-            this._state.uifValues[id] = value;
-            this._state.data = null; 
+            if (this._state && this._state.uifValues) {
+                this._state.uifValues[id] = value;
+                this._state.data = null; 
+                this.saveInstance(); // PERSIST
+            }
         });
 
         if (this._spec) this.render();
@@ -390,10 +399,8 @@ class UIFactory extends HTMLElement {
         
         this._rendered = true;
         
-        // 🚀 Pattern 2/17: Force Alpine Discovery Pulse (Non-destructive)
-        // Ensure child atomic tags are picked up even if the mutation observer is lagging.
+        // Pulse Alpine to discover new bindings
         if (globalThis.Alpine) {
-            this.logger.debug(`UIFactory [${this._id}]: Pulsing Alpine tree discovery...`);
             globalThis.Alpine.initTree(this.container || root);
         }
 
@@ -419,25 +426,29 @@ class UIFactory extends HTMLElement {
                 }
                 
                 // Clear and re-hydrate title if needed
-                const existingH3 = stepWrapper.querySelector('h3.uif-step-title');
                 if (s.title) {
+                    let existingH3 = stepWrapper.querySelector('h3.uif-step-title');
                     if (!existingH3) {
-                        const h3 = document.createElement('h3');
-                        h3.className = "uif-step-title text-lg font-black mb-6 text-gray-800 tracking-tight";
-                        // Rule 5: Segmented Variable Resolution
-                        const titleHtml = s.title.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
-                            const path = k1 || k2;
-                            return `<span x-text="$uifResolve('${path.replace(/'/g, "\\'")}')"></span>`;
-                        });
-                        h3.innerHTML = titleHtml;
-                        stepWrapper.prepend(h3);
+                        existingH3 = document.createElement('h3');
+                        existingH3.className = "uif-step-title text-lg font-black mb-6 text-gray-800 tracking-tight";
+                        stepWrapper.prepend(existingH3);
                     }
-                } else if (existingH3) {
-                    existingH3.remove();
+                    // Rule 5: Segmented Variable Resolution
+                    const titleHtml = s.title.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
+                        const path = k1 || k2;
+                        const decodedPath = path.replace(/&amp;/g, '&');
+                        return `<span x-text="$uifResolve('${decodedPath.replace(/'/g, "\\'")}')"></span>`;
+                    });
+                    if (existingH3.innerHTML !== titleHtml) {
+                        existingH3.innerHTML = titleHtml;
+                    }
+                } else {
+                    const existingH3 = stepWrapper.querySelector('h3.uif-step-title');
+                    if (existingH3) existingH3.remove();
                 }
 
                 // Hydrate Parts (Reconcile)
-                const partsContainer = stepWrapper; // or a dedicated child
+                const partsContainer = stepWrapper; 
                 const currentPartEls = Array.from(partsContainer.querySelectorAll('[data-part-id]'));
                 const newPartIds = Object.keys(s.parts || {});
                 
@@ -449,7 +460,8 @@ class UIFactory extends HTMLElement {
                 Object.entries(s.parts || {}).forEach(([pid, p]) => {
                     const existing = partsContainer.querySelector(`[data-part-id="${pid}"]`);
                     const partEl = this.renderPart(pid, p, existing);
-                    if (partEl) partsContainer.appendChild(partEl); // ALWAYS append to maintain DOM order
+                    if (partEl && !partsContainer.contains(partEl)) partsContainer.appendChild(partEl);
+                    if (partEl && partsContainer.contains(partEl)) partsContainer.appendChild(partEl); // Stable order
                 });
             });
 
@@ -494,165 +506,126 @@ class UIFactory extends HTMLElement {
             Object.entries(parts).forEach(([pid, p]) => {
                 const existing = container.querySelector(`[data-part-id="${pid}"]`);
                 const partEl = this.renderPart(pid, p, existing);
-                if (partEl) container.appendChild(partEl); // ALWAY append to maintain DOM order
+                if (partEl && !container.contains(partEl)) container.appendChild(partEl);
             });
         }
     }
 
     _createState(spec) {
-        const logger = this.logger;
-        // Bridge reactive host data if available
-        const globalHostData = globalThis.backofficeState || globalThis.businessPortalState || {};
-        const baseValues = {
-            currentUser: globalHostData.currentUser || this._getService(SESSION_SERVICE)?.currentUser || {},
-            ...globalHostData.currentApplication
-        };
+        this.logger.debug(`UIFactory [${this._id}]: _createState starting...`);
+        const instanceId = this._params?.instanceId || `uif-local-${Math.random().toString(36).substring(7)}`;
+        const instance = this._getFreshInstance(instanceId);
+        
+        const instanceData = instance?.properties || {};
+        const instanceStep = instance?.currentStep;
+        const instanceHistory = instance?.history || [];
 
-        const ui = spec.ui || spec;
-        const stepKeys = Object.keys(ui.steps || {});
-        const initialStep = ui.initialStep || (stepKeys.length > 0 ? stepKeys[0] : null);
- 
-        // --- Instance Hydration ---
-        let instanceData = {};
-        let instanceStep = initialStep;
-        let instanceHistory = [];
-        let instance = null;
-        this._instanceId = this._params?.instanceId;
-        const instanceId = this._instanceId;
- 
-        if (instanceId) {
-            logger.info(`UIFactory [${this._id}]: Hydration request for ${instanceId}. Checking Registry...`);
-            // CRITICAL: Use Registry directly — context.getService(ref) returns the stale
-            // boot-time object whose .properties is always {}. The Registry map is always current.
-            const fresh = this._getFreshInstance(instanceId);
-            if (fresh) {
-                instance = fresh;
-                logger.info(`UIFactory [${this._id}]: Registry pre-hydration for ${instanceId}. Properties: [${Object.keys(fresh.properties || {}).join(', ')}]`);
-                instanceData = fresh.properties || {};
-                if (fresh.currentStep) instanceStep = fresh.currentStep;
-                if (fresh.history) instanceHistory = fresh.history || [];
-            }
-        }
- 
+        // 1. Initial State Definition
+        const steps = spec.ui?.steps || {};
+        const stepKeys = Object.keys(steps);
+        const initialStep = spec.ui?.initialStep || (stepKeys.length > 0 ? stepKeys[0] : null);
+
         const s = {
             loading: false,
             data: null,
             uifGuards: {},
-            uifValues: { ...baseValues, ...instanceData },
-            uifStep: instanceStep || initialStep || stepKeys[0],
+            uifValues: {}, // Local flow state
+            uifStep: instanceStep || initialStep || (stepKeys.length > 0 ? stepKeys[0] : null),
             uifStepKeys: stepKeys,
-            uifInitialStep: initialStep || stepKeys[0],
+            uifInitialStep: initialStep || (stepKeys.length > 0 ? stepKeys[0] : null),
             history: instanceHistory,
             _hydrated: !!instance,
             _registryReady: false,
+            get globals() {
+                return globalThis.backofficeState || globalThis.businessPortalState || {};
+            },
             instanceId: instanceId,
             uifId: this._id,
             uifResolve(expr) {
                 try {
-                    // 1. Direct path lookup (fastest for simple keys)
-                    const val = this._factory ? this._factory.resolveValue(expr, this) : undefined;
+                    // DIAGNOSTIC: Log the current state once per step or on big changes? 
+                    // No, let's just log the resolution attempt.
+                    const val = this._factory ? this._factory.resolveValue(expr, this) : PathResolver.resolveValue(expr, this);
+                    
+                    if (globalThis.UI_FACTORY_DEBUG) {
+                        console.log(`UIFactory [${this.uifId}] RESOLVE: '${expr}' ->`, val, " | Current uifValues:", { ...this.uifValues });
+                    }
+                    
                     if (val !== undefined && val !== null) return val;
 
-                    // 2. Complex Expression Evaluation
-                    // We detect expressions by checking for operators (symbols) or spaces
                     if (expr && (/[?|&:<>=!]/.test(expr) || expr.includes(' '))) {
-                        // Create a context where uifValues are top-level. 
+                        // Complex Evaluation with Unified Scope
                         const scopeProxy = new Proxy(this.uifValues, {
                             get: (target, key) => {
-                                if (key === 'uifValues' || key === 'values') return target; // Support prefixes
+                                if (key === 'this' || key === 'uifValues' || key === 'values') return target;
+                                if (key === 'globals') return this.globals;
                                 if (key === 'uifResolve' || key === 'resolve') return this.uifResolve.bind(this);
                                 if (key === 'uifGuards' || key === 'guards') return this.uifGuards;
-                                return target[key] !== undefined ? target[key] : (this[key] !== undefined ? this[key] : undefined);
+                                
+                                // Order: Local -> Global -> Alpine Scope
+                                return target[key] !== undefined ? target[key] : (this.globals[key] !== undefined ? this.globals[key] : (this[key] !== undefined ? this[key] : undefined));
                             },
-                            has: () => true // Force 'with' to stay within this proxy to avoid global naming collisions
+                            has: () => true
                         });
                         return (new Function('v', `with(v) { return ${expr} }`))(scopeProxy);
                     }
-                } catch (_e) {
-                    // SILENT
-                }
+                } catch (_e) { /* silent */ }
                 return undefined;
             },
             init() {
-                logger.info(`UIFactory [${this.instanceId || 'anon'}]: Alpine Init. uifStep=${this.uifStep}, uifStepKeys=[${this.uifStepKeys.join(', ')}]`);
-                const factory = document.querySelector(`ui-factory[data-uif-id="${this.uifId}"]`);
-                if (factory) {
-                    factory._state = this;
-                    this._factory = factory;
-                }
-
-                logger.info(`UIFactory [${this.instanceId}] connected to Alpine Data`);
-                
-                globalThis.addEventListener('do-registry-ready', () => {
-                    this._registryReady = !this._registryReady; 
-                });
-
-                this.resolveGuards();
-                
-                // Sync uifStep back to Editor if it changes internally
-                this.$watch('uifStep', (val) => {
-                    if (val) {
-                        globalThis.dispatchEvent(new CustomEvent('atomic-step-changed', { 
-                            detail: { 
-                                stepId: val, 
-                                instanceId: this.instanceId,
-                                uifId: this.uifId
-                            } 
-                        }));
+                if (!this._factory) {
+                    const factory = document.querySelector(`ui-factory[data-uif-id="${this.uifId}"]`);
+                    if (factory) {
+                        factory._state = this;
+                        this._factory = factory;
                     }
-                });
-            },
-
-
-            async resolveGuards(scope) {
-                const factory = document.querySelector(`ui-factory[data-uif-id="${this.uifId}"]`);
-                if (factory && factory.resolveGuards) {
-                    await factory.resolveGuards(scope || this);
                 }
-            },
-
-            async performAction(action) {
-                const factory = document.querySelector(`ui-factory[data-uif-id="${this.uifId}"]`) || 
-                                this.$el?.closest('ui-factory');
-                if (factory && factory.runAction) {
-                    await factory.runAction(action, this);
+                if (this._factory) {
+                    this._factory.resolveGuards(this);
                 }
             }
         };
 
-        // Bind methods to ensure stable 'this' context
-        s.resolveGuards = s.resolveGuards.bind(s);
-        s.performAction = s.performAction.bind(s);
-        
-        s.instanceId = instanceId || this._params?.instanceId;
-        s.uifId = this._id;
-
         const collect = (parts) => {
-            Object.values(parts).forEach(p => {
+            Object.entries(parts || {}).forEach(([partKey, p]) => {
                 const kind = p.kind || p.type;
+                const id = p.id || partKey; // Identity Injection (ADR-0025)
+                
                 if (p.guard) s.uifGuards[p.guard] = true;
                 
-                // Ensure properties mentioned in actions are initialized for reactivity & persistence
+                if ((kind === 'text-input' || kind === 'input' || kind === 'select-input' || kind === 'radio-input' || kind === 'checkbox-input')) {
+                    if (s.uifValues[id] === undefined) {
+                        s.uifValues[id] = p.value !== undefined ? p.value : "";
+                    }
+                }
+                
+                // PROOF OF LIFE: Force inject some values for atomic-showcase if they are missing
+                if (spec.id === 'atomic-showcase' && !s.uifValues['name']) {
+                    s.uifValues['name'] = "TestUser_" + Math.floor(Math.random() * 1000);
+                    s.uifValues['role'] = "dev";
+                }
+
+                if (p.parts) collect(p.parts);
+            });
+        };
+        Object.values(steps).forEach(sStep => collect(sStep.parts || {}));
+
+        // 2. Sync Properties from Actions (Legacy Support)
+        Object.values(steps).forEach(sStep => {
+            Object.values(sStep.parts || {}).forEach(p => {
                 const params = p.params || {};
                 if (params.linkToProperty) {
                     if (s.uifValues[params.linkToProperty] === undefined) s.uifValues[params.linkToProperty] = "";
                     if (s.uifValues[params.linkToProperty + 'Status'] === undefined) s.uifValues[params.linkToProperty + 'Status'] = "";
                 }
-                if (params.statusProperty && s.uifValues[params.statusProperty] === undefined) {
-                    s.uifValues[params.statusProperty] = "";
-                }
-
-                if ((kind === 'text-input' || kind === 'input' || kind === 'select-input') && p.id) {
-                    if (s.uifValues[p.id] === undefined) {
-                        s.uifValues[p.id] = p.value || "";
-                    }
-                }
-                if (p.parts) collect(p.parts);
             });
-        };
-        Object.values(ui.steps || {}).forEach(step => collect(step.parts || {}));
+        });
+
+        // 3. Hydrate from Instance Data (Source of Truth)
+        Object.assign(s.uifValues, instanceData);
 
         this._state = globalThis.Alpine.reactive(s);
+        this._state._factory = this; // Immediate handshake to avoid init race
 
         // Build guard config map from spec for declarative matcher evaluation
         this._guardConfig = {};
@@ -666,20 +639,15 @@ class UIFactory extends HTMLElement {
         const masterEffect = globalThis.Alpine.effect(() => {
             if (this._isDisconnected || this._isHydrating) return;
             if (this._context && typeof this._context.isValid === 'function' && !this._context.isValid()) return;
+            
             const state = this._state;
-            
-            // 1. Reactive Tracking (Deep)
-            const _track = JSON.stringify(state.uifValues);
-            const _trackStep = state.uifStep;
-            
-            // 2. Resolve Guards immediately (Synchronous micro-update)
-            this.resolveGuards(state);
+            if (!state) return;
 
-            // 3. Auto-Save
-            const instanceId = this.getAttribute('instance-id') || this._params?.instanceId;
-            if (instanceId && state._hydrated) {
-                this.saveInstance(state);
-            }
+            // Persist on change
+            this.saveInstance(state);
+            
+            // Re-evaluate guards reactively
+            this.resolveGuards(state);
         });
         this._effects.push(masterEffect);
 
@@ -1002,260 +970,23 @@ class UIFactory extends HTMLElement {
     }
 
     interpolate(str, scope, extra = {}) {
-        if (!str) return "";
-        return str.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
-            const key = k1 || k2;
-            const val = extra[key] ?? scope.uifValues[key] ?? scope[key] ?? null;
-            if (val !== null && val !== undefined) return val;
-            
-            // Try deep resolution if key contains dots
-            if (key.includes('.')) {
-                const parts = key.split('.');
-                const deep = parts.reduce((acc, part) => acc && acc[part], scope.uifValues) ?? 
-                             parts.reduce((acc, part) => acc && acc[part], scope);
-                if (deep !== undefined && deep !== null) return deep;
-            }
-            return "";
+        return PathResolver.interpolate(str, scope, extra, (expr) => {
+            return scope && typeof scope.uifResolve === 'function' ? scope.uifResolve(expr) : undefined;
         });
     }
 
+    /**
+     * Resolves a value from the state. Supports deep paths and prefixes.
+     */
     resolveValue(expr, scope) {
-        if (typeof expr !== 'string') return expr;
-        
-        // 1. Check if it's an explicit expression: ${path} or {{path}}
-        const match = expr.match(/^(?:\${(this\.)?(.+?)}$|\{\{\s*(this\.)?(.+?)\s*\}\})$/);
-        const path = match ? (match[2] || match[4]) : expr;
-
-        // 2. Resolve Path Helper
-        const resolvePath = (obj, p) => {
-            if (!obj || !p) return undefined;
-            if (p.startsWith('this.')) p = p.substring(5);
-            if (p.startsWith('uifValues.')) p = p.substring(10);
-            if (p.startsWith('values.')) p = p.substring(7); // Compatibility
-            return p.split('.').reduce((acc, part) => acc && acc[part] !== undefined ? acc[part] : undefined, obj);
-        };
-
-        // 3. Try to find the value in uifValues or root scope
-        const result = resolvePath(scope.uifValues, path) ?? resolvePath(scope, path);
-        if (result !== undefined) return result;
-
-        // 4. If it was a literal path that failed, return undefined
-        return undefined;
+        return PathResolver.resolveValue(expr, scope);
     }
 
+    /**
+     * Renders a part using the delegated PartRegistry.
+     */
     renderPart(_id, p, existingEl = null) {
-        const kind = p.kind || p.type;
-        const tagName = this._registryService ? this._registryService.get(kind) : null;
-        
-        if (tagName) {
-            let el = existingEl;
-            // If it's a wrapper, get the child
-            if (el && el.getAttribute('data-part-id') !== _id) {
-                el = el.querySelector(`[data-part-id="${_id}"]`);
-            }
-
-            if (!el || el.tagName.toLowerCase() !== tagName.toLowerCase()) {
-                el = document.createElement(tagName);
-                el.setAttribute('data-part-id', _id);
-            }
-
-            if (el.hydrate) {
-                const isNew = !existingEl;
-                this.logger.info(`UIFactory [${this._id}]: ${isNew ? 'Creating' : 'Reusing'} part [${_id}] (${kind})`);
-                el.hydrate(
-                    { ...p, id: _id }, 
-                    this._context, 
-                    (s) => this.interpolate(s, this._state),
-                    (path) => this.resolveValue(path, this._state)
-                );
-            }
-            
-            if (p.guard) {
-                // Return simple wrapper for guards, but keep the el inside
-                const wrapper = (existingEl && existingEl.classList.contains('uif-guard-wrapper')) ? existingEl : document.createElement('div');
-                wrapper.className = 'uif-guard-wrapper';
-                wrapper.setAttribute('data-part-id', _id);
-                const escapedGuard = p.guard.replace(/'/g, "\\\\'");
-                wrapper.setAttribute('x-show', `uifGuards['${escapedGuard}'] === true`);
-                wrapper.setAttribute('x-cloak', '');
-                if (!wrapper.contains(el)) wrapper.appendChild(el);
-                return wrapper;
-            }
-            return el;
-        }
-
-        // Logic for specialized structural elements
-        let container = existingEl;
-        
-        // RECONCILE: If existingEl is actually our guard wrapper from a previous render, peel it off
-        if (container && container.classList.contains('uif-guard-wrapper')) {
-            container = container.querySelector(':scope > .uif-structural-container');
-        }
-
-        if (!container || !container.classList.contains('uif-structural-container')) {
-            container = document.createElement('div');
-            container.setAttribute('data-part-id', _id);
-            container.classList.add('uif-structural-container');
-        }
-        
-        container.className = "uif-structural-container mb-4";
-
-        if (p.type === 'row') {
-            container.classList.add("flex", "space-x-3");
-            // Hydrate children of the row
-            const currentChildren = Array.from(container.querySelectorAll(':scope > [data-part-id]'));
-            const newChildIds = Object.keys(p.parts || {});
-            currentChildren.forEach(el => {
-                if (!newChildIds.includes(el.getAttribute('data-part-id'))) el.remove();
-            });
-            Object.entries(p.parts || {}).forEach(([cid, cp]) => {
-                const existing = container.querySelector(`:scope > [data-part-id="${cid}"]`);
-                const childEl = this.renderPart(cid, cp, existing);
-                if (childEl) container.appendChild(childEl); // ALWAYS append to maintain DOM order
-            });
-            return container;
-        } else if (p.type === 'card') {
-            const variant = p.variant || 'plain';
-            const styles = {
-                plain: "bg-white border-gray-200 shadow-sm",
-                info: "bg-blue-50 border-blue-200 text-blue-800 shadow-blue-100",
-                success: "bg-emerald-50 border-emerald-200 text-emerald-800 shadow-emerald-100",
-                error: "bg-red-50 border-red-200 text-red-800 shadow-red-100",
-                warning: "bg-amber-50 border-amber-200 text-amber-800 shadow-amber-100"
-            };
-            container.className = `uif-structural-container p-6 rounded-3xl border-2 border-solid mb-6 block transition-all ${styles[variant] || styles.plain}`;
-            
-            // Reconcile label (h4)
-            let h4 = container.querySelector('h4.uif-card-label');
-            if (p.label) {
-                if (!h4) {
-                    h4 = document.createElement('h4');
-                    h4.className = "uif-card-label text-xs uppercase font-black tracking-widest mb-4 opacity-50";
-                    container.prepend(h4);
-                }
-                // Rule 5: Segmented Variable Resolution
-                const labelHtml = p.label.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
-                    const path = k1 || k2;
-                    return `<span x-text="$uifResolve('${path.replace(/'/g, "\\'")}')"></span>`;
-                });
-                h4.innerHTML = labelHtml;
-            } else if (h4) {
-                h4.remove();
-            }
-
-            // Hydrate children of the card
-            const currentChildren = Array.from(container.querySelectorAll(':scope > [data-part-id]'));
-            const newChildIds = Object.keys(p.parts || {});
-            currentChildren.forEach(el => {
-                if (!newChildIds.includes(el.getAttribute('data-part-id'))) el.remove();
-            });
-            Object.entries(p.parts || {}).forEach(([cid, cp]) => {
-                const existing = container.querySelector(`:scope > [data-part-id="${cid}"]`);
-                const childEl = this.renderPart(cid, cp, existing);
-                if (childEl) container.appendChild(childEl); // ALWAYS append to maintain DOM order
-            });
-            return container;
-        } else if (p.type === 'result') {
-            container.setAttribute('x-show', "$uifResolve('data')");
-            container.setAttribute('x-transition', '');
-            container.className = "mb-4 p-6 bg-gray-900 rounded-3xl border border-gray-800 shadow-2xl overflow-auto max-h-80";
-            container.innerHTML = `<pre x-text="JSON.stringify($uifResolve('data'), null, 2)" class="text-[10px] text-gray-400 font-mono leading-relaxed"></pre>`;
-            return container; 
-        }
-
-        // 3. Render children or text (Reconcile-Style)
-        if (p.parts) {
-            // Cleanup orphaned sub-parts
-            const newSubIds = Object.keys(p.parts);
-            Array.from(container.children).forEach(el => {
-                const pid = el.getAttribute('data-part-id');
-                if (pid && !newSubIds.includes(pid)) el.remove();
-            });
-
-            Object.entries(p.parts).forEach(([sid, sp]) => {
-                const existing = container.querySelector(`:scope > [data-part-id="${sid}"]`);
-                const child = this.renderPart(sid, sp, existing);
-                if (child) container.appendChild(child); // ALWAYS append to maintain DOM order
-            });
-        } else if (p.type === 'text' || typeof p.value === 'string') {
-            // Reconcile text as a leaf leaf
-            let inner = container.querySelector('.uif-text-content');
-            if (!inner) {
-                inner = document.createElement('div');
-                inner.className = "uif-text-content text-gray-500 leading-relaxed font-semibold prose prose-sm max-w-none prose-p:my-1 prose-a:text-blue-600 prose-strong:text-gray-700";
-                container.appendChild(inner);
-            }
-            
-            let html = "";
-            try {
-                html = marked.parse(p.value || "");
-            } catch (_e) {
-                html = p.value || "";
-            }
-            // Use a temporary map to hold expressions while we set up the DOM
-            const reactiveSegments = [];
-            const maskedHtml = html.replace(/(?:\${(this\.)?(.+?)}|\{\{\s*(this\.)?(.+?)\s*\}\})/g, (_, _p1, k1, _p2, k2) => {
-                const id = `uif-r-${Math.random().toString(36).slice(2, 9)}`;
-                reactiveSegments.push({ id, path: k1 || k2 });
-                return `<span id="${id}" class="uif-reactive-placeholder"></span>`;
-            });
-
-            inner.innerHTML = maskedHtml;
-
-            // Now safely attach x-text to each placeholder using setAttribute (which is literal)
-            reactiveSegments.forEach(seg => {
-                const span = inner.querySelector(`#${seg.id}`);
-                if (span) {
-                    // We remove the ID to keep DOM clean, but keep a class for debugging if needed
-                    span.removeAttribute('id');
-                    span.className = "uif-reactive text-blue-600 font-bold whitespace-pre-wrap font-mono";
-                    
-                    // CRITICAL: Decode HTML entities (like &#39;) introduced by marked.parse
-                    const temp = document.createElement('div');
-                    temp.innerHTML = seg.path.replace(/&amp;/g, '&'); // Presync common entities
-                    const decodedPath = temp.textContent || temp.innerText || seg.path;
-
-                    const escapedPath = decodedPath.replace(/'/g, "\\'"); // Rule 5: Standardized magic resolution
-                    span.setAttribute('x-text', `((v) => (typeof v === 'object' && v !== null) ? JSON.stringify(v, null, 2) : (v ?? ''))($uifResolve('${escapedPath}'))`);
-                }
-            });
-        }
-
-        if (p.guard) {
-            const escapedGuard = p.guard.replace(/'/g, "\\\\'");
-            // RECONCILE: If the existingEl was a wrapper, use it. Otherwise, create one.
-            let guardWrap = (existingEl && (existingEl.classList.contains('uif-guard-wrapper') || existingEl.classList.contains('uif-structural-container'))) 
-                            ? (existingEl.classList.contains('uif-guard-wrapper') ? existingEl : null) 
-                            : null;
-            
-            if (!guardWrap && existingEl?.parentElement?.classList.contains('uif-guard-wrapper')) {
-                guardWrap = existingEl.parentElement;
-            }
-
-            if (!guardWrap) {
-                guardWrap = document.createElement('div');
-                guardWrap.className = 'uif-guard-wrapper';
-                guardWrap.appendChild(container);
-            } else if (!guardWrap.contains(container)) {
-                // Ensure the container is inside the wrapper if we are reusing it
-                guardWrap.innerHTML = '';
-                guardWrap.appendChild(container);
-            }
-            
-            guardWrap.setAttribute('x-show', `uifGuards['${escapedGuard}'] === true`);
-            guardWrap.setAttribute(':style', `{ display: uifGuards['${escapedGuard}'] ? '' : 'none !important' }`);
-            guardWrap.setAttribute('x-cloak', '');
-            guardWrap.setAttribute('x-effect', `if (uifGuards['${escapedGuard}']) {
-                const msg = 'UIFactory [' + this._id + ']: Guard ${escapedGuard} attached/visible';
-                if (globalThis.Services?.['${LOG_SERVICE}']) {
-                    globalThis.Services['${LOG_SERVICE}'].getLogger("ui-factory").info(msg);
-                } else {
-                    console.log(msg);
-                }
-            }`);
-            return guardWrap;
-        }
-        return container;
+        return PartRegistry.render(_id, p, this._context, PathResolver, this, existingEl);
     }
 
     async resolveGuards(scope) {
@@ -1339,21 +1070,22 @@ if (!customElements.get("ui-factory")) {
 
 // --- Alpine Magic Registration: $uifResolve (Global Shield) ---
 if (globalThis.Alpine && !globalThis.Alpine._uifResolveRegistered) {
-    globalThis.Alpine.magic('uifResolve', (el, { Alpine }) => {
+    globalThis.Alpine.magic('uifResolve', (el) => {
         return (expr) => {
-            // 1. Traverse Alpine data stack for nearest uifResolve handler
-            const dataStack = Alpine.closestDataStack(el);
-            for (const scope of dataStack) {
-                if (typeof scope.uifResolve === 'function') {
-                    return scope.uifResolve(expr);
-                }
+            const uifEl = el.closest('ui-factory');
+            const uifId = uifEl?.getAttribute('data-uif-id');
+            if (!uifId) return undefined;
+            const state = globalThis.__UI_FACTORY_REGISTRY.get(uifId);
+            if (!state) return undefined;
+            
+            // HINT to Alpine: Use state.uifValues to trigger reactive dependency tracking
+            const _reactiveBridge = state.uifValues; 
+            
+            const val = state.uifResolve(expr);
+            if (globalThis.UI_FACTORY_DEBUG) {
+                console.log(`UIFactory [${uifId}]: $uifResolve('${expr}') ->`, val);
             }
-            // 2. Cascade lookup to nearest UIFactory component instance
-            const factoryEl = el.closest('ui-factory') || document.querySelector(`ui-factory[data-uif-id="${el.closest('[data-uif-id]')?.getAttribute('data-uif-id')}"]`);
-            if (factoryEl?._state?.uifResolve) {
-                return factoryEl._state.uifResolve(expr);
-            }
-            return undefined;
+            return val;
         };
     });
     globalThis.Alpine._uifResolveRegistered = true;

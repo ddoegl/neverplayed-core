@@ -19,9 +19,26 @@ import "./components/atomic-hero.js";
 import "./components/authorization-selector.js";
 import "./components/user-selector.js";
 
+/**
+ * Activator for the Shared UI Components Bundle.
+ * 
+ * This bundle is a foundational infrastructure layer that provides:
+ * 1. The Atomic Component Registry (for mapping design tokens to tags).
+ * 2. The UI Factory Service (for rendering declarative UI specs).
+ * 3. Synthetic Client Actions (for shell-level UI interactions).
+ * 
+ * Implements patterns: ADR-0016 (Inhabitant Sovereignty), ADR-0025 (Identity Injection), ADR-0026 (Reactive Resolution).
+ */
 export default class Activator {
+  /**
+   * Initializes the shared UI services and registers atomic components.
+   * 
+   * @param {BundleContext} context - The OSGi bundle context.
+   */
   start(context) {
     let logger = console; // Fallback
+    
+    // Resilient Logger Tracking
     context.trackService(`(objectClass=${LOG_SERVICE})`, {
         addingService: (ref) => {
             const logAdmin = context.getService(ref);
@@ -31,6 +48,10 @@ export default class Activator {
         removedService: () => { logger = console; }
     }).open();
 
+    /**
+     * Internal registry of atomic component mappings.
+     * Maps 'kind' (uiSpec property) to 'tagName' (Custom Element).
+     */
     const componentRegistry = new Map([
         ['command-button', 'atomic-button'],
         ['action', 'atomic-button'],
@@ -43,6 +64,10 @@ export default class Activator {
         ['hero', 'atomic-hero']
     ]);
 
+    /**
+     * ATOMIC_COMPONENT_REGISTRY_SERVICE
+     * Allows other bundles to extend the design system by registering new component tags.
+     */
     context.registerService(ATOMIC_COMPONENT_REGISTRY_SERVICE, {
         register: (kind, tagName) => {
             console.log(`UI Components: Registering component [${kind}] -> <${tagName}>`);
@@ -58,11 +83,14 @@ export default class Activator {
         // Note: Existing instances might need a way to get context
     }
 
-    // Provide a service for the orchestrator to interact with the factory
+    /**
+     * UI_FACTORY_SERVICE
+     * The primary entry point for rendering declarative UI flows.
+     * Manages spec parsing, variable interpolation, and Alpine.js hydration.
+     */
     context.registerService(UI_FACTORY_SERVICE, {
         create: (spec, params = {}) => {
             const el = document.createElement("ui-factory");
-            // We'll need a way to pass the context/service to the element
             if (el.setBundleContext) el.setBundleContext(context);
             if (el.setParams) el.setParams(params);
             if (spec && el.setSpec) el.setSpec(spec);
@@ -70,9 +98,16 @@ export default class Activator {
         }
     });
 
+    /**
+     * UI_COMPONENTS_SERVICE
+     * A marker service to indicate that shared UI components are ready.
+     */
     context.registerService(UI_COMPONENTS_SERVICE, { loaded: true });
 
-    // Register generic Action Services for internal shell functions
+    /**
+     * ACTION_SERVICE: synthetic.client.summary-alert
+     * Provides a standardized shell-level alert dialog.
+     */
     context.registerService(ACTION_SERVICE, {
         execute: (params) => {
             alert(params.message || "Action Completed!");
@@ -82,7 +117,9 @@ export default class Activator {
         "action.id": "synthetic.client.summary-alert"
     });
 
-    // Register built-in actions in the registry for documentation
+    /**
+     * Register technical metadata for decentralized action discovery.
+     */
     context.trackService(`(objectClass=${ACTION_REGISTRY_SERVICE})`, {
         addingService: (ref) => {
             const registry = context.getService(ref);
@@ -110,7 +147,11 @@ export default class Activator {
     }).open();
   }
 
+  /**
+   * Performs cleanup when the bundle is stopped.
+   * @param {BundleContext} _context - The OSGi bundle context.
+   */
   stop(_context) {
-    console.log("Shared UI Components Bundle stopped.");
+    if (console.log) console.log("Shared UI Components Bundle stopped.");
   }
 }

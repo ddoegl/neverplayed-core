@@ -1,4 +1,6 @@
 # 🛡️ Global State Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Lightweight platform-level state container for shared cross-bundle synchronization.
 

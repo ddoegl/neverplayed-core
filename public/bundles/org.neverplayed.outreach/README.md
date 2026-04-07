@@ -1,4 +1,6 @@
 # 🛰️ Outreach Service
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **Outreach** bundle provides a standardized bridge for performing outbound API calls. it acts as a central proxy for external communication, ensuring consistent logging and error handling across all inhabitants.
 

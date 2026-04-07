@@ -1,4 +1,6 @@
 # 🛡️ Visual Editor Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 A foundational meta-flow inhabitant for building, designing, and exploring **Atomic Flow blueprints** through a structured, form-based interface.
 

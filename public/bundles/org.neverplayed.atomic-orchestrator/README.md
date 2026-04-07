@@ -1,4 +1,6 @@
 # 🛡️ Atomic Orchestrator Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Computational engine for evaluating **Atomic Rules**, managing semantic flows, and coordinating complex business logic.
 

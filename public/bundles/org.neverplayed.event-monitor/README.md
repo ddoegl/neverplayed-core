@@ -1,4 +1,6 @@
 # 🛡️ Event Monitor Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Real-time diagnostic tool for visualizing OSGi service events, lifecycle changes, and EventAdmin signals.
 

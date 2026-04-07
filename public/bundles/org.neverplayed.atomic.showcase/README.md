@@ -1,4 +1,6 @@
 # 🛡️ Atomic Showcase Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Demonstration of the NPRF Atomic Flow engine and core semantic capabilities.
 

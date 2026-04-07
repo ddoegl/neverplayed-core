@@ -1,4 +1,6 @@
 # 🛡️ Session Service Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **Identity Purity Guardian** that manages reactive user state, scoped authorizations, and session persistence.
 

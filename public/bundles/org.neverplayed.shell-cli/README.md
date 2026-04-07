@@ -1,4 +1,6 @@
 # 🐚 Shell CLI Core
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **Shell CLI** bundle is the central command-line interface for the Never Played ecosystem. it orchestrates the "Low-Level" interaction with the OSGi Service Registry and governs bundle lifecycles.
 

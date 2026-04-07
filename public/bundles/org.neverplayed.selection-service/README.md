@@ -1,4 +1,6 @@
 # 🛡️ Selection Service Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Infrastructure for managing the "Active Selection" in the shell, enabling context-aware actions and cross-bundle communication.
 

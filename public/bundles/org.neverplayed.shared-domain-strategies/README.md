@@ -1,4 +1,6 @@
 # 🛡️ Shared Domain Strategies Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Global repository for domain-specific business logic patterns and strategy services.
 

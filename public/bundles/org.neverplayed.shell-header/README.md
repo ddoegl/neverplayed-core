@@ -1,4 +1,6 @@
 # 🛡️ Shell Header Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Top-level UI navigation and status bar, providing centralized access to identity management, session awareness, and global search.
 

@@ -1,4 +1,6 @@
 # 🛡️ YAML Editor Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **YAML Editor** is a foundational UI component that provides a reactive, context-aware interface for editing domain object blueprints and system-level semantic state.
 

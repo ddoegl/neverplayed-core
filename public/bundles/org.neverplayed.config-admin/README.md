@@ -1,4 +1,6 @@
 # 🛡️ Config Admin Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Dynamic configuration management for all system and application bundles, allowing for runtime overrides of manifest settings.
 

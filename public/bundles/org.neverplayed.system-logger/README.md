@@ -1,4 +1,6 @@
 # 🛡️ System Logger Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Platform-wide logging service that provides a reactive, filtered, and centralized logging infrastructure for all Never Played bundles.
 

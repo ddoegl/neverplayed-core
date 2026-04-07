@@ -1,4 +1,6 @@
 # 🛡️ Shell Host Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The primary rendering container for realm-inhabitant UIs and atomic flows.
 

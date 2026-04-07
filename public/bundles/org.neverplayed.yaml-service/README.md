@@ -1,4 +1,6 @@
 # 📄 YAML Service
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **YAML Service** bundle provides a standardized, platform-wide wrapper for parsing and dumping YAML documents using the `js-yaml` library.
 

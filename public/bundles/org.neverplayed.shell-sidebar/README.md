@@ -1,4 +1,6 @@
 # 🛡️ Shell Sidebar Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Left-hand side navigation panel for switching between flows, managing realms, and accessing system-level settings.
 

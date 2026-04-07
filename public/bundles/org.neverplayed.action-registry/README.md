@@ -1,4 +1,6 @@
 # 🛡️ Action Registry Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Central registry for **Actions** that can be performed on domain objects, enabling decentralized UI interactions and dynamic menus.
 

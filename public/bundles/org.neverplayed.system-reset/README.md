@@ -1,4 +1,6 @@
 # 🛡️ System Reset Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Emergency utility for clearing all persistent state and resetting the kernel to a pristine "guest" state.
 

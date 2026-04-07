@@ -1,4 +1,6 @@
 # 🛡️ Persistence Selector Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **Strategic Data Shunt** that routes data to different storage tiers based on dynamic policies and environment state.
 

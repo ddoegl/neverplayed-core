@@ -1,4 +1,6 @@
 # 🖥️ Shell CLI DOM
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 The **Shell CLI DOM** bundle provides the primary browser-based user interface for the `ShellCLI`. it renders the terminal emulator using plain HTML/CSS and Alpine.js.
 

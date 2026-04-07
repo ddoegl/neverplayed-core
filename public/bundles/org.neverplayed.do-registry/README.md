@@ -1,4 +1,6 @@
 # 🛡️ DO Registry Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+
 
 Central registry for **Domain Object (DO)** blueprints, providing a unified access point for metadata, schemas, and semantic types.
 

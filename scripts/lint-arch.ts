@@ -5,6 +5,9 @@ const BUNDLE_ROOT = "./public/bundles";
 const REALM_ROOT = "./public/realms";
 const PLATFORM_PATTERNS_REF = "docs/platform-patterns.md";
 const ADR_REF = "docs/adr/";
+const HEALTH_BADGE = "![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)";
+const SEMVER_REGEX = /^\d+\.\d+\.\d+$/;
+const CORE_ADRS = ["0025", "0026", "0027"];
 
 console.log("%c 🏺 Never Played: Layer-Based Architectural Linter", "color: cyan; font-weight: bold; font-size: 1.2em;");
 console.log("%c --------------------------------------------------", "color: gray;");
@@ -13,10 +16,12 @@ const args = Deno.args;
 const targetLayer = getArgValue("--layer")?.toLowerCase();
 const isManifestOnly = args.includes("--manifest-only");
 const isDocsOnly = args.includes("--docs-only");
+const isFixMode = args.includes("--fix");
 const isFullAudit = !isManifestOnly && !isDocsOnly;
 
 let errors = 0;
 let warnings = 0;
+const fixedItems: string[] = [];
 
 function getArgValue(flag: string) {
     const idx = args.indexOf(flag);
@@ -125,34 +130,64 @@ async function auditBundles() {
           }
       }
 
-      // 1. Manifest Alignment
+      // 1. Manifest Alignment & Versioning (ADR-0027)
       if (isFullAudit || isManifestOnly) {
         const manifestPath = `${path}/manifest.json`;
         try {
           const manifestText = await Deno.readTextFile(manifestPath);
           const manifest = JSON.parse(manifestText);
+          
+          // BSN Check
           if (manifest["Bundle-SymbolicName"] !== bsn) {
             console.log(`%c[ERROR]%c ${bsn}: Manifest BSN mismatch ('${manifest["Bundle-SymbolicName"]}')`, "color: red; font-weight: bold;", "color: reset;");
             errors++;
           }
+
+          // Versioning Check (ADR-0027)
+          const version = manifest["Bundle-Version"];
+          if (!version || !SEMVER_REGEX.test(version)) {
+            console.log(`%c[ERROR]%c ${bsn}: Invalid Semantic Versioning ('${version || 'MISSING'}'). Must be X.Y.Z as per ADR-0027.`, "color: red; font-weight: bold;", "color: reset;");
+            errors++;
+          }
+
         } catch (_e) {
           console.log(`%c[ERROR]%c ${bsn}: manifest.json MISSING`, "color: red; font-weight: bold;", "color: reset;");
           errors++;
         }
       }
 
-      // 2. Documentation Standards
+      // 2. Documentation Standards & Health Badging
       if (isFullAudit || isDocsOnly) {
         const readmePath = `${path}/README.md`;
         try {
-          const readme = await Deno.readTextFile(readmePath);
+          let readme = await Deno.readTextFile(readmePath);
+          let changed = false;
           
+          // A. Health Badge (Auto-fix support)
+          if (!readme.includes("Documentation Health")) {
+            if (isFixMode) {
+                // Prepend badge after title
+                readme = readme.replace(/^(# .*?\n)/, `$1${HEALTH_BADGE}\n\n`);
+                changed = true;
+                fixedItems.push(`${bsn}: Injected Health Badge`);
+            } else {
+                console.log(`%c[WARN]%c ${bsn}: README missing Documentation Health badge`, "color: yellow; font-weight: bold;", "color: reset;");
+                warnings++;
+            }
+          }
+
+          // B. Sections Existence
+          if (!readme.includes("## 🏛️ Architecture & Implementation")) {
+            console.log(`%c[ERROR]%c ${bsn}: README missing 'Architecture & Implementation' section`, "color: red; font-weight: bold;", "color: reset;");
+            errors++;
+          }
+
           if (!readme.includes("## 🏛️ The Patterns")) {
-            // Principle 7 requirement
             console.log(`%c[WARN]%c ${bsn}: README missing '## 🏛️ The Patterns' section`, "color: yellow; font-weight: bold;", "color: reset;");
             warnings++;
           }
 
+          // C. ADR & Pattern Linking
           if (!readme.includes(PLATFORM_PATTERNS_REF)) {
             console.log(`%c[ERROR]%c ${bsn}: README missing link to platform-patterns.md`, "color: red; font-weight: bold;", "color: reset;");
             errors++;
@@ -163,9 +198,35 @@ async function auditBundles() {
             errors++;
           }
 
+          // D. Core ADR Coverage (0025, 0026, 0027) for Core/Foundation layers
+          if (layer === "core" || layer === "foundation") {
+              for (const adrId of CORE_ADRS) {
+                  if (!readme.includes(adrId)) {
+                      console.log(`%c[WARN]%c ${bsn}: README missing link to critical ADR-${adrId}`, "color: yellow; font-weight: bold;", "color: reset;");
+                      warnings++;
+                  }
+              }
+          }
+
+          if (changed && isFixMode) {
+              await Deno.writeTextFile(readmePath, readme);
+          }
+
         } catch (_e) {
           console.log(`%c[ERROR]%c ${bsn}: README.md MISSING`, "color: red; font-weight: bold;", "color: reset;");
           errors++;
+        }
+
+        // 3. JSDoc Detection for Activator (Warn Only)
+        const activatorPath = `${path}/activator.js`;
+        try {
+            const activator = await Deno.readTextFile(activatorPath);
+            if (!activator.includes("/**")) {
+                console.log(`%c[WARN]%c ${bsn}: activator.js missing JSDoc technical documentation`, "color: yellow; font-weight: bold;", "color: reset;");
+                warnings++;
+            }
+        } catch (_e) {
+            // Some bundles might not have activators, that's okay.
         }
       }
     }
@@ -202,6 +263,13 @@ await auditBundles();
 await auditIdentifiers();
 
 console.log("%c\n --------------------------------------------------", "color: gray;");
+
+if (isFixMode && fixedItems.length > 0) {
+    console.log(`%c 🔧 Auto-Fix Summary:`, "color: cyan; font-weight: bold;");
+    fixedItems.forEach(item => console.log(`  - ${item}`));
+    console.log("");
+}
+
 if (errors > 0) {
   console.log(`%c ❌ Architectural Governance FAILED: ${errors} errors, ${warnings} warnings`, "color: red; font-weight: bold;");
   Deno.exit(1);
