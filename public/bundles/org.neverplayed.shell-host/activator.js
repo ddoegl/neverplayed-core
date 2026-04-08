@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.shell-host
+ * @module platform/bundles/org.neverplayed.shell-host
+ */
+
 import { 
     FLOW_SERVICE, 
     SHELL_HOST_SERVICE 

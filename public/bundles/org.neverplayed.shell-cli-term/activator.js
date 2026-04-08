@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.shell-cli-term
+ * @module platform/bundles/org.neverplayed.shell-cli-term
+ */
+
 import { SHELL_CLI_SERVICE } from "core-types";
 import { BaseActivator } from "osgi-base";
 import readline from "node:readline";

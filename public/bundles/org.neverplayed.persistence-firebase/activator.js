@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.persistence-firebase
+ * @module platform/bundles/org.neverplayed.persistence-firebase
+ */
+
 import { PERSISTENCE_MANAGER_SERVICE, AUTH_SHIELD_SERVICE, LOG_SERVICE } from "../../core-types.js";
 import { BaseActivator } from "../../osgi-base.js";
 

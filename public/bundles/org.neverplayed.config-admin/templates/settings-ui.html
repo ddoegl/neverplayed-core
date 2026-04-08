@@ -75,9 +75,9 @@
               <td colspan="3" class="px-10 py-4">
                 <div class="flex items-center space-x-3">
                     <div class="w-2 h-2 rounded-full" :class="{
-                        'bg-blue-500': category.id === 'org.neverplayed.realm.core',
-                        'bg-purple-500': category.id === 'org.neverplayed.realm.foundation',
-                        'bg-emerald-500': category.id === 'org.neverplayed.realm.showcase',
+                        'bg-blue-500': category.id === REALM_CORE,
+                        'bg-purple-500': category.id === REALM_FOUNDATION,
+                        'bg-emerald-500': category.id === REALM_SHOWCASE,
                         'bg-slate-300': category.id.includes('orphaned')
                     }"></div>
                     <span class="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]" x-text="category.title"></span>

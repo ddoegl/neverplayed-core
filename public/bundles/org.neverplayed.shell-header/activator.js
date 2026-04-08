@@ -5,7 +5,8 @@ import {
     SYSTEM_RESET_SERVICE,
     SESSION_SERVICE,
     PERSISTENCE_MANAGER_SERVICE,
-    AUTH_SHIELD_SERVICE
+    AUTH_SHIELD_SERVICE,
+    SHELL_UI_CONTEXT_PID
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
@@ -23,7 +24,7 @@ export default class Activator extends AlpineActivator {
     async onStart(context) {
         this.ctx = context;
         this.pm = null;
-        const UI_STORAGE_PID = "org.neverplayed.shell.ui.context";
+        const UI_STORAGE_PID = SHELL_UI_CONTEXT_PID;
 
         // 1. Initialize Global UI Context Store
         const store = this.initStore('shell_context', {

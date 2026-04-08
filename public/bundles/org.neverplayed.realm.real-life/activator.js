@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.realm.real-life
+ * @module platform/bundles/org.neverplayed.realm.real-life
+ */
+
 import { 
   FLOW_SERVICE, 
   CONFIG_ADMIN_SERVICE as _CONFIG_ADMIN_SERVICE, 

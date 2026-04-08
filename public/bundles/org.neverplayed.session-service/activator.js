@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.session-service
+ * @module platform/bundles/org.neverplayed.session-service
+ */
+
 import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE } from "../../core-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";

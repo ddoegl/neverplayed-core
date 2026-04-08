@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.atomic.showcase
+ * @module platform/bundles/org.neverplayed.atomic.showcase
+ */
+
 import { BaseActivator } from "osgi-base";
 
 export default class Activator extends BaseActivator {

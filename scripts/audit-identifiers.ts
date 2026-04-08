@@ -38,6 +38,10 @@ for await (const entry of walk(ROOT, {
         const hasFlowPattern = FLOW_PATTERN.test(line);
         
         if (hasNamespacePattern || hasFlowPattern) {
+            // Ignore Documentation Comments (JSDoc, Block, Line)
+            const isComment = /^\s*(\/\/|\*|\/\*|<!--)/.test(line);
+            if (isComment) return;
+
             // Ignore ES imports/exports
             const isImport = /import .* from ["']/.test(line) || /export .* from ["']/.test(line) || /import\(["']/.test(line);
             if (isImport) return;

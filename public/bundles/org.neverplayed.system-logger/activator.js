@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.system-logger
+ * @module platform/bundles/org.neverplayed.system-logger
+ */
+
 import { LOG_SERVICE, CONFIG_ADMIN_SERVICE, SHELL_CONFIG_PID, SYSTEM_LOGGER_PID, LOG_LEVEL_PROP } from "core-types";
 
 export default class Activator {

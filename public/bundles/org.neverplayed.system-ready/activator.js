@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.system-ready
+ * @module platform/bundles/org.neverplayed.system-ready
+ */
+
 import { 
     SYSTEM_READY_SERVICE, 
     LICENSE_DATA_SERVICE, 

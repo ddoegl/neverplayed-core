@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.auth-shield
+ * @module platform/bundles/org.neverplayed.auth-shield
+ */
+
 import { checkAccess, signOut } from "./src/firebase-auth.js";
 import { AUTH_SHIELD_SERVICE, LOG_SERVICE, SHELL_COMMAND_SERVICE, SESSION_SERVICE } from "../../core-types.js";
 

@@ -21,3 +21,10 @@ When the Firebase SDK is unavailable (e.g. `ERR_WS_UPGRADED_FAILED`), the bundle
 
 - **Conflict Resolution**: Implement "Last-Writer-Wins" or "Merge" strategies for concurrently shunted writes.
 - **Offline Buffer**: Add local-storage queuing for shunts that fail due to missing identity.
+
+### 🏺 Institutional ADRs
+- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
+- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
+- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
+- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
+- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.

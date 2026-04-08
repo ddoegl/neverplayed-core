@@ -24,3 +24,10 @@ The barrier waits for:
 
 - **Timeout Recovery**: Logic to trigger a "Safe Mode" boot if a critical service fails to arrive within a defined threshold.
 - **Dynamic Readiness**: Allow extensions to register their own dependencies for the readiness check.
+
+### 🏺 Institutional ADRs
+- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
+- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
+- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
+- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
+- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.

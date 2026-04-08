@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.persistence-deno
+ * @module platform/bundles/org.neverplayed.persistence-deno
+ */
+
 import { PERSISTENCE_MANAGER_SERVICE } from "../../core-types.js";
 import { BaseActivator } from "../../osgi-base.js";
 

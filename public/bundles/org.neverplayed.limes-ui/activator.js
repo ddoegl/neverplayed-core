@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.limes-ui
+ * @module platform/bundles/org.neverplayed.limes-ui
+ */
+
 import { BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, LIMES_SERVICE } from "core-types";
 import { AlpineActivator } from "alpine-base";
 

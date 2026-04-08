@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.atomic-orchestrator
+ * @module platform/bundles/org.neverplayed.atomic-orchestrator
+ */
+
 import { 
     FLOW_SERVICE, 
     YAML_SERVICE, 

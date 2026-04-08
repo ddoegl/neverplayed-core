@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.selection-service
+ * @module platform/bundles/org.neverplayed.selection-service
+ */
+
 import { SELECTION_SERVICE, SESSION_SERVICE, CONTRIBUTION_SERVICE, PERSONS_SERVICE, COMPANIES_SERVICE } from "core-types";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 

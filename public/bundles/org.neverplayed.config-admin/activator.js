@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.config-admin
+ * @module platform/bundles/org.neverplayed.config-admin
+ */
+
 import { 
     CONFIG_ADMIN_UI_FLOW, 
     EVENT_ADMIN_SERVICE,
@@ -9,7 +14,10 @@ import {
     SYSTEM_RESET_SERVICE,
     SHELL_COMMAND_SERVICE,
     LOG_LEVEL_PROP,
-    CONFIG_UPDATED_TOPIC
+    CONFIG_UPDATED_TOPIC,
+    REALM_CORE,
+    REALM_FOUNDATION,
+    REALM_SHOWCASE
 } from "core-types";
 import { CoreAlpineActivator } from "alpine-base";
 import Alpine from "alpinejs";
@@ -124,6 +132,10 @@ export default class Activator extends CoreAlpineActivator {
                     cfgs: [],
                     realms: [],
                     search: '',
+                    // DRIFT REMEDIATED: Expose centralized IDs to UI scope
+                    REALM_CORE,
+                    REALM_FOUNDATION,
+                    REALM_SHOWCASE,
                     init() {
                         const shell = Alpine.store('shell_context');
                         this.realms = shell.realms || [];
@@ -179,7 +191,8 @@ export default class Activator extends CoreAlpineActivator {
                             : this.cfgs;
 
                         const realmIds = [...new Set(filtered.map(c => c.realmId))];
-                        const hierarchy = ['org.neverplayed.realm.core', 'org.neverplayed.realm.foundation', 'org.neverplayed.realm.showcase'];
+                        // DRIFT REMEDIATED: Use centralized Realm IDs from core-types
+                        const hierarchy = [REALM_CORE, REALM_FOUNDATION, REALM_SHOWCASE];
                         
                         return realmIds.sort((a, b) => {
                             const idxA = hierarchy.indexOf(a), idxB = hierarchy.indexOf(b);

@@ -28,3 +28,10 @@ The **Alpine Bridge** bundle provides the reactive "Glue" that connects the Pand
 
 - **Type-Safe Magics**: Integration with `core-types.js` to provide auto-completion for `$service` identifiers.
 - **Directive Scoping**: Support for `x-service.proxy` vs `x-service.direct` to control evaluation overhead.
+
+### 🏺 Institutional ADRs
+- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
+- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
+- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
+- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
+- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.

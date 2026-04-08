@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.shell-sidebar
+ * @module platform/bundles/org.neverplayed.shell-sidebar
+ */
+
 import { 
     FLOW_SERVICE, 
     CONFIG_ADMIN_SERVICE, 

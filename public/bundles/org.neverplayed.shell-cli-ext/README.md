@@ -16,3 +16,10 @@ The **Shell CLI Extensions** bundle provides a collection of advanced management
 
 - **Visual Inspections**: Commands that can trigger UI overlays for data visualization.
 - **Snapshot Support**: Commands to export/import the current service registry state.
+
+### 🏺 Institutional ADRs
+- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
+- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
+- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
+- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
+- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.

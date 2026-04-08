@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.shell-cli-ext
+ * @module platform/bundles/org.neverplayed.shell-cli-ext
+ */
+
 import { 
     SESSION_SERVICE, 
     SELECTION_SERVICE, 

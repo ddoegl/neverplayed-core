@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.system-reset
+ * @module platform/bundles/org.neverplayed.system-reset
+ */
+
 import { SYSTEM_RESET_SERVICE, PERSISTENCE_MANAGER_SERVICE } from "core-types";
 import { CoreActivator } from "osgi-base";
 

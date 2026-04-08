@@ -1,9 +1,15 @@
+/**
+ * @file Activator for org.neverplayed.do-registry
+ * @module platform/bundles/org.neverplayed.do-registry
+ */
+
 import { 
     YAML_SERVICE, 
     DOMAIN_OBJECT_REGISTRY_SERVICE, 
     DOMAIN_OBJECT_INSTANCE_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
     DO_INSTANCES_PID,
+    DO_INSTANCES_LEGACY_PID,
     FLOW_SERVICE,
     SESSION_SERVICE,
     SHELL_COMMAND_SERVICE,
@@ -405,7 +411,7 @@ export default class Activator extends CoreAlpineActivator {
      let data = pm.load(DO_INSTANCES_PID) || {};
      
      // --- Strategic Migration Check (Anti-Gravity Fallback) ---
-     const legacyKey = "org.neverplayed.do.instances";
+     const legacyKey = DO_INSTANCES_LEGACY_PID;
      if (Object.keys(data).length === 0) {
          const legacyData = pm.load(legacyKey) || {};
          if (Object.keys(legacyData).length > 0) {

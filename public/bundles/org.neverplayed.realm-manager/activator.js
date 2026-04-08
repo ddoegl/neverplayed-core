@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.realm-manager
+ * @module platform/bundles/org.neverplayed.realm-manager
+ */
+
 import { 
     REALM_MANAGER_SERVICE, 
     REALM_SERVICE,

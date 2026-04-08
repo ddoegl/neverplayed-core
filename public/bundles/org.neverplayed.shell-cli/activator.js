@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.shell-cli
+ * @module platform/bundles/org.neverplayed.shell-cli
+ */
+
 import { 
     NEVERPLAYED_PREFIX, 
     SHELL_CLI_SERVICE,
@@ -445,10 +450,11 @@ export default class Activator extends CoreActivator {
                         try {
                             const base = globalThis.NEVERPLAYED_BASE_URL || globalThis.location?.href || './';
                             const name = url.replace(NEVERPLAYED_PREFIX, '');
-                            url = new URL(`./bundles/org.neverplayed.${name}/manifest.json`, base).href;
+                            // DRIFT REMEDIATED: Use centralized NEVERPLAYED_PREFIX for path resolution
+                            url = new URL(`./bundles/${NEVERPLAYED_PREFIX}${name}/manifest.json`, base).href;
                         } catch (_e) { 
                             const name = url.replace(NEVERPLAYED_PREFIX, '');
-                            url = `./bundles/org.neverplayed.${name}/manifest.json`; 
+                            url = `./bundles/${NEVERPLAYED_PREFIX}${name}/manifest.json`; 
                         }
                     }
                     try {

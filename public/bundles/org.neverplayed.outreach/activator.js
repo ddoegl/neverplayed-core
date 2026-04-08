@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.outreach
+ * @module platform/bundles/org.neverplayed.outreach
+ */
+
 import { ACTION_REGISTRY_SERVICE, ACTION_SERVICE, LOG_SERVICE } from "core-types";
 
 export default class Activator {

@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.yaml-service
+ * @module platform/bundles/org.neverplayed.yaml-service
+ */
+
 import { YAML_SERVICE } from "core-types";
 import jsyaml from "https://esm.sh/js-yaml@4.1.0";
 

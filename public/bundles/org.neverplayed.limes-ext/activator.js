@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.limes-ext
+ * @module platform/bundles/org.neverplayed.limes-ext
+ */
+
 import { LIMES_SERVICE } from "core-types";
 
 export default class Activator {

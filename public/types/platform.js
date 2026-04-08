@@ -36,12 +36,19 @@ export const SHELL_CONFIG_PID = "org.neverplayed.shell.cli";
 export const SHELL_CLI_PID = "org.neverplayed.shell.cli";
 export const SYSTEM_LOGGER_PID = "org.neverplayed.system.logger";
 export const REALM_STORAGE_PID = "org.neverplayed.realm.storage";
+export const SHELL_UI_CONTEXT_PID = "org.neverplayed.shell.ui.context";
 export const EVENT_MONITOR_PID = "org.neverplayed.event.monitor";
 export const DO_INSTANCES_PID = "realm.do.instances";
+export const DO_INSTANCES_LEGACY_PID = "org.neverplayed.do.instances";
 export const LIMES_STRATEGIES_PID = "org.neverplayed.limes.strategies";
 export const LOG_LEVEL_PROP = "log-level";
 
-// 5. Lifecycle & Messaging
+// 5. Realm IDs
+export const REALM_CORE = "org.neverplayed.realm.core";
+export const REALM_FOUNDATION = "org.neverplayed.realm.foundation";
+export const REALM_SHOWCASE = "org.neverplayed.realm.showcase";
+
+// 6. Lifecycle & Messaging
 export const CONFIG_UPDATED_TOPIC = "org/neverplayed/config/UPDATED";
 export const REALM_CHANGED_TOPIC = "org/neverplayed/realm/CHANGED";
 export const REALM_REGISTERED_TOPIC = "org/neverplayed/realm/REGISTERED";

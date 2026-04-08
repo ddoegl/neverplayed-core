@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.shell-cli-dom
+ * @module platform/bundles/org.neverplayed.shell-cli-dom
+ */
+
 import { FLOW_SERVICE, SHELL_CLI_SERVICE, BUNDLE_TYPE_SERVICE, SHELL_CLI_PID } from "core-types";
 import { AlpineActivator } from "alpine-base";
 

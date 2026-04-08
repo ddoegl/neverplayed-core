@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.yaml-editor
+ * @module platform/bundles/org.neverplayed.yaml-editor
+ */
+
 import { YAML_SERVICE, YAML_EDITOR_SERVICE } from "core-types";
 import { BaseActivator } from "osgi-base";
 

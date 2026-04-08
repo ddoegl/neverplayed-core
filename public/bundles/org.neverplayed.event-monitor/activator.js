@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.event-monitor
+ * @module platform/bundles/org.neverplayed.event-monitor
+ */
+
 import { FLOW_SERVICE, EVENT_HANDLER_INTERFACE, EVENT_TOPIC, EVENT_MONITOR_PID, LOG_LEVEL_PROP } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
