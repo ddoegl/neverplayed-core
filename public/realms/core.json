@@ -16,7 +16,7 @@
         "./bundles/org.neverplayed.yaml-service/manifest.json",
         "./bundles/org.neverplayed.session-service/manifest.json",
         "./bundles/org.neverplayed.shared-ui/manifest.json",
-        "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
+        "./bundles/vendor/org.pandino.event-admin/manifest.json",
         "./bundles/org.neverplayed.shell-host/manifest.json",
         "./bundles/org.neverplayed.shell-header/manifest.json",
         "./bundles/org.neverplayed.shell-sidebar/manifest.json",

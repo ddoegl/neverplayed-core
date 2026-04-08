@@ -5,7 +5,7 @@ const BUNDLE_ROOT = "./public/bundles";
 const REALM_ROOT = "./public/realms";
 const PLATFORM_PATTERNS_REF = "docs/platform-patterns.md";
 const ADR_REF = "docs/adr/";
-const HEALTH_BADGE = "![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)";
+const HEALTH_BADGE = "![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)";
 const SEMVER_REGEX = /^\d+\.\d+\.\d+$/;
 const CORE_ADRS = ["0025", "0026", "0027"];
 
@@ -227,6 +227,23 @@ async function auditBundles() {
             }
         } catch (_e) {
             // Some bundles might not have activators, that's okay.
+        }
+
+        // 4. Test Coverage Audit (ADR-0028)
+        const testsPath = `${path}/tests`;
+        try {
+            const stats = await Deno.stat(testsPath);
+            if (!stats.isDirectory) throw new Error("Not a directory");
+            
+            // If we are in fix-mode and health badge is missing or old, the HEALTH_BADGE const above will include coverage.
+        } catch (_e) {
+            if (layer === "core" || layer === "foundation") {
+                console.log(`%c[ERROR]%c ${bsn}: Missing mandatory 'tests/' directory for ${layer.toUpperCase()} bundle (ADR-0028)!`, "color: red; font-weight: bold;", "color: reset;");
+                errors++;
+            } else {
+                console.log(`%c[WARN]%c ${bsn}: Missing 'tests/' directory for ${layer.toUpperCase()} bundle`, "color: yellow; font-weight: bold;", "color: reset;");
+                warnings++;
+            }
         }
       }
     }

@@ -1,13 +1,15 @@
 import { 
-    ATOMIC_COMPONENT_REGISTRY_SERVICE, 
-    ACTION_REGISTRY_SERVICE,
-    UI_FACTORY_SERVICE,
-    UI_COMPONENTS_SERVICE,
-    ACTION_SERVICE,
-    LOG_SERVICE
+  ATOMIC_COMPONENT_REGISTRY_SERVICE, 
+  UI_FACTORY_SERVICE, 
+  UI_COMPONENTS_SERVICE, 
+  UI_REGISTRY_SERVICE,
+  ACTION_SERVICE, 
+  ACTION_REGISTRY_SERVICE, 
+  LOG_SERVICE 
 } from "core-types";
+
+// Side effects: ensure components are loaded
 import "./components/ui-factory.js";
-import "./components/ui-factory-poc.js";
 import "./components/atomic-component-base.js";
 import "./components/atomic-button.js";
 import "./components/atomic-input.js";
@@ -70,18 +72,20 @@ export default class Activator {
      */
     context.registerService(ATOMIC_COMPONENT_REGISTRY_SERVICE, {
         register: (kind, tagName) => {
-            console.log(`UI Components: Registering component [${kind}] -> <${tagName}>`);
+            if (logger.info) logger.info(`UI Components: Registering component [${kind}] -> <${tagName}>`);
             componentRegistry.set(kind, tagName);
         },
         get: (kind) => componentRegistry.get(kind),
         getAll: () => Object.fromEntries(componentRegistry)
     });
     
+    /* EXPLAIN
     // Inject context into UI Factory if needed
     const factory = customElements.get("ui-factory");
     if (factory && factory.prototype.setBundleContext) {
         // Note: Existing instances might need a way to get context
     }
+    */
 
     /**
      * UI_FACTORY_SERVICE
@@ -104,13 +108,38 @@ export default class Activator {
      */
     context.registerService(UI_COMPONENTS_SERVICE, { loaded: true });
 
+    // Ensure the global registry exists (Pattern 21: Shared State)
+    globalThis.__UI_FACTORY_REGISTRY = globalThis.__UI_FACTORY_REGISTRY || {
+        _map: new Map(),
+        set(id, state) { this._map.set(id, state); },
+        get(id) { return this._map.get(id); },
+        getAll() { return Object.fromEntries(this._map); }
+    };
+
+    /**
+     * UI_REGISTRY_SERVICE
+     * Provides an authoritative map of all active UI Factory state objects for orchestration.
+     */
+    context.registerService(UI_REGISTRY_SERVICE, globalThis.__UI_FACTORY_REGISTRY);
+
+    // Retroactive Injection (Pattern 21): Find pre-existing instances and inject context
+    const existingFactories = document.querySelectorAll("ui-factory");
+    if (existingFactories.length > 0) {
+        if (logger.info) logger.info(`UI Components: Injecting context into ${existingFactories.length} pre-existing UI Factory instances.`);
+        existingFactories.forEach(el => {
+            if (typeof el.setBundleContext === 'function') {
+                el.setBundleContext(context);
+            }
+        });
+    }
+
     /**
      * ACTION_SERVICE: synthetic.client.summary-alert
      * Provides a standardized shell-level alert dialog.
      */
     context.registerService(ACTION_SERVICE, {
         execute: (params) => {
-            alert(params.message || "Action Completed!");
+            if (globalThis.alert) globalThis.alert(params.message || "Action Completed!");
             return { success: true };
         }
     }, {
@@ -124,25 +153,27 @@ export default class Activator {
         addingService: (ref) => {
             const registry = context.getService(ref);
             
-            registry.register({
-                id: 'step.navigate',
-                label: '🚀 Jump to Step',
-                description: 'Navigates to a specific step within the current flow.',
-                params: {
-                    target: 'The ID of the step to navigate to (e.g. "step2").',
-                    step: 'Alias for target.'
-                }
-            });
+            if (registry && registry.register) {
+                registry.register({
+                    id: 'step.navigate',
+                    label: '🚀 Jump to Step',
+                    description: 'Navigates to a specific step within the current flow.',
+                    params: {
+                        target: 'The ID of the step to navigate to (e.g. "step2").',
+                        step: 'Alias for target.'
+                    }
+                });
 
-            registry.register({
-                id: 'synthetic.client.summary-alert',
-                label: '🔔 Show Alert',
-                description: 'Displays a notification alert to the user.',
-                params: {
-                    message: 'The text message to display.',
-                    title: 'The title of the alert box.'
-                }
-            });
+                registry.register({
+                    id: 'synthetic.client.summary-alert',
+                    label: '🔔 Show Alert',
+                    description: 'Displays a notification alert to the user.',
+                    params: {
+                        message: 'The text message to display.',
+                        title: 'The title of the alert box.'
+                    }
+                });
+            }
         }
     }).open();
   }
@@ -152,6 +183,6 @@ export default class Activator {
    * @param {BundleContext} _context - The OSGi bundle context.
    */
   stop(_context) {
-    if (console.log) console.log("Shared UI Components Bundle stopped.");
+    // No-op or cleanup
   }
 }

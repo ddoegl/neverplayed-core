@@ -68,6 +68,7 @@ export const ATOMIC_COMPONENT_REGISTRY_SERVICE = "org.neverplayed.atomic.Compone
 export const ATOMIC_SPEC_INGESTION_SERVICE = "org.neverplayed.atomic.SpecIngestion";
 export const UI_COMPONENTS_SERVICE = "org.neverplayed.ui.Components";
 export const UI_FACTORY_SERVICE = "org.neverplayed.ui.Factory";
+export const UI_REGISTRY_SERVICE = "org.neverplayed.ui.Registry";
 export const CONTRIBUTION_SERVICE = "org.neverplayed.global-state.ContributionService";
 
 // 8. Bundle Typings

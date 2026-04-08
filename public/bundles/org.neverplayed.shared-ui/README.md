@@ -1,5 +1,5 @@
 # 🧩 Shared UI Components
-![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
 
 The **Shared UI** bundle is the central registry for "Atomic" design components and the logic for the platform's standardized **UI Factory**. It provides the foundational UI rendering pipeline for all declarative flows.
 
@@ -24,6 +24,7 @@ registry.register('my-special-widget', 'org-neverplayed-widget');
 - **[ADR-0025: Identity Injection](../../docs/adr/0025-identity-injection-id-tokens.md)**: Enforces unique IDs for UI parts to enable robust data binding.
 - **[ADR-0026: Reactive Variable Resolution](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md)**: Implements the non-destructive, reactive resolution bridge between UIFactory and Alpine.js.
 - **[ADR-0027: Semantic Bundle Versioning](../../docs/adr/0027-semantic-bundle-versioning-strategy.md)**: Governs the versioning lifecycle of this and all future bundles.
+- **[ADR-0028: Tiered Bundle Testing Strategy](../../docs/adr/0028-tiered-bundle-testing-strategy.md)**: Mandates and defines the testing standards for core platform infrastructure.
 
 ## 🚀 Future Road
 

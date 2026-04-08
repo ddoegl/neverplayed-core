@@ -1,7 +1,6 @@
 {
   "pandino.pm.managed-keys": [
-    "identities.test",
-    "config.privacy_test"
+    "identities.test"
   ],
   "org.neverplayed.limes/strategies": [
     {
@@ -72,7 +71,8 @@
     "topics": [
       "backoffice/invitations/*",
       "backoffice/cases/*",
-      "org/neverplayed/config/*"
+      "org/neverplayed/config/*",
+      "neverplayed/realm/*"
     ],
     "sidebar": true
   },
@@ -117,5 +117,88 @@
   },
   "config.privacy_test": {
     "secret": "hidden"
+  },
+  "test.key": "test.value",
+  "org.neverplayed.limes.strategies": [
+    {
+      "id": "GLOBAL_VIEW",
+      "operator": "AND",
+      "matchers": [
+        {
+          "type": "matchAlways"
+        }
+      ],
+      "keys": []
+    },
+    {
+      "id": "SYSTEM_ADMIN_REQUIRED",
+      "operator": "OR",
+      "matchers": [
+        {
+          "type": "matchAttribute",
+          "key": "neverplayed-admin",
+          "value": true
+        },
+        {
+          "type": "matchAttribute",
+          "key": "realm-admin",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": "SYSTEM_DEVELOPER_REQUIRED",
+      "operator": "OR",
+      "matchers": [
+        {
+          "type": "matchAttribute",
+          "key": "neverplayed-admin",
+          "value": true
+        },
+        {
+          "type": "matchAttribute",
+          "key": "neverplayed-developer",
+          "value": true
+        }
+      ]
+    }
+  ],
+  "pandino.session.state": {
+    "currentUser": {
+      "id": "guest",
+      "attributes": {}
+    },
+    "scopedUsers": {
+      "global": {
+        "id": "guest",
+        "attributes": {}
+      }
+    },
+    "activeFlowId": null
+  },
+  "org.neverplayed.shell.ui.context": {
+    "sidebarOpen": true,
+    "sidebarState": 0,
+    "lastRealmId": "loading"
+  },
+  "config.org.neverplayed.shell-header": {
+    "channels": [
+      "business-channel-web"
+    ],
+    "mountPoint": "#shell-header"
+  },
+  "config.org.neverplayed.shell-cli-dom": {
+    "flowType": "service-flow",
+    "channels": [
+      "real-life",
+      "business-portal",
+      "web-browser",
+      "business-channel-web",
+      "business-channel-app",
+      "retail-channel-app"
+    ]
+  },
+  "config.test.bundle": {
+    "foo": "bar"
   }
 }

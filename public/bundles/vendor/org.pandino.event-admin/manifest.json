@@ -1,0 +1,9 @@
+{
+    "Bundle-SymbolicName": "@pandino/event-admin",
+    "Bundle-Version": "0.8.33",
+    "Bundle-Description": "Reference implementation of the Pandino Event Admin API",
+    "Author": "Norbert Herczeg <norbert.herczeg@blackbelt.hu>",
+    "Bundle-Activator": "./activator.js",
+    "Bundle-License": "./LICENSE",
+    "Provide-Capability": "@pandino/event-admin;objectClass=\"@pandino/event-admin/EventAdmin\""
+}

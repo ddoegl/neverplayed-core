@@ -22,20 +22,25 @@ Deno.test({
     };
 
     const harness = new BundleTestHarness();
-    const _context = await harness.init();
+    // deno-lint-ignore no-explicit-any
+    const context = await harness.init() as any;
+    if (!context) throw new Error("Harness context missing");
 
     await t.step("Prerequisite: Install Core Bundles", async () => {
         try {
-            await harness.installBundles([
+            // Dynamically load the core realm specification
+            const realmPath = new URL("../public/realms/core.json", import.meta.url).pathname;
+            const realmData = JSON.parse(await Deno.readTextFile(realmPath));
+            
+            // Construct bundle list: inject deno-persistence and filter out firebase
+            const bundles = [
                 "bundles/org.neverplayed.persistence-deno/manifest.json",
-                "bundles/org.neverplayed.system-logger/manifest.json",
-                "bundles/org.neverplayed.yaml-service/manifest.json",
-                "bundles/org.neverplayed.auth-shield/manifest.json",
-                "bundles/org.neverplayed.persistence-firebase/manifest.json",
-                "bundles/org.neverplayed.limes/manifest.json",
-                "bundles/org.neverplayed.config-admin/manifest.json",
-                "bundles/org.neverplayed.shell-cli/manifest.json"
-            ]);
+                ...realmData.bundles
+                    .map((b: string) => b.replace(/^\.\//, ""))
+                    .filter((b: string) => !b.includes("persistence-firebase"))
+            ];
+
+            await harness.installBundles(bundles);
         } catch (e) {
             console.error("INSTALL BUNDLES FAILED:", e);
             throw e;
@@ -43,28 +48,32 @@ Deno.test({
     });
 
     await t.step("AuthShield: Identity & Attributes", async () => {
-        const auth = await harness.getService(AUTH_SHIELD_SERVICE);
+        // deno-lint-ignore no-explicit-any
+        const auth: any = await harness.getService(AUTH_SHIELD_SERVICE);
         const user = auth.getCurrentUser();
         
+        assertExists(user, "Should have a current user");
         assertEquals(user.email, "admin@neverplayed.org");
         assertEquals(user.attributes['neverplayed-admin'], true, "Should have neverplayed-admin attribute");
     });
 
-    await t.step("Firebase Persistence: Cloud-Backed State", async () => {
-        const pm = await harness.getService(PERSISTENCE_MANAGER_SERVICE);
+    await t.step("Unified Persistence: Infrastructure Check", async () => {
+        // deno-lint-ignore no-explicit-any
+        const pm: any = await harness.getService(PERSISTENCE_MANAGER_SERVICE);
         assertExists(pm, "Persistence service should be registered");
 
         if (typeof pm.waitReady === 'function') {
             await pm.waitReady();
         }
 
-        // Test in-memory behavior (Firebase fallback if no app)
+        // Test implementation-agnostic behavior (Store/Load)
         pm.store("test.key", "test.value");
         assertEquals(pm.load("test.key"), "test.value");
     });
 
     await t.step("Limes: ABAC Enforcement", async () => {
-        const limes = await harness.getService(LIMES_SERVICE);
+        // deno-lint-ignore no-explicit-any
+        const limes: any = await harness.getService(LIMES_SERVICE);
         assertExists(limes, "Limes service should be registered");
         
         // Wait for strategies to load (background task in activator)
@@ -88,7 +97,8 @@ Deno.test({
     });
 
     await t.step("ConfigAdmin: Persistence", async () => {
-        const ca = await harness.getService(CONFIG_ADMIN_SERVICE);
+        // deno-lint-ignore no-explicit-any
+        const ca: any = await harness.getService(CONFIG_ADMIN_SERVICE);
         assertExists(ca, "ConfigAdmin service should be registered");
 
         const config = ca.getConfiguration("test.bundle");
@@ -99,7 +109,8 @@ Deno.test({
     });
 
     await t.step("Shell CLI: Command Execution", async () => {
-        const shell = await harness.getService(SHELL_CLI_SERVICE);
+        // deno-lint-ignore no-explicit-any
+        const shell: any = await harness.getService(SHELL_CLI_SERVICE);
         assertExists(shell, "Shell CLI service should be registered");
 
         await shell.execute("/help");

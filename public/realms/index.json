@@ -1,7 +1,4 @@
 [
     "core.json",
-    "foundation.json",
-    "real-life.json",
-    "showcase.json",
-    "work.json"
+    "foundation.json"
 ]

@@ -9,6 +9,9 @@ import { BaseActivator } from "osgi-base";
 export default class Activator extends BaseActivator {
     onStart(context) {
         this.logger.info("Alpine-Bridge: Initializing OSGi Magics and Directives...");
+        
+        // 🚀 EXPOSURE: Make Alpine available to all bundles (UI Factory, etc)
+        globalThis.Alpine = Alpine;
 
         // 1. Magic: $context
         // Provides direct access to the BundleContext for debugging and ad-hoc lookups.

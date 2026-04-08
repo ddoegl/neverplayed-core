@@ -42,7 +42,8 @@ if (!globalThis.__UI_FACTORY_REGISTRY) {
             }
             return s;
         },
-        delete(id) { this._map.delete(id); }
+        delete(id) { this._map.delete(id); },
+        getAll() { return Object.fromEntries(this._map); }
     };
 }
 
@@ -269,6 +270,17 @@ class UIFactory extends HTMLElement {
     setParams(value) {
         this.logger.info(`UIFactory [${this._id}]: setParams called`, value);
         this._params = value || {};
+        
+        // Smart Unified Scope (Path A): Reactively merge into state if initialized
+        if (this._state?.uifValues) {
+            this.logger.debug(`UIFactory [${this._id}]: Reactively merging params into uifValues`);
+            Object.entries(this._params).forEach(([k, v]) => {
+                if (k === 'instanceId') return;
+                // Reactive Override: Explicit setParams calls take precedence to allow shell-driven updates
+                this._state.uifValues[k] = v;
+            });
+        }
+
         if (this._params.instanceId) {
             this._instanceId = this._params.instanceId;
             this._checkHydration();
@@ -281,6 +293,25 @@ class UIFactory extends HTMLElement {
         if (refs && refs.length > 0) {
             this.logger.info(`UIFactory [${this._id}]: Synchronous check found service for ${this._instanceId}`);
             this.hydrateFromService(this._context.getService(refs[0]));
+        }
+    }
+
+    static get observedAttributes() {
+        return ["data-uif-id"];
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === "data-uif-id" && newValue && oldValue !== newValue) {
+            this.logger.info(`UIFactory [${this._id}]: ID changing from attribute to ${newValue}`);
+            const oldId = this._id;
+            this._id = newValue;
+            
+            // Re-register in registry if state exists
+            if (this._state && globalThis.__UI_FACTORY_REGISTRY) {
+                globalThis.__UI_FACTORY_REGISTRY.delete(oldId);
+                globalThis.__UI_FACTORY_REGISTRY.set(this._id, this._state);
+                this._state.uifId = this._id;
+            }
         }
     }
 
@@ -529,7 +560,7 @@ class UIFactory extends HTMLElement {
             loading: false,
             data: null,
             uifGuards: {},
-            uifValues: {}, // Local flow state
+            uifValues: { ...this._params }, // Seed with initial parameters
             uifStep: instanceStep || initialStep || (stepKeys.length > 0 ? stepKeys[0] : null),
             uifStepKeys: stepKeys,
             uifInitialStep: initialStep || (stepKeys.length > 0 ? stepKeys[0] : null),

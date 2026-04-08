@@ -2,7 +2,7 @@
 import { walk } from "https://deno.land/std@0.224.0/fs/mod.ts";
 
 const ROOT = "./public/bundles";
-const PATTERN = /@neverplayed\/|@pandino\//g;
+const PATTERN = /@neverplayed\/|@pandino\/|org\.neverplayed\./g;
 // Only match if the value is a string literal (starts with a quote)
 const FLOW_PATTERN = /(selectFlow|isFlowEnabled|launchFlow)\(["']|["']flow\.id["']\s*:\s*["']|getProperty\(["']flow\.id["']\)\s*===\s*["']|["']flowType["']\s*:\s*["']/g;
 
@@ -64,7 +64,7 @@ for await (const entry of walk(ROOT, {
 
 if (violationCount > 0) {
     console.log(`\n%c Total Violations Found: ${violationCount}`, "color: red; font-weight: bold;");
-    console.log("%c Please migrate these identifiers to public/shared-types.js or use Namespaced Identifiers (e.g. 'pkg:id')", "color: gray;");
+    console.log("%c Please migrate these identifiers to public/core-types.js or use Namespaced Identifiers (e.g. 'pkg:id')", "color: gray;");
     Deno.exit(1);
 } else {
     console.log("\n%c Architectural Audit: PASSED ✅", "color: green; font-weight: bold;");

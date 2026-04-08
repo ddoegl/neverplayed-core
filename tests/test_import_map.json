@@ -1,0 +1,17 @@
+{
+  "imports": {
+    "osgi-base": "file:///Users/ddoegl/speckit/neverplayed/public/osgi-base.js",
+    "alpine-base": "file:///Users/ddoegl/speckit/neverplayed/public/alpine-base.js",
+    "shared-types": "file:///Users/ddoegl/speckit/neverplayed/public/shared-types.js",
+    "core-types": "file:///Users/ddoegl/speckit/neverplayed/public/core-types.js",
+    "alpinejs": "https://esm.sh/alpinejs@3.13.5",
+    "@pandino/pandino": "https://esm.sh/@pandino/pandino@0.8.33",
+    "@pandino/pandino/": "https://esm.sh/@pandino/pandino@0.8.33/",
+    "@pandino/pandino-api": "https://esm.sh/@pandino/pandino-api@0.8.33",
+    "@pandino/pandino-api/": "https://esm.sh/@pandino/pandino-api@0.8.33/",
+    "@pandino/event-api": "https://esm.sh/@pandino/event-api@0.8.33",
+    "@pandino/event-api/": "https://esm.sh/@pandino/event-api@0.8.33/",
+    "@pandino/log-api": "https://esm.sh/@pandino/log-api@0.8.33",
+    "@pandino/log-api/": "https://esm.sh/@pandino/log-api@0.8.33/"
+  }
+}

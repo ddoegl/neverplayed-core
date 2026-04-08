@@ -27,6 +27,8 @@ Deno.test({
     const originalFetch = (globalThis as unknown as { fetch: typeof fetch }).fetch;
     (globalThis as unknown as { fetch: unknown }).fetch = async (url: string | URL, init?: RequestInit) => {
         const urlStr = url.toString();
+        
+        // Mock Environment
         if (urlStr.endsWith("/env.json")) {
             return {
                 ok: true,
@@ -34,11 +36,34 @@ Deno.test({
                 json: () => Promise.resolve({ persistence_mode: "local-fs" })
             } as Response;
         }
+
+        // Virtualize Realms and Bundles (Redirect network fetch to local filesystem)
+        if (urlStr.includes("/realms/") || urlStr.includes("/bundles/")) {
+            const part = urlStr.includes("/realms/") ? "/realms/" : "/bundles/";
+            const fileName = urlStr.split(part).pop();
+            const filePath = `${Deno.cwd()}/public${part}${fileName}`;
+            try {
+                const content = await Deno.readTextFile(filePath);
+                return {
+                    ok: true,
+                    text: () => Promise.resolve(content),
+                    json: () => Promise.resolve(JSON.parse(content))
+                } as Response;
+            } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e);
+                return { ok: false, status: 404, statusText: message } as Response;
+            }
+        }
+
         return await originalFetch(url, init);
     };
 
     await harness.init();
     const context = harness.getBundleContext();
+    if (!context) throw new Error("Harness context missing");
+    
+    // Standard ID for registration
+    const FOUNDATION_REALM_ID = "org.neverplayed.realm.foundation";
 
     // 2. Pre-register Mock services to prevent boot deadlocks
     context.registerService(SERVICES.AUTH_SHIELD, {
@@ -50,10 +75,10 @@ Deno.test({
 
     await t.step("Phase 1: Bundle Deployment (Nucleus Boot)", async () => {
         await harness.installBundles([
+            "bundles/org.neverplayed.system-logger/manifest.json",
             "bundles/org.neverplayed.yaml-service/manifest.json",
             "bundles/org.neverplayed.persistence-deno/manifest.json",
             "bundles/org.neverplayed.persistence-selector/manifest.json",
-            "bundles/org.neverplayed.system-logger/manifest.json",
             "bundles/org.neverplayed.do-registry/manifest.json",
             "bundles/org.neverplayed.realm-manager/manifest.json"
         ]);
@@ -72,12 +97,14 @@ Deno.test({
 
     interface PersistenceManager {
         store(key: string, val: unknown): Promise<void>;
+        // deno-lint-ignore no-explicit-any
         load(key: string): Promise<any>;
         setMode(mode: string): Promise<void>;
     }
     interface RealmManager {
         waitReady(): Promise<void>;
         switchRealm(id: string): Promise<void>;
+        // deno-lint-ignore no-explicit-any
         getRealms(): Promise<any[]>;
     }
 
@@ -93,9 +120,8 @@ Deno.test({
         // Wait for realm discovery
         await rm.waitReady();
         
-        // Switch to 'work' realm which has specific persistence policies
-        // e.g. visual-do-editor -> local
-        await rm.switchRealm("org.neverplayed.realm.work");
+        // Switch to 'foundation' realm which has specific persistence policies
+        await rm.switchRealm(FOUNDATION_REALM_ID);
         
         // Wait for propagation
         await new Promise(r => setTimeout(r, 500));
@@ -125,6 +151,7 @@ Deno.test({
     console.log("\n🎊 Persistence Matrix Verified via Headless Harness!");
     
     // Cleanup
+    // deno-lint-ignore no-explicit-any
     (globalThis as any).fetch = originalFetch;
     await harness.stop();
     }

@@ -66,6 +66,9 @@ node_modules/
 .env
 .env.mcp
 
-# dataconnect generated files
+# daconnect generated files
 .dataconnect
 public/.neverplayed/state.json
+
+# Deno coverage profiles
+cov_profile/
