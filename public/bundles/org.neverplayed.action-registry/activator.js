@@ -49,6 +49,7 @@ export default class Activator {
                                 label: ref.getProperty("action.label") || id,
                                 description: ref.getProperty("action.description") || "",
                                 icon: ref.getProperty("action.icon") || "fas fa-play",
+                                params: ref.getProperty("action.params") || null,
                                 metadata: ref.getProperty("action.metadata") || {}
                             });
                         }

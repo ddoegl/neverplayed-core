@@ -631,54 +631,19 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 </sl-select>
             `;
         } else if (part.kind === 'command-button') {
-            const standardActions = [
-                { id: 'NEXT_STEP', label: '🚶 Next Step', group: 'Navigation' },
-                { id: 'PREV_STEP', label: '🔙 Previous Step', group: 'Navigation' },
-                { id: 'step.navigate', label: '🚀 Jump to Step...', group: 'Navigation' },
-                { id: 'default', label: '⚡ Trigger Default Action', group: 'Logic' },
-                { id: 'synthetic.case.create', label: '📁 Create Case', group: 'Side Effects' },
-                { id: 'synthetic.client.summary-alert', label: '🔔 Show Alert', group: 'Side Effects' },
-                { id: 'apiService', label: '🧩 Call API Service', group: 'Side Effects' }
-            ];
-
-            const currentCall = part.action?.call || '';
-            const isCustom = currentCall && !standardActions.some(a => a.id === currentCall);
-
             html += `
                 <sl-input label="Label" value="${part.label || ''}" id="part-label-input" size="small"></sl-input>
                 
-                <sl-select label="Action Call" value="${isCustom ? 'CUSTOM' : currentCall}" id="part-call-select" size="small" help-text="Select a standard action or enter custom.">
-                    <sl-menu-label>Navigation</sl-menu-label>
-                    <sl-option value="NEXT_STEP">🚶 Next Step</sl-option>
-                    <sl-option value="PREV_STEP">🔙 Previous Step</sl-option>
-                    <sl-option value="step.navigate">🚀 Jump to Step...</sl-option>
-                    
-                    <sl-menu-label>Logic</sl-menu-label>
-                    <sl-option value="default">⚡ Trigger Default Action</sl-option>
-                    <sl-option value="synthetic.case.create">📁 Create Case</sl-option>
-                    <sl-option value="synthetic.client.summary-alert">🔔 Show Alert</sl-option>
-                    <sl-option value="apiService">🧩 Call API Service</sl-option>
-
-                    <sl-divider></sl-divider>
-                    <sl-option value="CUSTOM">🛠️ Custom Action ID...</sl-option>
-                </sl-select>
-
-                <div id="custom-action-container" class="${isCustom ? '' : 'hidden'} mt-1">
-                    <sl-input placeholder="Enter Action ID (e.g. myService.do)" value="${isCustom ? currentCall : ''}" id="part-call-input-custom" size="small"></sl-input>
-                </div>
-
                 <sl-select label="Variant" value="${part.variant || 'default'}" id="part-variant-input" size="small">
                     <sl-option value="default">Default</sl-option>
                     <sl-option value="primary">Primary</sl-option>
                     <sl-option value="success">Success</sl-option>
                     <sl-option value="danger">Danger</sl-option>
                 </sl-select>
-                <div class="mt-2 space-y-2">
-                    <div class="flex justify-between items-center">
-                        <label class="text-[10px] font-bold uppercase text-gray-400">Parameters</label>
-                        <sl-button size="extra-small" variant="neutral" id="add-param-btn" outline circle><i class="fas fa-plus"></i></sl-button>
-                    </div>
-                    <div id="params-list" class="space-y-2"></div>
+
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <label class="text-[10px] font-bold uppercase text-indigo-500 mb-2 block">Button Action</label>
+                    ${this.renderActionProperties(part)}
                 </div>
             `;
         }
@@ -1122,7 +1087,13 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 if (actions.length === 0) continue;
                 html += `<sl-menu-label>${group}</sl-menu-label>`;
                 actions.forEach(a => {
-                    html += `<sl-option value="${a.id}">${a.label || a.id}</sl-option>`;
+                    // Try to resolve icon: check for emoji or FA class
+                    let iconHtml = '';
+                    if (a.icon) {
+                        if (a.icon.includes('fa-')) iconHtml = `<i class="${a.icon} text-slate-400" slot="prefix"></i>`;
+                        else iconHtml = `<span slot="prefix">${a.icon}</span>`; // Direct emoji
+                    }
+                    html += `<sl-option value="${a.id}">${iconHtml}${a.label || a.id}</sl-option>`;
                 });
             }
             return html;
@@ -1131,6 +1102,12 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         const renderDocs = () => {
             if (!selectedAction || !selectedAction.description) return '';
             
+            let iconHtml = '';
+            if (selectedAction.icon) {
+                if (selectedAction.icon.includes('fa-')) iconHtml = `<i class="${selectedAction.icon} text-lg text-indigo-400"></i>`;
+                else iconHtml = `<span class="text-lg">${selectedAction.icon}</span>`;
+            }
+
             let paramList = '';
             if (selectedAction.params) {
                 paramList = `
@@ -1148,6 +1125,10 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
 
             return `
                 <div class="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50 animate-in fade-in slide-in-from-top-1">
+                    <div class="flex items-center gap-3 mb-2">
+                        ${iconHtml}
+                        <div class="text-[10px] font-bold text-indigo-800 uppercase tracking-tight">${selectedAction.label || selectedAction.id}</div>
+                    </div>
                     <div class="text-[10px] text-indigo-700 leading-relaxed font-medium">${selectedAction.description}</div>
                     ${paramList}
                 </div>
@@ -1262,10 +1243,19 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                     const builtIn = [{ id: 'NEXT_STEP', label: '🚶 Next Step', description: 'Moves to the next step.' }, { id: 'PREV_STEP', label: '🔙 Previous Step' }];
                     const allActions = [...builtIn, ...(this._registry ? this._registry.getActions() : [])];
                     const selected = allActions.find(a => a.id === (val === 'CUSTOM' ? customInput?.value : val));
-                    
-                    if (selected && selected.description) {
+                     if (selected && selected.description) {
+                        let iconHtml = '';
+                        if (selected.icon) {
+                            if (selected.icon.includes('fa-')) iconHtml = `<i class="${selected.icon} text-lg text-indigo-400"></i>`;
+                            else iconHtml = `<span class="text-lg">${selected.icon}</span>`;
+                        }
+
                         docsContainer.innerHTML = `
                             <div class="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50 animate-in fade-in slide-in-from-top-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    ${iconHtml}
+                                    <div class="text-[10px] font-bold text-indigo-800 uppercase tracking-tight">${selected.label || selected.id}</div>
+                                </div>
                                 <div class="text-[10px] text-indigo-700 leading-relaxed font-medium">${selected.description}</div>
                                 ${selected.params ? `
                                     <div class="mt-2 space-y-1">

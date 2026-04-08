@@ -4,7 +4,6 @@ import {
   UI_COMPONENTS_SERVICE, 
   UI_REGISTRY_SERVICE,
   ACTION_SERVICE, 
-  ACTION_REGISTRY_SERVICE, 
   LOG_SERVICE 
 } from "core-types";
 
@@ -134,6 +133,26 @@ export default class Activator {
     }
 
     /**
+     * ACTION_SERVICE: step.navigate
+     * Core orchestrator command for step navigation.
+     */
+    context.registerService(ACTION_SERVICE, {
+        execute: (params) => {
+            console.log("Internal Command: step.navigate (handled by orchestrator)", params);
+            return { success: true };
+        }
+    }, {
+        "action.id": "step.navigate",
+        "action.label": "Jump to Step",
+        "action.description": "Navigates to a specific step within the current flow.",
+        "action.icon": "fas fa-rocket", // we have unicode 🚀
+        "action.params": {
+            "target": "The ID of the step to navigate to (e.g. \"step2\").",
+            "step": "Alias for target."
+        }
+    });
+
+    /**
      * ACTION_SERVICE: synthetic.client.summary-alert
      * Provides a standardized shell-level alert dialog.
      */
@@ -143,39 +162,15 @@ export default class Activator {
             return { success: true };
         }
     }, {
-        "action.id": "synthetic.client.summary-alert"
-    });
-
-    /**
-     * Register technical metadata for decentralized action discovery.
-     */
-    context.trackService(`(objectClass=${ACTION_REGISTRY_SERVICE})`, {
-        addingService: (ref) => {
-            const registry = context.getService(ref);
-            
-            if (registry && registry.register) {
-                registry.register({
-                    id: 'step.navigate',
-                    label: '🚀 Jump to Step',
-                    description: 'Navigates to a specific step within the current flow.',
-                    params: {
-                        target: 'The ID of the step to navigate to (e.g. "step2").',
-                        step: 'Alias for target.'
-                    }
-                });
-
-                registry.register({
-                    id: 'synthetic.client.summary-alert',
-                    label: '🔔 Show Alert',
-                    description: 'Displays a notification alert to the user.',
-                    params: {
-                        message: 'The text message to display.',
-                        title: 'The title of the alert box.'
-                    }
-                });
-            }
+        "action.id": "synthetic.client.summary-alert",
+        "action.label": "Show Alert",
+        "action.description": "Displays a notification alert to the user.",
+        "action.icon": "fas fa-bell", // we have unicode 🔔
+        "action.params": {
+            "message": "The text message to display.",
+            "title": "The title of the alert box."
         }
-    }).open();
+    });
   }
 
   /**
