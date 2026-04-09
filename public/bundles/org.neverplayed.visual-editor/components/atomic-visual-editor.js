@@ -160,12 +160,23 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         }
         if (metaChanged) this.saveToState();
 
+        // 4. SEQUENCE HYDRATION (Ensure stepOrder exists for deterministic rendering)
+        // Defensive Check: Only initialize if steps exist AND we are NOT in a hydration race
+        if (this._draftSpec.ui?.steps && !this._draftSpec.ui.stepOrder) {
+            const keys = Object.keys(this._draftSpec.ui.steps);
+            if (keys.length > 0) {
+                console.log("Visual Editor: Initializing missing stepOrder from keys:", keys);
+                this._draftSpec.ui.stepOrder = keys;
+                this.saveToState();
+            }
+        }
+
         if (!this._yamlService && this._context) {
             const ref = this._context.getServiceReference(YAML_SERVICE);
             this._yamlService = ref ? this._context.getService(ref) : null;
         }
 
-        // --- 4. IDEMPOTENT SHELL RENDERING ---
+        // --- 5. IDEMPOTENT SHELL RENDERING ---
         if (!this._initialized) {
             this.innerHTML = `
                 <atomic-master-detail sidebar-title="Flow Structure" class="h-[750px] shadow-2xl">
@@ -255,10 +266,13 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         const list = this.querySelector('#steps-list');
         if (!list) return;
 
-        list.innerHTML = "";
-
         const steps = this._draftSpec.ui?.steps || {};
-        const sids = Object.keys(steps);
+        const orderSource = this._draftSpec.ui.stepOrder ? 'explicit' : 'fallback';
+        const sids = this._draftSpec.ui.stepOrder || Object.keys(steps);
+
+        console.log(`Visual Editor Refresh: Rendering [${sids.length}] steps from [${orderSource}] source.`, [...sids]);
+
+        list.innerHTML = "";
 
         sids.forEach((sid, idx) => {
             const step = steps[sid];
@@ -281,29 +295,33 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
                 </div>
             `;
             
-            btn.onclick = (e) => {
+            btn.addEventListener('click', (e) => {
                 if (e.target.closest('sl-button')) return;
                 this._activeStepId = sid;
                 this.setupVisualEditor();
                 this.editStep(sid);
                 this.updatePreview();
-            };
+            });
 
-            btn.querySelector('.reorder-up').onclick = (e) => {
+            btn.querySelector('.reorder-up').addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 this.moveStep(sid, -1);
-            };
-            btn.querySelector('.reorder-down').onclick = (e) => {
+            });
+
+            btn.querySelector('.reorder-down').addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 this.moveStep(sid, 1);
-            };
+            });
 
             const delBtn = btn.querySelector('.delete-step');
             if (delBtn) {
-                delBtn.onclick = (e) => {
+                delBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     this.deleteStep(sid);
-                };
+                });
             }
 
             list.appendChild(btn);
@@ -312,15 +330,26 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         // Add Step Button
         const addBtn = this.querySelector('#add-step-btn');
         if (addBtn) {
-            addBtn.onclick = () => {
+            addBtn.onclick = null; // Purge old listener
+            addBtn.addEventListener('click', () => {
                 const sid = `step_${Object.keys(this._draftSpec.ui.steps).length + 1}`;
-                this._draftSpec.ui.steps[sid] = { title: "New Step", parts: {} };
+                
+                // Immutable Mutation: Create fresh object/array references
+                const newSteps = { ...this._draftSpec.ui.steps, [sid]: { title: "New Step", parts: {} } };
+                const newOrder = [...(this._draftSpec.ui.stepOrder || Object.keys(this._draftSpec.ui.steps)), sid];
+                
+                this._draftSpec.ui = { 
+                    ...this._draftSpec.ui, 
+                    steps: newSteps, 
+                    stepOrder: newOrder 
+                };
+
                 this._activeStepId = sid;
                 this.saveToState();
                 this.setupVisualEditor();
                 this.editStep(sid);
                 this.updatePreview();
-            };
+            });
         }
 
         // View Source Button
@@ -353,17 +382,28 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
     }
 
     deleteStep(sid) {
-        if (Object.keys(this._draftSpec.ui.steps).length <= 1) {
+        if (!this._draftSpec.ui.stepOrder || this._draftSpec.ui.stepOrder.length <= 1) {
             alert("Cannot delete the last remaining step.");
             return;
         }
 
         if (confirm(`Are you sure you want to delete step '${sid}'?`)) {
-            delete this._draftSpec.ui.steps[sid];
+            console.log(`Visual Editor: Deleting step [${sid}]`);
+            
+            // Immutable Mutation
+            const newOrder = this._draftSpec.ui.stepOrder.filter(id => id !== sid);
+            const newSteps = { ...this._draftSpec.ui.steps };
+            delete newSteps[sid];
+
+            this._draftSpec.ui = {
+                ...this._draftSpec.ui,
+                stepOrder: newOrder,
+                steps: newSteps
+            };
             
             // If we deleted the active step, select another one
             if (this._activeStepId === sid) {
-                this._activeStepId = Object.keys(this._draftSpec.ui.steps)[0];
+                this._activeStepId = newOrder[0];
             }
             
             this.saveToState();
@@ -374,24 +414,31 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
     }
 
     moveStep(sid, offset) {
-        this._draftSpec.ui.steps = this.reorderKeys(this._draftSpec.ui.steps, sid, offset);
-        this.saveToState();
-        this.setupVisualEditor();
-        this.updatePreview();
-    }
+        const order = this._draftSpec.ui.stepOrder;
+        if (!order) return;
 
-    reorderKeys(obj, key, offset) {
-        const keys = Object.keys(obj);
-        const index = keys.indexOf(key);
+        const index = order.indexOf(sid);
         const newIdx = index + offset;
-        if (newIdx < 0 || newIdx >= keys.length) return obj;
         
-        keys.splice(index, 1);
-        keys.splice(newIdx, 0, key);
-        
-        const newObj = {};
-        keys.forEach(k => { newObj[k] = obj[k]; });
-        return newObj;
+        console.log(`Visual Editor: Moving step [${sid}] from index ${index} to ${newIdx}`);
+
+        if (newIdx >= 0 && newIdx < order.length) {
+            // Immutable Mutation
+            const newOrder = [...order];
+            newOrder.splice(index, 1);
+            newOrder.splice(newIdx, 0, sid);
+            
+            this._draftSpec.ui = {
+                ...this._draftSpec.ui,
+                stepOrder: newOrder
+            };
+
+            console.log("Visual Editor: New Step Order:", newOrder);
+
+            this.saveToState();
+            this.setupVisualEditor();
+            this.updatePreview();
+        }
     }
 
     editStep(sid) {
@@ -1015,12 +1062,17 @@ export default class AtomicVisualEditor extends AtomicComponentBase {
         // Debounce shell updates to avoid heavy re-renders of the editor itself
         if (this._saveTimer) clearTimeout(this._saveTimer);
         this._saveTimer = setTimeout(() => {
+            console.log("Visual Editor: Dispatching persistent state update...", { stepOrder: this._draftSpec.ui?.stepOrder });
+            
+            // Rule 16/23: Deep Clone before dispatching to break Alpine reactive deadlock
+            const payload = JSON.parse(JSON.stringify(this._draftSpec));
+            
             this.dispatchEvent(new CustomEvent('atomic-change', {
                 bubbles: true,
                 composed: true,
                 detail: { 
                     id: 'draft_spec', 
-                    value: this._draftSpec 
+                    value: payload 
                 }
             }));
         }, 500); // 500ms for shell sync
