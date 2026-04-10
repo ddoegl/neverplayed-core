@@ -1,6 +1,6 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.persistence-firebase",
-    "Bundle-Version": "1.0.0",
+    "Bundle-Version": "1.1.0",
     "Bundle-Name": "Cloud Persistence (Firebase)",
     "Bundle-Description": "Real-time state synchronization via Google Firebase / Firestore (Gold Standard).",
     "Bundle-Activator": "activator.js",

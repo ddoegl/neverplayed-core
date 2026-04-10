@@ -13,15 +13,18 @@ Computational engine for evaluating **Atomic Rules**, managing semantic flows, a
 - **CLI Commands**: Registers the `SHELL_COMMAND_SERVICE` providing `atomic:list` and `atomic:refresh` diagnostics.
 - **Security Provisioning**: Tracks and configures `PERMISSION_DATA_SERVICE`, `FEATURE_DATA_SERVICE`, and `CAPABILITIES_DATA_SERVICE` based on blueprint metadata.
 - **Proactive Discovery**: Implements the **Proactive Discovery Orchestration** (ADR-0031) to ensure zero-loss boot-time ingestion.
+- **Archival Sovereignty**: Implements the **Handover Archival Handshake** (ADR-0030). Delegating recursive liquidation to the DO-Registry while maintaining the user-facing confirmation flow via the Universal Interactor (ADR-0029). 🤝
+- **[SPOP] Blueprint Persistence**: Ensures that all blueprints are stored in sovereign, atomic buckets (`realm.design.blueprints_{id}`) to guarantee physical liquidation in Firestore (Pattern 11). 🏺
 
 ## 🏛️ The Patterns (The State)
 
 - **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Service Hydration Handshake** (Pattern 18).
+- **[Pattern 25: Discovery Normalization](../../docs/platform-patterns.md)**: Uses the `listKeys` API for sovereign bucket discovery.
 - **[ADR-0025: Identity Injection](../../docs/adr/0025-identity-injection-id-tokens.md)**: Governs global identity injection.
 - **[ADR-0026: Reactive Variable Resolution](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md)**: Implements variable resolution.
 - **[ADR-0027: Semantic Bundle Versioning](../../docs/adr/0027-semantic-bundle-versioning-strategy.md)**: Governs bundle versioning.
 - **[ADR-0028: Tiered Bundle Testing Strategy](../../docs/adr/0028-tiered-bundle-testing-strategy.md)**: Defines testing standards.
-- **[ADR-0029: Universal Interactor Service](../../docs/adr/0029-universal-interactor-service.md)**: Decouples logic from UI side-effects.
+- **[ADR-0029: Universal Interactor Service](../../docs/adr/0029-universal-interactor-service.md)**: Decouples logic from UI side-effects for cascading archival confirmation.
 - **[ADR-0030: Hybrid Action Architecture](../../docs/adr/0030-hybrid-action-handshake.md)**: Standardizes handshakes.
 - **[ADR-0031: Proactive Discovery Orchestration](../../docs/adr/0031-proactive-discovery-orchestration.md)**: Governs boot-time spec ingestion.
 
@@ -31,8 +34,8 @@ Computational engine for evaluating **Atomic Rules**, managing semantic flows, a
 - **Flow Visualizer**: Real-time visualization of active flows directly in the Shell CLI.
 
 ### 🏺 Institutional ADRs
-- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
-- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
-- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
-- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
-- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+- [ADR-0001](../../docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
+- [ADR-0025](../../docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
+- [ADR-0026](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
+- [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
+- [ADR-0028](../../docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.

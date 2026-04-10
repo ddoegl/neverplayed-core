@@ -18,9 +18,18 @@ access point for metadata, schemas, and semantic types.
 - **Infrastructure Tracking**: Tracks `PERSISTENCE_MANAGER_SERVICE`,
   `SESSION_SERVICE`, and `INTERACTOR_SERVICE` to manage stateful lifecycle and
   confirmations.
+- **Atomic Purge Protocol**: Implements the `purgeBlueprint(id)` method to 
+  guarantee atomic cascading liquidation of blueprints and orphaned instances 
+  with a singular `sync()` pulse. 🏛️⚡
+- **Discovery Shield**: Implements a transient **Liquidated Graveyard** and 
+  debounced hydration to prevent "Ghost Re-Hydration" from laggy persistence 
+  snapshots (Pattern 12). 🛡️🪦
 
 ## 🏛️ The Patterns (The State)
 
+- **[Pattern 12: Discovery Shield](../../docs/platform-patterns.md)**: 
+  Implements a transient **Liquidated Graveyard** to suppress re-hydration of 
+  ghost entries during cloud sync. 🪦🛡️
 - **[Pattern 20: Early Boot Registration](../../docs/platform-patterns.md)**:
   Implements **Early Boot Registration** (Pattern 20).
 - **[Rule 22: Strict Stand-alone Filtering]**: Only hydrates buckets matching

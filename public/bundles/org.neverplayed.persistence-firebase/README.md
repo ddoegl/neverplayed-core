@@ -6,10 +6,12 @@ The **Decision Authority** for real-time cloud synchronization and shunted fails
 
 - **Dual-Mode Persistence**: Primary real-time synchronization via the Firestore WebSocket SDK, with an automatic stateless fallback to the `mcpApi` REST bridge (adhering to [ADR-0024](../../docs/adr/0024-dual-mode-persistence-shunting.md)).
 - **Resilient Transport**: Uses `experimentalForceLongPolling: true` to bypass QUIC handshake resets in restricted network environments.
+- **[Pattern 25] Discovery Normalization**: Implements a recursive flattening bridge to convert Firestore's implicit nesting (caused by dot-notated field names in shared documents) back into the flat key-value cache required by the `listKeys` discovery API. 🕵️‍♂️🏛️
+- **Physical Sovereignty**: Implements **Physical Liquidation** (Pattern 11) using Firestore's `deleteField()`. Storing `null` triggers the physical removal of the field from the cloud document, ensuring absolute navigational hygiene. ⚛️
 
 ## 🏛️ The Patterns (The State)
 
-- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Shunted Fallback (Stealth Tunnel)** (Pattern 21) and **Strategic Shunting** (Pattern 7).
+- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Shunted Fallback (Stealth Tunnel)** (Pattern 21), **Strategic Shunting** (Pattern 7), and **Physical Liquidation** (Pattern 11).
 - **[ADR-0018: Service Hydration Handshake](../../docs/adr/0018-service-hydration-handshake.md)**: Implements `waitReady()` to ensure consumers are not blocked during slow boot connections.
 
 ### Shunting Implementation (Mode B)
@@ -23,8 +25,8 @@ When the Firebase SDK is unavailable (e.g. `ERR_WS_UPGRADED_FAILED`), the bundle
 - **Offline Buffer**: Add local-storage queuing for shunts that fail due to missing identity.
 
 ### 🏺 Institutional ADRs
-- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
-- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
-- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
-- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
-- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+- [ADR-0001](../../docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
+- [ADR-0025](../../docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
+- [ADR-0026](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
+- [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
+- [ADR-0028](../../docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.

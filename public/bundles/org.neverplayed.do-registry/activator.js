@@ -34,6 +34,7 @@ export default class Activator extends CoreAlpineActivator {
     this._actionRegistry = null;
     this._pm = null;
     this._pmTracker = null;
+    this._liquidatedIds = new Set(); // Rule 23: Liquidated ID Graveyard (SDN-0139)
   }
 
   async onCoreStart(context) {
@@ -251,9 +252,15 @@ export default class Activator extends CoreAlpineActivator {
     });
     this._pmTracker.open();
 
+    // Rule 24: Debounced Discovery Shield Pulse (SDN-0139)
+    // Prevents "Echo Re-Hydration" from laggy cloud writes
+    let hydrationDebounce = null;
     globalThis.addEventListener('pm-hydrated', () => {
-        this.logger.info("DO Registry: Persistence Hydration detected. Refreshing Master Map.");
-        this.refreshMaster();
+        if (hydrationDebounce) clearTimeout(hydrationDebounce);
+        hydrationDebounce = setTimeout(() => {
+            this.logger.info("DO Registry: Persistence Hydration Pulse. Syncing Discovery Shield.");
+            this.refreshMaster();
+        }, 150);
     });
 
     context.registerService(SHELL_COMMAND_SERVICE, {
@@ -328,6 +335,38 @@ export default class Activator extends CoreAlpineActivator {
                 this.sync();
             }
         },
+        purgeBlueprint: (id) => {
+            this.logger.info(`DO Registry: ATOMIC PURGE STARTED for blueprint [${id}]`);
+            
+            // 1. Liquidate orphaned instances
+            const discoveredIds = [];
+            this._instances.forEach((inst, instId) => {
+                if (inst.blueprintId === id) discoveredIds.push(instId);
+            });
+
+            if (discoveredIds.length > 0) {
+                this.logger.info(`DO Registry: Purging ${discoveredIds.length} orphaned instances for [${id}]`);
+                discoveredIds.forEach(instId => {
+                    this._liquidatedIds.add(instId); // Graveyard Entry
+                    this._instances.delete(instId);
+                    if (this._registrations.has(instId)) {
+                        this._registrations.get(instId).unregister();
+                        this._registrations.delete(instId);
+                    }
+                    (this._pm || this.persistence).store(`realm.do.instances_${instId}`, null);
+                });
+            }
+
+            // 2. Liquidate Blueprint Spec
+            const specIdx = this.systemSpecs.findIndex(s => s.id === id);
+            if (specIdx !== -1) {
+                this.systemSpecs.splice(specIdx, 1);
+            }
+
+            // 3. Singular Atomic Sync Pulse
+            this.sync();
+            this.logger.info(`DO Registry: ATOMIC PURGE COMPLETE for blueprint [${id}]. ${discoveredIds.length} instances liquidated.`);
+        },
         archiveBlueprint: (id) => {
             const spec = this.systemSpecs.find(s => s.id === id);
             if (spec) {
@@ -369,6 +408,7 @@ export default class Activator extends CoreAlpineActivator {
             this.sync();
         },
         removeInstance: (id) => {
+            this._liquidatedIds.add(id); // Graveyard Entry
             this._instances.delete(id);
             if (this._registrations.has(id)) {
                 this._registrations.get(id).unregister();
@@ -523,6 +563,12 @@ export default class Activator extends CoreAlpineActivator {
              const idPart = bucket.substring(prefix.length);
              if (!idPart.includes('-') && !idPart.includes('_')) {
                  this.logger.debug(`[Registry] Skipping collective legacy bucket: ${bucket}`);
+                 continue;
+             }
+
+             // Rule 23: Discovery Shield (Gated Discovery)
+             if (this._liquidatedIds.has(idPart)) {
+                 this.logger.debug(`[Registry] Blocked Re-Discovery of Liquidated Instance: ${idPart}`);
                  continue;
              }
 

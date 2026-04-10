@@ -125,5 +125,32 @@ When deploying headless agents (MCP Servers), initial discovery and authorizatio
 - **Security**: The secret must be stored in Google Cloud Secret Manager and injected at runtime as an environment variable (`process.env.MCP_API_SECRET`).
 - **Identity Bridge**: The secret is only used to mint a temporary Firebase Custom Token; business logic thereafter must transition to standard ID Token verification.
 
+---
+
+## 11. Archival Sovereignty (Physical Liquidation)
+
+Hardened Domain Sovereignty requires that once an object is liquidated (archived/deleted), it must be physically removed from all persistence layers to maintain the **Single Point of Persistence (SPOP)** model.
+
+- **Pattern**: Use physical field deletion (e.g., Firestore `deleteField()` or `Map.delete()`) instead of setting fields to `null`.
+- **Benefit**: Ensures that "Discovery" algorithms (key listing) do not re-hydrate liquidated ghosts during synchronization.
+
 ### 📜 Related ADRs
-- **[ADR-0025: Identity Injection and ID Tokens](./adr/0025-identity-injection-id-tokens.md)**
+- **[ADR-0029: Universal Interactor Service](./adr/0029-universal-interactor-service.md)**
+- **[ADR-0030: Hybrid Action Handshake](./adr/0030-hybrid-action-handshake.md)**
+
+---
+
+## 12. Discovery Shield (Liquidated Graveyard)
+
+To prevent re-hydration of "ghost instances" during asynchronous cloud synchronization, registries must implement a defensive discovery gate.
+
+- **Pattern**: Maintain a transient **Liquidated Graveyard** (a Set of recently deleted IDs) and implement a **Debounced Discovery Pulse**.
+- **Logic**: During discovery (e.g., `refreshMaster`), any discovered key found in the graveyard must be blocked from re-hydration.
+- **Benefit**: Hardens the UI against "Resurrection Bugs" during high-latency synchronization cycles.
+
+```javascript
+ if (this._liquidatedIds.has(idPart)) {
+     this.logger.debug(`[Registry] Blocked Discovery of Liquidated ID: ${idPart}`);
+     continue;
+ }
+```

@@ -20,7 +20,8 @@ import {
     DOMAIN_STRATEGY_SERVICE,
     ACTION_SERVICE,
     SHELL_COMMAND_SERVICE,
-    PERSISTENCE_MANAGER_SERVICE
+    PERSISTENCE_MANAGER_SERVICE,
+    INTERACTOR_SERVICE
 } from "core-types";
 import { BaseActivator } from "osgi-base";
 
@@ -129,9 +130,8 @@ export default class Activator extends BaseActivator {
                 
                 (async () => {
                     if (typeof pm.waitReady === 'function') {
-                        const bucket = "realm.design.blueprints";
-                        this.logger.info(`Atomic Orchestrator: Awaiting hydration for bucket [${bucket}]...`);
-                        await pm.waitReady(bucket);
+                        this.logger.info("Atomic Orchestrator: Awaiting Persistence Hub hydration...");
+                        await pm.waitReady();
                     }
                     
                     this.scanLocalStorage(context);
@@ -144,6 +144,20 @@ export default class Activator extends BaseActivator {
             }
         });
         this._pmTracker.open();
+
+        // 2.5 Universal Interactor Discovery
+        this._interactorTracker = context.trackService(`(objectClass=${INTERACTOR_SERVICE})`, {
+            addingService: (ref) => {
+                const svc = context.getService(ref);
+                this._interactor = svc;
+                this.logger.info("Atomic Orchestrator: Universal Interactor discovered. Archival safeguards active.");
+                return svc;
+            },
+            removedService: () => {
+                this._interactor = null;
+            }
+        });
+        this._interactorTracker.open();
 
         // 3. Centralized Discovery Cycle (Boot & Refresh)
         const runRefresh = (log = console.log) => {
@@ -165,14 +179,16 @@ export default class Activator extends BaseActivator {
                 
                 if (persist) {
                     try {
-                        const pm = this.persistence || context.getService(context.getServiceReference(PERSISTENCE_MANAGER_SERVICE));
-                        const bucket = "realm.design.blueprints";
-                        const current = pm.load(bucket) || {};
-                        current[spec.id] = { ...spec, _isPersisted: true };
-                        pm.store(bucket, current);
-                        this.logger.info(`Atomic Orchestrator: Persisted spec ${spec.id} to PersistenceManager [${bucket}]`);
+                        const pmRef = context.getServiceReference(PERSISTENCE_MANAGER_SERVICE);
+                        const pm = this.persistence || (pmRef ? context.getService(pmRef) : null);
+                        if (pm) {
+                            const bucket = `realm.design.blueprints_${spec.id}`;
+                            const persistedSpec = { ...spec, _isPersisted: true };
+                            pm.store(bucket, persistedSpec);
+                            this.logger.info(`Atomic Orchestrator: Spec ${spec.id} persisted to sovereign bucket [${bucket}]`);
+                        }
                     } catch (e) {
-                        this.logger.error("Atomic Orchestrator: Failed to persist spec to PM", e);
+                        this.logger.error("Atomic Orchestrator: Failed to persist ingested spec", e);
                     }
                 }
 
@@ -189,14 +205,12 @@ export default class Activator extends BaseActivator {
                 
                 try {
                     const pm = this.persistence || context.getService(context.getServiceReference(PERSISTENCE_MANAGER_SERVICE));
-                    const bucket = "realm.design.blueprints";
-                    const current = pm.load(bucket) || {};
+                    const bucket = `realm.design.blueprints_${spec.id}`;
                     
                     // Mark as persisted for registry bypass
                     const persistedSpec = { ...spec, _isPersisted: true };
-                    current[spec.id] = persistedSpec;
-                    pm.store(bucket, current);
-                    this.logger.info(`Atomic Orchestrator: Blueprint ${persistedSpec.id} saved to PersistenceManager [${bucket}].`);
+                    pm.store(bucket, persistedSpec);
+                    this.logger.info(`Atomic Orchestrator: Blueprint ${persistedSpec.id} saved to individual bucket [${bucket}].`);
                     
                     // User Feedback
                     alert(`Blueprint '${persistedSpec.id}' successfully saved and registered.`);
@@ -214,36 +228,73 @@ export default class Activator extends BaseActivator {
                 this.logger.info(`Atomic Orchestrator: Archival request for blueprint ${id}`);
                 if (!id) return;
 
-                try {
-                    const pm = this.persistence || context.getService(context.getServiceReference(PERSISTENCE_MANAGER_SERVICE));
-                    const bucket = "realm.design.blueprints";
-                    const current = pm.load(bucket) || {};
-                    
-                    if (current[id]) {
-                        delete current[id];
-                        pm.store(bucket, current);
-                        this.logger.info(`Atomic Orchestrator: Blueprint ${id} removed from persistence [${bucket}]`);
-                    }
+                const archiveLogic = async () => {
+                    try {
+                        const pm = this.persistence || context.getService(context.getServiceReference(PERSISTENCE_MANAGER_SERVICE));
+                        const bucket = `realm.design.blueprints_${id}`;
+                        
+                        this.logger.info(`Atomic Orchestrator: ARCHIVAL PROTOCOL STARTED for blueprint [${id}]`);
 
-                    // Unregister and cleanup
-                    if (this.registrations[id]) {
-                        this.registrations[id].forEach(reg => { try { reg.unregister(); } catch (_e) {
-                          this.logger.error(`Atomic Orchestrator: Failed to unregister ${id}`, _e);
-                        } });
-                        delete this.registrations[id];
-                    }
-                    delete this.specs[id];
+                        // Physical Liquidation (Delete from Firestore)
+                        pm.store(bucket, null);
+                        this.logger.info(`Atomic Orchestrator: Blueprint [${id}] physically liquidated from [${bucket}]`);
 
-                    // Notify Registry (Handled via sync/refresh on next tick or direct addBlueprint check)
-                    const registry = context.getService(context.getServiceReference(DOMAIN_OBJECT_REGISTRY_SERVICE));
-                    if (registry?.removeBlueprint) {
-                        registry.removeBlueprint(id);
+                        // Cascading Purge Handshake
+                        const registryRef = context.getServiceReference(DOMAIN_OBJECT_REGISTRY_SERVICE);
+                        const registry = registryRef ? context.getService(registryRef) : null;
+                        
+                        if (registry) {
+                            const rawInstances = registry.getInstances() || {};
+                            const allInstances = Array.isArray(rawInstances) ? rawInstances : Object.values(rawInstances);
+                            const instances = allInstances.filter(ins => ins.blueprintId === id);
+                            this.logger.info(`Atomic Orchestrator: Cascading Purge Assessment: Discovered ${instances.length} instances for blueprint [${id}] (Registry Scan: ${allInstances.length} total)`);
+
+                            if (instances.length > 0) {
+                                // Re-check Interactor for freshest reference
+                                const interactor = this._interactor || (context.getServiceReference(INTERACTOR_SERVICE) ? context.getService(context.getServiceReference(INTERACTOR_SERVICE)) : null);
+                                
+                                const confirmed = interactor 
+                                    ? await interactor.confirm(`Archive ${instances.length} orphaned instances associated with '${id}'?`)
+                                    : globalThis.confirm(`Archive ${instances.length} orphaned instances associated with '${id}'?`);
+                                
+                                if (confirmed) {
+                                    this.logger.info(`Atomic Orchestrator: ARCHIVING blueprint [${id}] and its orphaned instances.`);
+                                    
+                                    if (registry.purgeBlueprint) {
+                                        registry.purgeBlueprint(id);
+                                    } else {
+                                        // Fallback if registry hasn't updated yet
+                                        instances.forEach(ins => registry.removeInstance(ins.id));
+                                        if (registry.removeBlueprint) registry.removeBlueprint(id);
+                                    }
+                                } else {
+                                    this.logger.info(`Atomic Orchestrator: USER PRESERVED ${instances.length} orphaned instances.`);
+                                }
+                            } else if (registry.purgeBlueprint) {
+                                registry.purgeBlueprint(id);
+                            } else if (registry.removeBlueprint) {
+                                registry.removeBlueprint(id);
+                            }
+                        } else {
+                            this.logger.warn(`Atomic Orchestrator: CASCADING PURGE SKIPPED. DO-Registry not available during archival of [${id}]`);
+                        }
+
+                        // Unregister and cleanup in Orchestrator
+                        if (this.registrations[id]) {
+                            this.registrations[id].forEach(reg => { try { reg.unregister(); } catch (_e) {
+                              this.logger.error(`Atomic Orchestrator: Failed to unregister ${id}`, _e);
+                            } });
+                            delete this.registrations[id];
+                        }
+                        delete this.specs[id];
+
+                        this.logger.info(`Atomic Orchestrator: Blueprint [${id}] ARCHIVAL COMPLETE.`);
+                    } catch (err) {
+                        this.logger.error(`Atomic Orchestrator: ARCHIVAL PROTOCOL FAILED for [${id}]`, err);
                     }
-                    
-                    this.logger.info(`Atomic Orchestrator: Blueprint ${id} archived successfully.`);
-                } catch (err) {
-                    this.logger.error("Atomic Orchestrator: Archival failed.", err);
-                }
+                };
+
+                archiveLogic();
             }
         });
 
@@ -416,22 +467,23 @@ export default class Activator extends BaseActivator {
     }
   }
 
-  scanLocalStorage(context) {
+  async scanLocalStorage(context) {
     try {
-        const pm = this.persistence || (context ? context.getService(context.getServiceReference(PERSISTENCE_MANAGER_SERVICE)) : null);
+        const pmRef = context.getServiceReference(PERSISTENCE_MANAGER_SERVICE);
+        const pm = this.persistence || (pmRef ? context.getService(pmRef) : null);
         if (!pm) return;
         
-        const bucket = "realm.design.blueprints";
-        const saved = pm.load(bucket) || {};
-        const specs = Object.values(saved);
-        
-        if (specs.length > 0) {
-            this.logger.info(`Atomic Orchestrator: [HYDRATION] Found ${specs.length} custom specs in PersistenceManager [${bucket}]`);
-            specs.forEach(spec => {
-                this.registerAtomicComponents(context, null, spec, "persistence");
-            });
-        } else {
-            this.logger.info(`Atomic Orchestrator: [HYDRATION] No custom specs found in bucket [${bucket}]`);
+        // SPOP Blueprint Discovery (Rule 4)
+        if (pm.listKeys) {
+            const keys = await pm.listKeys("realm.design.blueprints_");
+            this.logger.info(`Atomic Orchestrator: [HYDRATION] Discovered ${keys.length} sovereign blueprint buckets.`);
+            for (const bucket of keys) {
+                const spec = pm.load(bucket);
+                if (spec) {
+                    this.logger.debug(`Atomic Orchestrator: [HYDRATION] Loading sovereign blueprint: ${spec.id}`);
+                    this.registerAtomicComponents(context, null, spec, "persistence");
+                }
+            }
         }
     } catch (e) {
         this.logger.error("Atomic Orchestrator: Failed to scan PersistenceManager blueprints", e);
@@ -626,6 +678,7 @@ export default class Activator extends BaseActivator {
     });
 
     if (this._pmTracker) this._pmTracker.close();
+    if (this._interactorTracker) this._interactorTracker.close();
     this.logger.log("Atomic Orchestrator: Stopped.");
     super.onStop(context);
   }

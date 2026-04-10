@@ -104,7 +104,7 @@ export default class Activator {
                 return newInstance;
             },
 
-            updateInstance: (instanceId, blueprintId, patch) => {
+            updateInstance: (instanceId, _blueprintId, patch) => {
                 const registry = this._registry;
                 if (!registry) return;
                 const instance = registry.getInstance(instanceId);

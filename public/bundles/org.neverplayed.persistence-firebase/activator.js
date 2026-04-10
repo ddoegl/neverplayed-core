@@ -40,16 +40,17 @@ export default class Activator extends BaseActivator {
             return;
         }
 
-        const { initializeFirestore, doc, setDoc, onSnapshot } = await import(`${FIREBASE_CDN}/firebase-firestore.js`);
-        const app = getApp();
-        
-        // Force Long Polling to bypass QUIC resets (ERR_QUIC_PROTOCOL_ERROR)
-        this._db = initializeFirestore(app, {
-            experimentalForceLongPolling: true
-        });
-        
-        this._setDoc = setDoc;
-        this._docFn = doc;
+        const { initializeFirestore, doc, setDoc, onSnapshot, deleteField } = await import(`${FIREBASE_CDN}/firebase-firestore.js`);
+         const app = getApp();
+         
+         // Force Long Polling to bypass QUIC resets (ERR_QUIC_PROTOCOL_ERROR)
+         this._db = initializeFirestore(app, {
+             experimentalForceLongPolling: true
+         });
+         
+         this._setDoc = setDoc;
+         this._docFn = doc;
+         this._deleteField = deleteField;
 
         // 2. Track AuthShield for Identity
         context.trackService(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
@@ -88,12 +89,31 @@ export default class Activator extends BaseActivator {
         
         this._unsub = onSnapshot(this._docFn(this._db, COLLECTION, uid), (snap) => {
             if (snap.exists()) {
-                const data = snap.data();
-                this._cache.clear(); // Fresh start for the cache from remote source
-                for (const [key, val] of Object.entries(data)) {
-                    this._cache.set(key, val);
+                const data = snap.data() || {};
+                const flatCache = new Map();
+                
+                const flatten = (obj, prefix = "") => {
+                    for (const [key, value] of Object.entries(obj)) {
+                        const newKey = prefix ? `${prefix}.${key}` : key;
+                        const isAtomicSpec = value && typeof value === 'object' && !Array.isArray(value) && 
+                            (Object.prototype.hasOwnProperty.call(value, 'id') || Object.prototype.hasOwnProperty.call(value, 'blueprintId'));
+                        
+                        if (value && typeof value === 'object' && !Array.isArray(value) && !isAtomicSpec) {
+                            flatten(value, newKey);
+                        } else if (value !== null) {
+                            flatCache.set(newKey, value);
+                        }
+                    }
+                };
+                flatten(data);
+                this._cache = flatCache;
+
+                if (this._isColdStart) {
+                    this.logger.info(`Firebase Persistence: Initial remote snapshot received. Hydrated ${this._cache.size} flat keys.`);
+                    this._isColdStart = false;
+                } else {
+                    this.logger.info(`Firebase Persistence: Remote update detected. Hydrated ${this._cache.size} keys.`);
                 }
-                this.logger.info(`Firebase Persistence: Remote update detected. Hydrated ${Object.keys(data).length} keys.`);
             } else {
                 this.logger.info("Firebase Persistence: No existing cloud state found.");
             }
@@ -267,13 +287,20 @@ export default class Activator extends BaseActivator {
     async store(key, val) {
         // SANITY SCRUB: Prevent Firestore crash from functions
         const cleanVal = this._scrubPayload(val);
-        this._cache.set(key, cleanVal);
+        const isDeletion = cleanVal === null;
+        
+        if (isDeletion) {
+            this._cache.delete(key);
+        } else {
+            this._cache.set(key, cleanVal);
+        }
         
         if (this._db && this._userId && this._setDoc && this._docFn) {
             try {
+                const payload = { [key]: isDeletion ? this._deleteField() : cleanVal };
                 await this._setDoc(
                     this._docFn(this._db, COLLECTION, this._userId),
-                    { [key]: cleanVal },
+                    payload,
                     { merge: true }
                 );
             } catch (err) {
