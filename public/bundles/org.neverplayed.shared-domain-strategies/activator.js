@@ -112,7 +112,7 @@ export default class Activator {
                 }
 
                 currentBucket[instanceId] = newInstance;
-                pm.store(storageKey, currentBucket);
+                // pm.store(storageKey, currentBucket); // DECOMMISSIONED: Redundant with individual Registry saves
 
                 // Register with Central Index (Always Cloud/Firebase for visibility)
                 this._registry.addInstance(newInstance);
@@ -153,7 +153,7 @@ export default class Activator {
                         updatedAt: new Date().toISOString()
                     };
                     currentBucket[instanceId] = updatedInstance;
-                    pm.store(storageKey, currentBucket);
+                    // pm.store(storageKey, currentBucket); // DECOMMISSIONED: Redundant with individual Registry saves
                     this._registry.addInstance(updatedInstance);
                 }
             },

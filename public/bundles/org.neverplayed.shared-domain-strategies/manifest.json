@@ -1,6 +1,6 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.shared-domain-strategies",
-    "Bundle-Version": "1.0.0",
+    "Bundle-Version": "0.2.0",
     "Bundle-Activator": "./activator.js",
     "Bundle-Description": "Registers Execution Engines (Strategies) for Domain Objects."
 }

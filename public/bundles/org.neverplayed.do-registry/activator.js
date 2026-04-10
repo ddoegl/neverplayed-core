@@ -514,6 +514,14 @@ export default class Activator extends CoreAlpineActivator {
      const countBefore = this._instances.size;
      for (const bucket of discoveredKeys) {
          try {
+             // Rule 22: Strict Stand-alone Filtering (SDN-0135)
+             // Ignore legacy collective maps (which use blueprintId as the suffix without an instance part)
+             const idPart = bucket.substring(prefix.length);
+             if (!idPart.includes('-') && !idPart.includes('_')) {
+                 this.logger.debug(`[Registry] Skipping collective legacy bucket: ${bucket}`);
+                 continue;
+             }
+
              const inst = pm.load(bucket);
              if (inst && inst.id) {
                 const instance = { ...inst };
