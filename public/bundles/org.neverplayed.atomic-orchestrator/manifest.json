@@ -1,6 +1,6 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.atomic-orchestrator",
-    "Bundle-Version": "1.2.0",
+    "Bundle-Version": "1.3.0",
     "Bundle-Description": "Orchestrates complex semantic flows and atomic rule evaluations.",
     "Bundle-Activator": "activator.js",
     "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.atomic.IngestionService\", osgi.service; objectClass=\"org.neverplayed.shell.Command\", osgi.service; objectClass=\"org.neverplayed.shell.Action\", osgi.service; objectClass=\"org.neverplayed.domain.Strategy\", osgi.service; objectClass=\"org.neverplayed.flow.Service\", osgi.service; objectClass=\"org.neverplayed.platform.DiscoveryProvider\"",

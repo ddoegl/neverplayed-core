@@ -132,7 +132,8 @@ When deploying headless agents (MCP Servers), initial discovery and authorizatio
 Hardened Domain Sovereignty requires that once an object is liquidated (archived/deleted), it must be physically removed from all persistence layers to maintain the **Single Point of Persistence (SPOP)** model.
 
 - **Pattern**: Use physical field deletion (e.g., Firestore `deleteField()` or `Map.delete()`) instead of setting fields to `null`.
-- **Benefit**: Ensures that "Discovery" algorithms (key listing) do not re-hydrate liquidated ghosts during synchronization.
+- **Sovereignty Guard**: Reject persistence requests for blueprints that are already bundle-resident (`_isBundleBlueprint`) to prevent shadow buckets from corrupting institutional tools. 🧱
+- **Benefit**: Ensures that "Discovery" algorithms (key listing) do not re-hydrate liquidated ghosts and that platform infrastructure remains immutable.
 
 ### 📜 Related ADRs
 - **[ADR-0029: Universal Interactor Service](./adr/0029-universal-interactor-service.md)**

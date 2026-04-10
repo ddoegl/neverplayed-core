@@ -21,6 +21,7 @@ access point for metadata, schemas, and semantic types.
 - **Atomic Purge Protocol**: Implements the `purgeBlueprint(id)` method to 
   guarantee atomic cascading liquidation of blueprints and orphaned instances 
   with a singular `sync()` pulse. 🏛️⚡
+- **Infrastructure Sovereignty**: Implements the **Refined Action Guard** (Pattern 11 refinement) in the UI. Suppressing the Archive (Delete) button for institutional bundle blueprints to prevent accidental liquidation of core tools. 🧱🛡️
 - **Discovery Shield**: Implements a transient **Liquidated Graveyard** and 
   debounced hydration to prevent "Ghost Re-Hydration" from laggy persistence 
   snapshots (Pattern 12). 🛡️🪦

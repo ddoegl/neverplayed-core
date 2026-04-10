@@ -203,6 +203,13 @@ export default class Activator extends BaseActivator {
                 this.logger.info(`Atomic Orchestrator: Persistence request for blueprint ${spec?.id || 'unknown'}`);
                 if (!spec || !spec.id) return this.logger.error("Atomic Orchestrator: Save aborted. Spec ID missing.");
                 
+                // Rule 19: Sovereignty Guard (SDN-0139) - Protect Institutional Infrastructure
+                if (spec._isBundleBlueprint) {
+                    this.logger.warn(`Atomic Orchestrator: [SOVEREIGNTY WARNING] Persistence REJECTED for Institutional Blueprint [${spec.id}]. Bundle-resident tools cannot be shadowed.`);
+                    alert(`Persistence Rejected: '${spec.id}' is a protected bundle blueprint and cannot be shadowed to Cloud/Local storage.`);
+                    return;
+                }
+
                 try {
                     const pm = this.persistence || context.getService(context.getServiceReference(PERSISTENCE_MANAGER_SERVICE));
                     const bucket = `realm.design.blueprints_${spec.id}`;

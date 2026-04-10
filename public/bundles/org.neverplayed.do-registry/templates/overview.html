@@ -168,7 +168,7 @@
                 <i class="fas fa-code mr-1.5 text-indigo-500"></i>
                 Edit YAML
               </button>
-              <template x-if="spec._isPersisted">
+              <template x-if="spec._isPersisted && !spec._isBundleBlueprint">
                 <button class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-white border border-red-100 text-red-600 hover:bg-red-50 transition shadow-sm ml-auto" title="Archive Blueprint" @click="registry.handleAction({ id: 'blueprint.archive' }, spec)">
                     <i class="fas fa-trash-alt"></i>
                 </button>

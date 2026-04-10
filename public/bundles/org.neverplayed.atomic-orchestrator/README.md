@@ -14,7 +14,7 @@ Computational engine for evaluating **Atomic Rules**, managing semantic flows, a
 - **Security Provisioning**: Tracks and configures `PERMISSION_DATA_SERVICE`, `FEATURE_DATA_SERVICE`, and `CAPABILITIES_DATA_SERVICE` based on blueprint metadata.
 - **Proactive Discovery**: Implements the **Proactive Discovery Orchestration** (ADR-0031) to ensure zero-loss boot-time ingestion.
 - **Archival Sovereignty**: Implements the **Handover Archival Handshake** (ADR-0030). Delegating recursive liquidation to the DO-Registry while maintaining the user-facing confirmation flow via the Universal Interactor (ADR-0029). 🤝
-- **[SPOP] Blueprint Persistence**: Ensures that all blueprints are stored in sovereign, atomic buckets (`realm.design.blueprints_{id}`) to guarantee physical liquidation in Firestore (Pattern 11). 🏺
+- **[SPOP] Blueprint Persistence**: Ensures that all blueprints are stored in sovereign, atomic buckets (`realm.design.blueprints_{id}`). Implements the **Sovereignty Guard** (Pattern 11) to reject persistence requests for institutional bundle blueprints, preventing shadow bucket corruption. 🏺🧱
 
 ## 🏛️ The Patterns (The State)
 
