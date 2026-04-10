@@ -379,7 +379,7 @@ class UIFactory extends HTMLElement {
                     this._state.uifStep = initialStep;
                 }
                 if (ui.steps) {
-                    this._state.uifStepKeys = ui.stepOrder || Object.keys(ui.steps);
+                    this._state.uifStepKeys = Object.keys(ui.steps);
                 }
             }
 
@@ -440,13 +440,10 @@ class UIFactory extends HTMLElement {
 
     hydrateBody(container, spec) {
         const steps = spec.steps || {};
-        const stepOrder = spec.stepOrder || Object.keys(steps);
         const parts = spec.parts || {};
 
-        if (stepOrder.length > 0) {
-            stepOrder.forEach((sid) => {
-                const s = steps[sid];
-                if (!s) return; // Guard against stale sequence entries
+        if (Object.keys(steps).length > 0) {
+            Object.entries(steps).forEach(([sid, s]) => {
                 const lowerSid = sid.toLowerCase();
                 let stepWrapper = container.querySelector(`.uif-step-wrapper[data-sid="${lowerSid}"]`);
                 
@@ -556,17 +553,17 @@ class UIFactory extends HTMLElement {
 
         // 1. Initial State Definition
         const steps = spec.ui?.steps || {};
-        const stepOrder = spec.ui?.stepOrder || Object.keys(steps);
-        const initialStep = spec.ui?.initialStep || (stepOrder.length > 0 ? stepOrder[0] : null);
+        const stepKeys = Object.keys(steps);
+        const initialStep = spec.ui?.initialStep || (stepKeys.length > 0 ? stepKeys[0] : null);
 
         const s = {
             loading: false,
             data: null,
             uifGuards: {},
             uifValues: { ...this._params }, // Seed with initial parameters
-            uifStep: instanceStep || initialStep || (stepOrder.length > 0 ? stepOrder[0] : null),
-            uifStepKeys: stepOrder,
-            uifInitialStep: initialStep || (stepOrder.length > 0 ? stepOrder[0] : null),
+            uifStep: instanceStep || initialStep || (stepKeys.length > 0 ? stepKeys[0] : null),
+            uifStepKeys: stepKeys,
+            uifInitialStep: initialStep || (stepKeys.length > 0 ? stepKeys[0] : null),
             history: instanceHistory,
             _hydrated: !!instance,
             _registryReady: false,

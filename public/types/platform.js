@@ -77,6 +77,7 @@ export const UI_COMPONENTS_SERVICE = "org.neverplayed.ui.Components";
 export const UI_FACTORY_SERVICE = "org.neverplayed.ui.Factory";
 export const UI_REGISTRY_SERVICE = "org.neverplayed.ui.Registry";
 export const CONTRIBUTION_SERVICE = "org.neverplayed.global-state.ContributionService";
+export const INTERACTOR_SERVICE = "org.neverplayed.ui.Interactor";
 
 // 8. Bundle Typings
 export const BUNDLE_TYPE_ORDER = "order";

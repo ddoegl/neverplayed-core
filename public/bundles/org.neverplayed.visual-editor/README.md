@@ -7,37 +7,34 @@ A foundational meta-flow inhabitant for building, designing, and exploring **Ato
 ## 🏛️ Architecture & Implementation
 
 - **Standard Inhabitant**: Implemented as a sovereign inhabitant that can be emerged in any realm context to provide WYSIWYG editing capabilities.
+- **Component Strategy**: Registers and tracks `ATOMIC_COMPONENT_REGISTRY_SERVICE` to host the `visual-editor` strategy.
+- **Action Discovery**: Tracks the `ACTION_REGISTRY_SERVICE` to provide real-time binding for command buttons within the editor.
 - **Master-Detail Orchestration**: Uses a `Master-Detail` UI pattern to manage flow steps (Sidebar) and property editing (Main Panel).
-- **Reactive Synchronization**: Leverages an internal state store with property binding to provide a real-time "Live Preview" of the flow as it is being edited.
 
 ## 🏛️ The Patterns (The State)
 
-- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Inhabitant sovereignty** (Pattern 16/ADR-0016) and **Non-Destructive Rendering** (Pattern 17/ADR-0008).
-- **[ADR-0016: Inhabitant Layer Sovereignty](../../docs/adr/0016-inhabitant-layer-sovereignty.md)**: Guarantees that the visual editor does not pollute the parent namespace of the hosting realm.
-- **Service Integration**: Tracks the `ACTION_REGISTRY_SERVICE` to provide real-time binding for command buttons within the editor.
+- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Inhabitant sovereignty** (Pattern 16).
+- **[ADR-0025: Identity Injection](../../docs/adr/0025-identity-injection-id-tokens.md)**: Governs visual element identity for binding.
+- **[ADR-0026: Reactive Variable Resolution](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md)**: Used in the Live Preview engine.
+- **[ADR-0027: Semantic Bundle Versioning](../../docs/adr/0027-semantic-bundle-versioning-strategy.md)**: Governs bundle lifecycle.
+- **[ADR-0029: Universal Interactor Service](../../docs/adr/0029-universal-interactor-service.md)**: Decouples the editor from UI side-effects.
+- **[ADR-0031: Proactive Discovery Orchestration](../../docs/adr/0031-proactive-discovery-orchestration.md)**: Governs the ingestion of editor-built blueprints.
 
 ## 🛠️ Components
 
 - **Activator**: `activator.js` - Handles inhabitant registration and host bridge injection.
-- **Core Component**: `components/atomic-visual-editor.js` - The main WYSIWYG editor logic using Web Components and Shoelace.
-- **Live Preview Engine**: Integrated rendering pane that demonstrates exactly how the flow will appear to the end-user.
+- **Core Component**: `components/atomic-visual-editor.js` - The main WYSIWYG editor logic using Web Components.
+- **Live Preview Engine**: Integrated rendering pane demonstrating the active flow.
 
 ## 🚀 Existing Capabilities
 
 - **Form-Based Editing**: Structured property panels for steps and UI parts (Text, Inputs, Buttons).
-- **Live Simulation**: real-time rendering of the flow in the "Live Preview" pane as you modify properties.
-- **YAML Synchronization**: Bi-directional sync with the **[YAML Editor](../org.neverplayed.yaml-editor/README.md)** for advanced users.
-- **Blueprint Ingestion**: Direct integration with the `ATOMIC_SPEC_INGESTION_SERVICE` to register flows into the system.
+- **Live Simulation**: Real-time rendering of the flow in the "Live Preview" pane.
+- **YAML Synchronization**: Sync with the **[YAML Editor](../org.neverplayed.yaml-editor/README.md)**.
+- **Blueprint Ingestion**: Direct integration with the `ATOMIC_SPEC_INGESTION_SERVICE`.
 
 ## 🚀 Future Road
 
-- **Drag-and-Drop Canvas**: Transition from the current form-based list to a visual node-based coordinates system.
-- **Collaborative Editing**: Real-time multi-user editing supported by the Cloud tier.
+- **Drag-and-Drop Canvas**: Visual node-based coordinates system.
+- **Collaborative Editing**: Real-time multi-user editing.
 - **Validation Engine**: Real-time feedback on "Orphan Steps" or broken action references.
-
-### 🏺 Institutional ADRs
-- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
-- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
-- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
-- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
-- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.

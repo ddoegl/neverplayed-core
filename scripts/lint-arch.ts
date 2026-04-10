@@ -107,7 +107,24 @@ if (targetBundles.size > 0) {
     console.log(`%c 🎯 Targeting Layer: ${targetLayer?.toUpperCase()} (Scanning all via convention)`, "color: yellow;");
 }
 
+const identityMap = new Map<string, string>();
+
+async function loadIdentities() {
+    const files = ["public/types/platform.js", "public/types/domain.js"];
+    for (const file of files) {
+        try {
+            const content = await Deno.readTextFile(file);
+            const regex = /export const ([A-Z_]+) = "([^"]+)"/g;
+            let m;
+            while ((m = regex.exec(content)) !== null) {
+                identityMap.set(m[1], m[2]);
+            }
+        } catch (_e) { /* file might be missing or different in some branches */ }
+    }
+}
+
 async function auditBundles() {
+  await loadIdentities();
   for await (const entry of walk(BUNDLE_ROOT, { includeDirs: true, maxDepth: 2 })) {
     if (entry.isDirectory && entry.name.startsWith("org.neverplayed.")) {
       const bsn = entry.name;
@@ -117,6 +134,8 @@ async function auditBundles() {
       if (targetBundles.size > 0 && !targetBundles.has(bsn)) continue;
 
       const layer = layerMap.get(bsn) || "domain";
+      const manifestPath = join(path, "manifest.json");
+      const readmePath = join(path, "README.md");
 
       // 0. Layer Policy Enforcement (No Flows/Clients in Core/Foundation)
       if (layer === "core" || layer === "foundation") {
@@ -132,7 +151,6 @@ async function auditBundles() {
 
       // 1. Manifest Alignment & Versioning (ADR-0027)
       if (isFullAudit || isManifestOnly) {
-        const manifestPath = `${path}/manifest.json`;
         try {
           const manifestText = await Deno.readTextFile(manifestPath);
           const manifest = JSON.parse(manifestText);
@@ -142,6 +160,16 @@ async function auditBundles() {
             console.log(`%c[ERROR]%c ${bsn}: Manifest BSN mismatch ('${manifest["Bundle-SymbolicName"]}')`, "color: red; font-weight: bold;", "color: reset;");
             errors++;
           }
+
+          // 2. Blueprint Hygiene (Schema Parsimony - ADR-0032)
+          const specPath = join(path, "spec.yaml");
+          try {
+            const specContent = await Deno.readTextFile(specPath);
+            if (specContent.includes("stepOrder:")) {
+              console.log(`%c[ERROR]%c ${bsn}: Found deprecated 'stepOrder' array in spec.yaml. Use Lexical Key Ordering (Principle 4.1).`, "color: red; font-weight: bold;", "color: reset;");
+              errors++;
+            }
+          } catch (_e) { /* no spec */ }
 
           // Versioning Check (ADR-0027)
           const version = manifest["Bundle-Version"];
@@ -158,7 +186,6 @@ async function auditBundles() {
 
       // 2. Documentation Standards & Health Badging
       if (isFullAudit || isDocsOnly) {
-        const readmePath = `${path}/README.md`;
         try {
           let readme = await Deno.readTextFile(readmePath);
           let changed = false;
@@ -217,14 +244,51 @@ async function auditBundles() {
           errors++;
         }
 
-        // 3. JSDoc Detection for Activator (Warn Only)
+        // 3. JSDoc & Documentation-Code Continuity (Audit ADR-0031)
         const activatorPath = `${path}/activator.js`;
         try {
             const activator = await Deno.readTextFile(activatorPath);
+            let readme = "";
+            try { readme = await Deno.readTextFile(readmePath); } catch (_e) { /* handled above */ }
+
+            // A. Technical Documentation check
             if (!activator.includes("/**")) {
                 console.log(`%c[WARN]%c ${bsn}: activator.js missing JSDoc technical documentation`, "color: yellow; font-weight: bold;", "color: reset;");
                 warnings++;
             }
+
+            // B. Service Continuity Check (Extract identifiers from activator)
+            const serviceRefRegex = /([A-Z_]+_SERVICE|[A-Z_]+_PID)/g;
+            const matches = activator.match(serviceRefRegex);
+            
+            if (matches && matches.length > 0) {
+                const uniqueServices = [...new Set(matches)];
+                for (const service of uniqueServices) {
+                    if (readme && !readme.includes(service)) {
+                        errors++;
+                    }
+                }
+            }
+
+            // C. Manifest Capability Alignment (Extract registrations)
+            const registrationRegex = /context\.registerService\(([A-Z_]+)/g;
+            const regMatches = activator.match(registrationRegex);
+            
+            if (regMatches) {
+                const manifest = JSON.parse(await Deno.readTextFile(manifestPath));
+                const provCapability = manifest["Provide-Capability"] || "";
+                
+                for (const matchLine of regMatches) {
+                    const constName = matchLine.replace("context.registerService(", "");
+                    const literal = identityMap.get(constName);
+                    
+                    if (literal && !provCapability.includes(literal)) {
+                        console.log(`%c[VIOLATION]%c ${bsn}: Service Registration '${constName}' (${literal}) IS NOT advertised in manifest.json!`, "color: red; font-weight: bold;", "color: reset;");
+                        errors++;
+                    }
+                }
+            }
+
         } catch (_e) {
             // Some bundles might not have activators, that's okay.
         }

@@ -46,7 +46,7 @@ export default class Activator extends BaseActivator {
       document.body.appendChild(mountPoint);
 
     } catch (e) {
-      console.error("YAML Editor: Failed to load UI template", e);
+      this.logger.error("YAML Editor: Failed to load UI template", e);
     }
 
     // 3. Register standard OSGi abstraction over the Alpine state

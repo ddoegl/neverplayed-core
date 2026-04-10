@@ -4,7 +4,8 @@ import {
   UI_COMPONENTS_SERVICE, 
   UI_REGISTRY_SERVICE,
   ACTION_SERVICE, 
-  LOG_SERVICE 
+  LOG_SERVICE,
+  INTERACTOR_SERVICE
 } from "core-types";
 
 // Side effects: ensure components are loaded
@@ -38,13 +39,24 @@ export default class Activator {
    */
   start(context) {
     let logger = console; // Fallback
+    this._interactor = null;
+    
+    // Track Interactor for standardized actions (ADR-0029)
+    context.trackService(`(objectClass=${INTERACTOR_SERVICE})`, {
+        addingService: (ref) => {
+            this._interactor = context.getService(ref);
+            if (logger.info) logger.info("Shared UI: Interactor discovered. Platform safety-nets active.");
+            return this._interactor;
+        },
+        removedService: () => { this._interactor = null; }
+    }).open();
     
     // Resilient Logger Tracking
     context.trackService(`(objectClass=${LOG_SERVICE})`, {
         addingService: (ref) => {
             const logAdmin = context.getService(ref);
             logger = logAdmin.getLogger("shared-ui-components");
-            logger.info("Shared UI Components Bundle started. Custom tags registered.");
+            logger.info("Shared UI Components Bundle started.");
         },
         removedService: () => { logger = console; }
     }).open();
@@ -77,14 +89,6 @@ export default class Activator {
         get: (kind) => componentRegistry.get(kind),
         getAll: () => Object.fromEntries(componentRegistry)
     });
-    
-    /* EXPLAIN
-    // Inject context into UI Factory if needed
-    const factory = customElements.get("ui-factory");
-    if (factory && factory.prototype.setBundleContext) {
-        // Note: Existing instances might need a way to get context
-    }
-    */
 
     /**
      * UI_FACTORY_SERVICE
@@ -121,10 +125,18 @@ export default class Activator {
      */
     context.registerService(UI_REGISTRY_SERVICE, globalThis.__UI_FACTORY_REGISTRY);
 
-    // Retroactive Injection (Pattern 21): Find pre-existing instances and inject context
+    /**
+     * INTERACTOR_SERVICE
+     * Provides universal interaction patterns (confirm, prompt, alert).
+     */
+    context.registerService(INTERACTOR_SERVICE, {
+        confirm: (message) => Promise.resolve(globalThis.confirm(message)),
+        prompt: (message, defaultValue) => Promise.resolve(globalThis.prompt(message, defaultValue)),
+        alert: (message) => Promise.resolve(globalThis.alert(message))
+    });
+
     const existingFactories = document.querySelectorAll("ui-factory");
     if (existingFactories.length > 0) {
-        if (logger.info) logger.info(`UI Components: Injecting context into ${existingFactories.length} pre-existing UI Factory instances.`);
         existingFactories.forEach(el => {
             if (typeof el.setBundleContext === 'function') {
                 el.setBundleContext(context);
@@ -138,37 +150,64 @@ export default class Activator {
      */
     context.registerService(ACTION_SERVICE, {
         execute: (params) => {
-            console.log("Internal Command: step.navigate (handled by orchestrator)", params);
+            this.logger.info("Internal Command: step.navigate", params);
             return { success: true };
         }
     }, {
         "action.id": "step.navigate",
         "action.label": "Jump to Step",
         "action.description": "Navigates to a specific step within the current flow.",
-        "action.icon": "fas fa-rocket", // we have unicode 🚀
+        "action.icon": "fas fa-rocket",
         "action.params": {
-            "target": "The ID of the step to navigate to (e.g. \"step2\").",
-            "step": "Alias for target."
+            "target": "The ID of the step to navigate to."
         }
     });
 
     /**
-     * ACTION_SERVICE: synthetic.client.summary-alert
-     * Provides a standardized shell-level alert dialog.
+     * ACTION_SERVICE: ui:alert
+     * Standardized interactor-backed alert notification.
      */
     context.registerService(ACTION_SERVICE, {
-        execute: (params) => {
-            if (globalThis.alert) globalThis.alert(params.message || "Action Completed!");
+        execute: async (params) => {
+            const message = params.message || "Action Completed!";
+            if (this._interactor) {
+                await this._interactor.alert(message);
+            } else {
+                globalThis.alert(message);
+            }
             return { success: true };
         }
     }, {
-        "action.id": "synthetic.client.summary-alert",
+        "action.id": "ui:alert",
         "action.label": "Show Alert",
-        "action.description": "Displays a notification alert to the user.",
-        "action.icon": "fas fa-bell", // we have unicode 🔔
+        "action.description": "Displays a notification alert via the Interactor service.",
+        "action.icon": "fas fa-bell",
         "action.params": {
-            "message": "The text message to display.",
-            "title": "The title of the alert box."
+            "message": "The text message to display."
+        }
+    });
+
+    /**
+     * ACTION_SERVICE: ui:confirm
+     * Standardized interactor-backed confirmation dialog.
+     */
+    context.registerService(ACTION_SERVICE, {
+        execute: async (params) => {
+            const message = params.message || "Are you sure?";
+            if (this._interactor) {
+                const confirmed = await this._interactor.confirm(message);
+                return { success: confirmed, confirmed };
+            }
+            const confirmed = globalThis.confirm(message);
+            return { success: confirmed, confirmed };
+        }
+    }, {
+        "action.id": "ui:confirm",
+        "action.label": "Ask Confirmation",
+        "action.description": "Asks the user for confirmation before proceeding.",
+        "action.icon": "fas fa-question-circle",
+        "action.params": {
+            "message": "The confirmation question."
         }
     });
   }
@@ -178,6 +217,6 @@ export default class Activator {
    * @param {BundleContext} _context - The OSGi bundle context.
    */
   stop(_context) {
-    // No-op or cleanup
+    // No-op
   }
 }

@@ -3,5 +3,6 @@
     "Bundle-Version": "1.0.0",
     "Bundle-Description": "Orchestrates complex semantic flows and atomic rule evaluations.",
     "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.atomic/ingestion\", osgi.service; objectClass=\"org.neverplayed.shell-command-service\", osgi.service; objectClass=\"org.neverplayed.action.ActionService\", osgi.service; objectClass=\"org.neverplayed.domain.Strategy\", osgi.service; objectClass=\"org.neverplayed.flow-service\", osgi.service; objectClass=\"org.neverplayed.backoffice/extension\"",
     "Configuration": {}
 }

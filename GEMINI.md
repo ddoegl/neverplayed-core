@@ -21,6 +21,11 @@ This document establishes the core principles and architectural guidelines for t
 - Prefer declarative YAML-based definitions for domain objects and UI flows.
 - Use the `ui-factory` to render standardized components from specs.
 
+#### 4.1 Schema Parsimony (Single Source of Truth)
+- Always favor single-source-of-truth ordering via object keys (Lexical Key Ordering). 
+- **Prohibit** redundant "Shadow Sequences" (e.g., `stepOrder` arrays) that duplicate structure and invite divergent drift.
+- Blueprints must be lean; if an ordering can be derived from the map's key sequence, an external array is a violation.
+
 ### 5. Platform Safety and Rendering Scoping
 - **Namespace Isolation**: Segregate platform infrastructure state from bundle-level logic. Use `Alpine.store('platform')` for core orchestration (e.g., `kernelReady`) and preserve the `shell` namespace (e.g., `Alpine.store('shell')`) for application/bundle-level data.
 - **Robust Variable Resolution**: Use the global `$uifResolve` magic helper for all standardized UI components. Never rely on naked scope resolution for template variables to prevent mutation race conditions during asynchronous flows.

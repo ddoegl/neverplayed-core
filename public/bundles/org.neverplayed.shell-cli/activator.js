@@ -459,7 +459,7 @@ export default class Activator extends CoreActivator {
                     }
                     try {
                         if (this.realmManager) {
-                            console.debug(`[ShellCLI] Calling RealmManager.installManualBundle for ${url}`);
+                            this.logger.debug(`[ShellCLI] Calling RealmManager.installManualBundle for ${url}`);
                             const b = await this.realmManager.installManualBundle(url);
                             this.log(`Success: Installed bundle #${b.id} (${b.getSymbolicName()}) into Inhabitant Layer.`);
                         } else {

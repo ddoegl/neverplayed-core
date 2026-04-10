@@ -4,5 +4,5 @@
   "Bundle-Name": "Shared UI Library",
   "Bundle-Description": "Re-usable UI components and design system tokens for the shell.",
   "Bundle-Activator": "activator.js",
-  "Provide-Capability": "osgi.service; objectClass=\"prototyper.ui.components\""
+  "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.ui.Factory\", osgi.service; objectClass=\"org.neverplayed.action.ActionService\""
 }

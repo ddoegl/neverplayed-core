@@ -156,15 +156,23 @@
               <span class="text-xs font-mono text-slate-400" x-text="spec.id"></span>
             </div>
             <div class="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
-              <button class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-indigo-600 border border-indigo-700 text-white hover:bg-indigo-500 transition shadow-sm" @click="registry.instantiateDO(spec.id)">
-                <i class="fas fa-play mr-1.5 text-indigo-200"></i> Instantiate
+              <button class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-sm" @click="registry.instantiateDO(spec.id)">
+                <i class="fas fa-play mr-1.5"></i>
+                Instantiate
               </button>
               <button class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm" @click="registry.editDomainObjectVisual(spec.id)">
-                <i class="fas fa-magic mr-1.5 text-emerald-500"></i> Edit Visual
+                <i class="fas fa-pen-nib mr-1.5 text-indigo-500"></i>
+                Edit Visual
               </button>
-              <button class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 transition shadow-sm" @click="registry.editDomainObjectYAML(spec.id)">
-                <i class="fas fa-code mr-1.5 text-slate-300"></i> Edit YAML
+              <button class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm" @click="registry.editDomainObjectYAML(spec.id)">
+                <i class="fas fa-code mr-1.5 text-indigo-500"></i>
+                Edit YAML
               </button>
+              <template x-if="spec._isPersisted">
+                <button class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md bg-white border border-red-100 text-red-600 hover:bg-red-50 transition shadow-sm ml-auto" title="Archive Blueprint" @click="registry.handleAction({ id: 'blueprint.archive' }, spec)">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+              </template>
             </div>
           </div>
         </template>

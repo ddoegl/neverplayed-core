@@ -8,17 +8,26 @@ Computational engine for evaluating **Atomic Rules**, managing semantic flows, a
 
 - **Rule Evaluator**: Processes logic rules defined in YAML blueprints.
 - **Flow State Manager**: Maintains the "Step State" for multi-phase user journeys.
-- **Orchestration Service**: Registers the `ATOMIC_ORCHESTRATOR_SERVICE`.
+- **Orchestration Service**: Registers the `ATOMIC_ORCHESTRATOR_SERVICE` to manage reactive flows.
+- **Spec Ingestion**: Registers the `ATOMIC_SPEC_INGESTION_SERVICE` to handle remote and dynamic blueprint registration.
+- **CLI Commands**: Registers the `SHELL_COMMAND_SERVICE` providing `atomic:list` and `atomic:refresh` diagnostics.
+- **Security Provisioning**: Tracks and configures `PERMISSION_DATA_SERVICE`, `FEATURE_DATA_SERVICE`, and `CAPABILITIES_DATA_SERVICE` based on blueprint metadata.
+- **Proactive Discovery**: Implements the **Proactive Discovery Orchestration** (ADR-0031) to ensure zero-loss boot-time ingestion.
 
 ## 🏛️ The Patterns (The State)
 
-- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Service Hydration Handshake** (Pattern 18/ADR-0018) and **Early Boot Registration** (Pattern 20/ADR-0020).
-- **[ADR-0020: Early Boot Registration Buffer](../../docs/adr/0020-early-boot-registration-buffer.md)**: Prevents registration loss during fast-boot scenarios where consumers are not yet ready.
-- **[ADR-0014: Multi-Phase Boot](../../docs/adr/0014-multi-phase-boot.md)**: Participates in the orchestration phase, hydrating business logic once foundation services are stable.
+- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Service Hydration Handshake** (Pattern 18).
+- **[ADR-0025: Identity Injection](../../docs/adr/0025-identity-injection-id-tokens.md)**: Governs global identity injection.
+- **[ADR-0026: Reactive Variable Resolution](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md)**: Implements variable resolution.
+- **[ADR-0027: Semantic Bundle Versioning](../../docs/adr/0027-semantic-bundle-versioning-strategy.md)**: Governs bundle versioning.
+- **[ADR-0028: Tiered Bundle Testing Strategy](../../docs/adr/0028-tiered-bundle-testing-strategy.md)**: Defines testing standards.
+- **[ADR-0029: Universal Interactor Service](../../docs/adr/0029-universal-interactor-service.md)**: Decouples logic from UI side-effects.
+- **[ADR-0030: Hybrid Action Architecture](../../docs/adr/0030-hybrid-action-handshake.md)**: Standardizes handshakes.
+- **[ADR-0031: Proactive Discovery Orchestration](../../docs/adr/0031-proactive-discovery-orchestration.md)**: Governs boot-time spec ingestion.
 
 ## 🚀 Future Road
 
-- **Cloud rule offloading**: Execute sensitive rules on the backend while maintaining local UI reactivity.
+- **Cloud rule offloading**: Execute sensitive rules on the backend whilst maintaining local UI reactivity.
 - **Flow Visualizer**: Real-time visualization of active flows directly in the Shell CLI.
 
 ### 🏺 Institutional ADRs

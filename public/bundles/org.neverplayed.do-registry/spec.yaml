@@ -25,5 +25,5 @@ ui:
           label: "Hello Registry"
           icon: "fas fa-rocket"
           action:
-            call: synthetic.client.summary-alert
-            params: {}
+            call: ui:alert
+            params: { message: "Hello Registry" }

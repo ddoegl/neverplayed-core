@@ -69,14 +69,17 @@ export class AtomicComponentBase extends HTMLElement {
         return val;
     }
 
-    /**
-     * Bridges an action event to the orchestrator.
-     */
     triggerAction(actionId, params = {}) {
         // Support for both legacy 'call' property and new 'action' object
-        const action = this._spec.action ? { ...this._spec.action } : {
+        const actionSpec = this._spec.action ? { ...this._spec.action } : {
             call: actionId || this._spec.call || "default",
             params: { ...this._spec.params, ...params }
+        };
+
+        // Resolution Gatekeeper: Ensure all parameters are interpolated before dispatch
+        const action = {
+            ...actionSpec,
+            params: this.interp(actionSpec.params || {})
         };
         
         this.dispatchEvent(new CustomEvent('atomic-action', {

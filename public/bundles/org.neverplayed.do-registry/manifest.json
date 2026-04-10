@@ -2,6 +2,7 @@
     "Bundle-SymbolicName": "org.neverplayed.do-registry",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.domain.Registry\", osgi.service; objectClass=\"org.neverplayed.domain.Instance\", osgi.service; objectClass=\"org.neverplayed.shell-command-service\", osgi.service; objectClass=\"org.neverplayed.action.ActionService\", osgi.service; objectClass=\"org.neverplayed.flow-service\"",
     "Bundle-Description": "Central registry for domain object blueprints and metadata resolution.",
     "X-Atomic-Bundle": "true",
     "Configuration": {
