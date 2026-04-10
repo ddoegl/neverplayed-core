@@ -82,11 +82,8 @@ export default class Activator {
 
                 if (!pm) throw new Error(`Persistence Manager for tier '${policy.tier}' not available.`);
 
-                const pmKey = policy.bucket || blueprint.id;
-                const storageKey = `realm.do.instances_${pmKey}`;
-                const legacyKey = `do_instances_${pmKey}`;
-
                 const instanceId = `${blueprint.id}-${generateId()}`;
+                const storageKey = `realm.do.instances_${instanceId}`;
                 const newInstance = {
                     id: instanceId,
                     strategyId: "LOCAL_STRATEGY",
@@ -100,20 +97,8 @@ export default class Activator {
                     createdAt: new Date().toISOString()
                 };
 
-                let currentBucket = pm.load(storageKey) || {};
+                // One-time migration check DECOMMISSIONED: We are now SPOP
                 
-                // One-time migration check
-                if (Object.keys(currentBucket).length === 0) {
-                    const legacyData = pm.load(legacyKey) || {};
-                    if (Object.keys(legacyData).length > 0) {
-                        currentBucket = legacyData;
-                        pm.store(storageKey, currentBucket);
-                    }
-                }
-
-                currentBucket[instanceId] = newInstance;
-                // pm.store(storageKey, currentBucket); // DECOMMISSIONED: Redundant with individual Registry saves
-
                 // Register with Central Index (Always Cloud/Firebase for visibility)
                 this._registry.addInstance(newInstance);
                 return newInstance;
@@ -127,23 +112,8 @@ export default class Activator {
 
                 const policy = instance.persistence || { tier: 'local' };
                 const pm = this._pms.get(policy.tier) || this._pms.get('local');
-                
-                const storageKey = instance.bucketKey && instance.bucketKey.startsWith('realm.') 
-                    ? instance.bucketKey 
-                    : `realm.do.instances_${blueprintId}`;
-                
-                const legacyKey = `do_instances_${blueprintId}`;
-                let currentBucket = pm.load(storageKey) || {};
-
-                // Migration check during update
-                if (Object.keys(currentBucket).length === 0) {
-                    const legacyData = pm.load(legacyKey) || {};
-                    if (Object.keys(legacyData).length > 0) {
-                        currentBucket = legacyData;
-                        pm.store(storageKey, currentBucket);
-                    }
-                }
-                const oldInstance = currentBucket[instanceId];
+                const bucket = `realm.do.instances_${instanceId}`;
+                const oldInstance = pm.load(bucket) || instance;
 
                 if (oldInstance) {
                     const updatedInstance = {
@@ -152,58 +122,20 @@ export default class Activator {
                         properties: { ...(oldInstance.properties || {}), ...(patch.properties || {}) },
                         updatedAt: new Date().toISOString()
                     };
-                    currentBucket[instanceId] = updatedInstance;
-                    // pm.store(storageKey, currentBucket); // DECOMMISSIONED: Redundant with individual Registry saves
+                    this.logger?.info(`[Strategy] Syncing updated properties for ${instanceId} to Registry.`, updatedInstance.properties);
                     this._registry.addInstance(updatedInstance);
                 }
             },
 
-            getInstance: (instanceId, blueprintId) => {
+            getInstance: (instanceId) => {
                 const registry = this._registry;
                 if (!registry) return null;
-                const instance = registry.getInstance(instanceId);
-                const policy = instance?.persistence || { tier: 'local' };
-                const pm = this._pms.get(policy.tier) || this._pms.get('local');
-                
-                const storageKey = instance?.bucketKey && instance.bucketKey.startsWith('realm.')
-                    ? instance.bucketKey
-                    : `realm.do.instances_${blueprintId}`;
-                
-                const legacyKey = `do_instances_${blueprintId}`;
-                let bucket = pm.load(storageKey) || {};
-
-                // Migration check during load
-                if (Object.keys(bucket).length === 0) {
-                    const legacyData = pm.load(legacyKey) || {};
-                    if (Object.keys(legacyData).length > 0) {
-                        bucket = legacyData;
-                        pm.store(storageKey, bucket);
-                    }
-                }
-
-                return bucket[instanceId];
+                return registry.getInstance(instanceId);
             },
 
-            deleteInstance: (instanceId, blueprintId) => {
-                const registry = this._registry;
-                if (!registry) return false;
-                const instance = registry.getInstance(instanceId);
-                const policy = instance?.persistence || { tier: 'local' };
-                const pm = this._pms.get(policy.tier) || this._pms.get('local');
-
-                const storageKey = instance?.bucketKey && instance.bucketKey.startsWith('realm.')
-                    ? instance.bucketKey
-                    : `realm.do.instances_${blueprintId}`;
-                
-                const currentBucket = pm.load(storageKey) || pm.load(`do_instances_${blueprintId}`) || {};
-                
-                if (currentBucket[instanceId]) {
-                    delete currentBucket[instanceId];
-                    pm.store(storageKey, currentBucket);
-                    this._registry.removeInstance(instanceId);
-                    return true;
-                }
-                return false;
+            deleteInstance: (instanceId) => {
+                this._registry.removeInstance(instanceId);
+                return true;
             },
 
             /**

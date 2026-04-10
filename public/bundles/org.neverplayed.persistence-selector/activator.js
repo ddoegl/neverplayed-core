@@ -71,6 +71,19 @@ export default class Activator {
             waitReady: (key) => this._waitReady(key),
             load: (key) => this._routeAndLoad(key),
             store: (key, val) => this._routeAndStore(key, val),
+            listKeys: (prefix = "") => {
+                const tier = this._getPreferredTierForKey(prefix);
+                const provider = this._getProvider(tier);
+                
+                const remoteKeys = (provider && typeof provider.listKeys === 'function') 
+                    ? provider.listKeys(prefix) 
+                    : [];
+                
+                const volatileKeys = Array.from(this._volatileStore.keys()).filter(k => k.startsWith(prefix));
+                
+                // Deduplicate and return
+                return Array.from(new Set([...remoteKeys, ...volatileKeys]));
+            },
             clear: async () => {
                 this.logger.warn("Persistence Selector: Global CLEAR requested. Broadcasting to all providers in parallel...");
                 const clearTasks = Array.from(this._providers.values()).map(async (svc) => {

@@ -1,5 +1,6 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.persistence-selector",
     "Bundle-Version": "1.0.0",
-    "Bundle-Activator": "activator.js"
+    "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"@pandino/persistence-manager/PersistenceManager\""
 }

@@ -8,7 +8,7 @@ import {
     DOMAIN_OBJECT_REGISTRY_SERVICE, 
     DOMAIN_OBJECT_INSTANCE_SERVICE,
     DOMAIN_STRATEGY_SERVICE,
-    DO_INSTANCES_PID,
+    DO_INSTANCES_PID as _DO_INSTANCES_PID,
     FLOW_SERVICE,
     SESSION_SERVICE,
     SHELL_COMMAND_SERVICE,
@@ -345,8 +345,12 @@ export default class Activator extends CoreAlpineActivator {
         },
         getInstance: (id) => {
             if (!this._instances.has(id)) {
-                const pmData = (this._pm || this.persistence).load(DO_INSTANCES_PID) || {};
-                if (pmData[id]) this._instances.set(id, { ...pmData[id], id });
+                const bucket = `realm.do.instances_${id}`;
+                const inst = (this._pm || this.persistence).load(bucket);
+                if (inst && inst.id) {
+                    this._instances.set(id, { ...inst });
+                    this.registerInstanceService(id, inst);
+                }
             }
             return this._instances.get(id) || null;
         },
@@ -524,6 +528,7 @@ export default class Activator extends CoreAlpineActivator {
 
              const inst = pm.load(bucket);
              if (inst && inst.id) {
+                this.logger.info(`[Registry] Hydrating instance ${inst.id}. Properties: ${Object.keys(inst.properties || {}).length} keys.`, inst.properties);
                 const instance = { ...inst };
                 this._instances.set(inst.id, instance);
                 this.registerInstanceService(inst.id, instance);

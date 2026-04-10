@@ -290,6 +290,9 @@ export default class Activator extends BaseActivator {
             waitReady: () => this._readyPromise,
             load: (key) => this.load(key),
             store: (key, val) => this.store(key, val),
+            listKeys: (prefix = "") => {
+                return Array.from(this._cache.keys()).filter(k => k.startsWith(prefix));
+            },
             clear: async () => {
                 this._cache.clear();
                 if (this._db && this._userId && this._setDoc && this._docFn) {
