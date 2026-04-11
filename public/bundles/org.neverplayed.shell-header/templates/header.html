@@ -131,6 +131,42 @@
         </div>
       </div>
 
+      <!-- Layer 4: Antigravity Resident (Agent Service) -->
+      <template x-if="$store.antigravity_agent">
+          <div class="flex items-center space-x-3 border-l border-slate-700/50 pl-6 group relative">
+              <div class="text-right hidden sm:block">
+                  <div class="text-[9px] uppercase text-slate-500 font-bold leading-none mb-0.5 tracking-tighter">Institutional Resident</div>
+                  <div class="text-[11px] font-mono transition-colors" 
+                       :class="$store.antigravity_agent.healthy ? 'text-blue-400' : 'text-amber-400'"
+                       x-text="$store.antigravity_agent.mode"></div>
+              </div>
+              <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border transition-all duration-500 shadow-lg"
+                   :class="$store.antigravity_agent.healthy ? 'border-blue-500/30' : 'border-amber-500/50 shadow-amber-500/10'">
+                  <div class="relative flex items-center justify-center">
+                      <div class="absolute w-6 h-6 rounded-full blur-md transition-all duration-1000"
+                           :class="$store.antigravity_agent.healthy ? 'bg-blue-500/20 animate-pulse' : 'bg-amber-500/40'"></div>
+                      <i class="fas fa-satellite relative z-10 text-xs transition-colors"
+                         :class="$store.antigravity_agent.healthy ? 'text-blue-400' : 'text-amber-400'"></i>
+                  </div>
+              </div>
+
+              <!-- Tooltip on hover -->
+              <div class="absolute top-14 right-0 w-48 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[200]">
+                  <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Audit Status</div>
+                  <div class="space-y-1">
+                      <div class="flex justify-between text-[10px]">
+                          <span class="text-slate-500">Last Audit:</span>
+                          <span class="text-slate-300 font-mono" x-text="new Date($store.antigravity_agent.lastAudit).toLocaleTimeString()"></span>
+                      </div>
+                      <div class="flex justify-between text-[10px]">
+                          <span class="text-slate-500">Findings:</span>
+                          <span :class="$store.antigravity_agent.findingsCount > 0 ? 'text-amber-400 font-bold' : 'text-green-400'" x-text="$store.antigravity_agent.findingsCount"></span>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </template>
+
       <!-- System Controls -->
       <div class="flex items-center space-x-2 border-l border-slate-700/50 pl-6">
         <button

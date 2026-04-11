@@ -148,6 +148,7 @@ async function bootOSGI() {
         "bundles/org.neverplayed.shell-cli/manifest.json",
         "bundles/org.neverplayed.do-registry/manifest.json",
         "bundles/org.neverplayed.realm-manager/manifest.json",
+        "bundles/org.neverplayed.agent.antigravity/manifest.json",
     ].filter(Boolean) as string[];
 
     for (const path of coreManifests) {
@@ -282,7 +283,17 @@ async function handleRequest(request: { method: string; params: Record<string, u
                         },
                         required: ["topic"]
                       }
-                    }
+                    },
+                    {
+                        name: "antigravity_get_audit_report",
+                        description: "Retrieves the latest architectural audit report from the Antigravity Resident (via Forensic Bridge).",
+                        inputSchema: { type: "object", properties: {} }
+                      },
+                      {
+                        name: "antigravity_system_recovery",
+                        description: "Triggers an autonomous recovery cycle to restart non-active bundles.",
+                        inputSchema: { type: "object", properties: {} }
+                      }
                 ]
             }
         };
@@ -392,6 +403,32 @@ async function handleRequest(request: { method: string; params: Record<string, u
           if (!ref) return { jsonrpc: "2.0", id, error: { code: -32603, message: "EventAdmin not available" } };
           
           return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Subscription established for topic: ${topic}. Note: Real-time event streaming is currently being implemented via MCP Resources.` }] } };
+        }
+
+        if (name === "antigravity_get_audit_report") {
+            try {
+                const statePath = join(Deno.cwd(), "public", ".neverplayed", "state.json");
+                const state = JSON.parse(await Deno.readTextFile(statePath));
+                const auditLog = state["realm.agent.antigravity_audit_log"] || [];
+                return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(auditLog, null, 2) }] } };
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                return { jsonrpc: "2.0", id, error: { code: -32603, message: `Failed to read Forensic Bridge: ${message}` } };
+            }
+        }
+
+        if (name === "antigravity_system_recovery") {
+            const ref = context.getServiceReferences(undefined, "(objectClass=org.neverplayed.agent.AgentService)")[0];
+            if (!ref) return { jsonrpc: "2.0", id, error: { code: -32603, message: "Antigravity Agent not active in MCP context" } };
+            
+            const agent = context.getService(ref) as { recover: () => number };
+            try {
+                const restarted = await agent.recover();
+                return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Recovery cycle executed. Restarted ${restarted} bundles.` }] } };
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                return { jsonrpc: "2.0", id, error: { code: -32603, message: `Recovery failed: ${message}` } };
+            }
         }
     }
 

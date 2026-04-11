@@ -11,6 +11,7 @@ export const LOG_SERVICE = "org.neverplayed.LogService";
 export const CONFIG_ADMIN_SERVICE = "org.neverplayed.config.Admin";
 export const CONFIG_ADMIN_UI_FLOW = "org.neverplayed.config.UIFlow";
 export const SYSTEM_RESET_SERVICE = "org.neverplayed.system.Reset";
+export const AGENT_SERVICE = "org.neverplayed.agent.AgentService";
 
 // 2. Pandino / External Services
 export const PERSISTENCE_MANAGER_SERVICE = "@pandino/persistence-manager/PersistenceManager";
@@ -41,6 +42,7 @@ export const EVENT_MONITOR_PID = "org.neverplayed.event.monitor";
 export const DO_INSTANCES_PID = "realm.do.instances";
 export const DO_INSTANCES_LEGACY_PID = "org.neverplayed.do.instances";
 export const LIMES_STRATEGIES_PID = "org.neverplayed.limes.strategies";
+export const AGENT_ANTIGRAVITY_PID = "org.neverplayed.agent.antigravity";
 export const LOG_LEVEL_PROP = "log-level";
 
 // 5. Realm IDs
@@ -53,6 +55,7 @@ export const CONFIG_UPDATED_TOPIC = "org/neverplayed/config/UPDATED";
 export const REALM_CHANGED_TOPIC = "org/neverplayed/realm/CHANGED";
 export const REALM_REGISTERED_TOPIC = "org/neverplayed/realm/REGISTERED";
 export const REALM_UNREGISTERED_TOPIC = "org/neverplayed/realm/UNREGISTERED";
+export const AGENT_AUDIT_COMPLETED_TOPIC = "org/neverplayed/agent/AUDIT_COMPLETED";
 
 // 6. OSGi Bundle States
 export const BUNDLE_STATE_UNINSTALLED = 1;

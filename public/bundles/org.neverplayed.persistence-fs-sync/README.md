@@ -1,6 +1,16 @@
 # 🗄️ Persistence FS-Sync
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
 
 The **Persistence FS-Sync** bundle provides a bidirectional synchronization bridge between the browser's `PersistenceManager` and the local server's filesystem.
+
+## 🏛️ The Patterns
+This bundle implements the **Digital Twin Bridge** pattern to facilitate synchronization between partitioned V8 contexts.
+
+For core platform standards, see [platform-patterns.md](../../docs/platform-patterns.md).
+
+### Mandatory ADR Compliance
+- [ADR-0024: Dual-Mode Persistence Shunting](../../docs/adr/0024-dual-mode-persistence-shunting.md)
+- [ADR-0021: Defensive Tier Fallback](../../docs/adr/0021-defensive-tier-fallback.md)
 
 ## 🏛️ Architecture & Implementation
 

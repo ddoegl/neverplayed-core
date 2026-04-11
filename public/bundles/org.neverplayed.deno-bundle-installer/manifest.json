@@ -1,0 +1,9 @@
+{
+    "Bundle-ManifestVersion": "2",
+    "Bundle-SymbolicName": "org.neverplayed.deno-bundle-installer",
+    "Bundle-Name": "Deno Native Bundle Installer",
+    "Bundle-Description": "Low-level bootstrap service for installing bundles directly into the Deno/Pandino native environment.",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.ts",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.deno.InstallerService\""
+}

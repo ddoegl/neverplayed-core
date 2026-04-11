@@ -1,4 +1,4 @@
-import { PERSISTENCE_MANAGER_SERVICE, CONFIG_UPDATED_TOPIC } from "../../core-types.js";
+import { PERSISTENCE_MANAGER_SERVICE, CONFIG_UPDATED_TOPIC, AGENT_AUDIT_COMPLETED_TOPIC } from "../../core-types.js";
 import { EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, EVENT_HANDLER_INTERFACE, EVENT_TOPIC } from "../../core-types.js";
 import { BaseActivator } from "../../osgi-base.js";
 
@@ -28,11 +28,20 @@ export default class Activator extends BaseActivator {
                     const response = await fetch("./.neverplayed/state.json", { cache: "no-store" });
                     const currentState = response.ok ? await response.json() : {};
                     
-                    // 2. Patch with the updated configuration event
-                    const pid = event.getProperty("pid");
-                    const props = event.getProperty("properties");
-                    if (pid) {
-                        currentState[`config.${pid}`] = props;
+                    // 2. Patch based on event type
+                    const topic = event.getProperty("event.topics");
+                    
+                    if (topic === CONFIG_UPDATED_TOPIC) {
+                        const pid = event.getProperty("pid");
+                        const props = event.getProperty("properties");
+                        if (pid) currentState[`config.${pid}`] = props;
+                    } else if (topic === AGENT_AUDIT_COMPLETED_TOPIC) {
+                        const pmRef = context.getServiceReferences(PERSISTENCE_MANAGER_SERVICE)[0];
+                        if (pmRef) {
+                            const pm = context.getService(pmRef);
+                            const log = pm.load("realm.agent.antigravity_audit_log");
+                            if (log) currentState["realm.agent.antigravity_audit_log"] = log;
+                        }
                     }
 
                     // 3. POST back to server
@@ -41,12 +50,12 @@ export default class Activator extends BaseActivator {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(currentState, null, 2)
                     });
-                    this.logger.info(`FS Sync: Handled UI event. Posted ${pid} modifications upstream.`);
+                    this.logger.info(`FS Sync: Handled event [${topic}]. Posted modifications upstream.`);
                 } catch (e) {
                     this.logger.error("FS Sync: Failed to post state.", e);
                 }
             }
-        }, { [EVENT_TOPIC]: [CONFIG_UPDATED_TOPIC] });
+        }, { [EVENT_TOPIC]: [CONFIG_UPDATED_TOPIC, AGENT_AUDIT_COMPLETED_TOPIC] });
     }
 
     async sync(context) {

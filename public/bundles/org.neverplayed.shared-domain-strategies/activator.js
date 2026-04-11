@@ -185,7 +185,7 @@ export default class Activator {
             }
         };
 
-        this._context.registerService(DOMAIN_STRATEGY_SERVICE, localStrategy);
+        this._context.registerService(DOMAIN_STRATEGY_SERVICE, localStrategy, { id: localStrategy.id });
         console.log("Shared Domain Strategies: Registered Gravity-Aware LOCAL_STRATEGY");
     }
 }

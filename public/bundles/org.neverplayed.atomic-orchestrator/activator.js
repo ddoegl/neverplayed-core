@@ -570,13 +570,15 @@ export default class Activator extends BaseActivator {
       const ref = context.getServiceReference(DOMAIN_OBJECT_REGISTRY_SERVICE);
       const registry = ref ? context.getService(ref) : null;
       if (registry && registry.addBlueprint) {
+        this.logger.info(`[FORENSIC] Atomic Orchestrator: Handing over blueprint [${id}] to Registry.`);
         registry.addBlueprint(spec);
         this._warnedBlueprints.delete(id);
       } else {
         if (!this._warnedBlueprints.has(id)) {
+           this.logger.warn(`[FORENSIC] Atomic Orchestrator: Registry not ready for [${id}]. Retrying... (Ref: ${!!ref}, Svc: ${!!registry})`);
            this._warnedBlueprints.add(id);
         }
-        setTimeout(registerBlueprint, 2000);
+        setTimeout(registerBlueprint, 100);
       }
     };
     registerBlueprint();

@@ -1,9 +1,9 @@
 {
-    "Bundle-SymbolicName": "org.neverplayed.persistence-fs-sync",
-    "Bundle-Version": "1.0.0",
-    "Bundle-Activator": "activator.js",
-    "Import-Service": [
-        "(objectClass=org.neverplayed.system-logger/LogService)",
-        "(objectClass=org.neverplayed.persistence-manager/PersistenceManager)"
-    ]
+  "Bundle-ManifestVersion": "2",
+  "Bundle-SymbolicName": "org.neverplayed.persistence-fs-sync",
+  "Bundle-Name": "Persistence FS Sync Bridge",
+  "Bundle-Description": "Synchronizes browser-side persistence to server-side filesystem for Forensic Bridge auditing.",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"@pandino/event-admin/EventHandler\""
 }

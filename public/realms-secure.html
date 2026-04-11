@@ -144,14 +144,6 @@
               await headerBundle.start();
             }
 
-            this.bootStatus = "Igniting Diagnostics Layer...";
-            const inspectorBundle = await context.installBundle(
-              "./bundles/org.neverplayed.alpine-inspector/manifest.json",
-            );
-            if (inspectorBundle.getState() < 32) {
-              await inspectorBundle.start();
-            }
-
             // 3. Handshake
             const rmRef = context.getServiceReference(
               REALM_MANAGER_SERVICE,

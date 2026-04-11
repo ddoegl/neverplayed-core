@@ -25,6 +25,8 @@
         "./bundles/org.neverplayed.system-reset/manifest.json",
         "./bundles/org.neverplayed.config-admin/manifest.json",
         "./bundles/org.neverplayed.event-monitor/manifest.json",
-        "./bundles/org.neverplayed.alpine-inspector/manifest.json"
+        "./bundles/org.neverplayed.alpine-inspector/manifest.json",
+        "./bundles/org.neverplayed.agent.antigravity/manifest.json",
+        "./bundles/org.neverplayed.persistence-fs-sync/manifest.json"
     ]
 }
