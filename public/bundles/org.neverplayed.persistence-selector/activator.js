@@ -50,7 +50,7 @@ export default class Activator {
         this._providerTracker = context.trackService(`(&(objectClass=${PERSISTENCE_MANAGER_SERVICE})(!(implementation=selector-proxy)))`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
-                const tier = ref.getProperty("persistence.tier") || "local-browser"; // Authority Fallback
+                const tier = ref.getProperty("persistence.tier") || "local"; // Authority Fallback
                 this._providers.set(tier, svc);
                 this.logger.info(`Persistence Selector: Tracked provider tier='${tier}' from ${ref.bundle.getSymbolicName()}. (Total: ${this._providers.size})`);
                 
@@ -201,7 +201,7 @@ export default class Activator {
 
         const tier = this._getPreferredTierForKey(key);
         const policy = this._getPolicyForKey(key);
-        const finalTier = (this._currentMode === "privacy" && tier === "cloud" && !policy?.enforce) ? "local-browser" : tier;
+        const finalTier = (this._currentMode === "privacy" && tier === "cloud" && !policy?.enforce) ? "local" : tier;
         
         this.logger?.debug(`Persistence Selector: [${key}] -> Tier: ${finalTier}. Tracked providers: ${Array.from(this._providers.keys()).join(',')}`);
         
@@ -209,7 +209,7 @@ export default class Activator {
 
         if (provider) {
             // 💾 Security Bridge: Ensure key is managed if using the LocalStorage PM
-            if (finalTier === "local-browser" || finalTier === "local") {
+            if (finalTier === "local") {
                 await this._ensureManaged(key, provider);
             }
 
@@ -250,23 +250,23 @@ export default class Activator {
         if (this._envTier === "memory") return "volatile";
         if (key.startsWith("security.")) return "volatile";
         
-        if (this._envTier === "local-fs" || this._envTier === "local-browser") {
-             // In Local modes, all non-volatile data is unified in the 'local-browser' tier
-             return "local-browser";
+        if (this._envTier === "local-fs" || this._envTier === "local") {
+             // In Local modes, all non-volatile data is unified in the 'local' tier
+             return "local";
         }
         
         if (this._envTier === "firebase") {
              // In Firebase mode, we follow the Hybrid Cloud policy
-             if (key.startsWith("realm.") || key.startsWith("identities.")) return "local-browser";
+             if (key.startsWith("realm.") || key.startsWith("identities.")) return "local";
              return "cloud";
         }
 
         // 3. Legacy Fallback (Normal mode)
-        if (key.startsWith("realm.")) return "local-browser";
-        if (key.startsWith("identities.")) return "local-browser";
+        if (key.startsWith("realm.")) return "local";
+        if (key.startsWith("identities.")) return "local";
         if (key.startsWith("config.")) return "cloud";
         
-        return this._envTier || "local-browser";
+        return this._envTier || "local";
     }
 
     /**
@@ -276,8 +276,7 @@ export default class Activator {
         // Preferred Tier
         if (this._providers.has(tier)) return this._providers.get(tier);
         
-        // Tier Fallback Chain: Requested -> local-browser -> local (legacy)
-        if (this._providers.has("local-browser")) return this._providers.get("local-browser");
+        // Tier Fallback Chain: Requested -> local -> volatile (Memory)
         if (this._providers.has("local")) return this._providers.get("local");
 
         return null;

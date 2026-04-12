@@ -273,7 +273,7 @@ export default class Activator extends BaseActivator {
                             const mode = envConfig.persistence_mode;
                             const isFirebase = mode === "firebase";
                             const isLocalFs = mode === "local-fs";
-                            const isLocalBrowser = mode === "local-browser" || mode === "local";
+                            const isLocalBrowser = mode === "local";
                             const isMemory = mode === "memory";
 
                             if (isFirebase) {
@@ -721,12 +721,11 @@ export default class Activator extends BaseActivator {
             }
         }
 
-        // Protection Shield: Only protect core infrastructure that MUST stay alive 
         const protectedBSNs = [
-            "org.neverplayed.realm-manager", "org.neverplayed.realm-manager",
-            "org.neverplayed.shell-cli", "org.neverplayed.shell-cli",
-            "org.neverplayed.osgi-base", "org.neverplayed.osgi-base",
-            "org.neverplayed.backoffice-host", "org.neverplayed.backoffice-host"
+            "org.neverplayed.realm-manager",
+            "org.neverplayed.shell-cli",
+            "org.neverplayed.osgi-base",
+            "org.neverplayed.backoffice-host"
         ].map(b => BaseActivator.normalizeBSN(b));
 
         for (const b of activeBundles) {

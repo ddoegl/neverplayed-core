@@ -202,6 +202,24 @@
   },
   "realm.agent.antigravity_audit_log": [
     {
+      "id": "audit-1776017442693",
+      "timestamp": 1776017442693,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1776017387239",
+      "timestamp": 1776017387239,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1776017088239",
+      "timestamp": 1776017088239,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
       "id": "audit-1775994341449",
       "timestamp": 1775994341449,
       "findings": [],
@@ -480,45 +498,6 @@
     {
       "id": "audit-1775940848739",
       "timestamp": 1775940848739,
-      "findings": [
-        {
-          "type": "STATE_WARNING",
-          "bsn": "org.neverplayed.event-monitor",
-          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
-          "severity": "high"
-        }
-      ],
-      "summary": "1 findings recorded."
-    },
-    {
-      "id": "audit-1775940735868",
-      "timestamp": 1775940735868,
-      "findings": [
-        {
-          "type": "STATE_WARNING",
-          "bsn": "org.neverplayed.event-monitor",
-          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
-          "severity": "high"
-        }
-      ],
-      "summary": "1 findings recorded."
-    },
-    {
-      "id": "audit-1775940548739",
-      "timestamp": 1775940548739,
-      "findings": [
-        {
-          "type": "STATE_WARNING",
-          "bsn": "org.neverplayed.event-monitor",
-          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
-          "severity": "high"
-        }
-      ],
-      "summary": "1 findings recorded."
-    },
-    {
-      "id": "audit-1775940248740",
-      "timestamp": 1775940248740,
       "findings": [
         {
           "type": "STATE_WARNING",

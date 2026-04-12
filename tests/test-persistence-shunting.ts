@@ -34,7 +34,7 @@ function routeToTier(key: string, envTier: string = "local-fs", mode: string = "
   if (envTier === "memory") return "volatile";
   
   // 2. Local Modes (Unified Local Storage)
-  if (envTier === "local-fs" || envTier === "local-browser") return "local";
+  if (envTier === "local-fs" || envTier === "local") return "local";
   
   // 3. Cloud Mode (Hybrid Sync)
   if (envTier === "firebase") {
