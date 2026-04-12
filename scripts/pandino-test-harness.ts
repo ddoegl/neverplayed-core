@@ -10,9 +10,25 @@ import { createMockPersistenceProvider } from "./test-harness-globals.ts";
  * in a TDD environment. Handles realm loading, sequential installation, 
  * and reactive service discovery.
  */
+interface PandinoInstance {
+    init(): Promise<void>;
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    getBundleContext(): BundleContext;
+}
+
+interface BundleContext {
+    getServiceReferences(id: string, filter?: string): unknown[];
+    getServiceReference(id: string): unknown;
+    getService(ref: unknown): unknown;
+    getBundles(): unknown[];
+    installBundle(manifestOrUrl: unknown): Promise<unknown>;
+    registerService(id: string | string[], service: unknown, properties?: Record<string, unknown>): unknown;
+}
+
 export class PandinoHarness {
-    private pandino: any;
-    private context: any;
+    private pandino: PandinoInstance | null = null;
+    private context: BundleContext | null = null;
     private deployRoot: string;
 
     constructor(deployRoot?: string) {
@@ -60,22 +76,25 @@ export class PandinoHarness {
         }
 
         // Installation Cycle
+        const context = this.context;
+        if (!context) throw new Error("Harness: Context not initialized.");
+
         for (const bPath of bundlePaths) {
             try {
-                await this.context.installBundle(bPath);
+                await context.installBundle(bPath);
             } catch (e) {
                 console.error(`Harness: Failed to install bundle at ${bPath}`, e);
                 throw e;
             }
         }
         
-        console.log(`Harness: Booted ${realmPaths.length} realms. Total bundles: ${this.context.getBundles().length} 🛰️✅`);
+        console.log(`Harness: Booted ${realmPaths.length} realms. Total bundles: ${context.getBundles().length} 🛰️✅`);
     }
 
     /**
      * Helper to wait for microtasks and reactivity
      */
-    async settle(ms = 100) {
+    settle(ms = 100): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
@@ -83,12 +102,15 @@ export class PandinoHarness {
      * Direct OSGi Service discovery
      */
     getService(interfaceId: string, filter?: string) {
+        const context = this.context;
+        if (!context) return null;
+        
         if (filter) {
-            const refs = this.context.getServiceReferences(interfaceId, filter);
-            return refs && refs.length > 0 ? this.context.getService(refs[0]) : null;
+            const refs = context.getServiceReferences(interfaceId, filter);
+            return refs && refs.length > 0 ? context.getService(refs[0]) : null;
         }
-        const ref = this.context.getServiceReference(interfaceId);
-        return ref ? this.context.getService(ref) : null;
+        const ref = context.getServiceReference(interfaceId);
+        return ref ? context.getService(ref) : null;
     }
 
     /**
@@ -107,7 +129,7 @@ export class PandinoHarness {
     /**
      * Register a mock persistence provider into the active context.
      */
-    async registerMockPersistence(tier: string, implementation = "mock-provider") {
+    registerMockPersistence(tier: string, implementation = "mock-provider") {
         if (!this.context) throw new Error("Harness: Context not initialized. Call init() first.");
         
         const mock = createMockPersistenceProvider(tier, implementation);
@@ -127,7 +149,7 @@ export class PandinoHarness {
      */
     async stop() {
         if (this.pandino) {
-            await this.pandino.stop();
+            await (this.pandino as PandinoInstance).stop();
         }
         console.log("Harness: Core De-Activated 🛰️👋");
     }

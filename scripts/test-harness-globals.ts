@@ -129,19 +129,30 @@ export function setupHeadlessUser(user: { email: string; uid?: string; isSuperus
     console.log(`Harness: Identity Provisioned for ${user.email} 👤✅`);
 }
 
+export interface MockPersistenceProvider {
+    tier: string;
+    implementation: string;
+    type: string;
+    _store: Map<string, unknown>;
+    load(key: string): unknown;
+    store(key: string, val: unknown): Promise<void>;
+    clear(): Promise<void>;
+    waitReady(): Promise<void>;
+    listKeys(prefix?: string): string[];
+}
+
 /**
  * Create a standardized, map-backed Persistence Provider for isolated testing.
  */
-// deno-lint-ignore no-explicit-any
-export function createMockPersistenceProvider(tier: string, implementation = "mock-provider"): any {
-    const _store = new Map<string, any>();
+export function createMockPersistenceProvider(tier: string, implementation = "mock-provider"): MockPersistenceProvider {
+    const _store = new Map<string, unknown>();
     return {
         tier,
         implementation,
         type: "provider",
         _store, // Internal storage exposed for test verification
         load: (key: string) => _store.get(key) ?? null,
-        store: (key: string, val: any) => {
+        store: (key: string, val: unknown) => {
             _store.set(key, val);
             return Promise.resolve();
         },
@@ -158,8 +169,7 @@ export function createMockPersistenceProvider(tier: string, implementation = "mo
  * Shared utility for the "Identity Shield" logic.
  * Verifies if a service reference should be tracked by the Persistence Selector.
  */
-// deno-lint-ignore no-explicit-any
-export function shouldTrackPersistenceProvider(props: any): boolean {
+export function shouldTrackPersistenceProvider(props: Record<string, unknown>): boolean {
     const isProvider = props.type === "provider";
     const isSelector = props.implementation === "selector-proxy";
     return isProvider && !isSelector;
