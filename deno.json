@@ -13,7 +13,7 @@
     "terminal": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/headless-terminal.ts",
     "terminal-web": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/headless-terminal.ts --url http://localhost:8008/",
     "test": "deno run -A tests/run-all.ts",
-    "test:shunting": "deno run -A tests/test-persistence-shunting.ts",
+    "test:shunting": "deno test -A tests/persistence-shunting.test.ts",
     "test:shunting-universal": "deno run -A tests/test-universal-shunting.ts",
     "test:lean-activator": "deno run -A tests/test-lean-activator.ts",
     "test:auth": "deno run -A tests/test-firebase-auth.ts",

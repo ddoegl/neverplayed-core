@@ -1,6 +1,8 @@
 import Pandino from "npm:@pandino/pandino";
 import loaderConfiguration from "./deno-loader-configuration.ts";
 
+import { createMockPersistenceProvider } from "./test-harness-globals.ts";
+
 /**
  * Pandino Test Harness
  * 
@@ -100,6 +102,24 @@ export class PandinoHarness {
             await this.settle(50);
         }
         throw new Error(`Harness: Timeout waiting for service ${interfaceId}`);
+    }
+
+    /**
+     * Register a mock persistence provider into the active context.
+     */
+    async registerMockPersistence(tier: string, implementation = "mock-provider") {
+        if (!this.context) throw new Error("Harness: Context not initialized. Call init() first.");
+        
+        const mock = createMockPersistenceProvider(tier, implementation);
+        const INTERFACE = "@pandino/persistence-manager/PersistenceManager";
+        
+        this.context.registerService(INTERFACE, mock, {
+            "persistence.tier": tier,
+            "implementation": implementation,
+            "type": "provider"
+        });
+        
+        return mock;
     }
 
     /**

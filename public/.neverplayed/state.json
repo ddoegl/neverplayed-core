@@ -202,6 +202,18 @@
   },
   "realm.agent.antigravity_audit_log": [
     {
+      "id": "audit-1776018041693",
+      "timestamp": 1776018041693,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1776017741693",
+      "timestamp": 1776017741693,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
       "id": "audit-1776017442693",
       "timestamp": 1776017442693,
       "findings": [],
@@ -488,25 +500,6 @@
       "timestamp": 1775963302842,
       "findings": [],
       "summary": "0 findings recorded."
-    },
-    {
-      "id": "audit-1775940915340",
-      "timestamp": 1775940915340,
-      "findings": [],
-      "summary": "0 findings recorded."
-    },
-    {
-      "id": "audit-1775940848739",
-      "timestamp": 1775940848739,
-      "findings": [
-        {
-          "type": "STATE_WARNING",
-          "bsn": "org.neverplayed.event-monitor",
-          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
-          "severity": "high"
-        }
-      ],
-      "summary": "1 findings recorded."
     }
   ]
 }

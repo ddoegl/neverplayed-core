@@ -128,3 +128,39 @@ export function setupHeadlessUser(user: { email: string; uid?: string; isSuperus
 
     console.log(`Harness: Identity Provisioned for ${user.email} 👤✅`);
 }
+
+/**
+ * Create a standardized, map-backed Persistence Provider for isolated testing.
+ */
+// deno-lint-ignore no-explicit-any
+export function createMockPersistenceProvider(tier: string, implementation = "mock-provider"): any {
+    const _store = new Map<string, any>();
+    return {
+        tier,
+        implementation,
+        type: "provider",
+        _store, // Internal storage exposed for test verification
+        load: (key: string) => _store.get(key) ?? null,
+        store: (key: string, val: any) => {
+            _store.set(key, val);
+            return Promise.resolve();
+        },
+        clear: () => {
+            _store.clear();
+            return Promise.resolve();
+        },
+        waitReady: () => Promise.resolve(),
+        listKeys: (prefix = "") => Array.from(_store.keys()).filter(k => k.startsWith(prefix))
+    };
+}
+
+/**
+ * Shared utility for the "Identity Shield" logic.
+ * Verifies if a service reference should be tracked by the Persistence Selector.
+ */
+// deno-lint-ignore no-explicit-any
+export function shouldTrackPersistenceProvider(props: any): boolean {
+    const isProvider = props.type === "provider";
+    const isSelector = props.implementation === "selector-proxy";
+    return isProvider && !isSelector;
+}
