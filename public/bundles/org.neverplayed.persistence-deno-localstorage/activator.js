@@ -39,6 +39,16 @@ export default class Activator extends BaseActivator {
             clear: () => {
                 storage.clear();
                 this.logger.info("Deno Persistence Manager: LocalStorage cleared.");
+            },
+            listKeys: (prefix = "") => {
+                const keys = [];
+                for (let i = 0; i < storage.length; i++) {
+                    const key = storage.key(i);
+                    if (key && key.startsWith(prefix)) {
+                        keys.push(key);
+                    }
+                }
+                return keys;
             }
         }, {
             "capability": "sys:persistence",

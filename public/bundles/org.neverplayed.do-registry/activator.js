@@ -68,7 +68,7 @@ export default class Activator extends CoreAlpineActivator {
         toggleShowAllDOs: () => {
             this.state.showAllDOs = !this.state.showAllDOs;
             pm.store('do:show-all', this.state.showAllDOs);
-            this.sync();
+            this.refreshMaster(true);
         },
 
         instantiateDO: (specId) => {
@@ -612,8 +612,11 @@ export default class Activator extends CoreAlpineActivator {
                 // Rule 25: Sovereign Shield - Identity Filtering (SDN-0140)
                 const user = this._session?.currentUser;
                 const currentUid = user?.uid || user?.id || "guest";
+                const isAdmin = this.state?.isRegistryAdmin();
+                const showAll = this.state?.showAllDOs;
                 
-                if (inst.ownerId && inst.ownerId !== currentUid) {
+
+                if (inst.ownerId && inst.ownerId !== currentUid && !(isAdmin && showAll)) {
                     this.logger.debug(`[Registry] Skipping non-owned instance ${inst.id} (Owner: ${inst.ownerId})`);
                     continue;
                 }

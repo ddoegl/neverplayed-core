@@ -115,6 +115,9 @@
                   <span class="font-bold text-slate-800" x-text="inst.label"></span>
                   <span class="text-xs font-mono text-slate-400" x-text="inst.id"></span>
                 </div>
+                <div class="flex items-center space-x-2 mb-2" x-show="inst.ownerId">
+                  <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono uppercase tracking-tighter" x-text="'Owner: ' + inst.ownerId"></span>
+                </div>
                 <p class="text-sm text-slate-500 italic mb-2" x-text="inst.description"></p>
                 <div class="flex flex-wrap gap-2 mb-4">
                   <template x-for="(val, prop) in inst.properties" :key="prop">

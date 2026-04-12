@@ -202,6 +202,48 @@
   },
   "realm.agent.antigravity_audit_log": [
     {
+      "id": "audit-1775994341449",
+      "timestamp": 1775994341449,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775994041141",
+      "timestamp": 1775994041141,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775993742142",
+      "timestamp": 1775993742142,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775993693607",
+      "timestamp": 1775993693607,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775993393607",
+      "timestamp": 1775993393607,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775993093607",
+      "timestamp": 1775993093608,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775992793606",
+      "timestamp": 1775992793606,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
       "id": "audit-1775992493607",
       "timestamp": 1775992493607,
       "findings": [],
@@ -486,76 +528,6 @@
         }
       ],
       "summary": "1 findings recorded."
-    },
-    {
-      "id": "audit-1775939948741",
-      "timestamp": 1775939948741,
-      "findings": [
-        {
-          "type": "STATE_WARNING",
-          "bsn": "org.neverplayed.event-monitor",
-          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
-          "severity": "high"
-        }
-      ],
-      "summary": "1 findings recorded."
-    },
-    {
-      "id": "audit-1775939648741",
-      "timestamp": 1775939648741,
-      "findings": [
-        {
-          "type": "STATE_WARNING",
-          "bsn": "org.neverplayed.event-monitor",
-          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
-          "severity": "high"
-        }
-      ],
-      "summary": "1 findings recorded."
-    },
-    {
-      "id": "audit-1775939405547",
-      "timestamp": 1775939405548,
-      "findings": [],
-      "summary": "0 findings recorded."
-    },
-    {
-      "id": "recovery-1775939404559",
-      "timestamp": 1775939404559,
-      "findings": [],
-      "summary": "Recovery Skill executed by AI Assistant. System stabilized."
-    },
-    {
-      "id": "audit-1775939348742",
-      "timestamp": 1775939348742,
-      "findings": [
-        {
-          "type": "STATE_WARNING",
-          "bsn": "org.neverplayed.event-monitor",
-          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
-          "severity": "high"
-        }
-      ],
-      "summary": "1 findings recorded."
-    },
-    {
-      "id": "audit-1775939304720",
-      "timestamp": 1775939304720,
-      "findings": [
-        {
-          "type": "STATE_WARNING",
-          "bsn": "org.neverplayed.event-monitor",
-          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
-          "severity": "high"
-        }
-      ],
-      "summary": "1 findings recorded."
-    },
-    {
-      "id": "audit-1775939069998",
-      "timestamp": 1775939069998,
-      "findings": [],
-      "summary": "0 findings recorded."
     }
   ]
 }

@@ -1,4 +1,4 @@
-# 🗄️ Persistence Deno (LocalStorage)
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
 
 The **Persistence Deno LocalStorage** bundle provides a Deno-native implementation of the persistence interface using the `localStorage` API (available in Deno 1.x+).
 
@@ -6,6 +6,7 @@ The **Persistence Deno LocalStorage** bundle provides a Deno-native implementati
 
 - **Browser-API Compatibility**: Allows Deno-based inhabitants to use the same logic as browser-based inhabitants.
 - **Device Scoping**: Stores data in the Deno-managed local storage directory (platform-specific).
+- **Discovery Channel**: Implements `listKeys(prefix)` to support domain-wide discovery scans (Rule 27 / SDN-0140). 🔍🛰️
 
 ## 🏛️ The Patterns (The State)
 

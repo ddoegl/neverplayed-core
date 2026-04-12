@@ -26,6 +26,11 @@ access point for metadata, schemas, and semantic types.
   snapshots (Pattern 12). 🛡️🪦
 - **Sovereign Filtering**: Gated discovery logic that ensures users only hydrate 
   Domain Objects they own (ADR-0140). 🛡️👤
+- **Superuser Sight**: Administrative bypass for `realm-admin` users. Toggling the
+  **showAllDOs** state explicitly triggers a `refreshMaster` pulse to
+  re-hydrate discovery across all users. 🏛️🔭
+- **Owner Forensics**: Surface-level metadata visibility in the UI. Injects an
+  `ownerId` mono-badge into instance cards for administrative audit. 🔭🏷️
 - **Archival Blockade**: Mandatory ownership verification for instance removal. 
   Blocked liquidation attempts from non-owners via **Load-on-Guard** checks. 🧱🚫
 - **Identity Observer**: Reactive re-scan logic that invalidates the local cache 

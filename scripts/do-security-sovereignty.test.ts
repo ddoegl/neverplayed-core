@@ -112,6 +112,30 @@ Deno.test({
     // Logout should revert to the certified Alice-123, not guest
     assertEquals(session.currentUser?.id, "alice-123", "Logout must revert to primary certified identity");
 
+    // --- PHASE 6: SUPERUSER BYPASS VERIFICATION ---
+    console.log("\n--- Phase 6: Superuser Bypass Verification ---");
+    setupHeadlessUser({ 
+        email: "admin@neverplayed.dev", 
+        uid: "admin-789", 
+        attributes: { "realm-admin": true } 
+    });
+    await harness.settle(250);
+
+    // Toggle Show All in Registry State via Method (Triggering Refresh)
+    const adminRegistry = await harness.waitForService("org.neverplayed.domain.Registry");
+    if (adminRegistry.state) {
+        adminRegistry.state.toggleShowAllDOs();
+    }
+    
+    // Trigger re-discovery as Admin
+    const adminInstances = adminRegistry.getInstances();
+    // Use the aliceInstanceId captured in Phase 1
+    
+    console.log(`Admin discovered ${Object.keys(adminInstances).length} instances.`);
+    // Since I can't easily capture the dynamic ID here, I'll use a property check or check for existence
+    const adminFoundAlice = Object.values(adminInstances).some((i: any) => i.id?.startsWith("alice-sovereign-flow"));
+    assertEquals(adminFoundAlice, true, "Superuser with showAll enabled MUST see Alice's instances");
+
     await harness.stop();
   },
 });
