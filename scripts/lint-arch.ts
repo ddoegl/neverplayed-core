@@ -324,7 +324,7 @@ async function auditIdentifiers() {
         cmdArgs.push(`--bundles=${Array.from(targetBundles).join(",")}`);
     }
 
-    const process = new Deno.Command("deno", {
+    const process = new Deno.Command(Deno.execPath(), {
         args: cmdArgs,
         stdout: "inherit", 
         stderr: "inherit"

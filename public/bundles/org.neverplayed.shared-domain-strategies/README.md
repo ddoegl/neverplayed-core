@@ -9,6 +9,7 @@ Global repository for domain-specific business logic patterns and strategy servi
 - **Strategy Engine**: Implements the strategy design pattern used by both backoffice and user flows.
 - **[SPOP] Instance Persistence**: Decommissions legacy collective instance maps. Every instance is persisted in its own sovereign bucket (`realm.do.instances_{id}`) to ensure atomic property lifecycle. 🏺
 - **Gravity-Aware Resolution**: Determines the persistence tier (Local/Cloud) based on the realm hierarchy and security policies.
+- **Identity Injection (Stamping)**: Every new instance created via the strategy layer is indelibly stamped with an `ownerId` resolved from the active session (ADR-0140). 🛡️👤
 
 ## 🏛️ The Patterns (The State)
 
@@ -26,3 +27,4 @@ Global repository for domain-specific business logic patterns and strategy servi
 - [ADR-0026](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](../../docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+- [ADR-0140](../../docs/adr/0140-sovereign-shield.md) - Sovereign Shield (Identity Injection). 🛡️👤

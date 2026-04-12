@@ -1,178 +1,44 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import Pandino from "npm:@pandino/pandino";
-import loaderConfiguration from "../../../../scripts/deno-loader-configuration.ts";
-import { Window } from "npm:happy-dom";
+import { setupGlobalEnvironment, setupHeadlessUser } from "../../../../scripts/test-harness-globals.ts";
+import { PandinoHarness } from "../../../../scripts/pandino-test-harness.ts";
 
 /**
- * Core Realm Test Harness
+ * Core Realm Test Harness (Refactored)
  * 
- * This test verifies that the institutional core infrastructure (foundational bundles)
- * can be correctly loaded and activated in a Deno-native OSGi environment with 
- * a simulated browser context (HappyDOM + Alpine.js).
+ * Verifies that the institutional core infrastructure (foundational bundles)
+ * can be correctly loaded and activated using the shared TDD Harness utilities.
  */
 
-// 1. Setup Virtual Browser Environment
-const window = new Window();
-const document = window.document;
+// 1. Setup Virtual Browser Environment (Shared Utility)
+setupGlobalEnvironment();
 
-// 2. Map Globals (Must happen BEFORE importing Alpine)
-// deno-lint-ignore no-explicit-any
-const g = globalThis as any;
-const originalFetch = g.fetch;
-const originalDispatchEvent = g.dispatchEvent;
-
-Object.assign(g, {
-  window,
-  document,
-  location: { href: "http://localhost/" },
-  Node: window.Node,
-  Element: window.Element,
-  HTMLElement: window.HTMLElement,
-  HTMLSpanElement: window.HTMLSpanElement,
-  HTMLButtonElement: window.HTMLButtonElement,
-  MutationObserver: window.MutationObserver,
-  CustomEvent: window.CustomEvent,
-  ShadowRoot: window.ShadowRoot,
-  DocumentFragment: window.DocumentFragment,
-  NodeList: window.NodeList,
-  HTMLCollection: window.HTMLCollection,
-  requestAnimationFrame: window.requestAnimationFrame.bind(window),
-  cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
-  navigator: window.navigator,
-  self: window,
-  customElements: window.customElements,
-  localStorage: window.localStorage,
-  // deno-lint-ignore no-explicit-any
-  CSSStyleSheet: (window as any).CSSStyleSheet,
-
-  // Fix: Some bundles use globalThis.dispatchEvent which can clash in Deno
-  // We prioritize the virtual window but fallback to Deno's native dispatcher for lifecycle events
-  dispatchEvent: (event: Event) => {
-    try {
-        // deno-lint-ignore no-explicit-any
-        const result = window.dispatchEvent(event as any);
-        // If HappyDOM handled it or returned true, we are good
-        if (result) return result;
-    } catch (_e) {
-        // Fallback for non-standard or native Deno event objects (like beforeunload)
-    }
-    return originalDispatchEvent?.call(g, event);
-  },
-
-  // Polyfill fetch to handle relative and absolute-looking URLs in headless mode
-  fetch: async (input: string | URL, init?: RequestInit) => {
-    const url = typeof input === 'string' ? input : input.toString();
-    
-    // Ignore real external URLs
-    if (url.startsWith('http') && !url.startsWith('http://localhost/')) {
-        return originalFetch(input, init);
-    }
-
-    // Normalize path for filesystem resolution
-    let path = url;
-    if (path.startsWith('http://localhost/')) {
-        path = path.slice('http://localhost/'.length);
-    }
-    // Strip leading ./ or /
-    path = path.startsWith('./') ? path.slice(2) : path;
-    if (path.startsWith('/')) path = path.slice(1);
-
-    // Candidates for file resolution
-    const candidates = [
-        Deno.cwd() + "/public/" + path,
-        Deno.cwd() + "/public/bundles/" + path,
-        Deno.cwd() + "/public/domain-objects/" + path,
-    ];
-
-    for (const fullPath of candidates) {
-        try {
-            const info = await Deno.stat(fullPath);
-            if (!info.isFile) continue;
-
-            const content = await Deno.readTextFile(fullPath);
-            let contentType = 'text/plain';
-            if (url.endsWith('.json')) contentType = 'application/json';
-            else if (url.endsWith('.yaml') || url.endsWith('.yml')) contentType = 'text/yaml';
-            else if (url.endsWith('.js')) contentType = 'application/javascript';
-            
-            return new Response(content, { 
-                status: 200, 
-                headers: { 'content-type': contentType } 
-            });
-        } catch (_e) {
-            // Not found in this candidate, try next
-        }
-    }
-
-    // console.warn(`Harness fetch: 404 - ${url}`);
-    return new Response("Not Found", { status: 404 });
-  }
-});
-
-// 2.1 Setup Headless User for Auth Shield bypass
-g.NEVERPLAYED_HEADLESS_USER = {
+// 2. Setup Headless User for Auth Shield bypass
+setupHeadlessUser({
     email: "test-harness@neverplayed.dev",
     uid: "test-harness-uid",
     isSuperuser: true,
-    attributes: {
-        "neverplayed-admin": true
-    }
-};
-
-// 3. Initialize Alpine.js
-const AlpineModule = await import("npm:alpinejs");
-const Alpine = AlpineModule.Alpine || AlpineModule.default?.Alpine || AlpineModule.default || AlpineModule;
-Alpine.start();
-
-const MY_DEPLOY_ROOT = Deno.cwd() + "/public/bundles";
+    attributes: { "neverplayed-admin": true }
+});
 
 Deno.test({
   name: "Core Realm Harness: Foundation Activation",
   sanitizeResources: false,
   sanitizeOps: false,
   async fn() {
-    // 1. Load Realm Specification
-    console.log("Loading realm: public/realms/core.json");
-    const coreText = await Deno.readTextFile("./public/realms/core.json");
-    const core = JSON.parse(coreText);  
+    // 1. Initialize Harness
+    const harness = new PandinoHarness();
+    const context = await harness.init();
 
+    // 2. Sequential Installation and Activation
+    console.log(`\n--- Starting Core Realm Orchestration ---`);
+    await harness.bootRealms([
+        "./public/realms/core.json",
+        "./public/realms/foundation.json"
+    ]);
 
-    console.log("Loading realm: public/realms/foundation.json");
-    const foundationText = await Deno.readTextFile("./public/realms/foundation.json");
-    const foundation = JSON.parse(foundationText);
-    
-    // Normalize paths: realm uses "./bundles/..." while deployment root is "public/bundles"
-    const bundlePaths = [...core.bundles,...foundation.bundles ].map((path: string) => {
-        return path.replace(/^\.\/bundles\//, "./");
-    });
-    
     // TDD Enhancement: Inject LocalStorage Provider and Antigravity Agent
-    bundlePaths.unshift("./org.neverplayed.persistence-deno-localstorage/manifest.json");
-    bundlePaths.push("./org.neverplayed.agent.antigravity/manifest.json");
-
-    // 2. Initialize Pandino
-    const pandino = new Pandino({
-      ...loaderConfiguration,
-      "pandino.deployment.root": MY_DEPLOY_ROOT,
-    });
-
-    await pandino.init();
-    await pandino.start();
-
-    const context = pandino.getBundleContext();
-
-    // 3. Sequential Installation and Activation
-    console.log(`\n--- Starting Core Realm: ${core.title} ---`);
-    console.log(core.description);
-    
-    for (const path of bundlePaths) {
-        try {
-            await context.installBundle(path);
-        } catch (e) {
-            console.error(`ERROR: Failed to install/start bundle at ${path}`);
-            throw e;
-        }
-    }
+    await context.installBundle("./org.neverplayed.persistence-deno-localstorage/manifest.json");
+    await context.installBundle("./org.neverplayed.agent.antigravity/manifest.json");
 
     const bundles = context.getBundles();
     console.log(`\nInfrastructure report: ${bundles.length} bundles present.`);
@@ -393,6 +259,6 @@ Deno.test({
     console.log("\n--- ALL COMPLEX INTEGRATION STEPS PASSED ---");
 
     // 6. Shutdown
-    await pandino.stop();
+    await harness.stop();
   },
 });

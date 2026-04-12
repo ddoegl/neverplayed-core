@@ -1,4 +1,4 @@
-import { DOMAIN_OBJECT_REGISTRY_SERVICE, DOMAIN_STRATEGY_SERVICE, PERSISTENCE_RESOLVER_SERVICE, LIMES_SERVICE } from "core-types";
+import { DOMAIN_OBJECT_REGISTRY_SERVICE, DOMAIN_STRATEGY_SERVICE, PERSISTENCE_RESOLVER_SERVICE, LIMES_SERVICE, SESSION_SERVICE } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -6,6 +6,7 @@ export default class Activator {
     _resolver = null;
     _limes = null;
     _registry = null;
+    _session = null;
     _context = null;
 
     start(context) {
@@ -33,6 +34,15 @@ export default class Activator {
                 return this._resolver; 
             },
             removedService: () => { this._resolver = null; }
+        }).open();
+
+        // 2.5 Track Session for Identity Injection
+        context.trackService(`(objectClass=${SESSION_SERVICE})`, {
+            addingService: (ref) => {
+                this._session = context.getService(ref);
+                return this._session;
+            },
+            removedService: () => { this._session = null; }
         }).open();
 
         // 3. Track Registry
@@ -77,6 +87,9 @@ export default class Activator {
                 const registry = this._registry;
                 if (!registry) throw new Error("Registry not available. Persistence deferred.");
 
+                const user = this._session?.currentUser;
+                const ownerId = user?.uid || user?.id || "guest";
+
                 const policy = this._resolver ? this._resolver.resolve({ blueprintSpec: blueprint }) : { tier: 'local' };
                 const pm = this._pms.get(policy.tier) || this._pms.get('local');
 
@@ -86,6 +99,7 @@ export default class Activator {
                 const storageKey = `realm.do.instances_${instanceId}`;
                 const newInstance = {
                     id: instanceId,
+                    ownerId,
                     strategyId: "LOCAL_STRATEGY",
                     blueprintId: blueprint.id,
                     bucketKey: storageKey,

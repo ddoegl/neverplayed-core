@@ -92,15 +92,17 @@ export default class Activator {
             },
 
             login(user, scope = 'global') {
-                this._logger?.info(`Session: LOGIN requested for scope '${scope}' (id: ${user.uid || user.id})`);
+                const identity = typeof user === "string" ? { id: user, email: `${user}@cli.local` } : user;
+                this._logger?.info(`Session: LOGIN requested for scope '${scope}' (id: ${identity.uid || identity.id})`);
+
                 this.scopedUsers[scope] = { 
-                    id: user.uid || user.id, 
-                    email: user.email,
-                    firstname: user.firstname,
-                    lastname: user.lastname,
-                    alias: user.alias,
-                    capabilities: user.capabilities || [],
-                    attributes: user.attributes || {} 
+                    id: identity.uid || identity.id, 
+                    email: identity.email,
+                    firstname: identity.firstname,
+                    lastname: identity.lastname,
+                    alias: identity.alias,
+                    capabilities: identity.capabilities || [],
+                    attributes: identity.attributes || {} 
                 };
                 globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'login', user, scope } }));
             },

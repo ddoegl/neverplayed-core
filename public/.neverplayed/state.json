@@ -112,8 +112,7 @@
   "config.org.neverplayed.atomic.showcase": {
     "channels": [
       "business-channel-web"
-    ],
-    "sidebar": true
+    ]
   },
   "config.privacy_test": {
     "secret": "hidden"
@@ -200,5 +199,363 @@
   },
   "config.test.bundle": {
     "foo": "bar"
-  }
+  },
+  "realm.agent.antigravity_audit_log": [
+    {
+      "id": "audit-1775992493607",
+      "timestamp": 1775992493607,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775992193608",
+      "timestamp": 1775992193608,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775991894607",
+      "timestamp": 1775991894607,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775991828249",
+      "timestamp": 1775991828249,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775991528251",
+      "timestamp": 1775991528251,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775991228251",
+      "timestamp": 1775991228251,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775990928252",
+      "timestamp": 1775990928252,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775990628449",
+      "timestamp": 1775990628449,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775990328251",
+      "timestamp": 1775990328251,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775990029251",
+      "timestamp": 1775990029251,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775989987452",
+      "timestamp": 1775989987452,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775989687851",
+      "timestamp": 1775989687851,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775989544451",
+      "timestamp": 1775989544451,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775989244428",
+      "timestamp": 1775989244428,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775988945427",
+      "timestamp": 1775988945427,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775988844558",
+      "timestamp": 1775988844558,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775988623565",
+      "timestamp": 1775988623565,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775988590627",
+      "timestamp": 1775988590627,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775988434334",
+      "timestamp": 1775988434334,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775988135334",
+      "timestamp": 1775988135334,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775987929290",
+      "timestamp": 1775987929290,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775987630289",
+      "timestamp": 1775987630289,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775987605442",
+      "timestamp": 1775987605442,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775987581526",
+      "timestamp": 1775987581526,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775987313671",
+      "timestamp": 1775987313671,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775987082383",
+      "timestamp": 1775987082383,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775986782383",
+      "timestamp": 1775986782383,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775986482383",
+      "timestamp": 1775986482383,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775986182382",
+      "timestamp": 1775986182382,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775985882381",
+      "timestamp": 1775985882381,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775985582383",
+      "timestamp": 1775985582383,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775985282383",
+      "timestamp": 1775985282383,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775984982383",
+      "timestamp": 1775984982383,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775984682382",
+      "timestamp": 1775984682382,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775984382383",
+      "timestamp": 1775984382383,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775984082383",
+      "timestamp": 1775984082383,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775972232246",
+      "timestamp": 1775972232246,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775963302842",
+      "timestamp": 1775963302842,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775940915340",
+      "timestamp": 1775940915340,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "audit-1775940848739",
+      "timestamp": 1775940848739,
+      "findings": [
+        {
+          "type": "STATE_WARNING",
+          "bsn": "org.neverplayed.event-monitor",
+          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
+          "severity": "high"
+        }
+      ],
+      "summary": "1 findings recorded."
+    },
+    {
+      "id": "audit-1775940735868",
+      "timestamp": 1775940735868,
+      "findings": [
+        {
+          "type": "STATE_WARNING",
+          "bsn": "org.neverplayed.event-monitor",
+          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
+          "severity": "high"
+        }
+      ],
+      "summary": "1 findings recorded."
+    },
+    {
+      "id": "audit-1775940548739",
+      "timestamp": 1775940548739,
+      "findings": [
+        {
+          "type": "STATE_WARNING",
+          "bsn": "org.neverplayed.event-monitor",
+          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
+          "severity": "high"
+        }
+      ],
+      "summary": "1 findings recorded."
+    },
+    {
+      "id": "audit-1775940248740",
+      "timestamp": 1775940248740,
+      "findings": [
+        {
+          "type": "STATE_WARNING",
+          "bsn": "org.neverplayed.event-monitor",
+          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
+          "severity": "high"
+        }
+      ],
+      "summary": "1 findings recorded."
+    },
+    {
+      "id": "audit-1775939948741",
+      "timestamp": 1775939948741,
+      "findings": [
+        {
+          "type": "STATE_WARNING",
+          "bsn": "org.neverplayed.event-monitor",
+          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
+          "severity": "high"
+        }
+      ],
+      "summary": "1 findings recorded."
+    },
+    {
+      "id": "audit-1775939648741",
+      "timestamp": 1775939648741,
+      "findings": [
+        {
+          "type": "STATE_WARNING",
+          "bsn": "org.neverplayed.event-monitor",
+          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
+          "severity": "high"
+        }
+      ],
+      "summary": "1 findings recorded."
+    },
+    {
+      "id": "audit-1775939405547",
+      "timestamp": 1775939405548,
+      "findings": [],
+      "summary": "0 findings recorded."
+    },
+    {
+      "id": "recovery-1775939404559",
+      "timestamp": 1775939404559,
+      "findings": [],
+      "summary": "Recovery Skill executed by AI Assistant. System stabilized."
+    },
+    {
+      "id": "audit-1775939348742",
+      "timestamp": 1775939348742,
+      "findings": [
+        {
+          "type": "STATE_WARNING",
+          "bsn": "org.neverplayed.event-monitor",
+          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
+          "severity": "high"
+        }
+      ],
+      "summary": "1 findings recorded."
+    },
+    {
+      "id": "audit-1775939304720",
+      "timestamp": 1775939304720,
+      "findings": [
+        {
+          "type": "STATE_WARNING",
+          "bsn": "org.neverplayed.event-monitor",
+          "message": "Bundle is in state [INSTALLED], expected ACTIVE (32).",
+          "severity": "high"
+        }
+      ],
+      "summary": "1 findings recorded."
+    },
+    {
+      "id": "audit-1775939069998",
+      "timestamp": 1775939069998,
+      "findings": [],
+      "summary": "0 findings recorded."
+    }
+  ]
 }

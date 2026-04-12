@@ -1,9 +1,10 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.auth-shield",
-    "Bundle-Version": "1.0.0",
+    "Bundle-Version": "1.1.0",
     "Bundle-Name": "Auth Shield",
     "Bundle-Description": "Firebase-based Google Authentication & Authorization layer",
     "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.auth.AuthShield\", osgi.service; objectClass=\"org.neverplayed.shell.Command\"",
     "Configuration": {
         "log-level": "INFO"
     }

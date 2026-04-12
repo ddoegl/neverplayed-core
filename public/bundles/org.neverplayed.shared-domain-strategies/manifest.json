@@ -1,6 +1,6 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.shared-domain-strategies",
-    "Bundle-Version": "0.2.0",
+    "Bundle-Version": "0.3.0",
     "Bundle-Activator": "./activator.js",
     "Bundle-Description": "Registers Execution Engines (Strategies) for Domain Objects.",
     "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.domain.Strategy\""

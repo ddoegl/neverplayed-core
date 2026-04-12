@@ -8,6 +8,7 @@ Peripheral bridge for authentication and authorization, primarily integrating wi
 
 - **Service-Driven**: Registers the `AUTH_SHIELD_SERVICE` as the primary identity provider for the shell.
 - **Identity Injection**: Injects `globalThis.NEVERPLAYED_GET_ID_TOKEN()` for cross-bundle authorization (adhering to [ADR-0025](../../docs/adr/0025-identity-injection-id-tokens.md)).
+- **Identity Restoration**: Reactive re-assertion of the primary certified identity (Google/Firebase) whenever a temporary global session ends ([ADR-0140](../../docs/adr/0140-sovereign-shield.md)). 🛡️👤
 - [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 

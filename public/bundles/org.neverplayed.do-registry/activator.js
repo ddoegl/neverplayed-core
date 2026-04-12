@@ -204,10 +204,32 @@ export default class Activator extends CoreAlpineActivator {
             if (this._sessionTimeout) clearTimeout(this._sessionTimeout);
             this._session = context.getService(ref);
             if (this.state) this.state.sessionAvailable = true;
-            this.sync();
+            
+            // Rule 26: Identity-Aware Cache Invalidation (SDN-0140)
+            // Purge and re-hydrate discovery when user shifts
+            this._stopSessionObserver = Alpine.effect(() => {
+                if (!this._session) return;
+                const user = this._session.currentUser;
+                this.logger.info(`DO Registry: Identity Shift [${user?.id || 'guest'}]. Purging and re-hydrating discovery...`);
+                
+                // Rule 27: Full Sovereign Purge (SDN-0140)
+                // Unregister all services before clearing map
+                for (const [id, reg] of this._registrations.entries()) {
+                    try { reg.unregister(); } catch (_e) { /* ignore */ }
+                    this._registrations.delete(id);
+                }
+                
+                this._instances.clear();
+                this.refreshMaster(true);
+            });
+
             return this._session;
         },
         removedService: () => {
+            if (this._stopSessionObserver) {
+                this._stopSessionObserver();
+                this._stopSessionObserver = null;
+            }
             this._sessionTimeout = setTimeout(() => {
                 this._session = null;
                 if (this.state) this.state.sessionAvailable = false;
@@ -408,6 +430,19 @@ export default class Activator extends CoreAlpineActivator {
             this.sync();
         },
         removeInstance: (id) => {
+            const pm = this._pm || this.persistence;
+            // Rule 26: Sovereign Shield - Archival Blockade (SDN-0140)
+            // Load from PM if not in cache to ensure ownership check (security bypass prevention)
+            const inst = this._instances.get(id) || (pm ? pm.load(`realm.do.instances_${id}`) : null);
+
+            const user = this._session?.currentUser;
+            const currentUid = user?.uid || user?.id || "guest";
+            
+            if (inst && inst.ownerId && inst.ownerId !== currentUid) {
+                this.logger.error(`DO Registry: ARCHIVAL BLOCKADE. User [${currentUid}] attempted to liquidate non-owned instance [${id}].`);
+                return false;
+            }
+
             this._liquidatedIds.add(id); // Graveyard Entry
             this._instances.delete(id);
             if (this._registrations.has(id)) {
@@ -574,6 +609,15 @@ export default class Activator extends CoreAlpineActivator {
 
              const inst = pm.load(bucket);
              if (inst && inst.id) {
+                // Rule 25: Sovereign Shield - Identity Filtering (SDN-0140)
+                const user = this._session?.currentUser;
+                const currentUid = user?.uid || user?.id || "guest";
+                
+                if (inst.ownerId && inst.ownerId !== currentUid) {
+                    this.logger.debug(`[Registry] Skipping non-owned instance ${inst.id} (Owner: ${inst.ownerId})`);
+                    continue;
+                }
+
                 this.logger.info(`[Registry] Hydrating instance ${inst.id}. Properties: ${Object.keys(inst.properties || {}).length} keys.`, inst.properties);
                 const instance = { ...inst };
                 this._instances.set(inst.id, instance);

@@ -38,44 +38,44 @@ export async function checkAccess(logger = console) {
     // 0. Headless / Terminal Fallback
     if (globalThis.NEVERPLAYED_HEADLESS_USER) {
         logger.info(`Auth Shield: Headless mode detected for ${globalThis.NEVERPLAYED_HEADLESS_USER.email}`);
-        const user = globalThis.NEVERPLAYED_HEADLESS_USER;
+        const user = { ...globalThis.NEVERPLAYED_HEADLESS_USER };
         user.attributes = user.attributes || {};
-        user.attributes['neverplayed-admin'] = user.isSuperuser || user.isAdmin || false;
+        user.attributes['neverplayed-admin'] = user.isSuperuser || user.isAdmin || user.attributes['neverplayed-admin'] || false;
         
-        try {
-            logger.info("Auth Shield: Requesting Cloud Function MCP Custom Token...");
-            // We use the local cloud functions emulator or production URL placeholder depending on env.
-            // For safety we hardcode the production HTTPS endpoint for the Deno agent to reach.
-            const fnUrl = "https://europe-west4-cladmin-bc594.cloudfunctions.net/mcpApi";
-            const response = await fetch(fnUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-mcp-secret": globalThis.NEVERPLAYED_MCP_SECRET || ""
-                },
-                body: JSON.stringify({ action: "mintToken", payload: { email: user.email } })
-            });
+        // Sync attributes across potential legacy fields
+        if (user.isSuperuser) user.attributes['neverplayed-admin'] = true;
 
-            if (response.ok) {
-                const data = await response.json();
-                logger.info(`Auth Shield: Successfully minted Custom Token for: ${data.uid}. Authenticating...`);
-                const cred = await signInWithCustomToken(auth, data.token);
-                // Export ID Token for headless fallback verification
-                const idToken = await cred.user.getIdToken();
-                globalThis.NEVERPLAYED_HEADLESS_TOKEN = idToken;
+        if (globalThis.NEVERPLAYED_MCP_SECRET) {
+            try {
+                logger.info("Auth Shield: Requesting Cloud Function MCP Custom Token...");
+                const fnUrl = "https://europe-west4-cladmin-bc594.cloudfunctions.net/mcpApi";
+                const response = await fetch(fnUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-mcp-secret": globalThis.NEVERPLAYED_MCP_SECRET || ""
+                    },
+                    body: JSON.stringify({ action: "mintToken", payload: { email: user.email } })
+                });
 
-                logger.info("Auth Shield: Deno Firebase Session securely established.");
-                // Ensure real Firebase uid overrides mock
-                user.uid = data.uid;
-            } else {
-                logger.warn(`Auth Shield: MCP Token fetch refused (${response.status}). Operating strictly offline.`);
+                if (response.ok) {
+                    const data = await response.json();
+                    logger.info(`Auth Shield: Successfully minted Custom Token for: ${data.uid}. Authenticating...`);
+                    const cred = await signInWithCustomToken(auth, data.token);
+                    const idToken = await cred.user.getIdToken();
+                    globalThis.NEVERPLAYED_HEADLESS_TOKEN = idToken;
+                    logger.info("Auth Shield: Deno Firebase Session securely established.");
+                    user.uid = data.uid;
+                }
+            } catch (err) {
+                logger.warn("Auth Shield: MCP network failure. Running offline.", err);
             }
-        } catch (err) {
-            logger.warn("Auth Shield: Stateless MCP network failure. Running offline.", err);
+        } else {
+            logger.debug("Auth Shield: No MCP secret found. Running in strictly offline headless mode.");
         }
 
-        logger.debug("Auth Shield: Resulting user attributes", JSON.stringify(user.attributes));
-        return Promise.resolve(user);
+        logger.debug("Auth Shield: Resulting headless user attributes", JSON.stringify(user.attributes));
+        return user; // Return immediately, bypasses the rest of the function!
     }
 
     logger.info("Auth Shield: Initializing check...");

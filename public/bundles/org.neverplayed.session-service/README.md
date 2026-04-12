@@ -9,6 +9,7 @@ The **Identity Purity Guardian** that manages reactive user state, scoped author
 - **Scoped Identities**: Supports the `scopedUsers` pattern, allowing the system to maintain different identities (Retail, Business, Guest) simultaneously.
 - **Reactive Store**: Exposes a `SESSION_SERVICE` as a global Alpine.js store for UI-driven session awareness.
 - **Identity Sink**: Uses an `Alpine.effect` to automatically persist session state while stripping sensitive metadata for guest accounts.
+- **Payload Normalization**: Supports both high-fidelity (Firebase objects) and low-fidelity (CLI strings) identity inputs, promoting strings to standard user objects to ensure downstream compatibility (ADR-0140). 🛡️👤
 
 ## 🏛️ The Patterns (The State)
 
@@ -28,3 +29,4 @@ The **Identity Purity Guardian** that manages reactive user state, scoped author
 - [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+- [ADR-0140](../../docs/adr/0140-sovereign-shield.md) - Sovereign Shield (CLI Normalization). 🛡️👤

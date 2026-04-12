@@ -29,12 +29,61 @@ export default class Activator {
             }
         }).open();
 
+        // 3. Track Session Manager for Handshake
+        context.trackService(`(objectClass=${SESSION_SERVICE})`, {
+            addingService: (ref) => {
+                this._session = context.getService(ref);
+                this.logger.info("Auth Shield: Session Service handshaked. Identity propagation active.");
+                if (this._authenticatedUser) {
+                    this._session.login(this._authenticatedUser);
+                }
+                return this._session;
+            },
+            removedService: () => {
+                this._session = null;
+            }
+        }).open();
+
+        // 4. Rule 27: Headless Identity Hot-Swap (SDN-0140)
+        // Dispatches the host identity to the session service in TDD environments
+        globalThis.addEventListener('headless-user-provided', async (event) => {
+             this.logger.info(`Auth Shield [Security]: Headless Identity Pulse detected for ${event.detail?.email}. Synchronizing Session...`);
+             const user = await checkAccess(this.logger);
+             
+             // Rule 29.1: Primary Protection (SDN-0140)
+             // Only update primary certified user if cache is empty or explicitly primary
+             if (!this._authenticatedUser || event.detail?.primary) {
+                 this._authenticatedUser = user;
+             }
+
+             if (this._session) {
+                 this._session.login(user);
+                 this.logger.info("Auth Shield [Security]: Global Session Synchronized.");
+             }
+        });
+
+        // Rule 29: Certified Identity Restoration (SDN-0140)
+        // Automatically re-assert primary identity when a temporary session ends
+        globalThis.addEventListener('session-changed', (event) => {
+            const { type, scope } = event.detail || {};
+            if (type === 'logout' && scope === 'global' && this._authenticatedUser && this._session) {
+                this.logger.info(`Auth Shield [Security]: Temporary session ended. Re-asserting primary identity: ${this._authenticatedUser.email}`);
+                this._session.login(this._authenticatedUser);
+            }
+        });
+
         this.logger.info("Auth Shield: Activator starting...");
         
         try {
             // Note: pass the dynamic logger to the auth logic
             const user = await checkAccess(this.logger);
+            this._authenticatedUser = user;
             this.logger.info(`Auth Shield: Access granted for ${user.email}`);
+
+            // If session already exists, login immediately
+            if (this._session) {
+                this._session.login(user);
+            }
             
             context.registerService(AUTH_SHIELD_SERVICE, {
                 getCurrentUser: () => user,

@@ -21,10 +21,15 @@ access point for metadata, schemas, and semantic types.
 - **Atomic Purge Protocol**: Implements the `purgeBlueprint(id)` method to 
   guarantee atomic cascading liquidation of blueprints and orphaned instances 
   with a singular `sync()` pulse. 🏛️⚡
-- **Infrastructure Sovereignty**: Implements the **Refined Action Guard** (Pattern 11 refinement) in the UI. Suppressing the Archive (Delete) button for institutional bundle blueprints to prevent accidental liquidation of core tools. 🧱🛡️
 - **Discovery Shield**: Implements a transient **Liquidated Graveyard** and 
   debounced hydration to prevent "Ghost Re-Hydration" from laggy persistence 
   snapshots (Pattern 12). 🛡️🪦
+- **Sovereign Filtering**: Gated discovery logic that ensures users only hydrate 
+  Domain Objects they own (ADR-0140). 🛡️👤
+- **Archival Blockade**: Mandatory ownership verification for instance removal. 
+  Blocked liquidation attempts from non-owners via **Load-on-Guard** checks. 🧱🚫
+- **Identity Observer**: Reactive re-scan logic that invalidates the local cache 
+  and re-hydrates discovery whenever the global session identity shifts. 🛰️🔄
 
 ## 🏛️ The Patterns (The State)
 
@@ -39,12 +44,16 @@ access point for metadata, schemas, and semantic types.
   Governs sequence authority for Steps and Parts.
 - **[ADR-0025: Identity Injection](../../docs/adr/0025-identity-injection-id-tokens.md)**:
   Governs instance and blueprint identity.
+- **[ADR-0026: Reactive Variable Resolution](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md)**:
+  Governs non-destructive variable resolution across reactive states.
 - **[ADR-0027: Semantic Bundle Versioning](../../docs/adr/0027-semantic-bundle-versioning-strategy.md)**:
   Governs bundle lifecycle.
 - **[ADR-0029: Universal Interactor Service](../../docs/adr/0029-universal-interactor-service.md)**:
   Used for archival confirmations.
 - **[ADR-0030: Hybrid Action Architecture](../../docs/adr/0030-hybrid-action-handshake.md)**:
   Implements the "Silent Archival" handshake.
+- **[ADR-0140: Sovereign Shield](../../docs/adr/0140-sovereign-shield.md)**:
+  Governs multi-user isolation, identity restoration, and archival blockades. 🛡️👤
 - **[ADR-0031: Proactive Discovery Orchestration](../../docs/adr/0031-proactive-discovery-orchestration.md)**:
   Participates in the universe boot-time scan.
 
