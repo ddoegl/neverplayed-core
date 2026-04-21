@@ -100,11 +100,11 @@ export default class Activator extends BaseActivator {
                 const text = await res.text();
                 const spec = yaml.load(text);
                 if (!spec || !spec.id) {
-                    this.logger.error(`[FORENSIC] Atomic Orchestrator: Spec at ${specUrl} is malformed or missing ID.`);
+                    this.logger.error(`Atomic Orchestrator: Spec at ${specUrl} is malformed or missing ID.`);
                     return;
                 }
                 
-                this.logger.debug(`[FORENSIC] Atomic Orchestrator: [INGEST] Successfully parsed spec '${spec.id}' from ${bsn}`);
+                this.logger.debug(`Atomic Orchestrator: [INGEST] Successfully parsed spec '${spec.id}' from ${bsn}`);
                 this.registerAtomicComponents(context, bundle, spec);
             } catch (e) {
                 this.logger.error(`Atomic Orchestrator: Exception during scan for ${bundle?.getSymbolicName ? bundle.getSymbolicName() : 'unknown'}: ${e.message}`, e);
@@ -570,12 +570,12 @@ export default class Activator extends BaseActivator {
       const ref = context.getServiceReference(DOMAIN_OBJECT_REGISTRY_SERVICE);
       const registry = ref ? context.getService(ref) : null;
       if (registry && registry.addBlueprint) {
-        this.logger.info(`[FORENSIC] Atomic Orchestrator: Handing over blueprint [${id}] to Registry.`);
+        this.logger.debug(`Atomic Orchestrator: Handing over blueprint [${id}] to Registry.`);
         registry.addBlueprint(spec);
         this._warnedBlueprints.delete(id);
       } else {
         if (!this._warnedBlueprints.has(id)) {
-           this.logger.warn(`[FORENSIC] Atomic Orchestrator: Registry not ready for [${id}]. Retrying... (Ref: ${!!ref}, Svc: ${!!registry})`);
+           this.logger.warn(`Atomic Orchestrator: Registry not ready for [${id}]. Retrying... (Ref: ${!!ref}, Svc: ${!!registry})`);
            this._warnedBlueprints.add(id);
         }
         setTimeout(registerBlueprint, 100);

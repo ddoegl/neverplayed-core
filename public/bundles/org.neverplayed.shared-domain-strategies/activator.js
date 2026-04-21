@@ -111,11 +111,11 @@ export default class Activator {
                     createdAt: new Date().toISOString()
                 };
 
-                console.log(`[FORENSIC] Shared Strategies: Created new instance [${instanceId}] for blueprint [${blueprint.id}]`);
-                console.log(`[FORENSIC] Shared Strategies: Resolved Gravity Policy:`, policy);
+                console.debug(`Shared Domain Strategies: Created new instance [${instanceId}] for blueprint [${blueprint.id}]`);
+                console.debug(`Shared Domain Strategies: Resolved Gravity Policy:`, policy);
 
                 // Register with Central Index (Always Cloud/Firebase for visibility)
-                console.log(`[FORENSIC] Shared Strategies: Handing off to Registry.addInstance...`);
+                console.debug(`Shared Domain Strategies: Handing off to Registry.addInstance...`);
                 this._registry.addInstance(newInstance);
                 return newInstance;
             },

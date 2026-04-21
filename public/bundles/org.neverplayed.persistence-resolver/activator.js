@@ -39,7 +39,7 @@ export default class Activator extends BaseActivator {
              * @param {Object} policy - { tier, bucket, ... }
              */
             registerPolicy: (pattern, policy) => {
-                console.info(`[LOOP-SAFE] [FORENSIC] Persistence Resolver: Briefing accepted for [${pattern}] ->`, policy);
+                this.logger.debug(`Persistence Resolver: Briefing accepted for [${pattern}] ->`, policy);
                 this._briefings.set(pattern, policy);
             },
 
@@ -64,7 +64,7 @@ export default class Activator extends BaseActivator {
             if (activeRealm?.domainObjects) {
                 const doConfig = activeRealm.domainObjects.find(d => d.id === doId);
                 if (doConfig?.persistence) {
-                    console.info(`[LOOP-SAFE] [FORENSIC] Persistence Resolver: Realm '${activeId}' enforcing SPECIALIZED policy for DO '${doId}':`, doConfig.persistence);
+                    this.logger.debug(`Persistence Resolver: Realm '${activeId}' enforcing SPECIALIZED policy for DO '${doId}':`, doConfig.persistence);
                     return doConfig.persistence;
                 }
             }
@@ -78,7 +78,7 @@ export default class Activator extends BaseActivator {
             
             if (activeRealm?.persistencePolicy) {
                 if (activeRealm.persistencePolicy.enforce) {
-                    console.info(`[LOOP-SAFE] [FORENSIC] Persistence Resolver: Realm '${activeId}' enforcing GLOBAL policy:`, activeRealm.persistencePolicy);
+                    this.logger.debug(`Persistence Resolver: Realm '${activeId}' enforcing GLOBAL policy:`, activeRealm.persistencePolicy);
                     return activeRealm.persistencePolicy;
                 }
             }
@@ -86,7 +86,7 @@ export default class Activator extends BaseActivator {
 
         // --- TIER 1: BUNDLE POLICY (Developer Mandate) ---
         if (info.bundlePolicy) {
-            console.info(`[LOOP-SAFE] [FORENSIC] Persistence Resolver: Using Bundle-level policy override for [${targetId}].`);
+            this.logger.debug(`Persistence Resolver: Using Bundle-level policy override for [${targetId}].`);
             return info.bundlePolicy;
         }
 
@@ -94,7 +94,7 @@ export default class Activator extends BaseActivator {
         if (info.key) {
             for (const [pattern, policy] of this._briefings.entries()) {
                 if (info.key.startsWith(pattern)) {
-                    console.info(`[LOOP-SAFE] [FORENSIC] Persistence Resolver: Hierarchical match found for [${info.key}] via Briefing [${pattern}] -> Tier: ${policy.tier}`);
+                    this.logger.debug(`Persistence Resolver: Hierarchical match found for [${info.key}] via Briefing [${pattern}] -> Tier: ${policy.tier}`);
                     return policy;
                 }
             }
@@ -102,19 +102,19 @@ export default class Activator extends BaseActivator {
 
         // --- TIER 2: INSTANCE OVERRIDE (User Choice) ---
         if (info.instanceSpec?.persistence) {
-            console.info(`[LOOP-SAFE] [FORENSIC] Persistence Resolver: Using Instance-level persistence choice for [${targetId}].`);
+            this.logger.debug(`Persistence Resolver: Using Instance-level persistence choice for [${targetId}].`);
             return info.instanceSpec.persistence;
         }
 
         // --- TIER 3: BLUEPRINT DEFAULT (Designer Intent) ---
         if (info.blueprintSpec?.domainObject?.persistence) {
-            console.info(`[LOOP-SAFE] [FORENSIC] Persistence Resolver: Resolved Tier [${info.blueprintSpec.domainObject.persistence.tier}] from Blueprint Default for [${targetId}].`);
+            this.logger.debug(`Persistence Resolver: Resolved Tier [${info.blueprintSpec.domainObject.persistence.tier}] from Blueprint Default for [${targetId}].`);
             return info.blueprintSpec.domainObject.persistence;
         }
 
         // --- TIER 4: SYSTEM DEFAULT (Infrastructure Gravity) ---
         const fallback = info.systemDefault || { tier: 'cloud' };
-        console.info(`[LOOP-SAFE] [FORENSIC] Persistence Resolver: Falling back to System Default [${fallback.tier}] for [${targetId}].`);
+        this.logger.debug(`Persistence Resolver: Falling back to System Default [${fallback.tier}] for [${targetId}].`);
         return fallback;
     }
 }

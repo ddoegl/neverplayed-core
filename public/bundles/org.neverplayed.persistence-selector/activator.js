@@ -80,12 +80,12 @@ export default class Activator {
         this._resolverTracker = context.trackService(`(objectClass=${PERSISTENCE_RESOLVER_SERVICE})`, {
             addingService: (ref) => {
                 this.resolver = context.getService(ref);
-                this.logger.info(`[FORENSIC] Persistence Selector: Strategic Resolver linked [${ref.bundle.getSymbolicName()}].`);
+                this.logger.debug(`Persistence Selector: Strategic Resolver linked [${ref.bundle.getSymbolicName()}].`);
                 return this.resolver;
             },
             removedService: () => {
                 this.resolver = null;
-                this.logger.warn(`[FORENSIC] Persistence Selector: Strategic Resolver lost! Falling back to hardcoded defaults.`);
+                this.logger.warn(`Persistence Selector: Strategic Resolver lost! Falling back to hardcoded defaults.`);
             }
         });
         this._resolverTracker.open();
@@ -218,7 +218,7 @@ export default class Activator {
     }
 
     async _routeAndStore(key, val) {
-        this.logger.info(`[FORENSIC] Persistence Selector: Incoming STORE request for [${key}]`);
+        this.logger.debug(`Persistence Selector: Incoming STORE request for [${key}]`);
         if (this._currentMode === "stealth") {
             this._volatileStore.set(key, val);
             return;
@@ -231,11 +231,11 @@ export default class Activator {
         const provider = this._getProvider(finalTier);
 
         if (provider) {
-            // [FORENSIC] Identity Discovery
+            // Identity Discovery
             const ref = this._providerRefs.get(finalTier);
             const bsn = ref ? ref.bundle.getSymbolicName() : "unknown-bundle";
             
-            this.logger.info(`[FORENSIC] Persistence Selector: Routing [${key}] to tier [${finalTier}] -> Provider: [${bsn}]`);
+            this.logger.debug(`Persistence Selector: Routing [${key}] to tier [${finalTier}] -> Provider: [${bsn}]`);
 
             // 💾 Security Bridge: Ensure key is managed if using the LocalStorage PM
             if (finalTier === "local") {
@@ -258,7 +258,7 @@ export default class Activator {
                 if (timer) clearTimeout(timer);
             }
         } else {
-            this.logger.warn(`[FORENSIC] Persistence Selector: NO PROVIDER for tier [${finalTier}]. Falling back to Volatile Memory.`);
+            this.logger.warn(`Persistence Selector: NO PROVIDER for tier [${finalTier}]. Falling back to Volatile Memory.`);
             this._volatileStore.set(key, val);
         }
     }
@@ -283,7 +283,7 @@ export default class Activator {
             const resolvedTier = (typeof resolution === 'object' && resolution !== null) ? resolution.tier : resolution;
             
             if (resolvedTier) {
-                this.logger.info(`[FORENSIC] Persistence Selector: Resolver directed [${key}] to tier [${resolvedTier}]`);
+                this.logger.debug(`Persistence Selector: Resolver directed [${key}] to tier [${resolvedTier}]`);
                 return resolvedTier;
             }
         }

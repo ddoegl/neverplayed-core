@@ -76,17 +76,17 @@ export default class Activator extends CoreAlpineActivator {
 
         instantiateDO: (specId) => {
             const spec = this.state.domainObjectSpecs.find(sp => sp.id === specId);
-            if (!spec) return logger.error(`[FORENSIC] Spec ${specId} not found.`);
+            if (!spec) return logger.error(`Spec ${specId} not found.`);
             
-            this.logger.info(`[FORENSIC] DO Registry: Instantiating blueprint [${specId}]`);
+            this.logger.debug(`DO Registry: Instantiating blueprint [${specId}]`);
             const persistence = spec.domainObject?.persistence || { tier: 'unspecified' };
-            this.logger.info(`[FORENSIC] DO Registry: Blueprint Persistence Intent: [${persistence.tier}] (Bucket: ${persistence.bucket || 'none'})`);
+            this.logger.debug(`DO Registry: Blueprint Persistence Intent: [${persistence.tier}] (Bucket: ${persistence.bucket || 'none'})`);
             
             const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
             const strategySvc = this.runtimeStrategies.get(strategyId);
-            if (!strategySvc?.createInstance) return logger.error(`[FORENSIC] Strategy [${strategyId}] not ready.`);
+            if (!strategySvc?.createInstance) return logger.error(`Strategy [${strategyId}] not ready.`);
             
-            this.logger.info(`[FORENSIC] DO Registry: Handing off to strategy [${strategyId}] for creation...`);
+            this.logger.debug(`DO Registry: Handing off to strategy [${strategyId}] for creation...`);
             return strategySvc.createInstance(spec);
         },
 
@@ -256,7 +256,7 @@ export default class Activator extends CoreAlpineActivator {
             const pm = context.getService(ref);
             this._pm = pm;
             const bsn = ref.bundle.getSymbolicName();
-            this.logger.info(`[FORENSIC] DO Registry: Persistence Manager discovered: [${bsn}] (Ranking: ${ref.getProperty('service.ranking') || 0})`);
+            this.logger.debug(`DO Registry: Persistence Manager discovered: [${bsn}] (Ranking: ${ref.getProperty('service.ranking') || 0})`);
             
             // Rule 4: Dynamic Identity Discovery (SDN-0061)
             (async () => {
@@ -360,13 +360,13 @@ export default class Activator extends CoreAlpineActivator {
     this.registryService = {
         addBlueprint: (spec) => {
             if (!spec || !spec.id) return;
-            this.logger.debug(`[FORENSIC] DO Registry: Ingesting blueprint [${spec.id}] (Source: ${spec._isBundleBlueprint ? 'Bundle' : 'Persisted'})`);
+            this.logger.debug(`DO Registry: Ingesting blueprint [${spec.id}] (Source: ${spec._isBundleBlueprint ? 'Bundle' : 'Persisted'})`);
             const idx = this.systemSpecs.findIndex(s => s.id === spec.id);
             if (idx !== -1) {
-                this.logger.debug(`[FORENSIC] DO Registry: Updating existing blueprint [${spec.id}]`);
+                this.logger.debug(`DO Registry: Updating existing blueprint [${spec.id}]`);
                 this.systemSpecs[idx] = spec;
             } else {
-                this.logger.debug(`[FORENSIC] DO Registry: Adding NEW blueprint [${spec.id}]`);
+                this.logger.debug(`DO Registry: Adding NEW blueprint [${spec.id}]`);
                 this.systemSpecs.push(spec);
             }
             this._briefResolver();
@@ -443,26 +443,26 @@ export default class Activator extends CoreAlpineActivator {
             const newCount = Object.keys(instance.properties || {}).length;
             const oldCount = existing ? Object.keys(existing.properties || {}).length : 0;
             if (existing && newCount === 0 && oldCount > 0) {
-                this.logger.warn(`[FORENSIC] DO Registry: Blocked 'Cold Overwrite' attempt for ${instance.id}. Registry is Warm (${oldCount} props), UI is Cold (0 props).`);
+                this.logger.warn(`DO Registry: Blocked 'Cold Overwrite' attempt for ${instance.id}. Registry is Warm (${oldCount} props), UI is Cold (0 props).`);
                 return;
             }
 
-            this.logger.info(`[FORENSIC] DO Registry: Finalizing registration for instance [${instance.id}]`);
-            this.logger.info(`[FORENSIC] DO Registry: Resolved Persistence Tier: [${instance.persistence?.tier || 'unknown'}]`);
+            this.logger.debug(`DO Registry: Finalizing registration for instance [${instance.id}]`);
+            this.logger.debug(`DO Registry: Resolved Persistence Tier: [${instance.persistence?.tier || 'unknown'}]`);
 
             const pm = (this._pm || this.persistence);
-            this.logger.info(`[FORENSIC] DO Registry: Storage Handshake initiated.`);
+            this.logger.debug(`DO Registry: Storage Handshake initiated.`);
 
             this._instances.set(instance.id, { ...instance });
             this.registerInstanceService(instance.id, instance);
             const bucket = `realm.do.instances_${instance.id}`;
             
             try {
-                this.logger.info(`[FORENSIC] DO Registry: Calling pm.store for bucket [${bucket}]...`);
+                this.logger.debug(`DO Registry: Calling pm.store for bucket [${bucket}]...`);
                 await pm.store(bucket, { ...instance, id: instance.id });
-                this.logger.info(`[FORENSIC] DO Registry: pm.store CALL COMPLETED for [${bucket}]`);
+                this.logger.debug(`DO Registry: pm.store CALL COMPLETED for [${bucket}]`);
             } catch (err) {
-                this.logger.error(`[FORENSIC] DO Registry: pm.store FAILED for [${bucket}]: ${err.message}`, err);
+                this.logger.error(`DO Registry: pm.store FAILED for [${bucket}]: ${err.message}`, err);
             }
             this.sync();
         },
@@ -702,13 +702,13 @@ export default class Activator extends CoreAlpineActivator {
 
             const visible = isInfra || isWhitelisted || isPersisted || !isBundle;
             
-            this.logger.debug(`[DEEP-FORENSIC] DO Registry: Filter Check [${s.id}]: Visible=${visible} (Infra=${isInfra}, Hub=${isWhitelisted}, Persisted=${isPersisted}, Bundle=${isBundle})`);
+            this.logger.debug(`DO Registry: Filter Check [${s.id}]: Visible=${visible} (Infra=${isInfra}, Hub=${isWhitelisted}, Persisted=${isPersisted}, Bundle=${isBundle})`);
             
             return visible;
         }) 
         : [...this.systemSpecs];
 
-    this.logger.debug(`[FORENSIC] DO Registry: Sync Pulse. Whitelist: [${this._realmBlueprintIds?.join(', ') || 'NONE'}]. Result Count: ${finalBlueprints.length} / Total Specs: ${this.systemSpecs.length}`);
+    this.logger.debug(`DO Registry: Sync Pulse. Whitelist: [${this._realmBlueprintIds?.join(', ') || 'NONE'}]. Result Count: ${finalBlueprints.length} / Total Specs: ${this.systemSpecs.length}`);
     const allActions = this._actionRegistry?.getActions() || [];
     const enrichedInstances = {};
     const instancesArray = [];

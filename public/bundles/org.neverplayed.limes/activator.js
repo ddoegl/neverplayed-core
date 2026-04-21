@@ -11,7 +11,7 @@ export default class Activator {
                 this.logger = svc.getLogger(context.getBundle().getSymbolicName());
                 this.logger.info("Limes: Connected to System Logger.");
                 // FORCE: Override with console for debugging
-                this.logger = console;
+                //this.logger = console;
             },
             removedService: () => {
                 this.logger = { 
