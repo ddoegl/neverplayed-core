@@ -72,3 +72,4 @@ public/.neverplayed/state.json
 
 # Deno coverage profiles
 cov_profile/
+.well-known/appspecific/com.chrome.devtools.json

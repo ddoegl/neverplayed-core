@@ -23,9 +23,9 @@ cumulative boot delays and recursive deadlocks. We observed:
 The `env.json` file at the root of the application acts as the **Absolute
 Ceiling**.
 
-- **Rule**: If `persistence_mode` is set to `local` or `local-fs`, the Global
+- **Rule**: If `persistencePolicy.tier` is set to `local` or `local-fs`, the Global
   Persistence Selector MUST NOT attempt cloud communication, even if a Domain
-  Object blueprint's metadata requests `tier: "firebase"`.
+  Object blueprint's metadata requests `tier: "cloud"`.
 - **Enforcement**: This prevents "Forced Volatile Fallback" spam in environments
   where cloud access is intentionally disabled or restricted.
 
@@ -61,7 +61,7 @@ We will use strictly literal, case-sensitive tier names:
 - `volatile`: Memory-only.
 - `local`: Web LocalStorage.
 - `local-fs`: Deno Filesystem Sync.
-- `firebase`: Direct Firestore REST Transport.
+- `cloud`: Multi-provider Cloud Storage (e.g. Firebase).
 
 ### 5. TDD Certification
 

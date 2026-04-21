@@ -23,6 +23,7 @@ export default class Activator extends BaseActivator {
             store: (key, val) => {
                 const stringVal = typeof val === 'string' ? val : JSON.stringify(val);
                 storage.setItem(key, stringVal);
+                this.logger.info(`[FORENSIC] Deno Persistence: Storing [${key}] in localStorage (Size: ${stringVal.length} chars)`);
             },
             dump: () => {
                 const result = {};

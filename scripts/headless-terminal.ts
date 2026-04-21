@@ -76,7 +76,8 @@ async function main() {
     try {
         const envPath = join(Deno.cwd(), "public", "env.json");
         const envConfig = JSON.parse(await Deno.readTextFile(envPath));
-        isFirebase = envConfig.persistence_mode === "firebase";
+        const envTier = envConfig.persistencePolicy?.tier || envConfig.persistence_mode || "local";
+        isFirebase = envTier === "cloud";
     } catch (_e) {
         // Fallback to local
     }

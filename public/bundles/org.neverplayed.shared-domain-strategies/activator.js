@@ -111,9 +111,11 @@ export default class Activator {
                     createdAt: new Date().toISOString()
                 };
 
-                // One-time migration check DECOMMISSIONED: We are now SPOP
-                
+                console.log(`[FORENSIC] Shared Strategies: Created new instance [${instanceId}] for blueprint [${blueprint.id}]`);
+                console.log(`[FORENSIC] Shared Strategies: Resolved Gravity Policy:`, policy);
+
                 // Register with Central Index (Always Cloud/Firebase for visibility)
+                console.log(`[FORENSIC] Shared Strategies: Handing off to Registry.addInstance...`);
                 this._registry.addInstance(newInstance);
                 return newInstance;
             },

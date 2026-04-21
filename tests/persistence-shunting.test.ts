@@ -19,7 +19,7 @@ function routeToTier(key: string, envTier: string = "local-fs", mode: string = "
   if (envTier === "local-fs" || envTier === "local") return "local";
   
   // 3. Cloud Mode (Hybrid Sync)
-  if (envTier === "firebase") {
+  if (envTier === "cloud") {
     if (key.startsWith("realm.") || key.startsWith("identities.")) return "local";
     return "cloud";
   }
@@ -46,8 +46,8 @@ Deno.test("Persistence Routing Matrix", () => {
         { key: "config.shell", expected: "local", tier: "local-fs", mode: "normal" },
         { key: "identities.mcp", expected: "local", tier: "local-fs", mode: "normal" },
         { key: "security.token", expected: "volatile", tier: "local-fs", mode: "normal" },
-        { key: "config.shell", expected: "cloud", tier: "firebase", mode: "normal" },
-        { key: "identities.mcp", expected: "local", tier: "firebase", mode: "privacy" },
+        { key: "config.shell", expected: "cloud", tier: "cloud", mode: "normal" },
+        { key: "identities.mcp", expected: "local", tier: "cloud", mode: "privacy" },
         { key: "any.key", expected: "volatile", tier: "local-fs", mode: "stealth" }
     ];
 

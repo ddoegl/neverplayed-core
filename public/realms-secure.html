@@ -130,19 +130,30 @@
             );
             if (eaBundle.getState() < 32) await eaBundle.start();
 
-            // 2. Load Orchestrator & UI Bridge
+            // 2. Load Persistence Manager
+            /*const pmBundle = await context.installBundle(
+              "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
+            );
+            if (pmBundle.getState() < 32) await pmBundle.start();*/
+
+            const logBundle = await context.installBundle(
+              "./bundles/org.neverplayed.system-logger/manifest.json",
+            );
+            if (logBundle.getState() < 32) await logBundle.start();
+
+            // 3. Load Orchestrator & UI Bridge
             this.bootStatus = "Loading Orchestration Layer...";
             const rmBundle = await context.installBundle(
               "./bundles/org.neverplayed.realm-manager/manifest.json",
             );
             if (rmBundle.getState() < 32) await rmBundle.start();
 
-            const headerBundle = await context.installBundle(
+            /*const headerBundle = await context.installBundle(
               "./bundles/org.neverplayed.shell-header/manifest.json",
             );
             if (headerBundle.getState() < 32) {
               await headerBundle.start();
-            }
+            }*/
 
             // 3. Handshake
             const rmRef = context.getServiceReference(

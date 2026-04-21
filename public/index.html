@@ -433,8 +433,9 @@
         const response = await globalThis.fetch("./env.json");
         const envConfig = response.ok
           ? await response.json()
-          : { persistence_mode: "local" };
-        const isFirebase = envConfig.persistence_mode === "firebase";
+          : {};
+        const persistenceTier = envConfig.persistencePolicy?.tier || envConfig.persistence_mode || "local";
+        const isFirebase = persistenceTier === "cloud";
 
         const pmProviderUrl = isFirebase
           ? "./bundles/org.neverplayed.persistence-firebase/manifest.json"

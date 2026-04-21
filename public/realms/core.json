@@ -12,6 +12,9 @@
         "./bundles/org.neverplayed.alpine-bridge/manifest.json",
         "./bundles/org.neverplayed.persistence-selector/manifest.json",
         "./bundles/org.neverplayed.auth-shield/manifest.json",
+        "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
+        "./bundles/org.neverplayed.persistence-firebase/manifest.json",
+        "./bundles/org.neverplayed.persistence-resolver/manifest.json",
         "./bundles/org.neverplayed.limes/manifest.json",
         "./bundles/org.neverplayed.yaml-service/manifest.json",
         "./bundles/org.neverplayed.session-service/manifest.json",
@@ -25,7 +28,9 @@
         "./bundles/org.neverplayed.system-reset/manifest.json",
         "./bundles/org.neverplayed.config-admin/manifest.json",
         "./bundles/org.neverplayed.event-monitor/manifest.json",
-        "./bundles/org.neverplayed.alpine-inspector/manifest.json",
+        "./bundles/org.neverplayed.alpine-inspector/manifest.json"
+    ],
+    "bundles-parked": [
         "./bundles/org.neverplayed.agent.antigravity/manifest.json",
         "./bundles/org.neverplayed.persistence-fs-sync/manifest.json"
     ]

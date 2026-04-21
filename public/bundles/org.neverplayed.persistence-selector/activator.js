@@ -1,4 +1,4 @@
-import { PERSISTENCE_MANAGER_SERVICE, LOG_SERVICE } from "../../core-types.js";
+import { PERSISTENCE_MANAGER_SERVICE, LOG_SERVICE, PERSISTENCE_RESOLVER_SERVICE } from "../../core-types.js";
 
 /**
  * Strategic Persistence Selector (Data Guardian)
@@ -10,6 +10,7 @@ import { PERSISTENCE_MANAGER_SERVICE, LOG_SERVICE } from "../../core-types.js";
  */
 export default class Activator {
     _providers = new Map(); // tier -> service
+    _providerRefs = new Map(); // tier -> serviceReference
     _volatileStore = new Map();
     _currentMode = "normal"; // normal, stealth, privacy
     logger = console;
@@ -27,8 +28,14 @@ export default class Activator {
             const envResp = await fetch(new URL("./env.json", root).href);
             if (envResp.ok) {
                 const env = await envResp.json();
-                if (env.persistence_mode) {
+                const policy = env.persistencePolicy;
+                if (policy && policy.tier) {
+                    this._envTier = policy.tier;
+                    this.logger?.info?.(`Persistence Selector: Environment policy detected. Default Tier: [${this._envTier}]`);
+                } else if (env.persistence_mode) {
+                    // Legacy Fallback
                     this._envTier = env.persistence_mode;
+                    this.logger?.info?.(`Persistence Selector: Legacy env.persistence_mode detected: [${this._envTier}]`);
                 }
             }
         } catch (e) {
@@ -44,7 +51,7 @@ export default class Activator {
             }
         });
         this._logTracker.open();
- 
+  
         // 2. Track all other Persistence Providers
         // We exclude ourselves specifically via implementation property
         this._providerTracker = context.trackService(`(&(objectClass=${PERSISTENCE_MANAGER_SERVICE})(!(implementation=selector-proxy)))`, {
@@ -52,7 +59,9 @@ export default class Activator {
                 const svc = context.getService(ref);
                 const tier = ref.getProperty("persistence.tier") || "local"; // Authority Fallback
                 this._providers.set(tier, svc);
-                this.logger.info(`Persistence Selector: Tracked provider tier='${tier}' from ${ref.bundle.getSymbolicName()}. (Total: ${this._providers.size})`);
+                this._providerRefs.set(tier, ref);
+                
+                this.logger.info(`Persistence Selector: Tracked provider tier='${tier}' from ${ref.bundle.getSymbolicName()}. (Total Providers: ${this._providers.size})`);
                 
                 // Initial Sync Logic: Cloud wins for config, Local wins for identities
                 this._performInitialSync(tier, svc);
@@ -61,10 +70,25 @@ export default class Activator {
             removedService: (ref) => {
                 const tier = ref.getProperty("persistence.tier") || "unknown";
                 this._providers.delete(tier);
+                this._providerRefs.delete(tier);
                 this.logger.info(`Persistence Selector: Provider tier='${tier}' lost.`);
             }
         });
         this._providerTracker.open();
+
+        // 2.1 Track the Strategic Persistence Resolver
+        this._resolverTracker = context.trackService(`(objectClass=${PERSISTENCE_RESOLVER_SERVICE})`, {
+            addingService: (ref) => {
+                this.resolver = context.getService(ref);
+                this.logger.info(`[FORENSIC] Persistence Selector: Strategic Resolver linked [${ref.bundle.getSymbolicName()}].`);
+                return this.resolver;
+            },
+            removedService: () => {
+                this.resolver = null;
+                this.logger.warn(`[FORENSIC] Persistence Selector: Strategic Resolver lost! Falling back to hardcoded defaults.`);
+            }
+        });
+        this._resolverTracker.open();
 
         // 3. Register the Virtual Selector Service
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
@@ -194,6 +218,7 @@ export default class Activator {
     }
 
     async _routeAndStore(key, val) {
+        this.logger.info(`[FORENSIC] Persistence Selector: Incoming STORE request for [${key}]`);
         if (this._currentMode === "stealth") {
             this._volatileStore.set(key, val);
             return;
@@ -203,11 +228,15 @@ export default class Activator {
         const policy = this._getPolicyForKey(key);
         const finalTier = (this._currentMode === "privacy" && tier === "cloud" && !policy?.enforce) ? "local" : tier;
         
-        this.logger?.debug(`Persistence Selector: [${key}] -> Tier: ${finalTier}. Tracked providers: ${Array.from(this._providers.keys()).join(',')}`);
-        
         const provider = this._getProvider(finalTier);
 
         if (provider) {
+            // [FORENSIC] Identity Discovery
+            const ref = this._providerRefs.get(finalTier);
+            const bsn = ref ? ref.bundle.getSymbolicName() : "unknown-bundle";
+            
+            this.logger.info(`[FORENSIC] Persistence Selector: Routing [${key}] to tier [${finalTier}] -> Provider: [${bsn}]`);
+
             // 💾 Security Bridge: Ensure key is managed if using the LocalStorage PM
             if (finalTier === "local") {
                 await this._ensureManaged(key, provider);
@@ -229,6 +258,7 @@ export default class Activator {
                 if (timer) clearTimeout(timer);
             }
         } else {
+            this.logger.warn(`[FORENSIC] Persistence Selector: NO PROVIDER for tier [${finalTier}]. Falling back to Volatile Memory.`);
             this._volatileStore.set(key, val);
         }
     }
@@ -242,7 +272,23 @@ export default class Activator {
     }
 
     _getPreferredTierForKey(key) {
-        // 1. Check Dynamic Policies (Policy Tier) - Authority Layer
+        // 0. Fast-Path for Infrastructure Keys (Prevent Recursion Loops)
+        if (key.startsWith("config.") || key.startsWith("security.") || key.startsWith("pandino.session")) {
+            return (key.startsWith("security.") || key.startsWith("pandino.session")) ? "volatile" : "cloud";
+        }
+
+        // 1. Check Strategic Resolver (The Authority)
+        if (this.resolver) {
+            const resolution = this.resolver.resolve({ key });
+            const resolvedTier = (typeof resolution === 'object' && resolution !== null) ? resolution.tier : resolution;
+            
+            if (resolvedTier) {
+                this.logger.info(`[FORENSIC] Persistence Selector: Resolver directed [${key}] to tier [${resolvedTier}]`);
+                return resolvedTier;
+            }
+        }
+
+        // 2. Check Dynamic Policies (Policy Tier) - Authority Layer
         const policy = this._getPolicyForKey(key);
         if (policy) return policy.tier;
 
@@ -255,7 +301,7 @@ export default class Activator {
              return "local";
         }
         
-        if (this._envTier === "firebase") {
+        if (this._envTier === "cloud") {
              // In Firebase mode, we follow the Hybrid Cloud policy
              if (key.startsWith("realm.") || key.startsWith("identities.")) return "local";
              return "cloud";
@@ -273,10 +319,15 @@ export default class Activator {
      * Defensive Provider Resolution (Rule 3: ADR-0021)
      */
     _getProvider(tier) {
+        // Rule: Volatile Isolation
+        // The 'volatile' tier is handled internally by this selector's in-memory store.
+        // It MUST NEVER fall back to a persistent provider like 'local'.
+        if (tier === "volatile") return null;
+
         // Preferred Tier
         if (this._providers.has(tier)) return this._providers.get(tier);
         
-        // Tier Fallback Chain: Requested -> local -> volatile (Memory)
+        // Tier Fallback Chain: Requested -> local
         if (this._providers.has("local")) return this._providers.get("local");
 
         return null;

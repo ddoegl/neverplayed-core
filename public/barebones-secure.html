@@ -161,8 +161,9 @@
           const response = await fetch("./env.json");
           const envConfig = response.ok
             ? await response.json()
-            : { persistence_mode: "local" };
-          const isFirebase = envConfig.persistence_mode === "firebase";
+            : {};
+          const persistenceTier = envConfig.persistencePolicy?.tier || envConfig.persistence_mode || "local";
+          const isFirebase = persistenceTier === "cloud";
 
           const coreBundles = [
             "./bundles/org.neverplayed.yaml-service/manifest.json", // INFRA BASE

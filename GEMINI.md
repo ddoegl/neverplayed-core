@@ -6,9 +6,13 @@ This document establishes the core principles and architectural guidelines for t
 
 ### 1. Architectural Consistency
 - **Rule**: Always check `docs/architecture-patterns.md` when implementing new functionality or debugging flawed logic. Adhere to the established reactive and OSGi patterns to ensure system stability.
-- **No Magic Strings**: Prohibit hardcoded strings for bundle names, service interfaces, and configuration PIDs. Centralize all identifiers in `public/shared-types.js` to ensure system-wide consistency and prevent race conditions.
+- **No Magic Strings**: Prohibit hardcoded strings for bundle names, service interfaces, and configuration PIDs. Centralize all identifiers in `public/core-types.js` to ensure system-wide consistency and prevent race conditions. Note: `public/shared-types.js` is legacy and must be avoided.
 
-### 2. Reactive State Management
+### 2. Canonical Identity Standards
+- **Entry Point Authority**: `public/realms-secure.html` is the only valid entry point for the Secure Realm. `public/index.html` is legacy and must not be used for feature development.
+- **Type Registry Authority**: `public/core-types.js` is the single source of truth for all service and PID identifiers.
+
+### 3. Reactive State Management
 - Favor Alpine.js for UI reactivity.
 - Use the `$watch` pattern for cross-context synchronization.
 - Leverage `Alpine.effect` for automatic persistence via `PersistenceManager`.

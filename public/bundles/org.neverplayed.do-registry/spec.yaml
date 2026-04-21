@@ -4,6 +4,9 @@ icon: fas fa-archive
 
 domainObject:
   strategyId: LOCAL_STRATEGY
+  persistence:
+    tier: local
+    bucket: do-registry
 description: Central service for managing domain object blueprints, strategies, and instances.
 
 ui:

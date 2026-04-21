@@ -98,10 +98,15 @@ export default class Activator extends BaseActivator {
                         const isAtomicSpec = value && typeof value === 'object' && !Array.isArray(value) && 
                             (Object.prototype.hasOwnProperty.call(value, 'id') || Object.prototype.hasOwnProperty.call(value, 'blueprintId'));
                         
+                        // Rule: Multi-Level Preservation (SDN-0155)
+                        // Always store the value at the current key segment level to satisfy direct lookups (load(key)).
+                        if (value !== null) {
+                            flatCache.set(newKey, value);
+                        }
+
+                        // Then, if it's a nested structure (and not a Domain Object), continue flattening.
                         if (value && typeof value === 'object' && !Array.isArray(value) && !isAtomicSpec) {
                             flatten(value, newKey);
-                        } else if (value !== null) {
-                            flatCache.set(newKey, value);
                         }
                     }
                 };

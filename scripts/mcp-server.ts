@@ -130,10 +130,11 @@ async function bootOSGI() {
     try {
         const envPath = join(Deno.cwd(), "public", "env.json");
         const envConfig = JSON.parse(await Deno.readTextFile(envPath));
-        const mode = Deno.env.get("PERSISTENCE_MODE") || envConfig.persistence_mode || "local";
-        isFirebase = mode === "firebase";
+        const envTier = envConfig.persistencePolicy?.tier || envConfig.persistence_mode || "local";
+        const mode = Deno.env.get("PERSISTENCE_MODE") || envTier;
+        isFirebase = mode === "cloud";
     } catch (_e) {
-        isFirebase = Deno.env.get("PERSISTENCE_MODE") === "firebase";
+        isFirebase = Deno.env.get("PERSISTENCE_MODE") === "cloud";
     }
 
     const coreManifests = [

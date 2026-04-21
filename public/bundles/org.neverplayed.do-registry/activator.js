@@ -18,7 +18,8 @@ import {
     YAML_EDITOR_SERVICE as _YAML_EDITOR_SERVICE,
     LOG_SERVICE as _LOG_SERVICE,
     DOMAIN_OBJECTS_FLOW,
-    INTERACTOR_SERVICE
+    INTERACTOR_SERVICE,
+    PERSISTENCE_RESOLVER_SERVICE
 } from "core-types";
 import { CoreAlpineActivator } from "alpine-base";
 
@@ -34,6 +35,8 @@ export default class Activator extends CoreAlpineActivator {
     this._actionRegistry = null;
     this._pm = null;
     this._pmTracker = null;
+    this._resolver = null;
+    this._resolverTracker = null;
     this._liquidatedIds = new Set(); // Rule 23: Liquidated ID Graveyard (SDN-0139)
   }
 
@@ -73,10 +76,17 @@ export default class Activator extends CoreAlpineActivator {
 
         instantiateDO: (specId) => {
             const spec = this.state.domainObjectSpecs.find(sp => sp.id === specId);
-            if (!spec) return logger.error(`Spec ${specId} not found.`);
+            if (!spec) return logger.error(`[FORENSIC] Spec ${specId} not found.`);
+            
+            this.logger.info(`[FORENSIC] DO Registry: Instantiating blueprint [${specId}]`);
+            const persistence = spec.domainObject?.persistence || { tier: 'unspecified' };
+            this.logger.info(`[FORENSIC] DO Registry: Blueprint Persistence Intent: [${persistence.tier}] (Bucket: ${persistence.bucket || 'none'})`);
+            
             const strategyId = spec.domainObject?.strategyId || "LOCAL_STRATEGY";
             const strategySvc = this.runtimeStrategies.get(strategyId);
-            if (!strategySvc?.createInstance) return logger.error(`Strategy [${strategyId}] not ready.`);
+            if (!strategySvc?.createInstance) return logger.error(`[FORENSIC] Strategy [${strategyId}] not ready.`);
+            
+            this.logger.info(`[FORENSIC] DO Registry: Handing off to strategy [${strategyId}] for creation...`);
             return strategySvc.createInstance(spec);
         },
 
@@ -239,11 +249,14 @@ export default class Activator extends CoreAlpineActivator {
     });
     this._sessionTracker.open();
     
-    this._pmTracker = context.trackService(`(objectClass=${PERSISTENCE_MANAGER_SERVICE})`, {
+    // Rule 28: Strategic Service Selection (SDN-0141)
+    // Explicitly track the Selector Proxy to ensure data gravity is enforced.
+    this._pmTracker = context.trackService(`(&(objectClass=${PERSISTENCE_MANAGER_SERVICE})(|(implementation=selector-proxy)(service.ranking>=1000)))`, {
         addingService: (ref) => {
             const pm = context.getService(ref);
             this._pm = pm;
-            this.logger.info("DO Registry: Persistence Manager discovered. Checking hydration status...");
+            const bsn = ref.bundle.getSymbolicName();
+            this.logger.info(`[FORENSIC] DO Registry: Persistence Manager discovered: [${bsn}] (Ranking: ${ref.getProperty('service.ranking') || 0})`);
             
             // Rule 4: Dynamic Identity Discovery (SDN-0061)
             (async () => {
@@ -255,10 +268,6 @@ export default class Activator extends CoreAlpineActivator {
                 
                 if (this.state) {
                     this.state.loadingData = false;
-                    // NEW: Register explicit Local routing policy for Domain Objects
-                    if (typeof this._pm.setRoutingPolicy === 'function') {
-                        this._pm.setRoutingPolicy("realm.do", "local", true);
-                    }
                     this.refreshMaster(true);
                     this.sync();
                 }
@@ -273,6 +282,19 @@ export default class Activator extends CoreAlpineActivator {
         }
     });
     this._pmTracker.open();
+
+    this._resolverTracker = context.trackService(`(objectClass=${PERSISTENCE_RESOLVER_SERVICE})`, {
+        addingService: (ref) => {
+            this._resolver = context.getService(ref);
+            this.logger.info("DO Registry: Sovereign Oracle connected. Syncing briefings...");
+            this._briefResolver();
+            return this._resolver;
+        },
+        removedService: () => {
+            this._resolver = null;
+        }
+    });
+    this._resolverTracker.open();
 
     // Rule 24: Debounced Discovery Shield Pulse (SDN-0139)
     // Prevents "Echo Re-Hydration" from laggy cloud writes
@@ -347,6 +369,7 @@ export default class Activator extends CoreAlpineActivator {
                 this.logger.debug(`[FORENSIC] DO Registry: Adding NEW blueprint [${spec.id}]`);
                 this.systemSpecs.push(spec);
             }
+            this._briefResolver();
             this.sync();
         },
         removeBlueprint: (id) => {
@@ -415,18 +438,32 @@ export default class Activator extends CoreAlpineActivator {
             }
             return this._instances.get(id) || null;
         },
-        addInstance: (instance) => {
+        addInstance: async (instance) => {
             const existing = this._instances.get(instance.id);
             const newCount = Object.keys(instance.properties || {}).length;
             const oldCount = existing ? Object.keys(existing.properties || {}).length : 0;
             if (existing && newCount === 0 && oldCount > 0) {
-                this.logger.warn(`DO Registry: Blocked 'Cold Overwrite' attempt for ${instance.id}. Registry is Warm (${oldCount} props), UI is Cold (0 props).`);
+                this.logger.warn(`[FORENSIC] DO Registry: Blocked 'Cold Overwrite' attempt for ${instance.id}. Registry is Warm (${oldCount} props), UI is Cold (0 props).`);
                 return;
             }
+
+            this.logger.info(`[FORENSIC] DO Registry: Finalizing registration for instance [${instance.id}]`);
+            this.logger.info(`[FORENSIC] DO Registry: Resolved Persistence Tier: [${instance.persistence?.tier || 'unknown'}]`);
+
+            const pm = (this._pm || this.persistence);
+            this.logger.info(`[FORENSIC] DO Registry: Storage Handshake initiated.`);
+
             this._instances.set(instance.id, { ...instance });
             this.registerInstanceService(instance.id, instance);
             const bucket = `realm.do.instances_${instance.id}`;
-            (this._pm || this.persistence).store(bucket, { ...instance, id: instance.id });
+            
+            try {
+                this.logger.info(`[FORENSIC] DO Registry: Calling pm.store for bucket [${bucket}]...`);
+                await pm.store(bucket, { ...instance, id: instance.id });
+                this.logger.info(`[FORENSIC] DO Registry: pm.store CALL COMPLETED for [${bucket}]`);
+            } catch (err) {
+                this.logger.error(`[FORENSIC] DO Registry: pm.store FAILED for [${bucket}]: ${err.message}`, err);
+            }
             this.sync();
         },
         removeInstance: (id) => {
@@ -703,6 +740,16 @@ export default class Activator extends CoreAlpineActivator {
         this.logger.warn(`DO Registry: Seeding failed (this is expected in local-only mode): ${e.message}`);
     }
     this.sync();
+  }
+
+  _briefResolver() {
+      if (!this._resolver) return;
+      this.systemSpecs.forEach(spec => {
+          const persistence = spec.domainObject?.persistence;
+          if (persistence) {
+              this._resolver.registerPolicy(`realm.do.instances_${spec.id}`, persistence);
+          }
+      });
   }
 
   onStop(_context) {

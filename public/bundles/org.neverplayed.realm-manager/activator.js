@@ -250,7 +250,8 @@ export default class Activator extends BaseActivator {
             // 1. Fetch Environment (for Provider Injection)
             const root = globalThis.location.origin + '/';
             const envResp = await fetch(new URL("./env.json", root).href);
-            const envConfig = envResp.ok ? await envResp.json() : { persistence_mode: "local" };
+            const envConfig = envResp.ok ? await envResp.json() : {};
+            const envTier = envConfig.persistencePolicy?.tier || envConfig.persistence_mode || "local";
 
             // 2. Fetch Discovery Index
             const resp = await fetch(new URL("./realms/index.json", root).href);
@@ -266,15 +267,16 @@ export default class Activator extends BaseActivator {
                         const manifest = await r.json();
                         
                         // 3. Provider Injection (Rule 1: Patch Core Universe)
-                        if (manifest.id === "org.neverplayed.realm.core") {
+                        if (manifest.id === "org.neverplayed.realm.core" || manifest.id === "org.neverplayed.realm.persistence") {
                             // Defensive Initializer: Ensure bundles array exists
                             manifest.bundles = Array.isArray(manifest.bundles) ? manifest.bundles : [];
                             
-                            const mode = envConfig.persistence_mode;
-                            const isFirebase = mode === "firebase";
+                            const mode = manifest.persistencePolicy?.tier || envTier;
+                            this.logger?.info(`[RealmManager] Persistence Tier Resolved: ${mode} (Source: ${manifest.persistencePolicy?.tier ? 'Manifest' : 'Environment'})`);
+                            const isFirebase = mode === "cloud";
                             const isLocalFs = mode === "local-fs";
                             const isLocalBrowser = mode === "local";
-                            const isMemory = mode === "memory";
+                            const isMemory = mode === "volatile";
 
                             if (isFirebase) {
                                 manifest.bundles.push("./bundles/org.neverplayed.persistence-firebase/manifest.json");
@@ -549,6 +551,9 @@ export default class Activator extends BaseActivator {
                 // Minimum fallback: Core Realm
                 this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to 'org.neverplayed.realm.core'...`);
                 await this._switchRealm(context, "org.neverplayed.realm.core");
+            } else if (this._realms.size > 0) {                // Minimum fallback: Core Realm
+                this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to first available realm '${this._realms.entries().next().value[0]}'...`);
+                await this._switchRealm(context, this._realms.entries().next().value[0]);
             }
         } finally {
             this._isRecovering = false;
