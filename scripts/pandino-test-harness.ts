@@ -116,14 +116,20 @@ export class PandinoHarness {
     /**
      * Reactive Service Poll (Wait for a service to appear)
      */
-    async waitForService(interfaceId: string, timeout = 2000) {
+    /**
+     * Reactive Service Poll (Wait for a service to appear)
+     */
+    async waitForService(interfaceId: string, filterOrTimeout: string | number = 2000, timeout = 2000) {
         const start = Date.now();
-        while (Date.now() - start < timeout) {
-            const svc = this.getService(interfaceId);
+        const filter = typeof filterOrTimeout === 'string' ? filterOrTimeout : undefined;
+        const actualTimeout = typeof filterOrTimeout === 'number' ? filterOrTimeout : timeout;
+
+        while (Date.now() - start < actualTimeout) {
+            const svc = this.getService(interfaceId, filter);
             if (svc) return svc;
             await this.settle(50);
         }
-        throw new Error(`Harness: Timeout waiting for service ${interfaceId}`);
+        throw new Error(`Harness: Timeout waiting for service ${interfaceId} ${filter ? `with filter ${filter}` : ''}`);
     }
 
     /**

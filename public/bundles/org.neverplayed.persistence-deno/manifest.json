@@ -1,6 +1,8 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.persistence-deno",
-    "Bundle-Version": "1.0.0",
-    "Bundle-Activator": "./activator.js",
-    "Description": "Deno-native localStorage Persistence Manager"
+    "Bundle-Name": "Deno Filesystem Persistence",
+    "Bundle-Description": "Persistence provider for Deno environments, implementing local filesystem storage with discovery support.",
+    "Bundle-Version": "1.1.0",
+    "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"@pandino/persistence-manager/PersistenceManager\""
 }

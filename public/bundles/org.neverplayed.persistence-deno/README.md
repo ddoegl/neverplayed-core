@@ -1,35 +1,27 @@
-# 🦕 Persistence Deno
+# 🦕 Deno Filesystem Persistence
 
-The **Persistence Deno** bundle is the server-side implementation of the `PersistenceManager` for the Deno runtime. it provides direct filesystem persistence for headless agents and the local dev server.
+![Documentation Health](https://img.shields.io/badge/Documentation-Health-green)
+
+The **Persistence Deno** bundle is the server-side implementation of the `PersistenceManager` for the Deno runtime. It provides direct filesystem persistence for headless agents and the local development server.
 
 ## 🏛️ Architecture & Implementation
 
-- **Atomic FS Ingress**: Maps `load()` and `store()` calls directly to `public/.neverplayed/state.json`.
-- **Capabilities**: Registers with high service ranking (10) for device-scoped persistence.
-- **Standalone Mode**: Does not require a browser context, making it the primary persistence provider for CLI and automation tools.
-
-### Service Metadata
-```json
-{
-    "capability": "sys:persistence",
-    "implementation": "deno-fs",
-    "persistence.tier": "local",
-    "persistence.scope": "device"
-}
-```
+- **Atomic FS Ingress**: Maps `load()` and `store()` calls directly to the local filesystem (typically `public/.neverplayed/state.json`).
+- **Discovery Pulse**: Implements `listKeys(prefix)` to support aggregated key discovery across tiers.
+- **Standalone Model**: Operates without a browser context, serving as the primary persistence provider for CLI and background automation tools.
 
 ## 🏛️ The Patterns (The State)
 
-- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Tiered Persistence Strategy** (ADR-0003).
-- **[Foundational ADRs](../../docs/adr/)**: Governs the core architectural decisions for this layer.
+- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Tiered Persistence Strategy**.
+- **[ADR-0152: Discovery-Driven Persistence Aggregation](../../docs/adr/0152-discovery-driven-persistence-aggregation.md)**: Implements the `listKeys` contract to participate in deep scans performed by the Selector.
+- **[ADR-0003: Tiered Persistence Strategy](../../docs/adr/0003-tiered-persistence-strategy.md)**: Stores data in the `local` tier with a `device` scope.
 
 ## 🚀 Future Road
 
-- **Encrypted Storage**: Integration with `LimesExt` for automated encryption-at-rest of sensitive configuration keys.
+- **Encrypted Storage**: Integration with `LimesExt` for automated encryption-at-rest.
+- **Stream-Based I/O**: Refactor to use streaming for massive state files.
 
 ### 🏺 Institutional ADRs
-- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
-- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
-- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
-- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
-- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+
+- [ADR-0151](../../docs/adr/0151-resilient-persistence-sovereignty.md) - Resilient Persistence Sovereignty.
+- [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic Versioning.

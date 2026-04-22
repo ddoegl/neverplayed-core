@@ -1,6 +1,8 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.persistence-selector",
-    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Strategic Persistence Selector",
+    "Bundle-Description": "Orchestrates data shunting between Memory, Local, and Cloud providers with dynamic routing policies and discovery pulses.",
+    "Bundle-Version": "1.1.0",
     "Bundle-Activator": "activator.js",
-    "Provide-Capability": "osgi.service; objectClass=\"@pandino/persistence-manager/PersistenceManager\""
+    "Provide-Capability": "osgi.service; objectClass=\"@pandino/persistence-manager/PersistenceManager, org.neverplayed.shell.Command\""
 }

@@ -9,7 +9,6 @@
           "@pandino/pandino": "https://esm.sh/@pandino/pandino@0.8.33",
           "@pandino/pandino-api": "https://esm.sh/@pandino/pandino-api@0.8.33",
           "@pandino/persistence-manager-api": "https://esm.sh/@pandino/persistence-manager-api@0.8.33",
-          "@pandino/persistence-manager-localstorage": "https://esm.sh/@pandino/persistence-manager-localstorage@0.8.33",
           "@pandino/event-api": "https://esm.sh/@pandino/event-api@0.8.33",
           "@pandino/log-api": "https://esm.sh/@pandino/log-api@0.8.33",
           "alpinejs": "https://esm.sh/alpinejs@3.13.5",
@@ -131,10 +130,10 @@
             if (eaBundle.getState() < 32) await eaBundle.start();
 
             // 2. Load Persistence Manager
-            /*const pmBundle = await context.installBundle(
-              "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
+            const pmBundle = await context.installBundle(
+              "./bundles/org.neverplayed.persistence-localstorage/manifest.json",
             );
-            if (pmBundle.getState() < 32) await pmBundle.start();*/
+            if (pmBundle.getState() < 32) await pmBundle.start();
 
             const logBundle = await context.installBundle(
               "./bundles/org.neverplayed.system-logger/manifest.json",

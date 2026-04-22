@@ -88,3 +88,7 @@ No implementation code will be written without a corresponding **Audit Test** in
 - Should the `env.json` ceiling be strictly immutable after boot, or can it be
   updated by the `Privacy Mode` command? ANSWER: for the time being it is
   immutable after boot.
+
+## Related Records
+- **[ADR-0152: Discovery-Driven Persistence Aggregation](./0152-discovery-driven-persistence-aggregation.md)**: Supplements this ADR by providing the discovery mechanism for multi-tier key-spaces.
+- **[ADR-0021: Defensive Tier Fallback](./0021-defensive-tier-fallback.md)**: Establishes the core mechanism for recovery when primary tiers fail.

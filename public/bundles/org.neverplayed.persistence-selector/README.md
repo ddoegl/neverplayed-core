@@ -1,47 +1,30 @@
-# 🛡️ Persistence Selector Bundle
+# 🛡️ Strategic Persistence Selector
 
-![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green)
+![Documentation Health](https://img.shields.io/badge/Documentation-Health-green)
 
-The **Strategic Data Shunt** that routes data to different storage tiers based
-on dynamic policies and environment state.
+The **Strategic Data Shunt** orchestrates data operations between volatile, local, and cloud storage tiers based on dynamic policies and environmental constraints.
 
 ## 🏛️ Architecture & Implementation
 
-- **Tiered Shunting**: Routes data between `Cloud` (Firebase), `local`
-  (LocalStorage), and `Volatile` (Memory).
-- **WaitReady Handshake**: Implements a synchronization promise that ensures
-  consumers wait for infrastructure (e.g., Firebase Auth) before attempting I/O.
-- **Policy Engine**: Uses a simple pattern-matching engine to decide the
-  "Gravity" of data (e.g., `identities.*` always land on `local`).
+This bundle acts as a virtual `PersistenceManager` service with a high `service.ranking` (1000). It intercepts all I/O and routes it to the appropriate physical provider.
+
+- **Opportunistic Hydration**: Implements a "Lax Read" pattern—if a key is missing in its preferred tier, the selector performs a deep scan of all other connected providers to recover data.
+- **Provisioning Gate**: Implements a unified `waitReady()` handshake that prevents "Thundering Herd" stalls during asynchronous infrastructure warmups.
 
 ## 🏛️ The Patterns (The State)
 
-- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements
-  **Strategic Data Shunting** (Pattern 7) and the **Defensive Tier Fallback**
-  (Pattern 5/ADR-0021).
-- **[ADR-0003: Tiered Persistence Strategy](../../docs/adr/0003-tiered-persistence-strategy.md)**:
-  Implements the 4-tier storage model (Memory, Local-FS, Browser, Cloud).
-- **[ADR-0018: Service Hydration Handshake](../../docs/adr/0018-service-hydration-handshake.md)**:
-  Exposes the `waitReady()` method to allow consumers to safely synchronize with
-  asynchronous storage providers.
+- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Strategic Data Shunting** and **Defensive Tier Fallback**.
+- **[ADR-0152: Discovery-Driven Persistence Aggregation](../../docs/adr/0152-discovery-driven-persistence-aggregation.md)**: Implements the "Discovery Pulse" model, scanning all tiers via `listKeys()` to provide a unified view of the universe.
+- **[ADR-0151: Resilient Persistence Sovereignty](../../docs/adr/0151-resilient-persistence-sovereignty.md)**: Enforces "Absolute Ceiling" constraints from `env.json` to prevent unwanted cloud communication.
+- **[ADR-0024: Dual-Mode Persistence Shunting](../../docs/adr/0024-dual-mode-persistence-shunting.md)**: Supports "Stealth Mode" operations where data is routed to an in-memory volatile store instead of persistent storage.
 
 ## 🚀 Future Road
 
-- **Persistence Migration**: Implement a "Data Surge" protocol to move data
-  between tiers when a new provider (e.g., Cloud) becomes available during a
-  session.
-- **Conflict Resolution**: Add a pluggable reconciliation strategy for the Cloud
-  tier using CRDTs.
+- **Conflict Reconciliation**: Moving from "Last Write Wins" to pluggable CRDT-based reconciliation for cloud tiers.
+- **Auto-Sync Tasks**: Background synchronization of local-only objects to the cloud once connectivity is established.
 
 ### 🏺 Institutional ADRs
 
-- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project
-  metadata governance.
-- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity
-  injection and ID tokens.
-- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) -
-  Non-destructive variable resolution.
-- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic
-  versioning for bundles.
-- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle
-  testing strategy.
+- [ADR-0003](../../docs/adr/0003-tiered-persistence-strategy.md) - Tiered Persistence Strategy.
+- [ADR-0021](../../docs/adr/0021-defensive-tier-fallback.md) - Defensive Tier Fallback.
+- [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic Versioning.

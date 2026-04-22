@@ -12,7 +12,7 @@
         "./bundles/org.neverplayed.alpine-bridge/manifest.json",
         "./bundles/org.neverplayed.persistence-selector/manifest.json",
         "./bundles/org.neverplayed.auth-shield/manifest.json",
-        "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
+        "./bundles/org.neverplayed.persistence-localstorage/manifest.json",
         "./bundles/org.neverplayed.persistence-firebase/manifest.json",
         "./bundles/org.neverplayed.persistence-resolver/manifest.json",
         "./bundles/org.neverplayed.limes/manifest.json",

@@ -20,7 +20,7 @@
         "./bundles/org.neverplayed.session-service/manifest.json",
         "./bundles/org.neverplayed.shell-cli/manifest.json",
         "./bundles/org.neverplayed.persistence-selector/manifest.json",
-        "https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json",
+        "./bundles/org.neverplayed.persistence-localstorage/manifest.json",
         "./bundles/org.neverplayed.persistence-firebase/manifest.json",
         "./bundles/org.neverplayed.persistence-resolver/manifest.json"
     ],

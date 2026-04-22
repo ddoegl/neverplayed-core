@@ -1,0 +1,11 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.persistence-localstorage",
+    "Bundle-Name": "NeverPlayed LocalStorage Persistence Manager",
+    "Bundle-Description": "Institutional local storage provider with full Discovery-Hydration support.",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"@pandino/persistence-manager/PersistenceManager\"",
+    "Import-Service": [
+        "(objectClass=org.neverplayed.LogService)"
+    ]
+}

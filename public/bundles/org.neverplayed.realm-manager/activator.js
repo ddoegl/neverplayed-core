@@ -281,10 +281,10 @@ export default class Activator extends BaseActivator {
                             if (isFirebase) {
                                 manifest.bundles.push("./bundles/org.neverplayed.persistence-firebase/manifest.json");
                             } else if (isLocalFs) {
-                                manifest.bundles.push("https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json");
+                                manifest.bundles.push("./bundles/org.neverplayed.persistence-localstorage/manifest.json");
                                 manifest.bundles.push("./bundles/org.neverplayed.persistence-fs-sync/manifest.json");
                             } else if (isLocalBrowser) {
-                                manifest.bundles.push("https://unpkg.com/@pandino/persistence-manager-localstorage@0.8.33/dist/@pandino/persistence-manager-localstorage-manifest.json");
+                                manifest.bundles.push("./bundles/org.neverplayed.persistence-localstorage/manifest.json");
                             } else if (isMemory) {
                                 this.logger?.info("Realm Manager: Persistence Phase skipped (Memory Mode). Data resides in Volatile Store.");
                             }

@@ -68,10 +68,10 @@ export default class Activator extends CoreAlpineActivator {
             } catch (_e) { return false; }
         },
 
-        toggleShowAllDOs: () => {
+        toggleShowAllDOs: async () => {
             this.state.showAllDOs = !this.state.showAllDOs;
             pm.store('do:show-all', this.state.showAllDOs);
-            this.refreshMaster(true);
+            await this.refreshMaster(true);
         },
 
         instantiateDO: (specId) => {
@@ -217,7 +217,7 @@ export default class Activator extends CoreAlpineActivator {
             
             // Rule 26: Identity-Aware Cache Invalidation (SDN-0140)
             // Purge and re-hydrate discovery when user shifts
-            this._stopSessionObserver = Alpine.effect(() => {
+            this._stopSessionObserver = Alpine.effect(async () => {
                 if (!this._session) return;
                 const user = this._session.currentUser;
                 this.logger.info(`DO Registry: Identity Shift [${user?.id || 'guest'}]. Purging and re-hydrating discovery...`);
@@ -230,7 +230,7 @@ export default class Activator extends CoreAlpineActivator {
                 }
                 
                 this._instances.clear();
-                this.refreshMaster(true);
+                await this.refreshMaster(true);
             });
 
             return this._session;
@@ -301,9 +301,9 @@ export default class Activator extends CoreAlpineActivator {
     let hydrationDebounce = null;
     globalThis.addEventListener('pm-hydrated', () => {
         if (hydrationDebounce) clearTimeout(hydrationDebounce);
-        hydrationDebounce = setTimeout(() => {
+        hydrationDebounce = setTimeout(async () => {
             this.logger.info("DO Registry: Persistence Hydration Pulse. Syncing Discovery Shield.");
-            this.refreshMaster();
+            await this.refreshMaster();
         }, 150);
     });
 
@@ -424,6 +424,7 @@ export default class Activator extends CoreAlpineActivator {
         },
         getStrategy: (id) => this.runtimeStrategies.get(id),
         getInstances: () => {
+            // Background sync - the UI will reactively update when refreshMaster completes
             this.refreshMaster(false);
             return Object.fromEntries(this._instances);
         },
@@ -611,7 +612,7 @@ export default class Activator extends CoreAlpineActivator {
             }));
             this.sync();
         },
-        onActivate: (_hostState) => this.sync()
+        onActivate: async (_hostState) => await this.sync()
     }, { "flow.id": DOMAIN_OBJECTS_FLOW, "sidebar": true });
 
     await this.refreshMaster(true);
@@ -619,13 +620,14 @@ export default class Activator extends CoreAlpineActivator {
     this.sync();
   }
 
-  refreshMaster(triggerSync = true) {
+  async refreshMaster(triggerSync = true) {
      const pm = this._pm || this.persistence;
      if (!pm || typeof pm.listKeys !== 'function') return;
      
      const prefix = "realm.do.instances_";
-     const discoveredKeys = pm.listKeys(prefix);
-     this.logger.info(`[Registry] Discovery found ${discoveredKeys.length} instance buckets.`);
+     const discoveredKeys = await pm.listKeys(prefix);
+     this.logger.info(`[Registry] Discovery Pulse (Prefix: ${prefix}). Found ${discoveredKeys.length} buckets across all tiers.`);
+     if (discoveredKeys.length > 0) this.logger.debug(`[Registry] Full Discovery Result: ${JSON.stringify(discoveredKeys)}`);
      
      const countBefore = this._instances.size;
      for (const bucket of discoveredKeys) {
