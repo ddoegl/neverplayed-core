@@ -232,7 +232,7 @@ export default class Activator {
         // Rule: Tenant Handover Wipe (SDN-0165)
         if (oldUid !== "guest" && ctx.tenantId && ctx.tenantId !== oldUid) {
             this.logger.warn(`PM Selector: Handover [${oldUid} -> ${ctx.tenantId}]. Purging...`);
-            await this._purgeTenantVault(oldUid);
+            this._purgeTenantVault(oldUid);
         }
 
         // Propagate context to all providers
@@ -245,7 +245,7 @@ export default class Activator {
         this.logger.info(`PM Selector: Context Shift Complete.`);
     }
 
-    async _purgeTenantVault(uid) {
+    _purgeTenantVault(uid) {
         const prefix = `np:v1:${uid}:`;
         try {
             const keys = Object.keys(globalThis.localStorage || {});

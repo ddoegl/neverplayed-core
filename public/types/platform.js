@@ -4,7 +4,7 @@
  */
 
 // 1. Core Shell Services
-export const FLOW_SERVICE = "org.neverplayed.flow.Service";
+export const FLOW_SERVICE = "org.neverplayed.flow.FlowService";
 export const SHELL_COMMAND_SERVICE = "org.neverplayed.shell.Command";
 export const SESSION_SERVICE = "org.neverplayed.auth.Session";
 export const LOG_SERVICE = "org.neverplayed.LogService";
@@ -12,6 +12,7 @@ export const CONFIG_ADMIN_SERVICE = "org.neverplayed.config.Admin";
 export const CONFIG_ADMIN_UI_FLOW = "org.neverplayed.config.UIFlow";
 export const SYSTEM_RESET_SERVICE = "org.neverplayed.system.Reset";
 export const AGENT_SERVICE = "org.neverplayed.agent.AgentService";
+export const STRATUM_SERVICE = "org.neverplayed.stratum.StratumService";
 
 // 2. Pandino / External Services
 export const PERSISTENCE_MANAGER_SERVICE = "@pandino/persistence-manager/PersistenceManager";

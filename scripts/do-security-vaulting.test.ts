@@ -10,7 +10,14 @@ Deno.test({
   sanitizeOps: false,
   async fn() {
     const harness = new PandinoHarness();
-    const context = await harness.init();
+    await harness.init();
+
+    interface PersistenceManager {
+        setContext?(ctx: { tenantId: string, identityId: string }): Promise<void>;
+        store(key: string, val: unknown): Promise<void>;
+        load(key: string): Promise<unknown>;
+        listKeys(prefix: string): Promise<string[]>;
+    }
 
     // 0. Initial Identity Setup (Alice Tenant)
     const aliceUid = "tenant-alice-123";
@@ -21,7 +28,7 @@ Deno.test({
     setupHeadlessUser({ email: "alice@neverplayed.dev", uid: aliceUid });
     await harness.bootRealms(["./public/realms/core.json", "./public/realms/foundation.json"]);
     globalThis.localStorage.clear();
-    const pm = await harness.waitForService("@pandino/persistence-manager/PersistenceManager");
+    const pm = await harness.waitForService<PersistenceManager>("@pandino/persistence-manager/PersistenceManager");
 
     // --- PHASE 1: Identity Sharding (Intra-Tenant) ---
     console.log("\n--- Phase 1: Identity Sharding ---");
@@ -49,7 +56,8 @@ Deno.test({
     await pm.store("security.vault-token", "DEVICE-ONLY-SECRET");
     
     console.log("TDD: Checking Firebase separation...");
-    const firebase = await harness.getService("@pandino/persistence-manager/PersistenceManager", "(implementation=firebase-firestore)");
+    const firebase = await harness.getService<PersistenceManager>("@pandino/persistence-manager/PersistenceManager", "(implementation=firebase-firestore)");
+    if (!firebase) throw new Error("Firebase strategy not found");
     const cloudValue = await firebase.load("security.vault-token");
     console.log(`TDD: Cloud value: ${cloudValue}`);
     assertEquals(cloudValue, null, "Security keys must NEVER be persisted to the cloud tier");

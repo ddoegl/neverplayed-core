@@ -38,9 +38,29 @@ Deno.test({
     const INGESTION_SERVICE = "org.neverplayed.atomic.SpecIngestion";
     const STRATEGY_SERVICE = "org.neverplayed.domain.Strategy";
 
+    interface SessionService {
+        currentUser?: { id: string };
+        login(sid: string, contextId?: string): void;
+        logout(): void;
+    }
+
+    interface IngestionService {
+        ingest(spec: Record<string, unknown>, options?: { persist: boolean }): void;
+    }
+
+    interface StrategyService {
+        createInstance(spec: Record<string, unknown>): { id: string, ownerId: string };
+    }
+
+    interface RegistryService {
+        getInstances(): Promise<Record<string, Record<string, unknown>>>;
+        removeInstance(id: string): boolean;
+        state?: { toggleShowAllDOs(): Promise<void> };
+    }
+
     // Rule 28: Identity Synchronization Pulse (SDN-0140)
     // Ensure Session Service has Alice before we create anything
-    const session = await harness.waitForService("org.neverplayed.auth.Session");
+    const session = await harness.waitForService<SessionService>("org.neverplayed.auth.Session");
     for (let i = 0; i < 20; i++) {
         if (session.currentUser?.id === "alice-123") break;
         await harness.settle(50);
@@ -50,7 +70,7 @@ Deno.test({
     // --- PHASE 1: ALICE ADVENT ---
     console.log("\n--- Phase 1: Alice Ingests Blueprint ---");
 
-    const ingestion = await harness.waitForService(INGESTION_SERVICE);
+    const ingestion = await harness.waitForService<IngestionService>(INGESTION_SERVICE);
     const blueprintId = "alice-sovereign-flow";
     const aliceSpec = {
         id: blueprintId,
@@ -62,7 +82,8 @@ Deno.test({
     await harness.settle(100);
 
     // Instantiate as Alice
-    const strategy = harness.getService(STRATEGY_SERVICE, "(id=LOCAL_STRATEGY)");
+    const strategy = harness.getService<StrategyService>(STRATEGY_SERVICE, "(id=LOCAL_STRATEGY)");
+    if (!strategy) throw new Error("Strategy LOCAL_STRATEGY not found");
     const inst = strategy.createInstance(aliceSpec);
     const aliceInstanceId = inst.id;
     console.log(`Instance created by Alice: ${aliceInstanceId} (Owner: ${inst.ownerId})`);
@@ -75,7 +96,8 @@ Deno.test({
     setupHeadlessUser({ email: "bob@neverplayed.dev", uid: "bob-456" });
     await harness.settle(250); // WAIT FOR REACTIVE SHIELD TO HYDRATE
     
-    const registry = harness.getService(REGISTRY_SERVICE);
+    const registry = harness.getService<RegistryService>(REGISTRY_SERVICE);
+    if (!registry) throw new Error("Registry service not found");
     
     // Trigger Refresh via getInstances (which calls refreshMaster)
     const instances = await registry.getInstances();
@@ -122,7 +144,7 @@ Deno.test({
     await harness.settle(250);
 
     // Toggle Show All in Registry State via Method (Triggering Refresh)
-    const adminRegistry = await harness.waitForService("org.neverplayed.domain.Registry");
+    const adminRegistry = await harness.waitForService<RegistryService>("org.neverplayed.domain.Registry");
     if (adminRegistry.state) {
         await adminRegistry.state.toggleShowAllDOs();
     }
@@ -134,7 +156,7 @@ Deno.test({
     
     console.log(`Admin discovered ${Object.keys(adminInstances).length} instances.`);
     // Since I can't easily capture the dynamic ID here, I'll use a property check or check for existence
-    const adminFoundAlice = Object.values(adminInstances).some((i: any) => i.id?.startsWith("alice-sovereign-flow"));
+    const adminFoundAlice = Object.values(adminInstances).some((i) => typeof i.id === 'string' && i.id.startsWith("alice-sovereign-flow"));
     assertEquals(adminFoundAlice, true, "Superuser with showAll enabled MUST see Alice's instances");
 
     await harness.stop();

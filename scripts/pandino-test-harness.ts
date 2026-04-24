@@ -101,31 +101,29 @@ export class PandinoHarness {
     /**
      * Direct OSGi Service discovery
      */
-    getService(interfaceId: string, filter?: string) {
+    getService<T = unknown>(interfaceId: string, filter?: string): T | null {
         const context = this.context;
         if (!context) return null;
         
         if (filter) {
             const refs = context.getServiceReferences(interfaceId, filter);
-            return refs && refs.length > 0 ? context.getService(refs[0]) : null;
+            return refs && refs.length > 0 ? context.getService(refs[0]) as T : null;
         }
+        // @ts-ignore: Internal JS bridge
         const ref = context.getServiceReference(interfaceId);
-        return ref ? context.getService(ref) : null;
+        return ref ? context.getService(ref) as T : null;
     }
 
     /**
      * Reactive Service Poll (Wait for a service to appear)
      */
-    /**
-     * Reactive Service Poll (Wait for a service to appear)
-     */
-    async waitForService(interfaceId: string, filterOrTimeout: string | number = 2000, timeout = 2000) {
+    async waitForService<T = unknown>(interfaceId: string, filterOrTimeout: string | number = 2000, timeout = 2000): Promise<T> {
         const start = Date.now();
         const filter = typeof filterOrTimeout === 'string' ? filterOrTimeout : undefined;
         const actualTimeout = typeof filterOrTimeout === 'number' ? filterOrTimeout : timeout;
 
         while (Date.now() - start < actualTimeout) {
-            const svc = this.getService(interfaceId, filter);
+            const svc = this.getService<T>(interfaceId, filter);
             if (svc) return svc;
             await this.settle(50);
         }

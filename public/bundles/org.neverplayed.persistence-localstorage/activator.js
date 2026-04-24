@@ -10,7 +10,6 @@ export default class Activator extends BaseActivator {
 
     onStart(context) {
         const storage = globalThis.localStorage;
-        const self = this;
         
         if (!storage) {
             this.logger.error("LocalStorage Persistence: Environment does not support localStorage!");
@@ -24,13 +23,13 @@ export default class Activator extends BaseActivator {
             if (key.startsWith("pandino.session")) {
                 return `np:v1:guest:guest:${key}`;
             }
-            return `np:v1:${self._context.tenantId}:${self._context.identityId}:${key}`;
+            return `np:v1:${this._context.tenantId}:${this._context.identityId}:${key}`;
         };
 
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
             setContext: (ctx) => {
-                self.logger.debug(`LocalStorage: Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
-                self._context = ctx;
+                this.logger.debug(`LocalStorage: Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
+                this._context = ctx;
             },
 
             waitReady: () => Promise.resolve(),
@@ -51,31 +50,24 @@ export default class Activator extends BaseActivator {
                     const physicalKey = getPhysicalKey(key);
                     const stringVal = typeof val === 'string' ? val : JSON.stringify(val);
                     storage.setItem(physicalKey, stringVal);
-                    self.logger.debug(`LocalStorage: Stored [${key}] -> [${physicalKey}]`);
+                    this.logger.debug(`LocalStorage: Stored [${key}] -> [${physicalKey}]`);
                 } catch (e) {
-                    self.logger.error(`LocalStorage: Failed to store [${key}]`, e);
+                    this.logger.error(`LocalStorage: Failed to store [${key}]`, e);
                     throw e;
                 }
             },
 
             listKeys: (prefix = "") => {
                 const results = [];
-                
-                // Case A: Strict Identity Isolation (Standard)
-                // Case B: Tenant-Wide Peering (Discovery Bypass)
-                const tenantPrefix = `np:v1:${self._context.tenantId}:`;
-                const identityPrefix = `${tenantPrefix}${self._context.identityId}:`;
+                const tenantPrefix = `np:v1:${this._context.tenantId}:`;
+                const identityPrefix = `${tenantPrefix}${this._context.identityId}:`;
 
                 for (let i = 0; i < storage.length; i++) {
                     const k = storage.key(i);
                     if (!k) continue;
 
-                    // Rule: Discovery Peering (SDN-0165)
-                    // If showAll is enabled (implied by context or registry state), 
-                    // we want to see keys from any identity in THIS tenant.
-                    if (self._context.showAll && k.startsWith(tenantPrefix)) {
+                    if (this._context.showAll && k.startsWith(tenantPrefix)) {
                          if (k.includes(`:${prefix}`)) {
-                             // Extract logical key: np:v1:uid:sid:key -> key
                              const parts = k.split(':');
                              const logicalKey = parts.slice(4).join(':');
                              if (logicalKey.startsWith(prefix)) results.push(logicalKey);
@@ -100,7 +92,7 @@ export default class Activator extends BaseActivator {
                         count++;
                     }
                 });
-                self.logger.debug(`LocalStorage Persistence: Cleared ${count} entries for identity ${self._context.identityId}`);
+                this.logger.debug(`LocalStorage Persistence: Cleared ${count} entries for identity ${this._context.identityId}`);
             }
         }, {
             "capability": "sys:persistence",

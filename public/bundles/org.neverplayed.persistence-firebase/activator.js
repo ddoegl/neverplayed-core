@@ -131,7 +131,7 @@ export default class Activator extends BaseActivator {
                 this.logger.debug(`Firebase Persistence: Sync [${docId}] hydrated ${flatCache.size} keys.`);
                 checkReady(docId);
                 globalThis.dispatchEvent(new CustomEvent('pm-hydrated', { detail: { tier: 'cloud', implementation: 'firebase', scope: docId } }));
-            }, async (err) => {
+            }, (err) => {
                 if (err.code === 'permission-denied' && isRealm) {
                     this.logger.warn(`Firebase Persistence: Shared Realm [${docId}] is blocked by Firestore rules. Falling back to Private Sovereignty.`);
                 } else {

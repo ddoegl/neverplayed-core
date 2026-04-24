@@ -1,0 +1,17 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.stratum-ui",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Stratum UI",
+    "Bundle-Description": "High-fidelity visual HUD for context inspection and navigation (Layer 2).",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Assets": [
+        "templates/stratum-hud.html"
+    ],
+    "Require-Bundle": "org.neverplayed.stratum-core",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.ui.Component\"",
+    "Configuration": {
+        "log-level": "INFO",
+        "mountPoint": "#shell-host-root",
+        "priority": 100
+    }
+}

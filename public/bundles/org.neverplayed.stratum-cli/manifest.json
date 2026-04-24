@@ -1,0 +1,15 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.stratum-cli",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Stratum CLI",
+    "Bundle-Description": "Provides the /stratum command for shell-level context inspection and navigation (Layer 1).",
+    "Bundle-Activator": "activator.js",
+    "Require-Bundle": "org.neverplayed.stratum-core",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.shell.Command\"",
+    "Configuration": {
+        "log-level": "INFO"
+    },
+    "Patterns": {
+        "SDN-0165": "Sovereign Identity Scoping"
+    }
+}

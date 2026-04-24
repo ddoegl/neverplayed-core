@@ -30,6 +30,11 @@ This document establishes the core principles and architectural guidelines for t
 - **Prohibit** redundant "Shadow Sequences" (e.g., `stepOrder` arrays) that duplicate structure and invite divergent drift.
 - Blueprints must be lean; if an ordering can be derived from the map's key sequence, an external array is a violation.
 
+#### 4.2 Stratum Authority (Contextual Awareness)
+- **Principle**: `STRATUM_SERVICE` is the single source of truth for the system's multidimensional state (WHO, WHERE, WHAT, HOW).
+- **Rule**: All logging, persistence, and audit operations MUST utilize the `toURI()` method or the core facets provided by this service to ensure forensic traceability across strata.
+- **Goal**: Full Navigational Sovereignty through linkable context URIs.
+
 ### 5. Platform Safety and Rendering Scoping
 - **Namespace Isolation**: Segregate platform infrastructure state from bundle-level logic. Use `Alpine.store('platform')` for core orchestration (e.g., `kernelReady`) and preserve the `shell` namespace (e.g., `Alpine.store('shell')`) for application/bundle-level data.
 - **Robust Variable Resolution**: Use the global `$uifResolve` magic helper for all standardized UI components. Never rely on naked scope resolution for template variables to prevent mutation race conditions during asynchronous flows.

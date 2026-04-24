@@ -45,7 +45,6 @@ export default class Activator extends CoreAlpineActivator {
     const logger = this.logger;
 
     // 1. Initialize Store as 'state' to avoid base class collision
-    const self = this;
     this.state = this.initStore('do_registry', {
         domainObjectSpecs: [],
         parsedDOStrategies: {},
@@ -56,12 +55,12 @@ export default class Activator extends CoreAlpineActivator {
         sessionAvailable: false,
         loadingData: true,
         
-        isRegistryAdmin() {
-            if (!self._session) return false;
+        isRegistryAdmin: () => {
+            if (!this._session) return false;
             try {
-                const user = self._session.currentUser;
+                const user = this._session.currentUser;
                 if (!user) return false;
-                const scopedAttrs = self._session.scopedUsers?.["global"]?.attributes || {};
+                const scopedAttrs = this._session.scopedUsers?.["global"]?.attributes || {};
                 const isScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"];
                 const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
                 const isIdentityAdmin = ['neverplayed-admin', 'realm-admin'].some(r => caps.includes(r));
@@ -69,15 +68,15 @@ export default class Activator extends CoreAlpineActivator {
             } catch (_e) { return false; }
         },
 
-        async toggleShowAllDOs() {
-            this.showAllDOs = !this.showAllDOs;
-            self._showAll = this.showAllDOs; // Sync Immutable Context
-            logger.info(`DO Registry: Admin Bypass Toggled -> ${this.showAllDOs}`);
-            pm.store('realm.do.show-all', this.showAllDOs);
+        toggleShowAllDOs: async () => {
+            this.state.showAllDOs = !this.state.showAllDOs;
+            this._showAll = this.state.showAllDOs; // Sync Immutable Context
+            logger.info(`DO Registry: Admin Bypass Toggled -> ${this.state.showAllDOs}`);
+            pm.store('realm.do.show-all', this.state.showAllDOs);
             if (typeof pm.setContext === 'function') {
-                pm.setContext({ showAll: this.showAllDOs });
+                pm.setContext({ showAll: this.state.showAllDOs });
             }
-            await self.refreshMaster(true);
+            await this.refreshMaster(true);
         },
 
         instantiateDO: (specId) => {
