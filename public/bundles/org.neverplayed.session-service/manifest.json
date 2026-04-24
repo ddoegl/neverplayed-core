@@ -1,8 +1,8 @@
 {
     "Bundle-SymbolicName": "org.neverplayed.session-service",
-    "Bundle-Version": "1.1.0",
+    "Bundle-Version": "1.2.0",
     "Bundle-Name": "Session Service",
-    "Bundle-Description": "Infrastructural Session registry for managing identity and persistence (Layer 1).",
+    "Bundle-Description": "Infrastructural Session registry for managing identity and persistence (Layer 1). Supported: Hierarchical Scoping, Forensic Auditing (ADR-0165).",
     "Bundle-Activator": "activator.js",
     "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.auth.Session\"",
     "Configuration": {
