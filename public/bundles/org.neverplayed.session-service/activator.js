@@ -12,7 +12,9 @@ const SESSION_PID = "pandino.session.state";
 export default class Activator {
     _logger = console;
     _pm = null;
+    _pmRank = -1;
     _session = null;
+    _initializing = false;
 
     start(context) {
         // 1. Logger Integration
@@ -25,24 +27,42 @@ export default class Activator {
             }
         }).open();
 
-        // 2. Track Persistence Manager for state hydration
+        // 3. Track Persistence Manager for state hydration
         context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
             addingService: (ref) => {
-                this._pm = context.getService(ref);
-                this._initializeSession(context);
+                const rank = ref.getProperty("service.ranking") || 0;
+                
+                // Rule: If we are already initialized by a high-ranking provider (Selector), ignore lower ones.
+                // If we are NOT initialized, or the new provider is significantly better (higher rank), trigger hydration.
+                if (!this._initializing || rank > this._pmRank) {
+                    this._pm = context.getService(ref);
+                    this._pmRank = rank;
+                    this._initializeSession(context);
+                }
                 return this._pm;
             },
             removedService: () => { this._pm = null; }
         }).open();
+
+        // 3. Track Realm Manager for Context Scoping
+        context.trackService(`(objectClass=org.neverplayed.realm.RealmManager)`, {
+            addingService: (ref) => {
+                this._realm = context.getService(ref);
+                return this._realm;
+            },
+            removedService: () => { this._realm = null; }
+        }).open();
     }
 
     async _initializeSession(context) {
-        if (this._session) return; // Guard against multiple initializations
-
-        this._logger.info("Session Service: Hydrating state from Persistence Manager...");
+        if (this._session || (this._initializing && this._pmRank >= 1000)) return; 
+        
+        this._initializing = true;
+        this._logger.info(`Session Service: Hydrating state from Persistence Manager [Rank: ${this._pmRank}]...`);
         
         // Wait for PM to be ready (Firebase/FS sync)
         if (this._pm.waitReady) {
+            this._logger.info("Session Service: Awaiting PM readiness...");
             await this._pm.waitReady();
         }
 
@@ -52,6 +72,8 @@ export default class Activator {
                 global: { id: 'guest', attributes: {} }
             }
         };
+        this._logger.info(`Session Service: DISK-LOAD COMPLETE. Found Identity: ${persistedState.currentUser?.id || 'guest'}`);
+        this._logger.info(`Session Service: Persisted state loaded. Identity: ${persistedState.currentUser?.id || 'guest'}`);
 
         // Universal Identity Purity Guard:
         // Always strip identity-leaking metadata from persisted state on boot.
@@ -63,13 +85,16 @@ export default class Activator {
             };
         }
 
+        const logger = this._logger;
+
         // Create Reactive Session State
         this._session = Alpine.reactive({
             ...persistedState,
             activeFlowId: null, // Volatile
+            activeRealmId: null, // Volatile (Pushed from Realm Manager)
             
             get currentUser() {
-                const scope = this.activeFlowId || "global";
+                const scope = this.activeFlowId || this.activeRealmId || "global";
                 const isRetail = (this.environment || "").includes("mobile") || (this.environment || "").includes("retail");
                 
                 const inheritanceScopes = [
@@ -91,11 +116,15 @@ export default class Activator {
                 return this.scopedUsers[scope] || this.scopedUsers["global"] || null;
             },
 
-            login(user, scope = 'global') {
+            login(user, scope = null) {
+                // Resolution: Flow > Current Realm > global
+                const currentRealm = this.activeRealmId || null;
+                const targetScope = scope || this.activeFlowId || currentRealm || 'global';
+                
                 const identity = typeof user === "string" ? { id: user, email: `${user}@cli.local` } : user;
-                this._logger?.info(`Session: LOGIN requested for scope '${scope}' (id: ${identity.uid || identity.id})`);
+                logger?.info(`Session: LOGIN requested for scope '${targetScope}' (id: ${identity.uid || identity.id})`);
 
-                this.scopedUsers[scope] = { 
+                this.scopedUsers[targetScope] = { 
                     id: identity.uid || identity.id, 
                     email: identity.email,
                     firstname: identity.firstname,
@@ -104,11 +133,12 @@ export default class Activator {
                     capabilities: identity.capabilities || [],
                     attributes: identity.attributes || {} 
                 };
+                logger?.info(`Session: Scoped user [${targetScope}] updated to identity [${this.scopedUsers[targetScope].id}]`);
                 globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'login', user, scope } }));
             },
 
             logout(scope = 'global') {
-                this._logger?.info(`Session: LOGOUT requested for scope '${scope}'`);
+                logger?.info(`Session: LOGOUT requested for scope '${scope}'`);
                 const user = this.scopedUsers[scope] || this.scopedUsers["global"];
                 
                 // --- SCA Bootstrap Logic ---
@@ -145,6 +175,7 @@ export default class Activator {
 
                 // Standard Logout
                 this.scopedUsers[scope] = { id: 'guest', attributes: {} };
+                logger?.info(`Session: Scope [${scope}] reset to guest.`);
                 globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'logout', scope } }));
             },
 
@@ -160,7 +191,7 @@ export default class Activator {
 
             promoteUser(user) {
                 if (user && user.isSuperuser) {
-                    this._logger?.info("Session: PROMOTE requested for superuser", user.email);
+                    logger?.info("Session: PROMOTE requested for superuser", user.email);
                     this.scopedUsers["backoffice-web"] = {
                         id: "dd",
                         firstname: "Daniel Daniela",
@@ -172,6 +203,20 @@ export default class Activator {
             }
         });
 
+        // Rule: Mutation Forensic Guard (SDN-0165)
+        // Watch for direct mutations from other bundles (Auth Shield, Realm Manager)
+        Alpine.effect(() => {
+            const users = JSON.parse(JSON.stringify(this._session.scopedUsers || {}));
+            Object.entries(users).forEach(([scope, data]) => {
+                const lastId = this._lastSeenIds?.[scope];
+                if (data.id !== lastId) {
+                    this._logger.info(`Session: Direct Mutation Detected -> Scope [${scope}] shift: ${lastId || 'none'} -> ${data.id}`);
+                    if (!this._lastSeenIds) this._lastSeenIds = {};
+                    this._lastSeenIds[scope] = data.id;
+                }
+            });
+        });
+
         // Register the Service
         context.registerService(SESSION_SERVICE, this._session);
         this._logger.info("Session Service: Registered 🛡️✨");
@@ -179,6 +224,24 @@ export default class Activator {
         // Set up Persistence Sync
         Alpine.effect(() => {
             if (this._pm && this._session) {
+                // Rule: Sovereign Context Propagation (SDN-0165)
+                // Tenant (UID) is pinned to the global scope anchor
+                const globalUser = this._session.scopedUsers?.["global"];
+                const tenantId = (globalUser && globalUser.id !== 'guest') ? globalUser.id : "guest";
+                
+                // Identity (SID) is the currently active user (flow-scoped)
+                const currentUser = this._session.currentUser;
+                const identityId = (currentUser && currentUser.id !== 'guest') ? currentUser.id : tenantId;
+                
+                const ctx = {
+                    tenantId,
+                    identityId
+                };
+                
+                if (typeof this._pm.setContext === 'function') {
+                    this._logger?.info(`Session: Syncing Persistence Context -> Tenant: ${tenantId}, Identity: ${identityId}`);
+                    this._pm.setContext(ctx);
+                }
                 // Identity Purity Sink:
                 // Never persist identity meta-data for unauthenticated guest sessions
                 const raw = JSON.parse(JSON.stringify(this._session));
@@ -194,6 +257,7 @@ export default class Activator {
                     });
                 }
                 
+        this._logger?.info(`Session: Persisting state [${SESSION_PID}] to tier...`);
                 this._pm.store(SESSION_PID, raw);
             }
         });

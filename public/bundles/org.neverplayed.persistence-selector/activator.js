@@ -12,6 +12,7 @@ export default class Activator {
     logger = console;
     _policies = new Map();
     _envTier = "cloud";
+    _context = { tenantId: "guest", identityId: "guest" };
 
     async start(context) {
         this.context = context;
@@ -80,6 +81,7 @@ export default class Activator {
             listKeys: (prefix) => this.listKeys(prefix),
             clear: () => this.clear(),
             setMode: (mode) => this.setMode(mode),
+            setContext: (ctx) => this.setContext(ctx),
             setRoutingPolicy: (pattern, tier, enforce) => this.setRoutingPolicy(pattern, tier, enforce)
         }, {
             "capability": "sys:persistence",
@@ -117,11 +119,11 @@ export default class Activator {
         });
     }
 
-    async waitReady(key) {
-        if (key) {
-            const tier = this._getPreferredTierForKey(key);
+    async waitReady(keyOrPrefix) {
+        if (keyOrPrefix) {
+            const tier = this._getPreferredTierForKey(keyOrPrefix);
             const provider = this._getProvider(tier);
-            if (provider && typeof provider.waitReady === 'function') return await provider.waitReady();
+            if (provider && typeof provider.waitReady === 'function') return await provider.waitReady(keyOrPrefix);
         } else {
             const tasks = this._providers
                 .filter(p => typeof p.svc.waitReady === 'function')
@@ -136,22 +138,23 @@ export default class Activator {
         const preferredTier = this._getPreferredTierForKey(key);
         const preferredProvider = this._getProvider(preferredTier);
 
-        // 1. Primary Attempt
+        // 1. Primary Attempt (Synchronous)
         if (preferredProvider) {
-            const data = preferredProvider.load(key);
-            if (data !== null && data !== undefined) return data;
+            try {
+                const data = preferredProvider.load(key);
+                if (data !== null && data !== undefined) return data;
+            } catch (_e) { /* Failover to recovery scan */ }
         }
 
-        // 2. Opportunistic Fallback (Scan ALL tracked providers for data recovery)
+        // 2. Opportunistic Fallback (Recovery Scan across all providers)
         for (const p of this._providers) {
             if (p.svc === preferredProvider) continue; 
             try {
                 const data = p.svc.load(key);
                 if (data !== null && data !== undefined) {
-                    this.logger.debug(`Persistence Selector: Recovered [${key}] from tier [${p.tier}] (Preferred: ${preferredTier})`);
                     return data;
                 }
-            } catch (_e) { /* Provider might fail or key not present; continue fallback */ }
+            } catch (_e) { /* Skip failed provider */ }
         }
 
         return this._volatileStore.get(key) || null;
@@ -165,6 +168,8 @@ export default class Activator {
 
         const tier = this._getPreferredTierForKey(key);
         const provider = this._getProvider(tier);
+
+        this.logger.debug(`PM Selector: Store Request [${key}] -> Tier: ${tier} | Provider: ${provider ? 'found' : 'missing'}`);
 
         if (provider) return await provider.store(key, val);
         this._volatileStore.set(key, val);
@@ -219,6 +224,39 @@ export default class Activator {
         this.logger.info(`Persistence Selector: Policy: '${keyPattern}' -> ${tier}`);
     }
 
+    async setContext(ctx) {
+        const oldUid = this._context.tenantId;
+        this._context = { ...this._context, ...ctx };
+        this.logger.info(`PM Selector: Identity Context Shift -> [${this._context.tenantId}][${this._context.identityId}]`);
+
+        // Rule: Tenant Handover Wipe (SDN-0165)
+        if (oldUid !== "guest" && ctx.tenantId && ctx.tenantId !== oldUid) {
+            this.logger.warn(`PM Selector: Handover [${oldUid} -> ${ctx.tenantId}]. Purging...`);
+            await this._purgeTenantVault(oldUid);
+        }
+
+        // Propagate context to all providers
+        for (const p of this._providers) {
+            if (typeof p.svc.setContext === 'function') {
+                this.logger.debug(`PM Selector: Propagating context to ${p.tier} provider...`);
+                await p.svc.setContext(this._context);
+            }
+        }
+        this.logger.info(`PM Selector: Context Shift Complete.`);
+    }
+
+    async _purgeTenantVault(uid) {
+        const prefix = `np:v1:${uid}:`;
+        try {
+            const keys = Object.keys(globalThis.localStorage || {});
+            const victims = keys.filter(k => k.startsWith(prefix));
+            victims.forEach(k => globalThis.localStorage.removeItem(k));
+            this.logger.info(`Persistence Selector: Purged ${victims.length} keys for tenant ${uid}`);
+        } catch (err) {
+            this.logger.error(`Persistence Selector: Vault purge failed:`, err);
+        }
+    }
+
     _getProvider(tier) {
         // Find the highest ranking provider for this tier (already sorted in start)
         const match = this._providers.find(p => p.tier === tier);
@@ -232,13 +270,28 @@ export default class Activator {
     }
 
     _getPreferredTierForKey(key) {
-        if (key.startsWith("config.") || key.startsWith("security.") || key.startsWith("pandino.session")) {
-            return (key.startsWith("security.") || key.startsWith("pandino.session")) ? "volatile" : "cloud";
+        // High-Priority Direct Routing (Canonical Sharding)
+        // Rule: Baseline Sovereignty (SDN-0150)
+        // Only force cloud if we are not in a strict local environment
+        // Rule: Infosec Affinity Boundary (SDN-0165)
+        if (key.startsWith("security.") || key.startsWith("config.") || key.startsWith("pandino.session") || 
+            key.startsWith("identity.") || key.startsWith("identity:")) {
+            return "local"; 
         }
+        
+        if (this._envTier !== "local") {
+            if (key.startsWith("realm.do.") || key.startsWith("blueprint.")) {
+                return "cloud";
+            }
+        }
+
+        // Oracle Fallback
         if (this.resolver) {
-            const resolution = this.resolver.resolve({ key });
-            const resolvedTier = (typeof resolution === 'object' && resolution !== null) ? resolution.tier : resolution;
-            if (resolvedTier) return resolvedTier;
+            try {
+                const resolution = this.resolver.resolve({ key });
+                const resolvedTier = (typeof resolution === 'object' && resolution !== null) ? resolution.tier : resolution;
+                if (resolvedTier) return resolvedTier;
+            } catch (_e) { /* Oracle failed; proceed to default */ }
         }
         return this._envTier || "local";
     }

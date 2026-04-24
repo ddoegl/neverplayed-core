@@ -929,6 +929,9 @@ export default class Activator extends BaseActivator {
             }
 
             this._activeRealmId = pt.id;
+            if (this.session) {
+                this.session.activeRealmId = pt.id;
+            }
             this.logger?.info(`Realm Manager: Context Transition Successful. Universe '${pt.id}' is now active. 🌌`);
             
             // Update Service Properties for all Realms

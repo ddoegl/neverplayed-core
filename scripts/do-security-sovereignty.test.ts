@@ -78,7 +78,7 @@ Deno.test({
     const registry = harness.getService(REGISTRY_SERVICE);
     
     // Trigger Refresh via getInstances (which calls refreshMaster)
-    const instances = registry.getInstances();
+    const instances = await registry.getInstances();
     console.log(`Bob discovered ${Object.keys(instances).length} instances.`);
     
     // TDD ASSERTION 2: Sovereign Isolation
@@ -124,11 +124,12 @@ Deno.test({
     // Toggle Show All in Registry State via Method (Triggering Refresh)
     const adminRegistry = await harness.waitForService("org.neverplayed.domain.Registry");
     if (adminRegistry.state) {
-        adminRegistry.state.toggleShowAllDOs();
+        await adminRegistry.state.toggleShowAllDOs();
     }
+    await harness.settle(100);
     
     // Trigger re-discovery as Admin
-    const adminInstances = adminRegistry.getInstances();
+    const adminInstances = await adminRegistry.getInstances();
     // Use the aliceInstanceId captured in Phase 1
     
     console.log(`Admin discovered ${Object.keys(adminInstances).length} instances.`);

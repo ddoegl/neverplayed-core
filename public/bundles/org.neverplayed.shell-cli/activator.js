@@ -29,6 +29,8 @@ const CORE_COMMANDS = [
     { name: 'flows', description: '[filter] - List registered UI flows' },
     { name: 'caps', description: 'List active system capabilities' },
     { name: 'auth', description: 'Show current authentication state (whoami)' },
+    { name: 'login', description: '[userId] [scope?] - Login with an identity' },
+    { name: 'logout', description: '[scope?] - Logout from an identity' },
     { name: 'call', description: '[serviceId] [method] [args...] - Call a service method' },
     { name: 'install', description: '[url] - Install a new bundle' },
     { name: 'uninstall', description: '[id/bsn] - Uninstall a bundle' },
@@ -400,6 +402,36 @@ export default class Activator extends CoreActivator {
                             attributes: user.attributes || {}
                         });
                     }
+                    break;
+                }
+
+                case 'login': {
+                    const [userId, scope] = args;
+                    if (!userId) {
+                        this.log("Usage: /login [userId] [scope?]", 'error');
+                        return;
+                    }
+                    const sessionRef = ctx.getServiceReference(SESSION_SERVICE);
+                    const session = sessionRef ? ctx.getService(sessionRef) : null;
+                    if (!session) {
+                        this.log("Session Service not found.", 'error');
+                        return;
+                    }
+                    session.login(userId, scope);
+                    this.log(`Login requested for user: ${userId} ${scope ? `(Scope: ${scope})` : ''}`);
+                    break;
+                }
+
+                case 'logout': {
+                    const [scope] = args;
+                    const sessionRef = ctx.getServiceReference(SESSION_SERVICE);
+                    const session = sessionRef ? ctx.getService(sessionRef) : null;
+                    if (!session) {
+                        this.log("Session Service not found.", 'error');
+                        return;
+                    }
+                    session.logout(scope);
+                    this.log(`Logout requested ${scope ? `for scope: ${scope}` : ''}`);
                     break;
                 }
 

@@ -23,6 +23,10 @@ export default class Activator extends BaseActivator {
     _isStopped = false;
     _isHydrating = false;
     _resolveReady = null;
+    _userCache = new Map();
+    _realmCache = new Map();
+    _realmUnsub = null;
+    _activeUid = null;
 
     async onStart(context) {
         this._readyPromise = new Promise(resolve => {
@@ -84,69 +88,62 @@ export default class Activator extends BaseActivator {
 
     _setupSync(uid, onSnapshot) {
         if (this._unsub) this._unsub();
+        if (this._realmUnsub) this._realmUnsub();
         this._userId = uid;
-        this.logger.info(`Firebase Persistence: Seeting up real-time sync for user ${uid}...`);
+        this._activeUid = uid;
+        this.logger.info(`Firebase Persistence: Setting up dual real-time sync (User: ${uid} | Realm: shared)...`);
         
-        this._unsub = onSnapshot(this._docFn(this._db, COLLECTION, uid), (snap) => {
-            if (snap.exists()) {
-                const data = snap.data() || {};
+        let userHydrated = false;
+        let realmHydrated = false;
+        const checkReady = (source) => {
+            if (userHydrated && realmHydrated) {
+                this.logger.info(`Firebase Persistence: Double Handshake Complete. (Source: ${source})`);
+                this._resolveReady();
+            }
+        };
+        
+        const syncDoc = (docId, isRealm) => {
+            return onSnapshot(this._docFn(this._db, COLLECTION, docId), (snap) => {
                 const flatCache = new Map();
+                if (snap.exists()) {
+                    const data = snap.data() || {};
+                    const flatten = (obj, prefix = "") => {
+                        for (const [key, value] of Object.entries(obj)) {
+                            const newKey = prefix ? `${prefix}.${key}` : key;
+                            const isAtomicSpec = value && typeof value === 'object' && !Array.isArray(value) && 
+                                (Object.prototype.hasOwnProperty.call(value, 'id') || Object.prototype.hasOwnProperty.call(value, 'blueprintId'));
+                            if (value !== null) flatCache.set(newKey, value);
+                            if (value && typeof value === 'object' && !Array.isArray(value) && !isAtomicSpec) flatten(value, newKey);
+                        }
+                    };
+                    flatten(data);
+                }
                 
-                const flatten = (obj, prefix = "") => {
-                    for (const [key, value] of Object.entries(obj)) {
-                        const newKey = prefix ? `${prefix}.${key}` : key;
-                        const isAtomicSpec = value && typeof value === 'object' && !Array.isArray(value) && 
-                            (Object.prototype.hasOwnProperty.call(value, 'id') || Object.prototype.hasOwnProperty.call(value, 'blueprintId'));
-                        
-                        // Rule: Multi-Level Preservation (SDN-0155)
-                        // Always store the value at the current key segment level to satisfy direct lookups (load(key)).
-                        if (value !== null) {
-                            flatCache.set(newKey, value);
-                        }
-
-                        // Then, if it's a nested structure (and not a Domain Object), continue flattening.
-                        if (value && typeof value === 'object' && !Array.isArray(value) && !isAtomicSpec) {
-                            flatten(value, newKey);
-                        }
-                    }
-                };
-                flatten(data);
-                this._cache = flatCache;
-
-                if (this._isColdStart) {
-                    this.logger.info(`Firebase Persistence: Initial remote snapshot received. Hydrated ${this._cache.size} flat keys.`);
-                    this._isColdStart = false;
+                if (isRealm) {
+                    this._realmCache = flatCache;
+                    realmHydrated = true;
                 } else {
-                    this.logger.info(`Firebase Persistence: Remote update detected. Hydrated ${this._cache.size} keys.`);
+                    this._userCache = flatCache;
+                    userHydrated = true;
                 }
-            } else {
-                this.logger.info("Firebase Persistence: No existing cloud state found.");
-            }
-            this._resolveReady();
-            globalThis.dispatchEvent(new CustomEvent('pm-hydrated', { detail: { tier: 'cloud', implementation: 'firebase' } }));
-        }, async (err) => {
-            this.logger.error(`Firebase Persistence: Sync error (Transport reset likely):`, err);
-            
-            // ATTEMPT SHUNTED READ FALLBACK
-            try {
-                this.logger.info("Firebase Persistence: Attempting Stateless Read Fallback via Stealth Tunnel...");
-                const data = await this._shuntedFetch(uid);
-                if (data) {
-                    this._cache.clear();
-                    for (const [key, val] of Object.entries(data)) {
-                        this._cache.set(key, val);
-                    }
-                    this.logger.info(`Firebase Persistence: Shunted hydration successful. ${Object.keys(data).length} keys recovered.`);
+                
+                this._cache = new Map([...this._userCache, ...this._realmCache]);
+                this.logger.debug(`Firebase Persistence: Sync [${docId}] hydrated ${flatCache.size} keys.`);
+                checkReady(docId);
+                globalThis.dispatchEvent(new CustomEvent('pm-hydrated', { detail: { tier: 'cloud', implementation: 'firebase', scope: docId } }));
+            }, async (err) => {
+                if (err.code === 'permission-denied' && isRealm) {
+                    this.logger.warn(`Firebase Persistence: Shared Realm [${docId}] is blocked by Firestore rules. Falling back to Private Sovereignty.`);
+                } else {
+                    this.logger.error(`Firebase Persistence: Sync error for [${docId}]:`, err);
                 }
-            } catch (subErr) {
-                this.logger.error("Firebase Persistence: Stateless Read Fallback also failed.", subErr);
-            }
-            
-            // Critical transition: Now that we've tried both SDK and Fallback, we are as ready as we'll ever be.
-            this._isHydrating = false;
-            this._resolveReady();
-            globalThis.dispatchEvent(new CustomEvent('pm-hydrated', { detail: { tier: 'cloud', implementation: 'firebase', error: true } }));
-        });
+                if (isRealm) realmHydrated = true; else userHydrated = true;
+                checkReady(docId); 
+            });
+        };
+
+        this._unsub = syncDoc(uid, false);
+        this._realmUnsub = syncDoc('realm-shared', true);
     }
 
     async _shuntedFetch(uid) {
@@ -192,6 +189,11 @@ export default class Activator extends BaseActivator {
         return modified ? clean : data;
     }
 
+    _getDocId(key) {
+        const isShared = key.startsWith('realm.') || key.startsWith('blueprint.');
+        return isShared ? 'realm-shared' : this._activeUid;
+    }
+
     async _attemptShunt(key, cleanVal, sdkError) {
         if (sdkError) {
             this.logger.warn(`Firebase Persistence: SDK operation failed for '${key}' (${sdkError.message}). Attempting stateless shunting fallback...`);
@@ -200,6 +202,7 @@ export default class Activator extends BaseActivator {
         }
         
         const shuntingUrl = "https://mcpapi-ya355i2z4a-ez.a.run.app";
+        const docId = this._getDocId(key);
         
         try {
             const idToken = await (globalThis['NEVERPLAYED_GET_ID_TOKEN']?.());
@@ -210,7 +213,7 @@ export default class Activator extends BaseActivator {
                 headers: { "Content-Type": "application/json", "x-mcp-token": idToken },
                 body: JSON.stringify({
                     action: "updateConfig",
-                    payload: { pid: key, properties: cleanVal, uid: this._userId || "unknown" }
+                    payload: { pid: key, properties: cleanVal, uid: docId || "unknown" }
                 })
             });
 
@@ -300,11 +303,12 @@ export default class Activator extends BaseActivator {
             this._cache.set(key, cleanVal);
         }
         
-        if (this._db && this._userId && this._setDoc && this._docFn) {
+        const docId = this._getDocId(key);
+        if (this._db && docId && this._setDoc && this._docFn) {
             try {
                 const payload = { [key]: isDeletion ? this._deleteField() : cleanVal };
                 await this._setDoc(
-                    this._docFn(this._db, COLLECTION, this._userId),
+                    this._docFn(this._db, COLLECTION, docId),
                     payload,
                     { merge: true }
                 );

@@ -251,7 +251,7 @@ export default class Activator extends BaseActivator {
                         const registry = registryRef ? context.getService(registryRef) : null;
                         
                         if (registry) {
-                            const rawInstances = registry.getInstances() || {};
+                            const rawInstances = await registry.getInstances() || {};
                             const allInstances = Array.isArray(rawInstances) ? rawInstances : Object.values(rawInstances);
                             const instances = allInstances.filter(ins => ins.blueprintId === id);
                             this.logger.info(`Atomic Orchestrator: Cascading Purge Assessment: Discovered ${instances.length} instances for blueprint [${id}] (Registry Scan: ${allInstances.length} total)`);
