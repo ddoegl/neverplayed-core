@@ -8,12 +8,14 @@ import {
     SHELL_COMMAND_SERVICE, 
     LOG_SERVICE,
     SESSION_SERVICE,
-    REALM_MANAGER_SERVICE
+    REALM_MANAGER_SERVICE,
+    PERSISTENCE_MANAGER_SERVICE
 } from "../../core-types.js";
 
 export default class Activator {
     _logger = console;
     _stratum = null;
+    _pm = null;
 
     start(context) {
         // 1. Logger Integration
@@ -33,6 +35,15 @@ export default class Activator {
                 return this._stratum;
             },
             removedService: () => { this._stratum = null; }
+        }).open();
+
+        // 2.1 Track Persistence Manager (Selector) for Tier Shunting
+        context.trackService(`(&(objectClass=${PERSISTENCE_MANAGER_SERVICE})(implementation=selector-proxy))`, {
+            addingService: (ref) => {
+                this._pm = context.getService(ref);
+                return this._pm;
+            },
+            removedService: () => { this._pm = null; }
         }).open();
 
         // 3. Register /stratum command
@@ -77,9 +88,15 @@ export default class Activator {
                             const [, identity, realm, _flow] = url.pathname.split('/');
                             const _tier = url.searchParams.get("tier");
 
-                            log(` -> Analyzing pivot: Tenant[${tenant}] | Identity[${identity}] | Realm[${realm}]`);
+                            log(` -> Analyzing pivot: Tenant[${tenant}] | Identity[${identity}] | Realm[${realm}] | Tier[${_tier || 'local'}]`);
 
-                            // 1. Session Pivot (Sovereign Login)
+                            // 1. Persistence Pivot (Tier Shunting)
+                            if (this._pm && _tier) {
+                                log(` -> Shunting Persistence Tier to ${_tier}...`);
+                                await this._pm.setContext({ tier: _tier });
+                            }
+
+                            // 2. Session Pivot (Sovereign Login)
                             const sessionRef = context.getServiceReference(SESSION_SERVICE);
                             const session = sessionRef ? context.getService(sessionRef) : null;
                             if (session) {
@@ -87,7 +104,7 @@ export default class Activator {
                                 session.login(identity, realm);
                             }
 
-                            // 2. Realm Pivot (Transition)
+                            // 3. Realm Pivot (Transition)
                             const realmRef = context.getServiceReference(REALM_MANAGER_SERVICE);
                             const realmSvc = realmRef ? context.getService(realmRef) : null;
                             if (realmSvc) {
@@ -98,6 +115,29 @@ export default class Activator {
                             log({ text: "✅ Stratum Jump Complete. Context Stabilized.", color: "green" });
                         } catch (err) {
                             log(`Jump failed: ${err.message}`, 'error');
+                        }
+                        break;
+                    }
+                    case 'stash': {
+                        const key = args[1];
+                        const val = args[2];
+                        if (!key || val === undefined) {
+                            return log("Usage: /stratum stash <key> </value>", 'error');
+                        }
+                        
+                        if (!this._pm) return log("Persistence Manager not available.", 'error');
+                        
+                        try {
+                            log(`📦 Stashing [${key}] into current Stratum...`);
+                            await this._pm.store(key, val);
+                            
+                            const probe = await this._pm.probe(key);
+                            log({ text: `✅ Stash Successful!`, color: "green" });
+                            log(` -> Tier:           ${probe.tier}`);
+                            log(` -> Implementation: ${probe.implementation} (${probe.bsn})`);
+                            log(` -> Stratum:        np://${probe.context.tenantId}/${probe.context.identityId}`);
+                        } catch (err) {
+                            log(`Stash failed: ${err.message}`, 'error');
                         }
                         break;
                     }

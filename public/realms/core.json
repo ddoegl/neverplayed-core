@@ -21,6 +21,7 @@
         "./bundles/org.neverplayed.stratum-core/manifest.json",
         "./bundles/org.neverplayed.stratum-cli/manifest.json",
         "./bundles/org.neverplayed.stratum-ui/manifest.json",
+        "./bundles/org.neverplayed.stratum-explorer/manifest.json",
         "./bundles/org.neverplayed.shared-ui/manifest.json",
         "./bundles/vendor/org.pandino.event-admin/manifest.json",
         "./bundles/org.neverplayed.shell-host/manifest.json",

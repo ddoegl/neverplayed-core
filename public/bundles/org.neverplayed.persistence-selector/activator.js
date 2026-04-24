@@ -82,6 +82,8 @@ export default class Activator {
             clear: () => this.clear(),
             setMode: (mode) => this.setMode(mode),
             setContext: (ctx) => this.setContext(ctx),
+            getContext: () => this._context,
+            probe: (key) => this.probe(key),
             setRoutingPolicy: (pattern, tier, enforce) => this.setRoutingPolicy(pattern, tier, enforce)
         }, {
             "capability": "sys:persistence",
@@ -227,6 +229,15 @@ export default class Activator {
     async setContext(ctx) {
         const oldUid = this._context.tenantId;
         this._context = { ...this._context, ...ctx };
+        
+        // Rule: Tier Mobility (SDN-0165)
+        // If a tier is explicitly provided in the context shift, 
+        // we pivot the environment's baseline tier.
+        if (ctx.tier) {
+            this.logger.info(`PM Selector: Tier Pivot -> ${ctx.tier}`);
+            this._envTier = ctx.tier;
+        }
+
         this.logger.info(`PM Selector: Identity Context Shift -> [${this._context.tenantId}][${this._context.identityId}]`);
 
         // Rule: Tenant Handover Wipe (SDN-0165)
@@ -243,6 +254,7 @@ export default class Activator {
             }
         }
         this.logger.info(`PM Selector: Context Shift Complete.`);
+        globalThis.dispatchEvent(new CustomEvent("pm-context-shifted", { detail: this._context }));
     }
 
     _purgeTenantVault(uid) {
@@ -255,6 +267,20 @@ export default class Activator {
         } catch (err) {
             this.logger.error(`Persistence Selector: Vault purge failed:`, err);
         }
+    }
+
+    probe(key) {
+        const tier = this._getPreferredTierForKey(key);
+        // Find match to get implementation details
+        const match = this._providers.find(p => p.tier === tier) || this._providers.find(p => p.tier === "local");
+        
+        return {
+            key,
+            tier: match?.tier || "unknown",
+            implementation: match?.ref.getProperty("implementation") || "none",
+            bsn: match?.ref.bundle.getSymbolicName() || "none",
+            context: { ...this._context }
+        };
     }
 
     _getProvider(tier) {

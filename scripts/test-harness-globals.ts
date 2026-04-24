@@ -174,3 +174,6 @@ export function shouldTrackPersistenceProvider(props: Record<string, unknown>): 
     const isSelector = props.implementation === "selector-proxy";
     return isProvider && !isSelector;
 }
+
+// Auto-Initialize Global Environment upon import
+setupGlobalEnvironment();

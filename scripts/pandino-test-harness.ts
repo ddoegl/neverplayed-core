@@ -92,6 +92,14 @@ export class PandinoHarness {
     }
 
     /**
+     * Install a single bundle from manifest or URL
+     */
+    async installBundle(manifestOrUrl: string) {
+        if (!this.context) throw new Error("Harness: Context not initialized.");
+        return await this.context.installBundle(manifestOrUrl);
+    }
+
+    /**
      * Helper to wait for microtasks and reactivity
      */
     settle(ms = 100): Promise<void> {

@@ -67,7 +67,8 @@
                  <i class="fas fa-arrow-right text-[10px]"></i>
              </button>
         </div>
-        <div class="w-10 h-10 rounded-full bg-slate-900 border border-cyan-500/20 flex items-center justify-center text-cyan-400 cursor-pointer hover:bg-slate-800 hover:border-cyan-400/50 transition-all shadow-xl">
+        <div @click="let e = Alpine.store('explorer'); if(e) { e.visible = true; e.refreshTopology(); }"
+             class="w-10 h-10 rounded-full bg-slate-900 border border-cyan-500/20 flex items-center justify-center text-cyan-400 cursor-pointer hover:bg-slate-800 hover:border-cyan-400/50 transition-all shadow-xl pointer-events-auto">
              <i class="fas fa-map-marked-alt text-sm"></i>
         </div>
     </div>
