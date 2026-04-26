@@ -66,18 +66,35 @@ export default class Activator {
             await this._pm.waitReady();
         }
 
-        const persistedState = this._pm.load(SESSION_PID) || {
-            currentUser: null,
-            scopedUsers: {
-                global: { id: 'guest', attributes: {} }
+        const rawState = this._pm.load(SESSION_PID) || {};
+        
+        // Residency Grafter: Migrate legacy single-user structure to identity stacks
+        const scopedUsers = rawState.scopedUsers || {
+            global: { 
+                guest: { id: 'guest', attributes: {} },
+                __activeId__: 'guest'
             }
         };
-        this._logger.info(`Session Service: DISK-LOAD COMPLETE. Found Identity: ${persistedState.currentUser?.id || 'guest'}`);
-        this._logger.info(`Session Service: Persisted state loaded. Identity: ${persistedState.currentUser?.id || 'guest'}`);
 
-        // Sovereignty Guard (ADR-0165): 
-        // We NO LONGER purge the global scope on boot. 
-        // This ensures the Google Authenticated UID (Tenant) survives reloads.
+        Object.keys(scopedUsers).forEach(scope => {
+            const data = scopedUsers[scope];
+            // If it doesn't have an __activeId__, it's an old structure
+            if (!data.__activeId__) {
+                const legacyUser = data;
+                const activeId = legacyUser.id || 'guest';
+                scopedUsers[scope] = {
+                    [activeId]: legacyUser,
+                    __activeId__: activeId
+                };
+            }
+        });
+
+        const persistedState = {
+            ...rawState,
+            scopedUsers
+        };
+
+        this._logger.info(`Session Service: DISK-LOAD COMPLETE. Residency Stacks Grafted.`);
 
         const logger = this._logger;
 
@@ -89,35 +106,34 @@ export default class Activator {
             
             get currentUser() {
                 const scope = this.activeFlowId || this.activeRealmId || "global";
-                const isRetail = (this.environment || "").includes("mobile") || (this.environment || "").includes("retail");
+                const stack = this.scopedUsers[scope] || this.scopedUsers["global"] || {};
+                const activeId = stack.__activeId__ || 'guest';
                 
-                const inheritanceScopes = [
-                    "cases", "invitation-admin", "company-authorizations", 
-                    "signing", "dashboard", "dashboard2", "do-dashboard"
-                ];
-
-                if (!this.scopedUsers[scope] && inheritanceScopes.includes(scope)) {
-                    if (isRetail) {
-                        return this.scopedUsers["retail-channel-app"] || 
-                               this.scopedUsers["user-home-retail"] || 
-                               this.scopedUsers["global"] || null;
-                    } else {
-                        return this.scopedUsers["business-channel-web"] || 
-                               this.scopedUsers["user-home-business"] || 
-                               this.scopedUsers["global"] || null;
-                    }
+                let user = stack[activeId];
+                
+                // Fallback inheritance logic
+                if (activeId === 'guest' || !user) {
+                   const globalStack = this.scopedUsers["global"] || {};
+                   user = globalStack[globalStack.__activeId__] || globalStack['guest'] || { id: 'guest' };
                 }
-                return this.scopedUsers[scope] || this.scopedUsers["global"] || null;
+
+                return user;
             },
 
             login(user, scope = null) {
                 const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
-                
                 const identity = typeof user === "string" ? { id: user, email: `${user}@cli.local` } : user;
-                logger?.info(`Session: LOGIN requested for scope '${targetScope}' (id: ${identity.uid || identity.id})`);
+                const identityId = identity.uid || identity.id;
 
-                this.scopedUsers[targetScope] = { 
-                    id: identity.uid || identity.id, 
+                logger?.info(`Session: LOGIN requested for scope '${targetScope}' (id: ${identityId})`);
+
+                if (!this.scopedUsers[targetScope]) {
+                    this.scopedUsers[targetScope] = { __activeId__: 'guest', guest: { id: 'guest' } };
+                }
+
+                // Upsert Identity into Stack
+                this.scopedUsers[targetScope][identityId] = { 
+                    id: identityId, 
                     email: identity.email,
                     firstname: identity.firstname,
                     lastname: identity.lastname,
@@ -126,23 +142,24 @@ export default class Activator {
                     attributes: identity.attributes || {},
                     isTenant: targetScope === 'global'
                 };
+
+                // Pivot Active Resident
+                this.scopedUsers[targetScope].__activeId__ = identityId;
+                
                 globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'login', user, scope } }));
             },
 
             logout(scope = null) {
-                // Determine target scope: default to current active scope, BUT NEVER 'global' unless explicit
                 const activeScope = this.activeFlowId || this.activeRealmId;
                 const targetScope = scope || activeScope || 'global';
                 
-                logger?.info(`Session: LOGOUT requested for scope '${targetScope}'`);
+                logger?.info(`Session: LOGOUT (Exit Resident) requested for scope '${targetScope}'`);
                 
-                // Sovereignty Shield: Prevent clearing the human operator unless explicitly targeting global
-                if (targetScope === 'global') {
-                    logger?.warn("Session: Global Logout (Tenant Erasure) requested!");
+                if (this.scopedUsers[targetScope]) {
+                    this.scopedUsers[targetScope].__activeId__ = 'guest';
                 }
 
-                this.scopedUsers[targetScope] = { id: 'guest', attributes: {} };
-                logger?.info(`Session: Scope [${targetScope}] reset to guest.`);
+                logger?.info(`Session: Coordinate [${targetScope}] now inhabited by guest.`);
                 globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'logout', scope: targetScope } }));
             },
 
@@ -191,12 +208,12 @@ export default class Activator {
         // Set up Persistence Sync
         Alpine.effect(() => {
             if (this._pm && this._session) {
-                // Rule: Sovereign Context Propagation (SDN-0165)
-                // Tenant (UID) is pinned to the global scope anchor
-                const globalUser = this._session.scopedUsers?.["global"];
+                // Resolve Tenant from Global Stack
+                const globalStack = this._session.scopedUsers?.["global"] || {};
+                const globalUser = globalStack[globalStack.__activeId__] || globalStack['guest'];
                 const tenantId = (globalUser && globalUser.id !== 'guest') ? globalUser.id : "guest";
                 
-                // Identity (SID) is the currently active user (flow-scoped)
+                // Identity (SID) is the currently active user
                 const currentUser = this._session.currentUser;
                 const identityId = (currentUser && currentUser.id !== 'guest') ? currentUser.id : tenantId;
                 
@@ -210,22 +227,26 @@ export default class Activator {
                     this._logger?.info(`Session: Syncing Persistence Context -> Tenant: ${tenantId}, Realm: ${ctx.realmId}, Identity: ${identityId}`);
                     this._pm.setContext(ctx);
                 }
-                // Identity Purity Sink:
-                // Never persist identity meta-data for unauthenticated guest sessions
+
+                // Identity Purity Sink: Iterate through stacks and sanitize guests
                 const raw = JSON.parse(JSON.stringify(this._session));
                 if (raw.scopedUsers) {
-                    Object.values(raw.scopedUsers).forEach(user => {
-                        if (user.id === 'guest') {
-                            delete user.email;
-                            delete user.alias;
-                            delete user.firstname;
-                            delete user.lastname;
-                            delete user.avatar;
-                        }
+                    Object.values(raw.scopedUsers).forEach(stack => {
+                        Object.entries(stack).forEach(([id, user]) => {
+                            if (id === 'guest' || id === '__activeId__') {
+                                if (user && typeof user === 'object') {
+                                    delete user.email;
+                                    delete user.alias;
+                                    delete user.firstname;
+                                    delete user.lastname;
+                                    delete user.avatar;
+                                }
+                            }
+                        });
                     });
                 }
                 
-        this._logger?.info(`Session: Persisting state [${SESSION_PID}] to tier...`);
+                this._logger?.info(`Session: Persisting state [${SESSION_PID}] to tier...`);
                 this._pm.store(SESSION_PID, raw);
             }
         });

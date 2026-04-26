@@ -82,57 +82,8 @@ export default class Activator {
                         log({ text: `🚀 Initiating Stratum Jump: ${uri}`, color: "yellow", bold: true });
                         
                         try {
-                            const url = new URL(uri.replace("np://", "http://")); 
-                            const tenant = url.hostname;
-                            const segments = url.pathname.split('/').filter(s => s);
-                            const _tier = url.searchParams.get("tier");
-
-                            let identity, realm, perspective;
-
-                            // Cognitive Detection: Deduce perspective from segment structure
-                            if (segments[0]?.startsWith('org.neverplayed.realm')) {
-                                realm = segments[0];
-                                identity = segments[1];
-                                perspective = 'realist';
-                            } else {
-                                identity = segments[0];
-                                realm = segments[1];
-                                perspective = 'idealist';
-                            }
-                            
-                            // Ensure identity falls back to tenant if empty
-                            identity = identity || tenant;
-                            const aperture = segments[2] || 'shell';
-
-                            log(` -> Analyzing pivot: [${perspective.toUpperCase()}] Tenant[${tenant}] | Identity[${identity}] | Realm[${realm}] | Tier[${_tier || 'local'}]`);
-
-                            // 1. Persistence Pivot (Tier Shunting)
-                            if (this._pm && _tier) {
-                                log(` -> Shunting Persistence Tier to ${_tier}...`);
-                                await this._pm.setContext({ tier: _tier });
-                            }
-
-                            // 2. Identity & Perspective Pivot
-                            if (this._stratum) {
-                                log(` -> Aligning Stratum Perspective to ${perspective.toUpperCase()}...`);
-                                this._stratum.perspective = perspective;
-                            }
-
-                            const sessionRef = context.getServiceReference(SESSION_SERVICE);
-                            const session = sessionRef ? context.getService(sessionRef) : null;
-                            if (session && identity) {
-                                log(` -> Pivoting Identity to ${identity}...`);
-                                session.login(identity, realm);
-                            }
-
-                            // 3. Realm Pivot (Transition)
-                            const realmRef = context.getServiceReference(REALM_MANAGER_SERVICE);
-                            const realmSvc = realmRef ? context.getService(realmRef) : null;
-                            if (realmSvc && realm) {
-                                log(` -> Pivoting Realm to ${realm}...`);
-                                await realmSvc.switchRealm(realm);
-                            }
-
+                            const result = await this._stratum.jump(uri);
+                            log(` -> Analysis Complete: [${result.perspective.toUpperCase()}] Tenant[${result.tenant}] | Identity[${result.identity}] | Realm[${result.realm}] | Tier[${result.tier}]`);
                             log({ text: "✅ Stratum Jump Complete. Context Stabilized.", color: "green" });
                         } catch (err) {
                             log(`Jump failed: ${err.message}`, 'error');

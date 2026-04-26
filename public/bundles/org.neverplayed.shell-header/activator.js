@@ -4,6 +4,7 @@ import {
     CONFIG_ADMIN_UI_FLOW,
     SYSTEM_RESET_SERVICE,
     SESSION_SERVICE,
+    STRATUM_SERVICE,
     PERSISTENCE_MANAGER_SERVICE,
     AUTH_SHIELD_SERVICE,
     SHELL_UI_CONTEXT_PID
@@ -66,6 +67,15 @@ export default class Activator extends AlpineActivator {
             removedService: () => this._syncRealms()
         });
 
+        // 2.5 Track Stratum Service (Unified Logic)
+        this.track(`(objectClass=${STRATUM_SERVICE})`, {
+            addingService: (ref) => {
+                this._stratum = context.getService(ref);
+                return this._stratum;
+            },
+            removedService: () => { this._stratum = null; }
+        });
+
         // 3. Track Session (User Identity)
         this.track(`(objectClass=${SESSION_SERVICE})`, {
             addingService: (ref) => {
@@ -99,6 +109,7 @@ export default class Activator extends AlpineActivator {
         });
 
         // 4. Render UI (Atomic & Guarded)
+        const self = this;
         await this.render('#shell-header', 'templates/header.html', () => ({
             get shell() { return globalThis.Alpine.store('shell_context') || { realms: [], activeRealm: {}, user: { alias: 'Guest', avatar: '?' } }; },
             get activeFlow() { return globalThis.backofficeState?.activeFlow || globalThis.businessPortalState?.activeFlow; },
@@ -124,9 +135,28 @@ export default class Activator extends AlpineActivator {
                 }
             },
             
-            async logout() {
-                if (this._session) await this._session.logout();
-                location.reload();
+            async logout(scope = null) {
+                if (self._stratum) {
+                    const targetScope = scope || self._stratum.realmId;
+                    await self._stratum.logout(targetScope);
+                    // Only reload on global logout (Operator Dissolution)
+                    if (targetScope === 'global') {
+                        location.reload();
+                    }
+                }
+            },
+
+            async login(id) {
+                if (id && self._stratum) {
+                    await self._stratum.login(id);
+                }
+            },
+
+            async identityLogin() {
+                const identity = prompt("Enter Identity ID (e.g. daniela-dev):");
+                if (identity && self._stratum) {
+                    await self._stratum.login(identity);
+                }
             },
 
             goHome() {
@@ -191,17 +221,31 @@ export default class Activator extends AlpineActivator {
     _updateSession() {
         if (this._session) {
             const user = this._session.currentUser;
+            const globalUser = this._session.scopedUsers?.global;
             const isGuest = !user || user.id === 'guest';
-            this.logger?.info(`[Header] Sync: id='${user?.id}', email='${user?.email}', isGuest=${isGuest}`);
+            const isIdentityActive = !isGuest && user.id !== globalUser?.id;
+            
+            this.logger?.info(`[Header] Sync: id='${user?.id}', email='${user?.email}', isIdentityActive=${isIdentityActive}`);
+            
             this.syncStore('shell_context', {
                 user: { 
                     alias: isGuest ? 'Guest' : (user.alias || user.email || 'Explorer'), 
-                    avatar: (isGuest ? 'G' : (user.alias || user.email || 'E'))[0].toUpperCase()
-                }
+                    avatar: (isGuest ? 'G' : (user.alias || user.email || 'E'))[0].toUpperCase(),
+                    id: user?.id,
+                    isGuest,
+                    isIdentityActive
+                },
+                tenantAlias: globalUser?.id === 'guest' ? 'Anonymous' : (globalUser?.alias || globalUser?.email || globalUser?.id || 'Operator'),
+                inhabitants: this._stratum ? (() => {
+                    const forensic = this._stratum.inhabitants || [];
+                    const local = this._stratum.residents || [];
+                    return Array.from(new Set([...forensic, ...local])).filter(i => i !== 'guest');
+                })() : []
             });
         } else {
             this.syncStore('shell_context', {
-                user: { alias: 'Guest', avatar: '?' }
+                user: { alias: 'Guest', avatar: '?', isGuest: true, isIdentityActive: false },
+                tenantAlias: 'Anonymous'
             });
         }
     }

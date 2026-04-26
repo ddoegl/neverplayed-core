@@ -96,7 +96,11 @@ export default class Activator {
 
                 if (stratum.perspective === 'realist') {
                     const hierarchy = await stratum.getHierarchy();
-                    const inhabitants = await stratum.getInhabitants();
+                    // Merge Forensic and Local Residents
+                    const forensic = stratum.inhabitants || [];
+                    const local = stratum.residents || [];
+                    const inhabitantIds = Array.from(new Set([...forensic, ...local])).filter(i => i !== 'guest');
+                    
                     const nodes = [];
                     const links = [];
 
@@ -110,16 +114,24 @@ export default class Activator {
                     });
 
                     const activeRealmNodeId = `realm:${stratum.realmId}`;
-                    inhabitants.forEach(identId => {
+                    inhabitantIds.forEach(identId => {
                          const nodeId = `identity:${identId}`;
                          const isActive = identId === stratum.identityId;
-                         nodes.push({ id: nodeId, label: isActive ? 'Active' : 'Resident', value: identId, type: 'WHO', color: isActive ? '#10b981' : '#64748b', identityId: identId });
+                         // Active = Emerald (#10b981), Others = Cyan (#22d3ee)
+                         nodes.push({ 
+                            id: nodeId, 
+                            label: isActive ? 'Active' : 'Resident', 
+                            value: identId, 
+                            type: 'WHO', 
+                            color: isActive ? '#10b981' : '#22d3ee', 
+                            identityId: identId 
+                         });
                          links.push({ source: activeRealmNodeId, target: nodeId });
                     });
 
-                    const activeIdentityNodeId = `identity:${stratum.identityId}`;
+                    // Focal Point: Connect active identity to the HOW (Tier)
                     nodes.push({ id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' });
-                    links.push({ source: activeIdentityNodeId, target: 'tier' });
+                    links.push({ source: `identity:${stratum.identityId}`, target: 'tier' });
 
                     store.nodes = nodes;
                     store.links = links;

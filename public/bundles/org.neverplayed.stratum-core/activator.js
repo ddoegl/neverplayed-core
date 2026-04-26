@@ -104,6 +104,77 @@ export default class Activator {
                 return Array.from(inhabitants).filter(id => id !== 'guest');
             },
 
+            get residents() {
+                this._pulse;
+                if (!this._sourceSession || !this._sourceSession.scopedUsers) return [];
+                const scope = this.realmId;
+                const stack = this._sourceSession.scopedUsers[scope] || {};
+                return Object.keys(stack).filter(id => id !== 'guest' && id !== '__activeId__');
+            },
+
+            // Unified Interaction Protocol
+            async jump(uri) {
+                if (!uri || !uri.startsWith("np://")) throw new Error("Invalid Stratum URI");
+                
+                const url = new URL(uri.replace("np://", "http://")); 
+                const tenant = url.hostname;
+                const segments = url.pathname.split('/').filter(s => s);
+                const tier = url.searchParams.get("tier");
+
+                let identity, realm, perspective;
+
+                // Cognitive Detection: Deduce perspective from segment structure
+                if (segments[0]?.startsWith('org.neverplayed.realm')) {
+                    realm = segments[0];
+                    identity = segments[1];
+                    perspective = 'realist';
+                } else {
+                    identity = segments[0];
+                    realm = segments[1];
+                    perspective = 'idealist';
+                }
+                
+                identity = identity || tenant;
+                const aperture = segments[2] || 'shell';
+
+                // 1. Persistence Pivot (Tier Shunting)
+                if (this._sourcePM && tier) {
+                    await this._sourcePM.setContext({ tier });
+                }
+
+                // 2. Perspective Alignment
+                this.perspective = perspective;
+
+                // 3. Identity Pivot (Sovereign Login)
+                if (this._sourceSession) {
+                    await this._sourceSession.login(identity, realm);
+                }
+
+                // 4. Realm Pivot (Structural Transition)
+                if (this._sourceRealm && realm) {
+                    await this._sourceRealm.switchRealm(realm);
+                }
+
+                this._pulse++; // Broadcast state pulse
+                return { perspective, tenant, identity, realm, tier: tier || 'local' };
+            },
+
+            async login(identityId, scope = null) {
+                if (!this._sourceSession) return;
+                const targetScope = scope || this.realmId || 'global';
+                console.info(`[StratumCore] Identity LOGIN triggered: ${identityId} in scope ${targetScope}`);
+                await this._sourceSession.login(identityId, targetScope);
+                this._pulse++;
+            },
+
+            async logout(scope = null) {
+                if (!this._sourceSession) return;
+                const targetScope = scope || (this.realmId !== 'unknown' ? this.realmId : 'global');
+                console.info(`[StratumCore] Identity LOGOUT triggered for scope: ${targetScope}`);
+                await this._sourceSession.logout(targetScope);
+                this._pulse++;
+            },
+
             // Internal Sources (Private-ish)
             _sourceSession: null,
             _sourceRealm: null,

@@ -97,11 +97,13 @@ export default class Activator {
                 tenantId: self._stratum?.tenantId || "unknown",
                 tier: self._stratum?.tier || "local",
                 realms: [],
+                inhabitants: [],
                 activeRealm: { id: self._stratum?.realmId || "unknown" },
 
                 async init() {
                     this.realms = await self._realmManager.getRealms();
                     this.activeRealm = this.realms.find(r => r.id === this.realmId) || { id: this.realmId };
+                    this._syncInhabitants();
                     
                     // Sovereign Sync: Update Address Bar on context shifts
                     globalThis.addEventListener('pm-context-shifted', () => {
@@ -111,12 +113,20 @@ export default class Activator {
                         this.tier = self._stratum?.tier;
                         this.jumpTarget = self._stratum?.toURI();
                         this.activeRealm = this.realms.find(r => r.id === this.realmId) || { id: this.realmId };
+                        this._syncInhabitants();
                     });
 
                     // Perspective Sync: Mirror cognitive shifts in the URI
                     this.$watch('$store.explorer.perspective', () => {
                         this.jumpTarget = self._stratum?.toURI();
                     });
+                },
+
+                _syncInhabitants() {
+                    if (!self._stratum) return;
+                    const forensic = self._stratum.inhabitants || [];
+                    const local = self._stratum.residents || [];
+                    this.inhabitants = Array.from(new Set([...forensic, ...local])).filter(i => i !== 'guest');
                 },
 
                 copyURI() {
@@ -127,18 +137,33 @@ export default class Activator {
                     }
                 },
 
-                jump() {
+                async jump() {
                     if (!this.jumpTarget) return;
-                    self._logger.info(`Stratographer Jump: ${this.jumpTarget}`);
-                    // Dispatch to shell-execute to handle the jump command logic
-                    globalThis.dispatchEvent(new CustomEvent("shell-execute", { 
-                        detail: { command: `stratum jump ${this.jumpTarget}` } 
-                    }));
+                    self._logger.info(`Stratographer Jump requested: ${this.jumpTarget}`);
+                    
+                    try {
+                        await self._stratum.jump(this.jumpTarget);
+                        self._logger.info("Stratographer Jump: Institutional protocol executed successfully.");
+                        
+                        // Force Topology Recalibration
+                        const explorerStore = Alpine.store('explorer');
+                        if (explorerStore) {
+                            await explorerStore.refreshTopology();
+                        }
+                    } catch (err) {
+                        self._logger.error("Stratographer Jump Failed:", err.message);
+                        alert(`Jump Failed: ${err.message}`);
+                    }
                 },
 
                 async switchTo(id) {
                     if (self._realmManager) {
                         await self._realmManager.switchRealm(id);
+                        // Force Topology Recalibration
+                        const explorerStore = Alpine.store('explorer');
+                        if (explorerStore) {
+                            await explorerStore.refreshTopology();
+                        }
                     }
                 }
             }));
