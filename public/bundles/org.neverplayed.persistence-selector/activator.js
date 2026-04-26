@@ -12,7 +12,7 @@ export default class Activator {
     logger = console;
     _policies = new Map();
     _envTier = "cloud";
-    _context = { tenantId: "guest", identityId: "guest" };
+    _context = { tenantId: "guest", realmId: "unknown", identityId: "guest" };
 
     async start(context) {
         this.context = context;
@@ -238,7 +238,7 @@ export default class Activator {
             this._envTier = ctx.tier;
         }
 
-        this.logger.info(`PM Selector: Identity Context Shift -> [${this._context.tenantId}][${this._context.identityId}]`);
+        this.logger.info(`PM Selector: Identity Context Shift -> [${this._context.tenantId}][${this._context.realmId}][${this._context.identityId}]`);
 
         // Rule: Tenant Handover Wipe (SDN-0165)
         if (oldUid !== "guest" && ctx.tenantId && ctx.tenantId !== oldUid) {

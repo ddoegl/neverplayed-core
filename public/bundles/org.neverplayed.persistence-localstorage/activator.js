@@ -6,7 +6,7 @@ import { BaseActivator } from "../../osgi-base.js";
  * Provides standard-compliant persistence with listKeys support.
  */
 export default class Activator extends BaseActivator {
-    _context = { tenantId: "guest", identityId: "guest" };
+    _context = { tenantId: "guest", realmId: "unknown", identityId: "guest" };
 
     onStart(context) {
         const storage = globalThis.localStorage;
@@ -21,9 +21,9 @@ export default class Activator extends BaseActivator {
             // The session state defines the identity, so it must be discoverable 
             // at boot before any identity is resolved.
             if (key.startsWith("pandino.session")) {
-                return `np:v1:guest:guest:${key}`;
+                return `np:v1:guest:unknown:guest:${key}`;
             }
-            return `np:v1:${this._context.tenantId}:${this._context.identityId}:${key}`;
+            return `np:v1:${this._context.tenantId}:${this._context.realmId}:${this._context.identityId}:${key}`;
         };
 
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
@@ -59,17 +59,17 @@ export default class Activator extends BaseActivator {
 
             listKeys: (prefix = "") => {
                 const results = [];
-                const tenantPrefix = `np:v1:${this._context.tenantId}:`;
-                const identityPrefix = `${tenantPrefix}${this._context.identityId}:`;
+                const realmPrefix = `np:v1:${this._context.tenantId}:${this._context.realmId}:`;
+                const identityPrefix = `${realmPrefix}${this._context.identityId}:`;
 
                 for (let i = 0; i < storage.length; i++) {
                     const k = storage.key(i);
                     if (!k) continue;
 
-                    if (this._context.showAll && k.startsWith(tenantPrefix)) {
+                    if (this._context.showAll && k.startsWith(realmPrefix)) {
                          if (k.includes(`:${prefix}`)) {
                              const parts = k.split(':');
-                             const logicalKey = parts.slice(4).join(':');
+                             const logicalKey = parts.slice(5).join(':'); // Adjusted for realm dimension
                              if (logicalKey.startsWith(prefix)) results.push(logicalKey);
                          }
                     } else if (k.startsWith(identityPrefix)) {

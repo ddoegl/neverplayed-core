@@ -222,7 +222,8 @@ export default class Activator extends BaseActivator {
                 return true;
             },
             installManualBundle: (url) => this._installManualBundle(url),
-            uninstallManualBundle: (target) => this._uninstallManualBundle(target)
+            uninstallManualBundle: (target) => this._uninstallManualBundle(target),
+            getHierarchy: (id) => this._resolveHierarchy(id || this._activeRealmId)
         });
 
         this._discoveryPromise = this._discoverRealms();

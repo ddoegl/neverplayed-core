@@ -235,11 +235,12 @@ export default class Activator {
                 
                 const ctx = {
                     tenantId,
-                    identityId
+                    identityId,
+                    realmId: this._session.activeRealmId || "unknown"
                 };
                 
                 if (typeof this._pm.setContext === 'function') {
-                    this._logger?.info(`Session: Syncing Persistence Context -> Tenant: ${tenantId}, Identity: ${identityId}`);
+                    this._logger?.info(`Session: Syncing Persistence Context -> Tenant: ${tenantId}, Realm: ${ctx.realmId}, Identity: ${identityId}`);
                     this._pm.setContext(ctx);
                 }
                 // Identity Purity Sink:

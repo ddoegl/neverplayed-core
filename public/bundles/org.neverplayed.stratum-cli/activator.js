@@ -141,8 +141,19 @@ export default class Activator {
                         }
                         break;
                     }
+                    case 'perspective': {
+                        const newPerspective = args[1];
+                        if (newPerspective === 'idealist' || newPerspective === 'realist') {
+                            this._stratum.perspective = newPerspective;
+                            log(`Stratum Perspective set to: ${newPerspective.toUpperCase()}`);
+                        } else {
+                            log(`Current Perspective: ${this._stratum.perspective.toUpperCase()}`);
+                            log("Usage: /stratum perspective [idealist|realist]");
+                        }
+                        break;
+                    }
                     default:
-                        log("Usage: /stratum <info|path|jump [uri]>");
+                        log("Usage: /stratum <info|path|perspective|jump [uri]|stash>");
                 }
             }
         });

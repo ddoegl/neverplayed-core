@@ -56,10 +56,52 @@ export default class Activator {
                 return ctx?.tier || "local";
             },
             
+            perspective: "idealist", // Stance: 'idealist' or 'realist'
+
             // Interaction: Generate Canonical URI
             toURI() {
-                const base = `np://${this.tenantId}/${this.identityId}/${this.realmId}/${this.flowId}`;
-                return `${base}?tier=${this.tier}`;
+                if (this.perspective === 'realist') {
+                    // Environment-Centric: Realm [Soil] is foundational
+                    return `np://${this.tenantId}/${this.realmId}/${this.identityId}/${this.flowId}?tier=${this.tier}`;
+                }
+                // Idealist-Centric (Default): World is a projection of the Identity [Lightcone]
+                return `np://${this.tenantId}/${this.identityId}/${this.realmId}/${this.flowId}?tier=${this.tier}`;
+            },
+
+            async getHierarchy() {
+                if (!this._sourceRealm) return [];
+                return await this._sourceRealm.getHierarchy(this.realmId);
+            },
+
+            async getInhabitants() {
+                if (!this._sourcePM) return [];
+                
+                // Forensic Scan: We use listKeys with a broad prefix to find other identities
+                // We assume the provider allows listing across identities if we have permission.
+                const allKeys = await this._sourcePM.listKeys("");
+                const inhabitants = new Set();
+                
+                // Rule: Identity Trace Recovery (ADR-0167)
+                // Physical Key: np:v1:tenant:realm:identity:logicalKey
+                // So identity is at index 4 in ':' split
+                for (const key of allKeys) {
+                    // Note: PersistenceManager.listKeys returns logical keys, 
+                    // we need to probe to find the physical identity.
+                     const probe = await this._sourcePM.probe(key);
+                     if (probe && probe.context && probe.context.identityId) {
+                         inhabitants.add(probe.context.identityId);
+                     }
+                }
+                
+                // Fallback: Also include scoped users from session
+                if (this._sourceSession?.scopedUsers) {
+                    Object.values(this._sourceSession.scopedUsers).forEach(u => {
+                        if (u.id) inhabitants.add(u.id);
+                    });
+                }
+                if (this._sourceSession?.currentUser) inhabitants.add(this._sourceSession.currentUser.id);
+
+                return Array.from(inhabitants).filter(id => id !== 'guest');
             },
 
             // Internal Sources (Private-ish)

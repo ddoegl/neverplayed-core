@@ -50,36 +50,103 @@ export default class Activator {
             loadingVault: false,
             _lastValueHash: "",
 
-            refreshTopology: () => {
+            get perspective() {
+                return this._getStratum()?.perspective || "idealist";
+            },
+
+            set perspective(val) {
+                const s = this._getStratum();
+                if (s) {
+                    s.perspective = val;
+                    this.refreshTopology();
+                }
+            },
+
+            _getStratum: () => this._stratum,
+
+            refreshTopology: async () => {
                 const stratum = this._stratum;
                 if (!stratum) return;
                 
                 // Value-Based Guard: Only update if the multidimensional state shifted
-                const currentHash = `${stratum.tenantId}|${stratum.identityId}|${stratum.realmId}|${stratum.tier}`;
+                const currentHash = `${stratum.tenantId}|${stratum.realmId}|${stratum.identityId}|${stratum.tier}|${stratum.perspective}`;
                 const store = Alpine.store('explorer');
                 if (store._lastValueHash === currentHash && store.nodes.length > 0) {
                     this._logger.debug("Stratum Explorer: Ignoring static state pulse.");
                     return;
                 }
                 
-                this._logger.info(`Stratum Explorer: Topology Shift -> ${currentHash}`);
+                this._logger.info(`Stratum Explorer: Topology Shift (${stratum.perspective}) -> ${currentHash}`);
                 store._lastValueHash = currentHash;
 
-                const strata = [
-                    { id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' },
-                    { id: 'identity', label: 'Identity', value: stratum.identityId, type: 'WHO', color: '#10b981' },
-                    { id: 'realm', label: 'Realm', value: stratum.realmId, type: 'WHERE', color: '#a855f7' },
-                    { id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' }
-                ];
+                if (stratum.perspective === 'realist') {
+                    // --- REALIST DISCOVERY (ADR-0167) ---
+                    const hierarchy = await stratum.getHierarchy();
+                    const inhabitants = await stratum.getInhabitants();
+                    
+                    const nodes = [];
+                    const links = [];
 
-                const connections = [
-                    { source: 'tenant', target: 'identity' },
-                    { source: 'identity', target: 'realm' },
-                    { source: 'realm', target: 'tier' }
-                ];
+                    // 1. Tenant Root
+                    nodes.push({ id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' });
 
-                store.nodes = strata;
-                store.links = connections;
+                    // 2. Realm Hierarchy (Core -> Foundation -> Active)
+                    let lastRealmNodeId = 'tenant';
+                    hierarchy.forEach((realm, idx) => {
+                         const nodeId = `realm:${realm.id}`;
+                         nodes.push({ 
+                             id: nodeId, 
+                             label: idx === 0 ? 'Bedrock' : 'Soil', 
+                             value: realm.title || realm.id, 
+                             type: 'WHERE', 
+                             color: '#a855f7',
+                             realmId: realm.id
+                         });
+                         links.push({ source: lastRealmNodeId, target: nodeId });
+                         lastRealmNodeId = nodeId;
+                    });
+
+                    // 3. Inhabitants (All discovered identities in the active realm)
+                    const activeRealmNodeId = `realm:${stratum.realmId}`;
+                    inhabitants.forEach(identId => {
+                         const nodeId = `identity:${identId}`;
+                         const isActive = identId === stratum.identityId;
+                         nodes.push({
+                             id: nodeId,
+                             label: isActive ? 'Active' : 'Resident',
+                             value: identId,
+                             type: 'WHO',
+                             color: isActive ? '#10b981' : '#64748b',
+                             identityId: identId
+                         });
+                         links.push({ source: activeRealmNodeId, target: nodeId });
+                    });
+
+                    // 4. Persistence Tier (Linked to active identity)
+                    const activeIdentityNodeId = `identity:${stratum.identityId}`;
+                    nodes.push({ id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' });
+                    links.push({ source: activeIdentityNodeId, target: 'tier' });
+
+                    store.nodes = nodes;
+                    store.links = links;
+                } else {
+                    // --- IDEALIST PROJECTION ---
+                    const strata = [
+                        { id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' },
+                        { id: 'realm', label: 'Realm', value: stratum.realmId, type: 'WHERE', color: '#a855f7' },
+                        { id: 'identity', label: 'Identity', value: stratum.identityId, type: 'WHO', color: '#10b981' },
+                        { id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' }
+                    ];
+
+                    const connections = [
+                        { source: 'tenant', target: 'identity' },
+                        { source: 'identity', target: 'realm' },
+                        { source: 'realm', target: 'tier' }
+                    ];
+
+                    store.nodes = [ strata[0], strata[2], strata[1], strata[3] ];
+                    store.links = connections;
+                }
             },
 
             inspectVault: async (node) => {
