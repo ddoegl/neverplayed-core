@@ -1,4 +1,6 @@
 [
     "core.json",
-    "foundation.json"
+    "foundation.json",
+    "showcase.json",
+    "community.json"
 ]

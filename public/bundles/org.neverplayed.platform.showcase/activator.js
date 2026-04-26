@@ -1,6 +1,7 @@
 import { 
     FLOW_SERVICE,
-    REALM_MANAGER_SERVICE
+    REALM_MANAGER_SERVICE,
+    PLATFORM_SHOWCASE_FLOW
 } from "core-types";
 import { CoreAlpineActivator } from "alpine-base";
 
@@ -34,26 +35,37 @@ export default class Activator extends CoreAlpineActivator {
     }
 
     /**
+     * Protocol: launch (Pattern 7)
+     * Standard entry point for Flow Services.
+     */
+    async launch(options = {}) {
+        this.logger.info("Platform Showcase: Launch triggered.");
+        return this.onActivate(options);
+    }
+
+    /**
      * onActivate (Pattern 7)
      * Resumes the UI state when this flow becomes active in the stage.
      */
     async onActivate(_stageState) {
-        this.logger.info("Platform Showcase: Activated in Realm Stage.");
-        
+        this.logger.info("Platform Showcase: Materializing Stage...");
+        const self = this;
+
         await this.render('#flow-active-stage', 'templates/showcase.html', () => {
             const shell = Alpine.store('shell_context');
 
             return {
-                get activeRealm() { return shell.activeRealm; },
-                get realms() { return shell.realms; },
+                get activeRealm() { return shell.activeRealm || { id: 'unknown' }; },
+                get realms() { return shell.realms || []; },
 
                 async switchTo(id) {
-                    if (this._realmManager) {
+                    if (self._realmManager) {
                         try {
-                            const result = await this._realmManager.switchRealm(id);
-                            this.logger.info(`Showcase: Universe transition triggered: ${id}`, result);
+                            self.logger.info(`Showcase: Universe transition triggered: ${id}`);
+                            const result = await self._realmManager.switchRealm(id);
+                            self.logger.debug(`Showcase: Transition result:`, result);
                         } catch (err) {
-                            this.logger.error(`Showcase: Transition failed:`, err.message);
+                            self.logger.error(`Showcase: Transition failed:`, err.message);
                         }
                     }
                 }
