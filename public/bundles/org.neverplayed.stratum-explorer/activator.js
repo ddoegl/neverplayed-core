@@ -27,11 +27,20 @@ export default class Activator {
             }
         }).open();
 
-        // 2. Load D3.js Optical Engine
-        const d3 = await import(D3_CDN);
-        this._logger.info("Stratum Explorer: D3.js Engine Hydrated.");
+        // 2. Pre-Emptive Registration (ADR: Register store before async hydration)
+        this._setupExplorerStore(context);
+        this._setupOpticalTracker(null); // Register listener immediately
 
-        // 3. Track Stratum Core
+        // 3. Hydrate D3.js and Finalize Tracker
+        try {
+            const d3 = await import(D3_CDN).then(m => m.default || m);
+            this._logger.info("Stratum Explorer: D3.js Engine Hydrated.");
+            this._setupOpticalTracker(d3); 
+        } catch (err) {
+            this._logger.error("Stratum Explorer: D3 Hydration Failed!", err);
+        }
+
+        // 4. Track Stratum Core
         context.trackService(`(objectClass=${STRATUM_SERVICE})`, {
             addingService: (ref) => {
                 this._stratum = context.getService(ref);
@@ -40,89 +49,74 @@ export default class Activator {
             removedService: () => { this._stratum = null; }
         }).open();
 
-        // 4. Initialize Explorer ViewModel
+        // 5. Periodic/Pulse Refresh
+        this._shuntListener = () => {
+            const store = Alpine.store('explorer');
+            if (store) store.refreshTopology();
+        };
+        globalThis.addEventListener('pm-context-shifted', this._shuntListener);
+
+        // 6. Template Injection (Legacy Support)
+        await this._injectTemplate();
+
+        this._logger.info("Stratum Explorer: Operational 👁️🪐");
+    }
+
+    _setupExplorerStore(context) {
+        const self = this;
         Alpine.store('explorer', {
             nodes: [],
             links: [],
             activeNode: null,
             vaultKeys: [],
-            visible: false,
             loadingVault: false,
             _lastValueHash: "",
-
+            
             get perspective() {
-                return this._getStratum()?.perspective || "idealist";
+                return self._stratum?.perspective || "idealist";
             },
 
             set perspective(val) {
-                const s = this._getStratum();
-                if (s) {
-                    s.perspective = val;
+                if (self._stratum) {
+                    self._stratum.perspective = val;
                     this.refreshTopology();
                 }
             },
 
-            _getStratum: () => this._stratum,
-
             refreshTopology: async () => {
-                const stratum = this._stratum;
+                const stratum = self._stratum;
                 if (!stratum) return;
                 
-                // Value-Based Guard: Only update if the multidimensional state shifted
                 const currentHash = `${stratum.tenantId}|${stratum.realmId}|${stratum.identityId}|${stratum.tier}|${stratum.perspective}`;
                 const store = Alpine.store('explorer');
-                if (store._lastValueHash === currentHash && store.nodes.length > 0) {
-                    this._logger.debug("Stratum Explorer: Ignoring static state pulse.");
-                    return;
-                }
+                if (store._lastValueHash === currentHash && store.nodes.length > 0) return;
                 
-                this._logger.info(`Stratum Explorer: Topology Shift (${stratum.perspective}) -> ${currentHash}`);
+                self._logger.debug(`Stratum Explorer: Topology Shift (${stratum.perspective}) -> ${currentHash}`);
                 store._lastValueHash = currentHash;
 
                 if (stratum.perspective === 'realist') {
-                    // --- REALIST DISCOVERY (ADR-0167) ---
                     const hierarchy = await stratum.getHierarchy();
                     const inhabitants = await stratum.getInhabitants();
-                    
                     const nodes = [];
                     const links = [];
 
-                    // 1. Tenant Root
                     nodes.push({ id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' });
-
-                    // 2. Realm Hierarchy (Core -> Foundation -> Active)
                     let lastRealmNodeId = 'tenant';
                     hierarchy.forEach((realm, idx) => {
                          const nodeId = `realm:${realm.id}`;
-                         nodes.push({ 
-                             id: nodeId, 
-                             label: idx === 0 ? 'Bedrock' : 'Soil', 
-                             value: realm.title || realm.id, 
-                             type: 'WHERE', 
-                             color: '#a855f7',
-                             realmId: realm.id
-                         });
+                         nodes.push({ id: nodeId, label: idx === 0 ? 'Bedrock' : 'Soil', value: realm.title || realm.id, type: 'WHERE', color: '#a855f7', realmId: realm.id });
                          links.push({ source: lastRealmNodeId, target: nodeId });
                          lastRealmNodeId = nodeId;
                     });
 
-                    // 3. Inhabitants (All discovered identities in the active realm)
                     const activeRealmNodeId = `realm:${stratum.realmId}`;
                     inhabitants.forEach(identId => {
                          const nodeId = `identity:${identId}`;
                          const isActive = identId === stratum.identityId;
-                         nodes.push({
-                             id: nodeId,
-                             label: isActive ? 'Active' : 'Resident',
-                             value: identId,
-                             type: 'WHO',
-                             color: isActive ? '#10b981' : '#64748b',
-                             identityId: identId
-                         });
+                         nodes.push({ id: nodeId, label: isActive ? 'Active' : 'Resident', value: identId, type: 'WHO', color: isActive ? '#10b981' : '#64748b', identityId: identId });
                          links.push({ source: activeRealmNodeId, target: nodeId });
                     });
 
-                    // 4. Persistence Tier (Linked to active identity)
                     const activeIdentityNodeId = `identity:${stratum.identityId}`;
                     nodes.push({ id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' });
                     links.push({ source: activeIdentityNodeId, target: 'tier' });
@@ -130,20 +124,13 @@ export default class Activator {
                     store.nodes = nodes;
                     store.links = links;
                 } else {
-                    // --- IDEALIST PROJECTION ---
                     const strata = [
                         { id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' },
                         { id: 'realm', label: 'Realm', value: stratum.realmId, type: 'WHERE', color: '#a855f7' },
                         { id: 'identity', label: 'Identity', value: stratum.identityId, type: 'WHO', color: '#10b981' },
                         { id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' }
                     ];
-
-                    const connections = [
-                        { source: 'tenant', target: 'identity' },
-                        { source: 'identity', target: 'realm' },
-                        { source: 'realm', target: 'tier' }
-                    ];
-
+                    const connections = [ { source: 'tenant', target: 'identity' }, { source: 'identity', target: 'realm' }, { source: 'realm', target: 'tier' } ];
                     store.nodes = [ strata[0], strata[2], strata[1], strata[3] ];
                     store.links = connections;
                 }
@@ -154,67 +141,77 @@ export default class Activator {
                 store.activeNode = node;
                 store.loadingVault = true;
                 store.vaultKeys = [];
-                
                 try {
                     const pmRef = context.getServiceReference(PERSISTENCE_MANAGER_SERVICE, "(implementation=selector-proxy)");
                     const pm = pmRef ? context.getService(pmRef) : null;
                     if (!pm) throw new Error("Persistence Manager not found");
-
                     const allKeys = await pm.listKeys("");
                     const matching = [];
-                    
                     for (const key of allKeys) {
                         const probe = await pm.probe(key);
                         let isMatch = false;
-                        
                         if (node.id === 'tier') isMatch = (probe.tier === node.value);
-                        if (node.id === 'identity') isMatch = (probe.context.identityId === node.value);
-                        if (node.id === 'tenant') isMatch = (probe.context.tenantId === node.value);
-                        
-                        if (isMatch || node.id === 'realm') { // Realm is ambient
-                            const val = await pm.load(key);
-                            matching.push({ key, value: val, probe });
+                        else if (node.id === 'identity' || node.id.startsWith('identity:')) {
+                            const targetId = node.identityId || node.value;
+                            isMatch = (probe.context.identityId === targetId);
                         }
+                        else if (node.id === 'tenant') isMatch = (probe.context.tenantId === node.value);
+                        else if (node.id.startsWith('realm:')) {
+                            isMatch = (probe.context.realmId === node.realmId);
+                        }
+                        
+                        if (isMatch) matching.push({ key, value: await pm.load(key), probe });
                     }
                     store.vaultKeys = matching;
-                } catch (err) {
-                    this._logger.error("Vault Inspection failed:", err);
-                } finally {
-                    store.loadingVault = false;
-                }
+                } catch (err) { self._logger.error("Vault Scan Failed:", err.message); }
+                finally { store.loadingVault = false; }
             }
         });
-
-        // 5. D3 Optical Tracking Logic
-        this._setupOpticalTracker(d3);
-
-        // 6. Template Injection
-        await this._injectTemplate();
-
-        // 7. Periodic/Pulse Refresh
-        this._shuntListener = () => {
-            if (Alpine.store('explorer').visible) Alpine.store('explorer').refreshTopology();
-        };
-        globalThis.addEventListener('pm-context-shifted', this._shuntListener);
-
-        this._logger.info("Stratum Explorer: Registered 🪐🛡️🔍");
     }
 
     _setupOpticalTracker(d3) {
+        if (this._renderListener) {
+            globalThis.removeEventListener('explorer-render-request', this._renderListener);
+        }
+
         this._renderListener = (e) => {
             const { element } = e.detail;
             const store = Alpine.store('explorer');
-            this._renderGraph(d3, element, store.nodes, store.links);
+            if (!store) return;
+            
+            const render = (w, h) => {
+                const width = w || Math.floor(element.clientWidth);
+                const height = h || Math.floor(element.clientHeight);
+                
+                if (width > 0 && height > 0) {
+                    const stateHash = `${store._lastValueHash}|${width}x${height}`;
+                    if (element._lastRenderHash === stateHash) return;
+                    
+                    element._lastRenderHash = stateHash;
+                    if (d3) {
+                        this._logger.info(`Stratum Explorer: Optical Render (${width}x${height})`);
+                        this._renderGraph(d3, element, store.nodes, store.links, width, height);
+                    } else {
+                        this._logger.debug("Stratum Explorer: Waiting for D3 hydration...");
+                    }
+                }
+            };
+
+            if (!element._stratObs) {
+                element._stratObs = new ResizeObserver(entries => {
+                    const entry = entries[0];
+                    render(Math.floor(entry.contentRect.width), Math.floor(entry.contentRect.height));
+                });
+                element._stratObs.observe(element);
+            }
+            render();
         };
         globalThis.addEventListener('explorer-render-request', this._renderListener);
     }
 
-    _renderGraph(d3, container, nodes, links) {
+    _renderGraph(d3, container, nodes, links, width, height) {
         d3.select(container).selectAll("svg").remove();
         
-        const width = container.clientWidth || 800;
-        const height = container.clientHeight || 600;
-
         const svg = d3.select(container)
             .append("svg")
             .attr("width", "100%")
@@ -222,7 +219,6 @@ export default class Activator {
             .attr("viewBox", [0, 0, width, height])
             .attr("style", "max-width: 100%; height: auto;");
 
-        // Force Simulation with higher initial alpha
         const simulation = d3.forceSimulation(nodes)
             .force("link", d3.forceLink(links).id(d => d.id).distance(120))
             .force("charge", d3.forceManyBody().strength(-800))
@@ -257,45 +253,17 @@ export default class Activator {
                     d.fx = null; d.fy = null;
                 }));
 
-        node.append("circle")
-            .attr("r", 20)
-            .attr("class", "hit-area");
+        node.append("circle").attr("r", 20).attr("class", "hit-area").attr("fill", "transparent");
+        node.append("circle").attr("r", 8).attr("class", "visual").attr("fill", d => d.color).attr("stroke", "#1e293b");
 
-        node.append("circle")
-            .attr("r", 8)
-            .attr("class", "visual")
-            .attr("fill", d => d.color)
-            .attr("stroke", "#1e293b");
-
-        node.append("text")
-            .attr("dy", -18)
-            .attr("text-anchor", "middle")
-            .attr("class", "node-label")
-            .attr("fill", "#94a3b8")
-            .style("font-size", "10px")
-            .style("font-weight", "600")
-            .style("text-transform", "uppercase")
-            .text(d => d.label);
-
-        node.append("text")
-            .attr("dy", 24)
-            .attr("text-anchor", "middle")
-            .attr("class", "node-value")
-            .attr("fill", "#f8fafc")
-            .style("font-family", "monospace")
-            .style("font-size", "12px")
-            .text(d => d.value);
+        node.append("text").attr("dy", -18).attr("text-anchor", "middle").attr("fill", "#94a3b8").style("font-size", "10px").style("font-weight", "600").style("text-transform", "uppercase").text(d => d.label);
+        node.append("text").attr("dy", 24).attr("text-anchor", "middle").attr("fill", "#f8fafc").style("font-family", "monospace").style("font-size", "12px").text(d => d.value);
 
         simulation.on("tick", () => {
-            link.attr("x1", d => d.source.x)
-                .attr("y1", d => d.source.y)
-                .attr("x2", d => d.target.x)
-                .attr("y2", d => d.target.y);
-
+            link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
             node.attr("transform", d => `translate(${d.x},${d.y})`);
         });
 
-        // Ensure simulation starts running
         simulation.alpha(1).restart();
     }
 
@@ -311,12 +279,8 @@ export default class Activator {
     }
 
     stop() {
-        if (this._shuntListener) {
-            globalThis.removeEventListener('pm-context-shifted', this._shuntListener);
-        }
-        if (this._renderListener) {
-            globalThis.removeEventListener('explorer-render-request', this._renderListener);
-        }
+        if (this._shuntListener) globalThis.removeEventListener('pm-context-shifted', this._shuntListener);
+        if (this._renderListener) globalThis.removeEventListener('explorer-render-request', this._renderListener);
         this._logger.info("Stratum Explorer: Stopped.");
     }
 }

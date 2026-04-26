@@ -1,6 +1,6 @@
 {
     "id": "org.neverplayed.realm.foundation",
-    "startupFlow": "org.neverplayed.shell.cli",
+    "startupFlow": "org.neverplayed.stratographer",
     "domainObjects": [
         { "id": "about-do-registry" },
         { "id": "sample-do" },

@@ -1,6 +1,6 @@
 {
     "id": "org.neverplayed.realm.core",
-    "startupFlow": "org.neverplayed.shell.cli",
+    "startupFlow": "org.neverplayed.stratographer",
     "domainObjects": [],
     "title": "Institutional Core Infrastructure",
     "description": "Layer 1: Security, Logging, and Persistence Foundations.",
@@ -20,8 +20,8 @@
         "./bundles/org.neverplayed.session-service/manifest.json",
         "./bundles/org.neverplayed.stratum-core/manifest.json",
         "./bundles/org.neverplayed.stratum-cli/manifest.json",
-        "./bundles/org.neverplayed.stratum-ui/manifest.json",
         "./bundles/org.neverplayed.stratum-explorer/manifest.json",
+        "./bundles/org.neverplayed.stratographer/manifest.json",
         "./bundles/org.neverplayed.shared-ui/manifest.json",
         "./bundles/vendor/org.pandino.event-admin/manifest.json",
         "./bundles/org.neverplayed.shell-host/manifest.json",

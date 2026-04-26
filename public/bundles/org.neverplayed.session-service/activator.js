@@ -75,15 +75,9 @@ export default class Activator {
         this._logger.info(`Session Service: DISK-LOAD COMPLETE. Found Identity: ${persistedState.currentUser?.id || 'guest'}`);
         this._logger.info(`Session Service: Persisted state loaded. Identity: ${persistedState.currentUser?.id || 'guest'}`);
 
-        // Universal Identity Purity Guard:
-        // Always strip identity-leaking metadata from persisted state on boot.
-        // These will be re-populated by the Realm Manager or explicit login if needed.
-        if (persistedState.scopedUsers?.global) {
-            persistedState.scopedUsers.global = {
-                id: 'guest',
-                attributes: {}
-            };
-        }
+        // Sovereignty Guard (ADR-0165): 
+        // We NO LONGER purge the global scope on boot. 
+        // This ensures the Google Authenticated UID (Tenant) survives reloads.
 
         const logger = this._logger;
 
@@ -117,9 +111,7 @@ export default class Activator {
             },
 
             login(user, scope = null) {
-                // Resolution: Flow > Current Realm > global
-                const currentRealm = this.activeRealmId || null;
-                const targetScope = scope || this.activeFlowId || currentRealm || 'global';
+                const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
                 
                 const identity = typeof user === "string" ? { id: user, email: `${user}@cli.local` } : user;
                 logger?.info(`Session: LOGIN requested for scope '${targetScope}' (id: ${identity.uid || identity.id})`);
@@ -131,52 +123,27 @@ export default class Activator {
                     lastname: identity.lastname,
                     alias: identity.alias,
                     capabilities: identity.capabilities || [],
-                    attributes: identity.attributes || {} 
+                    attributes: identity.attributes || {},
+                    isTenant: targetScope === 'global'
                 };
-                logger?.info(`Session: Scoped user [${targetScope}] updated to identity [${this.scopedUsers[targetScope].id}]`);
                 globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'login', user, scope } }));
             },
 
-            logout(scope = 'global') {
-                logger?.info(`Session: LOGOUT requested for scope '${scope}'`);
-                const user = this.scopedUsers[scope] || this.scopedUsers["global"];
+            logout(scope = null) {
+                // Determine target scope: default to current active scope, BUT NEVER 'global' unless explicit
+                const activeScope = this.activeFlowId || this.activeRealmId;
+                const targetScope = scope || activeScope || 'global';
                 
-                // --- SCA Bootstrap Logic ---
-                if (user && user.scaStrategy === "bootstrap") {
-                  const phone = prompt(
-                    "Bootstrap Strategy Enforced: Please enter your phone number to secure your account before logging out:",
-                    user["bootstrap-phonenumber"] || "",
-                  );
-                  if (phone) {
-                    const newCode = this._generateBootstrapCode();
-                    user["bootstrap-phonenumber"] = phone;
-                    user["bootstrap-code"] = newCode;
-    
-                    // Persist via LicenseDataService (Lazy Lookup)
-                    const licRef = context.getServiceReference(LICENSE_DATA_SERVICE);
-                    const licSvc = licRef ? context.getService(licRef) : null;
-                    if (licSvc && licSvc.updateUser) {
-                      licSvc.updateUser(user.licenseId, {
-                        id: user.id,
-                        "bootstrap-phonenumber": phone,
-                        "bootstrap-code": newCode,
-                      });
-                    }
-    
-                    // Show modal (Triggered via Reactive State)
-                    this.bootstrapCodeModal = {
-                      show: true,
-                      code: newCode,
-                      phone,
-                    };
-                    return; // Wait for modal close in UI
-                  }
+                logger?.info(`Session: LOGOUT requested for scope '${targetScope}'`);
+                
+                // Sovereignty Shield: Prevent clearing the human operator unless explicitly targeting global
+                if (targetScope === 'global') {
+                    logger?.warn("Session: Global Logout (Tenant Erasure) requested!");
                 }
 
-                // Standard Logout
-                this.scopedUsers[scope] = { id: 'guest', attributes: {} };
-                logger?.info(`Session: Scope [${scope}] reset to guest.`);
-                globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'logout', scope } }));
+                this.scopedUsers[targetScope] = { id: 'guest', attributes: {} };
+                logger?.info(`Session: Scope [${targetScope}] reset to guest.`);
+                globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'logout', scope: targetScope } }));
             },
 
             _generateBootstrapCode() {

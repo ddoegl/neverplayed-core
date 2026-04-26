@@ -5,8 +5,9 @@ This document establishes the core principles and architectural guidelines for t
 ## Core Principles
 
 ### 1. Architectural Consistency
-- **Rule**: Always check `docs/architecture-patterns.md` when implementing new functionality or debugging flawed logic. Adhere to the established reactive and OSGi patterns to ensure system stability.
-- **No Magic Strings**: Prohibit hardcoded strings for bundle names, service interfaces, and configuration PIDs. Centralize all identifiers in `public/core-types.js` to ensure system-wide consistency and prevent race conditions. Note: `public/shared-types.js` is legacy and must be avoided.
+- **Rule**: Always check `docs/architecture-patterns.md` when implementing new functionality. Adhere to established reactive and OSGi patterns.
+- **Master Cockpit**: `org.neverplayed.stratographer` is the definitive forensic resident for the Flow Stage. Native HUDs and legacy sidebars are retired in favor of this integrated dashboard.
+- **No Magic Strings**: All service identifiers must be centralized in `public/core-types.js`.
 
 ### 2. Canonical Identity Standards
 - **Entry Point Authority**: `public/realms-secure.html` is the only valid entry point for the Secure Realm. `public/index.html` is legacy and must not be used for feature development.

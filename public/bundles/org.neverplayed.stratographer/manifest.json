@@ -1,0 +1,18 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.stratographer",
+    "Bundle-Version": "1.1.0",
+    "Bundle-Name": "The Stratographer",
+    "Bundle-Description": "Unified high-fidelity forensic dashboard and ontological mapping tool.",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Assets": [
+        "templates/stratum-hud.html",
+        "templates/dashboard.html"
+    ],
+    "Require-Bundle": "org.neverplayed.stratum-core",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.flow.Flow\"",
+    "Configuration": {
+        "log-level": "INFO",
+        "mountPoint": "#shell-host-root",
+        "priority": 100
+    }
+}

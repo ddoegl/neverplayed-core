@@ -1,0 +1,272 @@
+<div
+  id="stratographer-dashboard"
+  class="flex flex-col h-full w-full bg-slate-900 overflow-hidden backdrop-blur-3xl border border-slate-800/30"
+  x-data="{ 
+        init() {
+            this.$nextTick(() => {
+                const container = this.$refs.graphContainer;
+                if (container) {
+                    globalThis.dispatchEvent(new CustomEvent('explorer-render-request', { 
+                        detail: { element: container } 
+                    }));
+                }
+            });
+        }
+     }"
+>
+  <!-- Top Bar: Context & Address -->
+  <div class="flex items-center space-x-8 px-8 py-4 border-b border-slate-800/50 bg-slate-900/40">
+    <!-- Branding -->
+    <div class="flex items-center space-x-4 shrink-0">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <i class="fas fa-map-marked-alt text-white"></i>
+      </div>
+      <div class="hidden xl:block">
+        <h2 class="text-sm font-bold text-slate-100 tracking-tight">The Stratographer</h2>
+        <p class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Areal Forensic Navigator</p>
+      </div>
+    </div>
+
+    <!-- Sovereign Address Bar -->
+    <div class="flex-grow flex items-center max-w-3xl">
+       <div class="relative w-full group">
+          <div class="absolute left-4 top-1/2 -translate-y-1/2 flex items-center space-x-2 text-slate-500">
+             <i class="fas fa-link text-[10px]"></i>
+          </div>
+          <input type="text" 
+                 class="w-full bg-slate-950/50 border border-slate-800/80 rounded-xl pl-10 pr-24 py-2 text-[11px] font-mono text-cyan-400 placeholder-slate-700 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all select-all shadow-inner"
+                 x-model="jumpTarget"
+                 @keyup.enter="jump()">
+          
+          <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+             <button @click="copyURI()" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-cyan-400 transition-all tooltip" data-tip="Copy URI">
+                <i class="fas fa-copy text-[10px]"></i>
+             </button>
+             <button @click="jump()" class="px-3 py-1 bg-slate-800 hover:bg-cyan-500/20 text-[9px] font-black uppercase text-slate-400 hover:text-cyan-400 border border-slate-700/50 rounded-lg transition-all">
+                Jump
+             </button>
+          </div>
+       </div>
+    </div>
+
+    <!-- Perspective & Actions -->
+    <div class="flex items-center space-x-4 shrink-0">
+      <div class="flex p-0.5 bg-slate-950/50 rounded-xl border border-slate-800/50">
+        <button
+          @click="$store.explorer.perspective = 'idealist'"
+          :class="$store.explorer.perspective === 'idealist' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : 'text-slate-500 hover:text-slate-300 border-transparent'"
+          class="px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all"
+        >
+          Idealist
+        </button>
+        <button
+          @click="$store.explorer.perspective = 'realist'"
+          :class="$store.explorer.perspective === 'realist' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'text-slate-500 hover:text-slate-300 border-transparent'"
+          class="px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all"
+        >
+          Realist
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Workspace -->
+  <div class="flex-grow flex overflow-hidden">
+    <!-- Left: Ontological Compass -->
+    <div class="w-72 border-r border-slate-800/50 flex flex-col p-6 space-y-6 bg-slate-900/20 shrink-0">
+      <!-- HUD Cards (Refactored) -->
+      <div class="space-y-4">
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-emerald-500/30 transition-all">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Identity</span>
+            <i class="fas fa-fingerprint text-[10px] text-emerald-500/50"></i>
+          </div>
+          <div class="text-xs font-mono text-slate-200 truncate" x-text="identityId"></div>
+          <div class="mt-2 text-[8px] text-slate-600 font-bold uppercase" x-text="tenantId"></div>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-purple-500/30 transition-all">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Environment</span>
+            <i class="fas fa-globe-europe text-[10px] text-purple-500/50"></i>
+          </div>
+          <div class="text-xs font-mono text-slate-200 truncate" x-text="realmId"></div>
+          <div class="mt-3 grid grid-cols-2 gap-2">
+            <template x-for="r in realms" :key="r.id">
+              <button
+                @click="switchTo(r.id)"
+                class="px-2 py-1.5 rounded-lg border text-[8px] font-bold uppercase tracking-tighter transition-all"
+                :class="activeRealm.id === r.id ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' : 'bg-slate-950/40 border-slate-800 text-slate-500 hover:border-slate-600'"
+                x-text="r.id.split('.').pop()"
+              >
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-cyan-500/30 transition-all">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Persistence Tier</span>
+            <div class="w-1.5 h-1.5 rounded-full animate-pulse" :class="tier === 'cloud' ? 'bg-amber-400' : 'bg-cyan-400'"></div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold uppercase" :class="tier === 'cloud' ? 'text-amber-400' : 'text-cyan-400'" x-text="tier"></span>
+            <i :class="tier === 'cloud' ? 'fas fa-cloud' : 'fas fa-hard-drive'" class="text-[10px] text-slate-700"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Areal Navigator -->
+    <div class="flex-grow bg-slate-950/40 relative group">
+      <!-- SVG Mount -->
+      <div
+        x-ref="graphContainer"
+        class="absolute inset-0 z-10"
+        x-init="$watch('$store.explorer.nodes', () => { 
+                      const container = $refs.graphContainer;
+                      if (container) {
+                          globalThis.dispatchEvent(new CustomEvent('explorer-render-request', { detail: { element: container } }));
+                      }
+                  })"
+      >
+      </div>
+
+      <!-- Decor -->
+      <div
+        class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.05),transparent_70%)] pointer-events-none"
+      >
+      </div>
+
+      <!-- View Controls -->
+      <div
+        class="absolute bottom-6 left-6 z-20 flex items-center space-x-3 bg-slate-900/80 backdrop-blur-md border border-slate-800/50 rounded-full px-4 py-2 shadow-2xl"
+      >
+        <span
+          class="text-[8px] font-black text-slate-500 uppercase tracking-widest pr-2 border-r border-slate-800"
+        >Map Legend</span>
+        <div class="flex items-center space-x-4 ml-2">
+          <div class="flex items-center space-x-1.5">
+            <div class="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>
+            <span class="text-[8px] uppercase font-bold text-slate-400"
+            >Who</span>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <div class="w-1.5 h-1.5 rounded-full bg-purple-400"></div>
+            <span class="text-[8px] uppercase font-bold text-slate-400"
+            >Where</span>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <div class="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+            <span class="text-[8px] uppercase font-bold text-slate-400"
+            >How</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Forensic Vault -->
+    <div
+      class="w-1/4 border-l border-slate-800/50 flex flex-col bg-slate-900/40 relative"
+    >
+      <!-- Toggle for Vault -->
+      <div
+        x-show="!$store.explorer.activeNode"
+        class="flex-grow flex flex-col items-center justify-center p-8 text-center opacity-20"
+      >
+        <i class="fas fa-microscope text-4xl mb-4"></i>
+        <h4 class="text-xs font-bold uppercase tracking-widest text-slate-400">
+          Awaiting Selection
+        </h4>
+        <p class="text-[9px] mt-2 leading-relaxed">
+          Select a node in the Areal Navigator to inspect its forensic traces
+          and vault keys.
+        </p>
+      </div>
+
+      <div
+        x-show="$store.explorer.activeNode"
+        class="flex flex-col h-full"
+        x-transition
+        x-cloak
+      >
+        <div class="p-6 border-b border-slate-800/50 bg-slate-900/60">
+          <div class="flex items-center justify-between mb-2">
+            <span
+              class="text-[9px] font-black text-cyan-500 uppercase tracking-[0.2em]"
+            >Trace Recovery</span>
+            <button
+              @click="$store.explorer.activeNode = null"
+              class="text-slate-600 hover:text-white transition-colors"
+            >
+              <i class="fas fa-times text-xs"></i>
+            </button>
+          </div>
+          <h3
+            class="text-sm font-bold text-slate-100 truncate"
+            x-text="$store.explorer.activeNode?.label"
+          >
+          </h3>
+          <div
+            class="mt-2 text-[9px] font-mono text-slate-500 truncate"
+            x-text="$store.explorer.activeNode?.value"
+          >
+          </div>
+        </div>
+
+        <div class="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+          <template x-if="$store.explorer.loadingVault">
+            <div
+              class="flex flex-col items-center justify-center py-12 space-y-3"
+            >
+              <div
+                class="w-6 h-6 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin"
+              >
+              </div>
+              <span
+                class="text-[9px] uppercase tracking-widest text-slate-500 font-bold"
+              >Scanning Stratum...</span>
+            </div>
+          </template>
+
+          <template x-for="item in $store.explorer.vaultKeys" :key="item.key">
+            <div
+              class="bg-slate-950/40 border border-slate-800/50 rounded-xl p-3 hover:border-cyan-500/30 transition-all group"
+            >
+              <div class="flex items-center justify-between mb-2">
+                <span
+                  class="text-[9px] font-mono text-cyan-400/80 truncate w-80"
+                  x-text="item.key"
+                ></span>
+                <div class="flex items-center space-x-1.5">
+                  <span
+                    class="text-[7px] px-1 bg-slate-800 text-slate-500 rounded uppercase font-black"
+                    x-text="item.probe.tier"
+                  ></span>
+                  <i class="fas fa-database text-[8px] text-slate-700"></i>
+                </div>
+              </div>
+              <div
+                class="text-[9px] text-slate-400 font-mono break-all line-clamp-2 group-hover:line-clamp-none transition-all leading-relaxed"
+                x-text="typeof item.value === 'object' ? JSON.stringify(item.value) : item.value"
+              >
+              </div>
+            </div>
+          </template>
+
+          <template
+            x-if="!$store.explorer.loadingVault && $store.explorer.vaultKeys.length === 0"
+          >
+            <div
+              class="flex flex-col items-center justify-center py-12 opacity-30"
+            >
+              <i class="fas fa-box-open text-xl mb-2"></i>
+              <span class="text-[8px] uppercase tracking-widest font-black"
+              >No Traces Recovered</span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

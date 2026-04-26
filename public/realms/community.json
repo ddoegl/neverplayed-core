@@ -7,9 +7,7 @@
     "privileges": {
         "realm-admins": ["daniel.doegl@doegl.info", "guest"]
     },
-    "bundles": [
-        "./bundles/org.neverplayed.platform.showcase/manifest.json"
-    ],
+    "bundles": [],
     "domainObjects": [
         { "id": "showcase-lab", "icon": "fas fa-flask", "title": "Platform Lab" }
     ]
