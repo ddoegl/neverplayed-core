@@ -314,7 +314,7 @@ export default class Activator {
         // Oracle Fallback
         if (this.resolver) {
             try {
-                const resolution = this.resolver.resolve({ key });
+                const resolution = this.resolver.resolve({ key, systemDefault: { tier: this._envTier || "local" } });
                 const resolvedTier = (typeof resolution === 'object' && resolution !== null) ? resolution.tier : resolution;
                 if (resolvedTier) return resolvedTier;
             } catch (_e) { /* Oracle failed; proceed to default */ }

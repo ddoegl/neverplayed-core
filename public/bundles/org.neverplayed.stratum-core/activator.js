@@ -137,9 +137,9 @@ export default class Activator {
                 identity = identity || tenant;
                 const aperture = segments[2] || 'shell';
 
-                // 1. Persistence Pivot (Tier Shunting)
-                if (this._sourcePM && tier) {
-                    await this._sourcePM.setContext({ tier });
+                // 1. Persistence Pivot (Tier Shunting via Session)
+                if (this._sourceSession && tier) {
+                    this._sourceSession.tier = tier;
                 }
 
                 // 2. Perspective Alignment

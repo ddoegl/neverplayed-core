@@ -103,6 +103,7 @@ export default class Activator {
             ...persistedState,
             activeFlowId: null, // Volatile
             activeRealmId: null, // Volatile (Pushed from Realm Manager)
+            tier: persistedState.tier || "local",
             
             get currentUser() {
                 const scope = this.activeFlowId || this.activeRealmId || "global";
@@ -220,11 +221,12 @@ export default class Activator {
                 const ctx = {
                     tenantId,
                     identityId,
-                    realmId: this._session.activeRealmId || "unknown"
+                    realmId: this._session.activeRealmId || "unknown",
+                    tier: this._session.tier || "local"
                 };
                 
                 if (typeof this._pm.setContext === 'function') {
-                    this._logger?.info(`Session: Syncing Persistence Context -> Tenant: ${tenantId}, Realm: ${ctx.realmId}, Identity: ${identityId}`);
+                    this._logger?.info(`Session: Syncing Persistence Context -> Tenant: ${tenantId}, Realm: ${ctx.realmId}, Identity: ${identityId}, Tier: ${ctx.tier}`);
                     this._pm.setContext(ctx);
                 }
 

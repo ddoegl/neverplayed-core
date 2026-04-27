@@ -6,31 +6,23 @@ The **Identity Purity Guardian** that manages reactive user state, scoped author
 
 ## 🏛️ Architecture & Implementation
 
-- **Scoped Identities**: Supports the `scopedUsers` pattern, allowing the system to maintain different identities (Retail, Business, Guest) simultaneously.
-- **Identity Hierarchy**: Implements **Sovereign Identity Scoping (ADR-0165)**, prioritizing `activeFlowId` over `activeRealmId` and defaulting to the `global` tenant anchor. 🛡️🪐
-- **Forensic Auditing**: Features a **Mutation Forensic Guard** that monitors the reactive store for direct property assignments, providing a forensic trail for unauthorized state shifts.
-- **Reactive Store**: Exposes a `SESSION_SERVICE` as a global Alpine.js store for UI-driven session awareness.
-- **Identity Sink**: Uses an `Alpine.effect` to automatically persist session state while stripping sensitive metadata for guest accounts.
-- **Payload Normalization**: Supports both high-fidelity (Firebase objects) and low-fidelity (CLI strings) identity inputs, promoting strings to standard user objects to ensure downstream compatibility (ADR-0140). 🛡️👤
+- **Multi-Persona Residency**: Supports the `scopedUsers` registry pattern, allowing multiple identities to inhabit a single coordinate simultaneously in an Identity Stack.
+- **Institutional Persistence Sync**: Centralizes persistence context shunting. Watches `session.tier` and atomically synchronizes the `PersistenceManager` with the full [Tenant/Identity/Realm/Tier] coordinate (ADR-0170). 🪐🛡️🔍
+- **Identity Hierarchy**: Implements **Sovereign Identity Scoping (ADR-0165)**, prioritizing `activeFlowId` over `activeRealmId`.
+- **Forensic Auditing**: Features a **Mutation Forensic Guard** that monitors the reactive store for direct property assignments.
+- **Identity Purity Sink**: Uses an `Alpine.effect` to sanitize identity stacks (stripping sensitive guest metadata) before persisting to the requested tier.
 
 ## 🏛️ The Patterns (The State)
 
-- **[Platform Alignment](../../docs/platform-patterns.md)**: Implements **Reactive State Synchronization** (Pattern 1) and **Platform Namespace Isolation** (Pattern 3/ADR-0019).
+- **[Identity Registry Stack (ADR-0170)](../../docs/adr/0170-multi-persona-residency.md)**: Manages multi-persona portfolios within a single coordinate. Identity switching is an `__activeId__` pivot, not a destructive overwrite. 🛡️👤
+- **[Institutional Persistence Sync (ADR-0170)](../../docs/adr/0170-multi-persona-residency.md)**: Acts as the system's "Master Shunt," ensuring the storage tier is always in sync with navigational intent. 🪐🛡️
 - **[ADR-0165: Sovereign Identity Scoping](../../docs/adr/0165-sovereign-identity-scoping.md)**: Establishes the rule of **Hierarchical Sharding** and **Push-Synchronization** from the Realm Manager. 🛡️🪐
-- **[ADR-0012: Lifecycle Guards](../../docs/adr/0012-lifecycle-guards.md)**: Implements the "Identity Purity" guard that strips leached metadata from guest sessions.
-- **[ADR-0019: Platform Namespace Isolation](../../docs/adr/0019-platform-namespace-isolation.md)**: Carefully segregates platform infrastructure state from application-level session data.
-- **Mechanism**: On boot, the `SessionService` performs a mandatory sync with the `PersistenceSelector` to hydrate the previous session.
 
 ## 🚀 Future Road
 
-- **Stratum Inspector**: Implement a UI component that visualizes the current [Tenant/Identity/Realm] intersection.
-- **Session Expansions**: Implement JWT-based token management for secure backend API calls.
+- **Sovereign Capability Filters**: Implement Level 0 authorization filters that restrict domain object visibility based on the active persona's capabilities.
 
 ### 🏺 Institutional ADRs
-- [ADR-0001](docs/adr/0001-centralized-architectural-constants.md) - Project metadata governance.
-- [ADR-0025](docs/adr/0025-identity-injection-id-tokens.md) - Global identity injection and ID tokens.
-- [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
-- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
-- [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
 - [ADR-0140](../../docs/adr/0140-sovereign-shield.md) - Sovereign Shield (CLI Normalization). 🛡️👤
 - [ADR-0165](../../docs/adr/0165-sovereign-identity-scoping.md) - Sovereign Identity Scoping (Hierarchical Sharding). 🛡️🪐
+- [ADR-0170](../../docs/adr/0170-multi-persona-residency.md) - Multi-Persona Identity Residency (Portfolios & Shunting). 🪐🛡️

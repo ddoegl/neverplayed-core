@@ -1,0 +1,12 @@
+{
+    "id": "org.neverplayed.realm.governance",
+    "title": "Governance",
+    "icon": "fas fa-users",
+    "extends": ["org.neverplayed.realm.community"],
+    "description": "Layer 4: Defines the governance structures and roles.",
+    "privileges": {
+        "realm-admins": ["daniel.doegl@doegl.info", "guest"]
+    },
+    "bundles": [],
+    "domainObjects": []
+}

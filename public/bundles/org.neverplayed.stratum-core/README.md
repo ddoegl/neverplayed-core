@@ -7,7 +7,9 @@ The **Contextual Hub** that aggregates disparate system facets (WHO, WHERE, WHAT
 
 - **Multi-Facet Aggregation**: Connects to the `Session Service`, `Realm Manager`, and `Persistence Manager` to synthesize a complete "Ground Truth" of the system state.
 - **Reactive Context**: Exposes a `STRATUM_SERVICE` as a global Alpine.js object, allowing any bundle to react to context shifts in real-time.
-- **Canonical URI Generation**: Implements the `toURI()` method to generate linkable, forensic context URIs (e.g., `np://tenant/identity/realm/flow?tier=cloud`). 🛡️🪐
+- **Canonical URI Generation**: Implements the `toURI()` method to generate linkable, forensic context URIs. Supports `tier` and `flow` shunting. 🛡️🪐
+- **URI Perspective Shunting**: Automatically deduces `idealist` vs `realist` stances based on the URI segment structure. 👁️🪐
+- **Institutional Persistence Delegation**: Refactors persistence shunting from direct execution to **Delegated Intent**. Pushes `tier` directives to the `Session Service` for atomic synchronization (ADR-0170). 🪐🛡️
 
 ## 🏛️ The Patterns (The State)
 
@@ -23,3 +25,4 @@ The **Contextual Hub** that aggregates disparate system facets (WHO, WHERE, WHAT
 ### 🏺 Institutional ADRs
 - [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0165](../../docs/adr/0165-sovereign-identity-scoping.md) - Sovereign Identity Scoping (Hierarchical Sharding). 🛡️🪐
+- [ADR-0170](../../docs/adr/0170-multi-persona-residency.md) - Multi-Persona Identity Residency (Portfolios & Shunting). 🪐🛡️
