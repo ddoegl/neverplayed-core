@@ -207,7 +207,7 @@ export default class Activator {
         this._logger.info("Session Service: Registered 🛡️✨");
 
         // Set up Persistence Sync
-        Alpine.effect(() => {
+        Alpine.effect(async () => {
             if (this._pm && this._session) {
                 // Resolve Tenant from Global Stack
                 const globalStack = this._session.scopedUsers?.["global"] || {};
@@ -227,7 +227,7 @@ export default class Activator {
                 
                 if (typeof this._pm.setContext === 'function') {
                     this._logger?.info(`Session: Syncing Persistence Context -> Tenant: ${tenantId}, Realm: ${ctx.realmId}, Identity: ${identityId}, Tier: ${ctx.tier}`);
-                    this._pm.setContext(ctx);
+                    await this._pm.setContext(ctx);
                 }
 
                 // Identity Purity Sink: Iterate through stacks and sanitize guests
