@@ -123,7 +123,20 @@ export default class Activator {
 
             login(user, scope = null) {
                 const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
-                const identity = typeof user === "string" ? { id: user, email: `${user}@cli.local` } : user;
+                let identity;
+                if (typeof user === "string") {
+                    // Inheritance Lookup: resolve full profile from existing scopes before synthesizing a stub
+                    let existing = null;
+                    for (const stack of Object.values(this.scopedUsers || {})) {
+                        if (stack[user] && stack[user].email) {
+                            existing = stack[user];
+                            break;
+                        }
+                    }
+                    identity = existing ? { ...existing } : { id: user, email: `${user}@cli.local` };
+                } else {
+                    identity = user;
+                }
                 const identityId = identity.uid || identity.id;
 
                 logger?.info(`Session: LOGIN requested for scope '${targetScope}' (id: ${identityId})`);
