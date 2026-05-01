@@ -100,11 +100,4 @@
       <p class="text-gray-500">No persons registered yet.</p>
     </div>
   </template>
-
-  <!-- Dynamic Plugin Overlays -->
-  <template x-if="host?.pluginOverlays">
-    <template x-for="(overlay, index) in host.pluginOverlays" :key="index">
-      <div x-html="overlay"></div>
-    </template>
-  </template>
 </div>

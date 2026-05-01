@@ -89,3 +89,4 @@ graphify-out/.*
 
 # local token tracking, not useful to share
 graphify-out/cost.json
+graphify-out/needs_update

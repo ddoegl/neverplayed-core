@@ -1,0 +1,19 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.person-registry",
+    "Bundle-Name": "Person Registry",
+    "Bundle-Description": "Governance flow for managing person identity records and user-ID mappings.",
+    "Bundle-Version": "2.0.0",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Assets": [
+        "templates/dashboard.html",
+        "templates/form.html",
+        "data/persons.yaml"
+    ],
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.PersonsService\"",
+    "Configuration": {
+        "flowType": "system-flow",
+        "channels": ["business-channel-web"],
+        "sidebar": true,
+        "icon": "fas fa-users"
+    }
+}
