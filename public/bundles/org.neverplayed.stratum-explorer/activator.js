@@ -64,6 +64,11 @@ export default class Activator {
 
     _setupExplorerStore(context) {
         const self = this;
+        
+        // Track for Alpine Inspector
+        globalThis.__ALPINO_STORES__ = globalThis.__ALPINO_STORES__ || new Set();
+        globalThis.__ALPINO_STORES__.add('explorer');
+        
         Alpine.store('explorer', {
             nodes: [],
             links: [],
@@ -96,22 +101,32 @@ export default class Activator {
 
                 if (stratum.perspective === 'realist') {
                     const hierarchy = await stratum.getHierarchy();
-                    // Merge Forensic and Local Residents
+                    // Merge Forensic and Local Residents, ensuring active identity is included
                     const forensic = stratum.inhabitants || [];
                     const local = stratum.residents || [];
-                    const inhabitantIds = Array.from(new Set([...forensic, ...local])).filter(i => i !== 'guest');
+                    const inhabitantIdsSet = new Set([...forensic, ...local, stratum.identityId]);
+                    const inhabitantIds = Array.from(inhabitantIdsSet).filter(i => i !== 'guest' || i === stratum.identityId);
                     
                     const nodes = [];
                     const links = [];
 
                     nodes.push({ id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' });
                     let lastRealmNodeId = 'tenant';
+                    let foundActiveRealm = false;
+                    
                     hierarchy.forEach((realm, idx) => {
                          const nodeId = `realm:${realm.id}`;
+                         if (realm.id === stratum.realmId) foundActiveRealm = true;
                          nodes.push({ id: nodeId, label: idx === 0 ? 'Bedrock' : 'Soil', value: realm.title || realm.id, type: 'WHERE', color: '#a855f7', realmId: realm.id });
                          links.push({ source: lastRealmNodeId, target: nodeId });
                          lastRealmNodeId = nodeId;
                     });
+
+                    if (!foundActiveRealm) {
+                         const nodeId = `realm:${stratum.realmId}`;
+                         nodes.push({ id: nodeId, label: 'Active Realm', value: stratum.realmId, type: 'WHERE', color: '#a855f7', realmId: stratum.realmId });
+                         links.push({ source: lastRealmNodeId, target: nodeId });
+                    }
 
                     const activeRealmNodeId = `realm:${stratum.realmId}`;
                     inhabitantIds.forEach(identId => {
@@ -162,14 +177,14 @@ export default class Activator {
                     for (const key of allKeys) {
                         const probe = await pm.probe(key);
                         let isMatch = false;
-                        if (node.id === 'tier') isMatch = (probe.tier === node.value);
+                        if (node.id === 'tier') isMatch = (probe.physicalTier === node.value);
                         else if (node.id === 'identity' || node.id.startsWith('identity:')) {
                             const targetId = node.identityId || node.value;
-                            isMatch = (probe.context.identityId === targetId);
+                            isMatch = (probe.effectiveContext.identityId === targetId);
                         }
-                        else if (node.id === 'tenant') isMatch = (probe.context.tenantId === node.value);
+                        else if (node.id === 'tenant') isMatch = (probe.effectiveContext.tenantId === node.value);
                         else if (node.id.startsWith('realm:')) {
-                            isMatch = (probe.context.realmId === node.realmId);
+                            isMatch = (probe.effectiveContext.realmId === node.realmId);
                         }
                         
                         if (isMatch) matching.push({ key, value: await pm.load(key), probe });

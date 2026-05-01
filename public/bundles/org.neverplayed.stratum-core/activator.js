@@ -35,7 +35,11 @@ export default class Activator {
             _pulse: 0,
             get tenantId() {
                 this._pulse; // Dependency
-                return this._sourceSession?.scopedUsers?.global?.id || "guest";
+                const globalStack = this._sourceSession?.scopedUsers?.["global"];
+                if (!globalStack) return "guest";
+                const activeId = globalStack.__activeId__;
+                const globalUser = globalStack[activeId] || globalStack['guest'];
+                return (globalUser && globalUser.id !== 'guest') ? globalUser.id : "guest";
             },
             get identityId() {
                 this._pulse; // Dependency
@@ -153,6 +157,14 @@ export default class Activator {
                 // 4. Realm Pivot (Structural Transition)
                 if (this._sourceRealm && realm) {
                     await this._sourceRealm.switchRealm(realm);
+                }
+
+                // 5. Aperture Pivot (Flow Transition)
+                if (aperture && aperture !== 'shell') {
+                    if (this._sourceSession) {
+                        this._sourceSession.activeFlowId = aperture;
+                    }
+                    globalThis.dispatchEvent(new CustomEvent('shell-launch-flow', { detail: { id: aperture } }));
                 }
 
                 this._pulse++; // Broadcast state pulse

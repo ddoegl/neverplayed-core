@@ -50,7 +50,7 @@ export default class Activator {
 
         // 5. Register Flow Service (The Dashboard)
         context.registerService(FLOW_SERVICE, this, {
-            "flow.id": "stratographer",
+            "flow.id": "org.neverplayed.stratographer",
             "flow.title": "Stratographer",
             "icon": "fas fa-map-marked-alt",
             "sidebar": true
@@ -119,6 +119,20 @@ export default class Activator {
                     // Perspective Sync: Mirror cognitive shifts in the URI
                     this.$watch('$store.explorer.perspective', () => {
                         this.jumpTarget = self._stratum?.toURI();
+                    });
+
+                    // Initial Optical Tracker Render
+                    this.$nextTick(() => {
+                        const store = Alpine.store('explorer');
+                        if (store && typeof store.refreshTopology === 'function') {
+                            store.refreshTopology();
+                        }
+                        const container = stage.querySelector('[x-ref="graphContainer"]');
+                        if (container) {
+                            globalThis.dispatchEvent(new CustomEvent('explorer-render-request', { 
+                                detail: { element: container } 
+                            }));
+                        }
                     });
                 },
 
@@ -193,7 +207,7 @@ export default class Activator {
 
             openDashboard() {
                 self._logger?.info("Igniting Stratographer Flow...");
-                globalThis.dispatchEvent(new CustomEvent("shell-execute", { detail: { command: "flow-launch stratographer" } }));
+                globalThis.dispatchEvent(new CustomEvent("shell-launch-flow", { detail: { id: "org.neverplayed.stratographer" } }));
             }
         }));
     }

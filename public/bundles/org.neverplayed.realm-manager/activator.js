@@ -168,7 +168,7 @@ export default class Activator extends BaseActivator {
                 if (!this._flowService) {
                     this._flowService = {
                         launch: async (flowId, params = {}) => {
-                                const targetFlow = this._flows.get(flowId);
+                                const targetFlow = await this._waitForFlow(flowId);
                                 if (targetFlow) {
                                     const containerId = params.containerId || 'flow-active-stage';
                                     const el = await this._waitForElement(containerId);
@@ -179,7 +179,7 @@ export default class Activator extends BaseActivator {
                                         this.logger?.warn(`[RealmManager] Policy Launch Failed: #${containerId} not found after timeout.`);
                                     }
                                 } else {
-                                    this.logger?.warn(`[RealmManager] Policy Launch Delayed: Flow ${flowId} not (yet) in registry.`);
+                                    this.logger?.error(`[RealmManager] Policy Launch Aborted: Flow ${flowId} did not arrive within timeout.`);
                                 }
                         }
                     };
@@ -972,12 +972,14 @@ export default class Activator extends BaseActivator {
             // 3. Policy-Driven Startup Flow
             if (pt.manifest.startupFlow && this._flowService) {
                 this.logger?.info(`[RealmManager] Triggering Startup Flow Policy: ${pt.manifest.startupFlow}`);
-                setTimeout(() => {
-                    this._flowService.launch(pt.manifest.startupFlow, { containerId: 'flow-active-stage' });
-                }, 150); // Delay allows Shell Host to bake its initial stage
+                // Background execution to not block the main transition return, 
+                // but handled resiliently by the internal _waitForFlow.
+                this._flowService.launch(pt.manifest.startupFlow, { containerId: 'flow-active-stage' })
+                    .catch(e => this.logger?.error(`[RealmManager] Startup Flow Policy Failed:`, e));
             }
 
             this._pendingTransition = null;
+            this.logger?.info(`[RealmManager] Transition to '${pt.id}' COMPLETE. System Operational.`);
             return { status: 'COMPLETE', message: `Universe '${pt.id}' is now active 🌌` };
         }
     }
@@ -1011,6 +1013,16 @@ export default class Activator extends BaseActivator {
             const el = document.getElementById(id);
             if (el) return el;
             await new Promise(r => setTimeout(r, 75));
+        }
+        return null;
+    }
+
+    async _waitForFlow(flowId, timeout = 3000) {
+        const start = Date.now();
+        while (Date.now() - start < timeout) {
+            const flow = this._flows.get(flowId);
+            if (flow) return flow;
+            await new Promise(r => setTimeout(r, 100));
         }
         return null;
     }

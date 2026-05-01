@@ -16,26 +16,33 @@ export default class Activator extends BaseActivator {
             return;
         }
 
-        const getPhysicalKey = (key) => {
+        const getPhysicalKey = (key, options = {}) => {
             // Rule: Bootstrap Anchor (SDN-0165)
             // The session state defines the identity, so it must be discoverable 
             // at boot before any identity is resolved.
-            if (key.startsWith("pandino.session")) {
+            if (key.startsWith("pandino.session") || key.includes("config.admin")) {
                 return `np:v1:guest:unknown:guest:${key}`;
+            }
+            // Areal Stigmergy Radii
+            if (options.scope === "shared") {
+                return `np:v1:${this._context.tenantId}:${this._context.realmId}:__shared__:${key}`;
+            }
+            if (options.scope === "global") {
+                return `np:v1:${this._context.tenantId}:__global__:__shared__:${key}`;
             }
             return `np:v1:${this._context.tenantId}:${this._context.realmId}:${this._context.identityId}:${key}`;
         };
 
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
             setContext: (ctx) => {
-                this.logger.debug(`LocalStorage: Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
+                this.logger.info(`[DIAGNOSTICS] LocalStorage: Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
                 this._context = ctx;
             },
 
             waitReady: () => Promise.resolve(),
 
-            load: (key) => {
-                const physicalKey = getPhysicalKey(key);
+            load: (key, options = {}) => {
+                const physicalKey = getPhysicalKey(key, options);
                 const val = storage.getItem(physicalKey);
                 if (val === null) return null;
                 try {
@@ -45,9 +52,9 @@ export default class Activator extends BaseActivator {
                 }
             },
 
-            store: (key, val) => {
+            store: (key, val, options = {}) => {
                 try {
-                    const physicalKey = getPhysicalKey(key);
+                    const physicalKey = getPhysicalKey(key, options);
                     const stringVal = typeof val === 'string' ? val : JSON.stringify(val);
                     storage.setItem(physicalKey, stringVal);
                     this.logger.debug(`LocalStorage: Stored [${key}] -> [${physicalKey}]`);
@@ -82,17 +89,20 @@ export default class Activator extends BaseActivator {
                 return Array.from(new Set(results));
             },
 
-            clear: () => {
+            clear: (options = {}) => {
                 const physicalPrefix = getPhysicalKey("");
-                const keys = Object.keys(storage);
-                let count = 0;
-                keys.forEach(k => {
-                    if (k.startsWith(physicalPrefix)) {
-                        storage.removeItem(k);
-                        count++;
+                const protectedKeys = (options.except || []).map(k => getPhysicalKey(k));
+                const victims = [];
+                
+                for (let i = 0; i < storage.length; i++) {
+                    const k = storage.key(i);
+                    if (k && k.startsWith(physicalPrefix) && !protectedKeys.includes(k)) {
+                        victims.push(k);
                     }
-                });
-                this.logger.debug(`LocalStorage Persistence: Cleared ${count} entries for identity ${this._context.identityId}`);
+                }
+                
+                victims.forEach(k => storage.removeItem(k));
+                this.logger.debug(`LocalStorage Persistence: Cleared ${victims.length} entries for identity ${this._context.identityId}. (Protected: ${protectedKeys.length})`);
             }
         }, {
             "capability": "sys:persistence",

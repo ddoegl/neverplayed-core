@@ -1,0 +1,8 @@
+{
+  "Bundle-SymbolicName": "org.neverplayed.test.persistence",
+  "Bundle-Name": "Persistence Assurance Suite",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js",
+  "Bundle-Description": "Automated tests for persistence radii and stigmergic shunting",
+  "Pandino-Bundle-Manifest-Version": 2
+}

@@ -8,11 +8,13 @@ import { PERSISTENCE_MANAGER_SERVICE, LOG_SERVICE, PERSISTENCE_RESOLVER_SERVICE,
 export default class Activator {
     _providers = []; // Array of { tier, svc, ref, ranking }
     _volatileStore = new Map();
+    _deferredWrites = new Map();
     _currentMode = "normal";
     logger = console;
     _policies = new Map();
     _envTier = "cloud";
     _context = { tenantId: "guest", realmId: "unknown", identityId: "guest" };
+    _lastRealmId = "unknown";
 
     async start(context) {
         this.context = context;
@@ -50,6 +52,13 @@ export default class Activator {
                 this._providers.sort((a, b) => b.ranking - a.ranking); // Keep sorted by preference
                 
                 this.logger.info(`Persistence Selector: Tracked provider tier='${tier}' (Ranking: ${ranking}) from ${ref.bundle.getSymbolicName()}. (Total Providers: ${this._providers.length})`);
+                
+                // Rule: Late Arrival Context Sync (SDN-0165)
+                // If a provider joins after the context has been established, sync it immediately.
+                if (typeof svc.setContext === 'function' && this._context.tenantId !== "guest") {
+                    this.logger.info(`Persistence Selector: Syncing current context to late-arriving provider [${tier}]`);
+                    svc.setContext(this._context).catch(e => this.logger.error(`Persistence Selector: Failed to sync context to new provider [${tier}]`, e));
+                }
                 
                 return svc;
             },
@@ -134,16 +143,27 @@ export default class Activator {
         }
     }
 
-    load(key) {
+    load(key, options = {}) {
         if (this._currentMode === "stealth") return this._volatileStore.get(key) || null;
 
-        const preferredTier = this._getPreferredTierForKey(key);
+        // Areal Scoping Interceptor
+        let effectiveKey = key;
+        let effectiveOptions = { ...options };
+        if (key.startsWith("shared:")) {
+            effectiveKey = key.substring(7);
+            effectiveOptions.scope = "shared";
+        } else if (key.startsWith("global:")) {
+            effectiveKey = key.substring(7);
+            effectiveOptions.scope = "global";
+        }
+
+        const preferredTier = this._getPreferredTierForKey(effectiveKey);
         const preferredProvider = this._getProvider(preferredTier);
 
         // 1. Primary Attempt (Synchronous)
         if (preferredProvider) {
             try {
-                const data = preferredProvider.load(key);
+                const data = preferredProvider.load(effectiveKey, effectiveOptions);
                 if (data !== null && data !== undefined) return data;
             } catch (_e) { /* Failover to recovery scan */ }
         }
@@ -152,7 +172,7 @@ export default class Activator {
         for (const p of this._providers) {
             if (p.svc === preferredProvider) continue; 
             try {
-                const data = p.svc.load(key);
+                const data = p.svc.load(effectiveKey, effectiveOptions);
                 if (data !== null && data !== undefined) {
                     return data;
                 }
@@ -162,18 +182,56 @@ export default class Activator {
         return this._volatileStore.get(key) || null;
     }
 
-    async store(key, val) {
+    _getEffectiveContextForKey(key) {
+        let effectiveContext = { ...this._context };
+        if (key.startsWith("blueprint.") || key.startsWith("realm.do.")) {
+            effectiveContext.tenantId = "__global__";
+            effectiveContext.realmId = "__global__";
+            effectiveContext.identityId = "__shared__";
+        } else if (key.startsWith("global:")) {
+            effectiveContext.realmId = "__global__";
+            effectiveContext.identityId = "__shared__";
+        } else if (key.startsWith("shared:")) {
+            effectiveContext.identityId = "__shared__";
+        } else if (key.startsWith("pandino.session") || key.includes("config.admin")) {
+            effectiveContext.tenantId = "guest";
+            effectiveContext.realmId = "unknown";
+            effectiveContext.identityId = "guest";
+        }
+        return effectiveContext;
+    }
+
+    async store(key, val, options = {}) {
         if (this._currentMode === "stealth") {
             this._volatileStore.set(key, val);
             return;
         }
 
-        const tier = this._getPreferredTierForKey(key);
+        let effectiveKey = key;
+        let effectiveOptions = { ...options };
+        if (key.startsWith("shared:")) {
+            effectiveKey = key.substring(7);
+            effectiveOptions.scope = "shared";
+        } else if (key.startsWith("global:")) {
+            effectiveKey = key.substring(7);
+            effectiveOptions.scope = "global";
+        }
+
+        const effectiveContext = this._getEffectiveContextForKey(effectiveKey);
+        
+        // Deferral Guard: Prevent writing standard artifacts to the 'unknown' limbo realm
+        if (effectiveContext.realmId === 'unknown' && effectiveContext.tenantId !== 'guest') {
+            this.logger.warn(`PM Selector: Realm is unresolved for tenant [${effectiveContext.tenantId}]. Deferring write for [${key}]`);
+            this._deferredWrites.set(key, { val, options });
+            return;
+        }
+
+        const tier = this._getPreferredTierForKey(effectiveKey);
         const provider = this._getProvider(tier);
 
         this.logger.debug(`PM Selector: Store Request [${key}] -> Tier: ${tier} | Provider: ${provider ? 'found' : 'missing'}`);
 
-        if (provider) return await provider.store(key, val);
+        if (provider) return await provider.store(effectiveKey, val, effectiveOptions);
         this._volatileStore.set(key, val);
     }
 
@@ -238,7 +296,7 @@ export default class Activator {
             this._envTier = ctx.tier;
         }
 
-        this.logger.info(`PM Selector: Identity Context Shift -> [${this._context.tenantId}][${this._context.realmId}][${this._context.identityId}]`);
+        this.logger.info(`PM Selector: V2 Identity Context Shift -> [${this._context.tenantId}][${this._context.realmId}][${this._context.identityId}]`);
 
         // Rule: Tenant Handover Wipe (SDN-0165)
         if (oldUid !== "guest" && ctx.tenantId && ctx.tenantId !== oldUid) {
@@ -246,15 +304,42 @@ export default class Activator {
             this._purgeTenantVault(oldUid);
         }
 
+        // Rule: Limbo Pruning (SDN-0170)
+        // If we are transitioning from 'unknown' to a resolved realm, we prune the bootstrap limbo.
+        if (this._lastRealmId === 'unknown' && this._context.realmId !== 'unknown') {
+            this.logger.info(`PM Selector: Limbo Pruning triggered [unknown -> ${this._context.realmId}]`);
+            await this._pruneLimboState();
+        }
+        this._lastRealmId = this._context.realmId;
+
         // Propagate context to all providers
         for (const p of this._providers) {
             if (typeof p.svc.setContext === 'function') {
-                this.logger.debug(`PM Selector: Propagating context to ${p.tier} provider...`);
-                await p.svc.setContext(this._context);
+                try {
+                    await p.svc.setContext(this._context);
+                } catch (e) {
+                    this.logger.error(`PM Selector: Provider [${p.tier}] failed to shift context:`, e);
+                }
             }
         }
+        
+        // Flush Deferred Queue if the realm is now known
+        if (this._context.realmId !== 'unknown' && this._deferredWrites.size > 0) {
+            this.logger.info(`PM Selector: Realm active [${this._context.realmId}]. Flushing ${this._deferredWrites.size} deferred writes...`);
+            const pending = new Map(this._deferredWrites);
+            this._deferredWrites.clear(); // Clear before flushing to prevent recursive loops
+            
+            for (const [dKey, dPayload] of pending.entries()) {
+                await this.store(dKey, dPayload.val, dPayload.options);
+            }
+        }
+
         this.logger.info(`PM Selector: Context Shift Complete.`);
-        globalThis.dispatchEvent(new CustomEvent("pm-context-shifted", { detail: this._context }));
+        try {
+            globalThis.dispatchEvent(new CustomEvent("pm-context-shifted", { detail: this._context }));
+        } catch (e) {
+            this.logger.error(`PM Selector: Error dispatching context shift event:`, e);
+        }
     }
 
     _purgeTenantVault(uid) {
@@ -269,17 +354,81 @@ export default class Activator {
         }
     }
 
-    probe(key) {
-        const tier = this._getPreferredTierForKey(key);
-        // Find match to get implementation details
+    /**
+     * Limbo Pruning (SDN-0170)
+     * Clears all providers for the 'unknown' realm context while preserving bootstrap anchors.
+     */
+    async _pruneLimboState() {
+        const protectedKeys = [
+            "pandino.session.state",
+            "config.admin"
+        ];
+
+        this.logger.info(`PM Selector: Pruning limbo state (preserving ${protectedKeys.length} keys)...`);
+        
+        // We must temporarily force the context to 'unknown' for the clear operation 
+        // if the providers use the current context for their physical prefix.
+        const activeCtx = { ...this._context };
+        const limboCtx = { tenantId: "guest", realmId: "unknown", identityId: "guest" };
+
+        for (const p of this._providers) {
+            if (typeof p.svc.clear === 'function') {
+                try {
+                    // 1. Pivot provider to limbo context
+                    if (typeof p.svc.setContext === 'function') await p.svc.setContext(limboCtx);
+                    
+                    // 2. Clear limbo artifacts
+                    await p.svc.clear({ except: protectedKeys });
+                    
+                    // 3. Pivot provider back to active context
+                    if (typeof p.svc.setContext === 'function') await p.svc.setContext(activeCtx);
+                    
+                    this.logger.debug(`PM Selector: Pruned limbo on provider [${p.tier}]`);
+                } catch (err) {
+                    this.logger.error(`PM Selector: Limbo prune failed on tier [${p.tier}]:`, err.message);
+                }
+            }
+        }
+    }
+
+    async probe(key, options = {}) {
+        // Areal Scoping Interceptor for physical check
+        let effectiveKey = key;
+        let effectiveOptions = { ...options };
+        if (key.startsWith("shared:")) {
+            effectiveKey = key.substring(7);
+            effectiveOptions.scope = "shared";
+        } else if (key.startsWith("global:")) {
+            effectiveKey = key.substring(7);
+            effectiveOptions.scope = "global";
+        }
+
+        const tier = this._getPreferredTierForKey(effectiveKey);
+        // Find match to get implementation details of preferred route
         const match = this._providers.find(p => p.tier === tier) || this._providers.find(p => p.tier === "local");
         
+        let physicalTier = "unknown";
+        for (const p of this._providers) {
+            try {
+                const val = typeof p.svc.load === 'function' ? p.svc.load(effectiveKey, effectiveOptions) : null;
+                const resolvedVal = val instanceof Promise ? await val : val;
+                if (resolvedVal !== null && resolvedVal !== undefined) {
+                    physicalTier = p.tier;
+                    break;
+                }
+            } catch (e) { /* Skip on error */ }
+        }
+        
+        const effectiveContext = this._getEffectiveContextForKey(effectiveKey);
+
         return {
             key,
             tier: match?.tier || "unknown",
+            physicalTier: physicalTier,
             implementation: match?.ref.getProperty("implementation") || "none",
             bsn: match?.ref.bundle.getSymbolicName() || "none",
-            context: { ...this._context }
+            context: { ...this._context },
+            effectiveContext
         };
     }
 

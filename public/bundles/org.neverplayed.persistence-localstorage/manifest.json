@@ -7,5 +7,8 @@
     "Provide-Capability": "osgi.service; objectClass=\"@pandino/persistence-manager/PersistenceManager\"",
     "Import-Service": [
         "(objectClass=org.neverplayed.LogService)"
-    ]
+    ],
+    "Configuration": {
+        "log-level": "DEBUG"
+    }
 }

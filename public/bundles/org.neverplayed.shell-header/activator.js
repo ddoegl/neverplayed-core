@@ -38,7 +38,7 @@ export default class Activator extends AlpineActivator {
         });
 
         // Track Persistence Manager for Gold Standard Persistence (Pattern 4)
-        this.track(`(objectClass=${PERSISTENCE_MANAGER_SERVICE})`, {
+        this.track(`(&(objectClass=${PERSISTENCE_MANAGER_SERVICE})(|(implementation=selector-proxy)(service.ranking>=1000)))`, {
             addingService: (ref) => {
                 this.pm = context.getService(ref);
                 this._restoreUIState(UI_STORAGE_PID, store);

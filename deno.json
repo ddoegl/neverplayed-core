@@ -2,6 +2,7 @@
   "tasks": {
     "start": "deno run -A ./serve.ts",
     "start-exp": "deno run -A ./serve-experiments.ts",
+    "start-graph": "deno run -A ./serve-graph.ts",
     "lint": "deno lint public/bundles/",
     "check-types": "deno check public/shared-types.js",
     "audit": "deno run -A scripts/audit-identifiers.ts",

@@ -7,8 +7,6 @@ import {
     STRATUM_SERVICE, 
     SHELL_COMMAND_SERVICE, 
     LOG_SERVICE,
-    SESSION_SERVICE,
-    REALM_MANAGER_SERVICE,
     PERSISTENCE_MANAGER_SERVICE
 } from "../../core-types.js";
 
@@ -92,24 +90,42 @@ export default class Activator {
                     }
                     case 'stash': {
                         const key = args[1];
-                        const val = args[2];
-                        if (!key || val === undefined) {
-                            return log("Usage: /stratum stash <key> </value>", 'error');
+                        if (!key) {
+                            return log("Usage: /stratum stash <key> [value]", 'error');
                         }
                         
                         if (!this._pm) return log("Persistence Manager not available.", 'error');
                         
                         try {
-                            log(`📦 Stashing [${key}] into current Stratum...`);
-                            await this._pm.store(key, val);
-                            
-                            const probe = await this._pm.probe(key);
-                            log({ text: `✅ Stash Successful!`, color: "green" });
-                            log(` -> Tier:           ${probe.tier}`);
-                            log(` -> Implementation: ${probe.implementation} (${probe.bsn})`);
-                            log(` -> Stratum:        np://${probe.context.tenantId}/${probe.context.identityId}`);
+                            if (args.length > 2) {
+                                // Write Mode
+                                const val = args.slice(2).join(" ");
+                                log(`📦 Stashing [${key}] into current Stratum...`);
+                                await this._pm.store(key, val);
+                                
+                                const probe = await this._pm.probe(key);
+                                log({ text: `✅ Stash Successful!`, color: "green" });
+                                log(` -> Target Tier:      ${probe.tier}`);
+                                log(` -> Physical Tier:    ${probe.physicalTier}`);
+                                log(` -> Implementation: ${probe.implementation} (${probe.bsn})`);
+                                log(` -> Stratum:        np://${probe.context.tenantId}/${probe.context.identityId}`);
+                            } else {
+                                // Read Mode
+                                log(`🔍 Fetching [${key}] from current Stratum...`);
+                                const val = await this._pm.load(key);
+                                const probe = await this._pm.probe(key);
+                                if (val !== null && val !== undefined) {
+                                    log({ text: `✅ Fetch Successful!`, color: "green" });
+                                    log(` -> Value:          ${typeof val === 'object' ? JSON.stringify(val) : val}`);
+                                    log(` -> Target Tier:      ${probe.tier}`);
+                                    log(` -> Physical Tier:    ${probe.physicalTier}`);
+                                    log(` -> Implementation: ${probe.implementation} (${probe.bsn})`);
+                                } else {
+                                    log({ text: `❌ Nothing stashed at [${key}] in this radius.`, color: "yellow" });
+                                }
+                            }
                         } catch (err) {
-                            log(`Stash failed: ${err.message}`, 'error');
+                            log(`Stash operation failed: ${err.message}`, 'error');
                         }
                         break;
                     }

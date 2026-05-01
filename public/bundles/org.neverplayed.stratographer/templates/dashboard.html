@@ -1,57 +1,70 @@
 <div
   id="stratographer-dashboard"
   class="flex flex-col h-full w-full bg-slate-900 overflow-hidden backdrop-blur-3xl border border-slate-800/30"
-  x-data="{ 
-        init() {
-            this.$nextTick(() => {
-                const container = this.$refs.graphContainer;
-                if (container) {
-                    globalThis.dispatchEvent(new CustomEvent('explorer-render-request', { 
-                        detail: { element: container } 
-                    }));
-                }
-            });
-        }
-     }"
 >
   <!-- Top Bar: Context & Address -->
-  <div class="flex items-center space-x-8 px-8 py-4 border-b border-slate-800/50 bg-slate-900/40">
+  <div
+    class="flex items-center space-x-8 px-8 py-4 border-b border-slate-800/50 bg-slate-900/40"
+  >
     <!-- Branding -->
     <div class="flex items-center space-x-4 shrink-0">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+      <div
+        class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20"
+      >
         <i class="fas fa-map-marked-alt text-white"></i>
       </div>
       <div class="hidden xl:block">
-        <h2 class="text-sm font-bold text-slate-100 tracking-tight">The Stratographer</h2>
-        <p class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Areal Forensic Navigator</p>
+        <h2 class="text-sm font-bold text-slate-100 tracking-tight">
+          The Stratographer
+        </h2>
+        <p
+          class="text-[9px] text-slate-500 uppercase tracking-widest font-black"
+        >
+          Areal Forensic Navigator
+        </p>
       </div>
     </div>
 
     <!-- Sovereign Address Bar -->
     <div class="flex-grow flex items-center max-w-3xl">
-       <div class="relative w-full group">
-          <div class="absolute left-4 top-1/2 -translate-y-1/2 flex items-center space-x-2 text-slate-500">
-             <i class="fas fa-link text-[10px]"></i>
-          </div>
-          <input type="text" 
-                 class="w-full bg-slate-950/50 border border-slate-800/80 rounded-xl pl-10 pr-24 py-2 text-[11px] font-mono text-cyan-400 placeholder-slate-700 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all select-all shadow-inner"
-                 x-model="jumpTarget"
-                 @keyup.enter="jump()">
-          
-          <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
-             <button @click="copyURI()" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-cyan-400 transition-all tooltip" data-tip="Copy URI">
-                <i class="fas fa-copy text-[10px]"></i>
-             </button>
-             <button @click="jump()" class="px-3 py-1 bg-slate-800 hover:bg-cyan-500/20 text-[9px] font-black uppercase text-slate-400 hover:text-cyan-400 border border-slate-700/50 rounded-lg transition-all">
-                Jump
-             </button>
-          </div>
-       </div>
+      <div class="relative w-full group">
+        <div
+          class="absolute left-4 top-1/2 -translate-y-1/2 flex items-center space-x-2 text-slate-500"
+        >
+          <i class="fas fa-link text-[10px]"></i>
+        </div>
+        <input
+          type="text"
+          class="w-full bg-slate-950/50 border border-slate-800/80 rounded-xl pl-10 pr-24 py-2 text-[11px] font-mono text-cyan-400 placeholder-slate-700 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all select-all shadow-inner"
+          x-model="jumpTarget"
+          @keyup.enter="jump()"
+        >
+
+        <div
+          class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1"
+        >
+          <button
+            @click="copyURI()"
+            class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-cyan-400 transition-all tooltip"
+            data-tip="Copy URI"
+          >
+            <i class="fas fa-copy text-[10px]"></i>
+          </button>
+          <button
+            @click="jump()"
+            class="px-3 py-1 bg-slate-800 hover:bg-cyan-500/20 text-[9px] font-black uppercase text-slate-400 hover:text-cyan-400 border border-slate-700/50 rounded-lg transition-all"
+          >
+            Jump
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Perspective & Actions -->
     <div class="flex items-center space-x-4 shrink-0">
-      <div class="flex p-0.5 bg-slate-950/50 rounded-xl border border-slate-800/50">
+      <div
+        class="flex p-0.5 bg-slate-950/50 rounded-xl border border-slate-800/50"
+      >
         <button
           @click="$store.explorer.perspective = 'idealist'"
           :class="$store.explorer.perspective === 'idealist' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : 'text-slate-500 hover:text-slate-300 border-transparent'"
@@ -73,47 +86,87 @@
   <!-- Main Workspace -->
   <div class="flex-grow flex overflow-hidden">
     <!-- Left: Ontological Compass -->
-    <div class="w-72 border-r border-slate-800/50 flex flex-col p-6 space-y-6 bg-slate-900/20 shrink-0">
+    <div
+      class="w-72 border-r border-slate-800/50 flex flex-col p-6 space-y-6 bg-slate-900/20 shrink-0"
+    >
       <!-- HUD Cards (Refactored) -->
       <div class="space-y-4">
-        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-emerald-500/30 transition-all">
+        <div
+          class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-emerald-500/30 transition-all"
+        >
           <div class="flex items-center justify-between mb-3">
-            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Resident Identity</span>
+            <span
+              class="text-[9px] font-black text-slate-500 uppercase tracking-widest"
+            >Resident Identity</span>
             <i class="fas fa-fingerprint text-[10px] text-emerald-500/50"></i>
           </div>
           <div class="flex items-center space-x-3 mb-4">
-             <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-bold text-xs" x-text="identityId[0].toUpperCase()"></div>
-             <div class="min-w-0">
-                <div class="text-xs font-mono text-slate-200 truncate" x-text="identityId"></div>
-                <div class="text-[8px] text-slate-600 font-bold uppercase" x-text="tenantId"></div>
-             </div>
+            <div
+              class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-bold text-xs"
+              x-text="identityId[0].toUpperCase()"
+            >
+            </div>
+            <div class="min-w-0">
+              <div
+                class="text-xs font-mono text-slate-200 truncate"
+                x-text="identityId"
+              >
+              </div>
+              <div
+                class="text-[8px] text-slate-600 font-bold uppercase"
+                x-text="tenantId"
+              >
+              </div>
+            </div>
           </div>
-          
+
           <!-- Secondary Residents -->
           <template x-if="inhabitants.length > 1">
-             <div class="pt-3 border-t border-slate-800/50 space-y-2">
-                <div class="text-[8px] font-black text-slate-700 uppercase tracking-tighter mb-2">Other Residents</div>
-                <template x-for="id in inhabitants" :key="id">
-                   <button 
-                      x-show="id !== identityId"
-                      @click="jumpTarget = `np://${tenantId}/${realmId}/${id}/shell?tier=${tier}`; jump()"
-                      class="w-full flex items-center space-x-2 p-1.5 rounded-lg hover:bg-slate-800 group/item transition-all"
-                   >
-                      <div class="w-5 h-5 rounded bg-slate-800 flex items-center justify-center text-[7px] font-bold text-slate-500 group-hover/item:bg-emerald-500/20 group-hover/item:text-emerald-400" x-text="id[0].toUpperCase()"></div>
-                      <div class="text-[10px] text-slate-500 truncate font-mono text-left flex-1" x-text="id"></div>
-                      <i class="fas fa-redo-alt text-[7px] opacity-0 group-hover/item:opacity-100 text-emerald-500/50"></i>
-                   </button>
-                </template>
-             </div>
+            <div class="pt-3 border-t border-slate-800/50 space-y-2">
+              <div
+                class="text-[8px] font-black text-slate-700 uppercase tracking-tighter mb-2"
+              >
+                Other Residents
+              </div>
+              <template x-for="id in inhabitants" :key="id">
+                <button
+                  x-show="id !== identityId"
+                  @click="jumpTarget = `np://${tenantId}/${realmId}/${id}/shell?tier=${tier}`; jump()"
+                  class="w-full flex items-center space-x-2 p-1.5 rounded-lg hover:bg-slate-800 group/item transition-all"
+                >
+                  <div
+                    class="w-5 h-5 rounded bg-slate-800 flex items-center justify-center text-[7px] font-bold text-slate-500 group-hover/item:bg-emerald-500/20 group-hover/item:text-emerald-400"
+                    x-text="id[0].toUpperCase()"
+                  >
+                  </div>
+                  <div
+                    class="text-[10px] text-slate-500 truncate font-mono text-left flex-1"
+                    x-text="id"
+                  >
+                  </div>
+                  <i
+                    class="fas fa-redo-alt text-[7px] opacity-0 group-hover/item:opacity-100 text-emerald-500/50"
+                  ></i>
+                </button>
+              </template>
+            </div>
           </template>
         </div>
 
-        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-purple-500/30 transition-all">
+        <div
+          class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-purple-500/30 transition-all"
+        >
           <div class="flex items-center justify-between mb-3">
-            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Environment</span>
+            <span
+              class="text-[9px] font-black text-slate-500 uppercase tracking-widest"
+            >Environment</span>
             <i class="fas fa-globe-europe text-[10px] text-purple-500/50"></i>
           </div>
-          <div class="text-xs font-mono text-slate-200 truncate" x-text="realmId"></div>
+          <div
+            class="text-xs font-mono text-slate-200 truncate"
+            x-text="realmId"
+          >
+          </div>
           <div class="mt-3 grid grid-cols-2 gap-2">
             <template x-for="r in realms" :key="r.id">
               <button
@@ -127,14 +180,29 @@
           </div>
         </div>
 
-        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-cyan-500/30 transition-all">
+        <div
+          class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-cyan-500/30 transition-all"
+        >
           <div class="flex items-center justify-between mb-3">
-            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Persistence Tier</span>
-            <div class="w-1.5 h-1.5 rounded-full animate-pulse" :class="tier === 'cloud' ? 'bg-amber-400' : 'bg-cyan-400'"></div>
+            <span
+              class="text-[9px] font-black text-slate-500 uppercase tracking-widest"
+            >Persistence Tier</span>
+            <div
+              class="w-1.5 h-1.5 rounded-full animate-pulse"
+              :class="tier === 'cloud' ? 'bg-amber-400' : 'bg-cyan-400'"
+            >
+            </div>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-bold uppercase" :class="tier === 'cloud' ? 'text-amber-400' : 'text-cyan-400'" x-text="tier"></span>
-            <i :class="tier === 'cloud' ? 'fas fa-cloud' : 'fas fa-hard-drive'" class="text-[10px] text-slate-700"></i>
+            <span
+              class="text-[10px] font-bold uppercase"
+              :class="tier === 'cloud' ? 'text-amber-400' : 'text-cyan-400'"
+              x-text="tier"
+            ></span>
+            <i
+              :class="tier === 'cloud' ? 'fas fa-cloud' : 'fas fa-hard-drive'"
+              class="text-[10px] text-slate-700"
+            ></i>
           </div>
         </div>
       </div>
@@ -263,8 +331,9 @@
                 ></span>
                 <div class="flex items-center space-x-1.5">
                   <span
-                    class="text-[7px] px-1 bg-slate-800 text-slate-500 rounded uppercase font-black"
-                    x-text="item.probe.tier"
+                    class="text-[7px] px-1.5 py-0.5 rounded uppercase font-black border"
+                    :class="item.probe.physicalTier === 'cloud' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : (item.probe.physicalTier === 'local' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : 'bg-slate-800 text-slate-500 border-slate-700')"
+                    x-text="item.probe.physicalTier"
                   ></span>
                   <i class="fas fa-database text-[8px] text-slate-700"></i>
                 </div>

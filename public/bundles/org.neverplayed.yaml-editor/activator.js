@@ -11,6 +11,10 @@ export default class Activator extends BaseActivator {
     const yamlRef = context.getServiceReference(YAML_SERVICE);
     const yaml = context.getService(yamlRef);
 
+    // Track for Alpine Inspector
+    globalThis.__ALPINO_STORES__ = globalThis.__ALPINO_STORES__ || new Set();
+    globalThis.__ALPINO_STORES__.add('yamlEditor');
+
     // 1. Setup standalone Alpine Store
     Alpine.store("yamlEditor", {
       active: false,

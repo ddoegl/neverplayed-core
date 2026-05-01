@@ -73,3 +73,19 @@ public/.neverplayed/state.json
 # Deno coverage profiles
 cov_profile/
 .well-known/appspecific/com.chrome.devtools.json
+
+.venv/
+
+# keep graph outputs, skip heavy/local-only files
+
+# optional: commit for shared extraction speed, skip to keep repo small
+graphify-out/cache/
+
+# mtime-based, invalid after git clone - always gitignore this
+graphify-out/manifest.json
+
+# internal tracking files
+graphify-out/.*
+
+# local token tracking, not useful to share
+graphify-out/cost.json
