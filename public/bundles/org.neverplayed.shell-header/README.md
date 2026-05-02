@@ -7,8 +7,9 @@ Top-level UI navigation and status bar, providing centralized access to identity
 ## 🏛️ Architecture & Implementation
 
 - **Direct UI Mount**: Targeted mounting to the `#shell-header` ID via CSS selector (as defined in `manifest.json`).
-- **Reactive Visibility**: Uses `$store.platform.kernelReady` and `$store.session.currentUser` for dynamic content rendering.
-- **Micro-interactons**: Implements smooth transitions for user profile modals and search overlays.
+- **Alpine Magic Integration**: Fully harmonized to use the global `$session` magic property, eliminating redundant local session tracking and providing direct, reactive identity context.
+- **Sovereign Context Awareness**: Provides real-time visual feedback for identity focus via **Ghost** (Carried Being) and **Mask** (Materialized Surrogate) overlays on the user avatar.
+- **Reactive Visibility**: Uses `$store.platform.kernelReady` and `$session.currentUser` for dynamic content rendering.
 
 ## 🏛️ The Patterns (The State)
 

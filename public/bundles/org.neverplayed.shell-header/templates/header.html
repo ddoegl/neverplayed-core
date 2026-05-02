@@ -1,4 +1,3 @@
-
 <div class="header-root flex items-center justify-between w-full h-full">
   <div class="flex items-center space-x-4">
     <button
@@ -34,14 +33,24 @@
         @click="showRealms = !showRealms"
         class="flex items-center space-x-3 bg-slate-800/80 hover:bg-slate-700/80 px-4 py-2 rounded-xl backdrop-blur-md border border-slate-700/50 transition-all duration-300 group"
       >
-        <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+        <div
+          class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 transition-colors"
+        >
           <i :class="shell.activeRealm.icon + ' text-sm'"></i>
         </div>
         <div class="text-left leading-none">
-          <div class="text-[10px] uppercase text-slate-500 font-bold mb-0.5">Universe</div>
-          <div class="text-sm font-bold text-white truncate max-w-[120px]" x-text="shell.activeRealm.title"></div>
+          <div class="text-[10px] uppercase text-slate-500 font-bold mb-0.5">
+            Universe
+          </div>
+          <div
+            class="text-sm font-bold text-white truncate max-w-[120px]"
+            x-text="shell.activeRealm.title"
+          >
+          </div>
         </div>
-        <i class="fas fa-chevron-down text-[10px] text-slate-500 group-hover:text-slate-300 transition-colors"></i>
+        <i
+          class="fas fa-chevron-down text-[10px] text-slate-500 group-hover:text-slate-300 transition-colors"
+        ></i>
       </button>
 
       <div
@@ -51,43 +60,72 @@
         x-transition:enter-end="opacity-100 translate-y-0"
         class="absolute left-0 mt-3 w-72 bg-slate-900/95 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden p-2 z-[100] backdrop-blur-xl"
       >
-         <!-- Status Section -->
-         <div class="px-4 py-3 border-b border-slate-800/80 mb-2">
-            <div class="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Active Context</div>
-            <div class="text-xs text-blue-400 font-mono mt-1" x-text="shell.activeRealm.id"></div>
-         </div>
-
-          <!-- Actionable Realm List -->
-          <div class="space-y-1 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
-             <template x-for="(realm, index) in shell.realms" :key="realm.id + '-' + index">
-                 <button 
-                    @click="switchRealm(realm.id); showRealms = false"
-                    class="w-full text-left p-3 rounded-xl transition-all duration-300 group/item flex items-center space-x-3 border border-transparent"
-                    :class="shell.activeRealm.id === realm.id ? 'bg-blue-500/10 border-blue-500/20 shadow-sm' : 'hover:bg-slate-800/50 hover:border-slate-700/50'"
-                 >
-                    <div 
-                        class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0"
-                        :class="shell.activeRealm.id === realm.id ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-800 text-slate-500 group-hover/item:text-blue-400 group-hover/item:bg-slate-700'"
-                    >
-                        <i :class="realm.icon + ' text-xs'"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold truncate transition-colors" :class="shell.activeRealm.id === realm.id ? 'text-blue-400' : 'text-slate-200 group-hover/item:text-white'" x-text="realm.title"></span>
-                            <div x-show="shell.activeRealm.id === realm.id" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
-                        </div>
-                        <div class="text-[9px] font-mono text-slate-500 truncate" x-text="realm.id"></div>
-                    </div>
-                 </button>
-             </template>
+        <!-- Status Section -->
+        <div class="px-4 py-3 border-b border-slate-800/80 mb-2">
+          <div
+            class="text-[10px] uppercase text-slate-500 font-bold tracking-widest"
+          >
+            Active Context
           </div>
+          <div
+            class="text-xs text-blue-400 font-mono mt-1"
+            x-text="shell.activeRealm.id"
+          >
+          </div>
+        </div>
 
-         <div class="mt-2 p-3 bg-slate-950/50 rounded-xl border border-slate-800/50">
-            <div class="text-[9px] text-slate-500 uppercase font-bold text-center">Protocol Hint</div>
-            <div class="text-[10px] text-slate-400 italic text-center mt-1">
-               Interactive transitions available via '/realm switch'
-            </div>
-         </div>
+        <!-- Actionable Realm List -->
+        <div class="space-y-1 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+          <template
+            x-for="(realm, index) in shell.realms"
+            :key="realm.id + '-' + index"
+          >
+            <button
+              @click="switchRealm(realm.id); showRealms = false"
+              class="w-full text-left p-3 rounded-xl transition-all duration-300 group/item flex items-center space-x-3 border border-transparent"
+              :class="shell.activeRealm.id === realm.id ? 'bg-blue-500/10 border-blue-500/20 shadow-sm' : 'hover:bg-slate-800/50 hover:border-slate-700/50'"
+            >
+              <div
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0"
+                :class="shell.activeRealm.id === realm.id ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-800 text-slate-500 group-hover/item:text-blue-400 group-hover/item:bg-slate-700'"
+              >
+                <i :class="realm.icon + ' text-xs'"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span
+                    class="text-xs font-bold truncate transition-colors"
+                    :class="shell.activeRealm.id === realm.id ? 'text-blue-400' : 'text-slate-200 group-hover/item:text-white'"
+                    x-text="realm.title"
+                  ></span>
+                  <div
+                    x-show="shell.activeRealm.id === realm.id"
+                    class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
+                  >
+                  </div>
+                </div>
+                <div
+                  class="text-[9px] font-mono text-slate-500 truncate"
+                  x-text="realm.id"
+                >
+                </div>
+              </div>
+            </button>
+          </template>
+        </div>
+
+        <div
+          class="mt-2 p-3 bg-slate-950/50 rounded-xl border border-slate-800/50"
+        >
+          <div
+            class="text-[9px] text-slate-500 uppercase font-bold text-center"
+          >
+            Protocol Hint
+          </div>
+          <div class="text-[10px] text-slate-400 italic text-center mt-1">
+            Interactive transitions available via '/realm switch'
+          </div>
+        </div>
       </div>
     </div>
 
@@ -106,153 +144,264 @@
   <div class="flex items-center space-x-6">
     <!-- Session & Identity Info -->
     <div class="flex items-center space-x-6">
-      
       <!-- Layer 1: Infrastructure Identity (Auth Shield) -->
-      <div x-show="shell.globalUser" class="flex items-center space-x-2 border-l border-slate-700/50 pl-6 group">
-          <div class="text-right hidden sm:block">
-              <div class="text-[9px] uppercase text-slate-500 font-bold leading-none mb-0.5 tracking-tighter">Global Account</div>
-              <div class="text-[11px] font-mono text-blue-400/80 group-hover:text-blue-400 transition-colors" x-text="shell.globalUser?.email || 'N/A'"></div>
+      <div
+        x-show="shell.globalUser"
+        class="flex items-center space-x-2 border-l border-slate-700/50 pl-6 group"
+      >
+        <div class="text-right hidden sm:block">
+          <div
+            class="text-[9px] uppercase text-slate-500 font-bold leading-none mb-0.5 tracking-tighter"
+          >
+            Global Account
           </div>
-          <div class="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 transition-all">
-              <i class="fas fa-id-badge text-[10px]"></i>
+          <div
+            class="text-[11px] font-mono text-blue-400/80 group-hover:text-blue-400 transition-colors"
+            x-text="shell.globalUser?.email || 'N/A'"
+          >
           </div>
+        </div>
+        <div
+          class="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 transition-all"
+        >
+          <i class="fas fa-id-badge text-[10px]"></i>
+        </div>
       </div>
 
       <!-- Layer 3: Domain Session (Persona Control) -->
-      <div 
+      <div
         class="relative"
         x-data="{ showPersona: false }"
         @click.away="showPersona = false"
       >
-        <button 
-            @click="showPersona = !showPersona"
-            class="flex items-center space-x-3 border-l border-slate-700/50 pl-6 group transition-all"
+        <button
+          @click="showPersona = !showPersona"
+          class="flex items-center space-x-3 border-l border-slate-700/50 pl-6 group transition-all"
         >
           <div class="text-right hidden sm:block">
-            <div class="text-[10px] uppercase text-slate-400 font-bold leading-none mb-1 group-hover:text-blue-400 transition-colors">
+            <div
+              class="text-[10px] uppercase text-slate-400 font-bold leading-none mb-1 group-hover:text-blue-400 transition-colors"
+            >
               Session User
             </div>
-            <div class="text-xs font-semibold" :class="shell.user.isGuest ? 'text-slate-500 italic' : 'text-white'" x-text="shell.user.alias"></div>
+            <div
+              class="text-xs font-semibold"
+              :class="$session.currentUser.id === 'guest' ? 'text-slate-500 italic' : 'text-white'"
+              x-text="$session.currentUser.email || 'Guest'"
+            >
+            </div>
           </div>
-          <div 
-            class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold border border-slate-700 shadow-lg text-white transition-all transform group-hover:scale-110 group-hover:border-blue-500/50" 
-            :class="shell.user.isGuest ? 'grayscale opacity-50' : ''"
+          <div
+            class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold border border-slate-700 shadow-lg text-white transition-all transform group-hover:scale-110 group-hover:border-blue-500/50 relative"
+            :class="$session.currentUser.id === 'guest' ? 'grayscale opacity-50' : ''"
           >
-            <span x-text="shell.user.avatar"></span>
+            <span
+              x-text="($session.currentUser.email || 'G')[0].toUpperCase()"
+            ></span>
+
+            <!-- Sovereign Indicator Overlay -->
+            <template x-if="$session.currentUser.isCarried">
+              <div
+                class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center border-2 border-slate-900"
+              >
+                <i class="fas fa-ghost text-[8px] text-white"></i>
+              </div>
+            </template>
+            <template x-if="$session.currentUser.isMaterialized">
+              <div
+                class="absolute -top-1 -right-1 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center border-2 border-slate-900"
+              >
+                <i class="fas fa-mask text-[8px] text-white"></i>
+              </div>
+            </template>
           </div>
         </button>
 
         <!-- Persona Dropdown Menu -->
-        <div 
-            x-show="showPersona"
-            x-transition:enter="transition ease-out duration-200"
-            x-transition:enter-start="opacity-0 translate-y-2 scale-95"
-            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-            class="absolute right-0 mt-3 w-64 bg-slate-900/95 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden p-2 z-[100] backdrop-blur-xl"
+        <div
+          x-show="showPersona"
+          x-transition:enter="transition ease-out duration-200"
+          x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+          x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+          class="absolute right-0 mt-3 w-64 bg-slate-900/95 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden p-2 z-[100] backdrop-blur-xl"
         >
-            <div class="px-4 py-3 border-b border-slate-800/80 mb-2">
-                <div class="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Persona Identity</div>
-                <div class="text-xs font-bold text-white mt-1" x-text="shell.user.alias"></div>
-                <div class="text-[9px] font-mono text-blue-400/80 mt-0.5" x-text="shell.user.id || 'not-assigned'"></div>
+          <div class="px-4 py-3 border-b border-slate-800/80 mb-2">
+            <div
+              class="text-[10px] uppercase text-slate-500 font-bold tracking-widest"
+            >
+              Persona Identity
             </div>
+            <div
+              class="text-xs font-bold text-white mt-1"
+              x-text="$session.currentUser.email || 'Guest'"
+            >
+            </div>
+            <div
+              class="text-[9px] font-mono text-blue-400/80 mt-0.5"
+              x-text="$session.currentUser.id || 'not-assigned'"
+            >
+            </div>
+          </div>
 
-            <div class="space-y-1">
-                <!-- Action: Exit Identity (Fall back to Tenant) -->
-                <template x-if="shell.user.isIdentityActive">
-                    <button 
-                        @click="logout(); showPersona = false"
-                        class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-red-500/10 text-slate-300 hover:text-red-400 transition-all group/item border border-transparent hover:border-red-500/20"
-                    >
-                        <div class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500 group-hover/item:bg-red-500 group-hover/item:text-white transition-colors">
-                            <i class="fas fa-sign-out-alt text-xs"></i>
-                        </div>
-                        <div class="text-left font-bold text-xs">Exit Persona</div>
-                    </button>
-                </template>
-
-                <!-- List: Available Inhabitants (Residency Switcher) -->
-                <template x-if="shell.inhabitants?.length > 0">
-                    <div class="py-2">
-                        <div class="px-3 pb-2 text-[9px] uppercase text-slate-500 font-bold tracking-widest">Available Inhabitants</div>
-                        <template x-for="id in shell.inhabitants" :key="id">
-                            <button 
-                                x-show="id !== shell.user.id"
-                                @click="login(id); showPersona = false"
-                                class="w-full flex items-center space-x-3 p-2 rounded-xl hover:bg-blue-500/10 text-slate-400 hover:text-blue-400 transition-all group/item border border-transparent"
-                            >
-                                <div class="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] font-bold group-hover/item:bg-blue-500 group-hover/item:text-white transition-colors" x-text="id[0].toUpperCase()"></div>
-                                <div class="text-left font-medium text-[11px] truncate flex-1" x-text="id"></div>
-                                <i class="fas fa-chevron-right text-[8px] opacity-0 group-hover/item:opacity-100 transition-opacity"></i>
-                            </button>
-                        </template>
-                    </div>
-                </template>
-
-                <!-- Action: Custom Identity -->
-                <button 
-                    @click="identityLogin(); showPersona = false"
-                    class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-500/5 text-slate-500 hover:text-blue-400 transition-all group/item border border-transparent"
-                    :class="shell.user.isIdentityActive ? 'mt-2 border-t border-slate-800/50 pt-3' : ''"
+          <div class="space-y-1">
+            <!-- Action: Exit Identity (Fall back to Tenant) -->
+            <template x-if="$session.currentUser.id !== 'guest'">
+              <button
+                @click="logout(); showPersona = false"
+                class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-red-500/10 text-slate-300 hover:text-red-400 transition-all group/item border border-transparent hover:border-red-500/20"
+              >
+                <div
+                  class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500 group-hover/item:bg-red-500 group-hover/item:text-white transition-colors"
                 >
-                    <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 group-hover/item:bg-blue-500/20 group-hover/item:text-blue-400 transition-colors">
-                        <i class="fas fa-user-plus text-xs"></i>
-                    </div>
-                    <div class="text-left font-bold text-xs">Activate Other Persona</div>
-                </button>
-            </div>
+                  <i class="fas fa-sign-out-alt text-xs"></i>
+                </div>
+                <div class="text-left font-bold text-xs">Exit Persona</div>
+              </button>
+            </template>
 
-            <!-- Context Info -->
-            <div class="mt-2 p-3 bg-slate-950/50 rounded-xl border border-slate-800/50">
-                <div class="text-[9px] text-slate-500 uppercase font-bold text-center mb-1">Operator Anchor</div>
-                <div class="text-[10px] text-slate-300 font-mono text-center truncate" x-text="shell.tenantAlias"></div>
+            <!-- List: Available Inhabitants (Residency Switcher) -->
+            <template x-if="shell.inhabitants?.length > 0">
+              <div class="py-2">
+                <div
+                  class="px-3 pb-2 text-[9px] uppercase text-slate-500 font-bold tracking-widest"
+                >
+                  Available Inhabitants
+                </div>
+                <template x-for="id in shell.inhabitants" :key="id">
+                  <button
+                    x-show="id !== $session.currentUser.id"
+                    @click="login(id); showPersona = false"
+                    class="w-full flex items-center space-x-3 p-2 rounded-xl hover:bg-blue-500/10 text-slate-400 hover:text-blue-400 transition-all group/item border border-transparent"
+                  >
+                    <div
+                      class="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] font-bold group-hover/item:bg-blue-500 group-hover/item:text-white transition-colors"
+                      x-text="id[0].toUpperCase()"
+                    >
+                    </div>
+                    <div
+                      class="text-left font-medium text-[11px] truncate flex-1"
+                      x-text="id"
+                    >
+                    </div>
+                    <i
+                      class="fas fa-chevron-right text-[8px] opacity-0 group-hover/item:opacity-100 transition-opacity"
+                    ></i>
+                  </button>
+                </template>
+              </div>
+            </template>
+
+            <!-- Action: Custom Identity -->
+            <button
+              @click="identityLogin(); showPersona = false"
+              class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-500/5 text-slate-500 hover:text-blue-400 transition-all group/item border border-transparent"
+              :class="$session.currentUser.id !== 'guest' ? 'mt-2 border-t border-slate-800/50 pt-3' : ''"
+            >
+              <div
+                class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 group-hover/item:bg-blue-500/20 group-hover/item:text-blue-400 transition-colors"
+              >
+                <i class="fas fa-user-plus text-xs"></i>
+              </div>
+              <div class="text-left font-bold text-xs">
+                Activate Other Persona
+              </div>
+            </button>
+          </div>
+
+          <!-- Context Info -->
+          <div
+            class="mt-2 p-3 bg-slate-950/50 rounded-xl border border-slate-800/50"
+          >
+            <div
+              class="text-[9px] text-slate-500 uppercase font-bold text-center mb-1"
+            >
+              Operator Anchor
             </div>
+            <div
+              class="text-[10px] text-slate-300 font-mono text-center truncate"
+              x-text="$session.scopedUsers?.global?.__activeId__ || 'Anonymous'"
+            >
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Layer 4: Antigravity Resident (Agent Service) -->
       <template x-if="$store.antigravity_agent">
-          <div class="flex items-center space-x-3 border-l border-slate-700/50 pl-6 group relative">
-              <div class="text-right hidden sm:block">
-                  <div class="text-[9px] uppercase text-slate-500 font-bold leading-none mb-0.5 tracking-tighter">Institutional Resident</div>
-                  <div class="text-[11px] font-mono transition-colors" 
-                       :class="$store.antigravity_agent.healthy ? 'text-blue-400' : 'text-amber-400'"
-                       x-text="$store.antigravity_agent.mode"></div>
-              </div>
-              <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border transition-all duration-500 shadow-lg"
-                   :class="$store.antigravity_agent.healthy ? 'border-blue-500/30' : 'border-amber-500/50 shadow-amber-500/10'">
-                  <div class="relative flex items-center justify-center">
-                      <div class="absolute w-6 h-6 rounded-full blur-md transition-all duration-1000"
-                           :class="$store.antigravity_agent.healthy ? 'bg-blue-500/20 animate-pulse' : 'bg-amber-500/40'"></div>
-                      <i class="fas fa-satellite relative z-10 text-xs transition-colors"
-                         :class="$store.antigravity_agent.healthy ? 'text-blue-400' : 'text-amber-400'"></i>
-                  </div>
-              </div>
-
-              <!-- Tooltip on hover -->
-              <div class="absolute top-14 right-0 w-48 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[200]">
-                  <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Audit Status</div>
-                  <div class="space-y-1">
-                      <div class="flex justify-between text-[10px]">
-                          <span class="text-slate-500">Last Audit:</span>
-                          <span class="text-slate-300 font-mono" x-text="new Date($store.antigravity_agent.lastAudit).toLocaleTimeString()"></span>
-                      </div>
-                      <div class="flex justify-between text-[10px]">
-                          <span class="text-slate-500">Findings:</span>
-                          <span :class="$store.antigravity_agent.findingsCount > 0 ? 'text-amber-400 font-bold' : 'text-green-400'" x-text="$store.antigravity_agent.findingsCount"></span>
-                      </div>
-                  </div>
-              </div>
+        <div
+          class="flex items-center space-x-3 border-l border-slate-700/50 pl-6 group relative"
+        >
+          <div class="text-right hidden sm:block">
+            <div
+              class="text-[9px] uppercase text-slate-500 font-bold leading-none mb-0.5 tracking-tighter"
+            >
+              Institutional Resident
+            </div>
+            <div
+              class="text-[11px] font-mono transition-colors"
+              :class="$store.antigravity_agent.healthy ? 'text-blue-400' : 'text-amber-400'"
+              x-text="$store.antigravity_agent.mode"
+            >
+            </div>
           </div>
+          <div
+            class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border transition-all duration-500 shadow-lg"
+            :class="$store.antigravity_agent.healthy ? 'border-blue-500/30' : 'border-amber-500/50 shadow-amber-500/10'"
+          >
+            <div class="relative flex items-center justify-center">
+              <div
+                class="absolute w-6 h-6 rounded-full blur-md transition-all duration-1000"
+                :class="$store.antigravity_agent.healthy ? 'bg-blue-500/20 animate-pulse' : 'bg-amber-500/40'"
+              >
+              </div>
+              <i
+                class="fas fa-satellite relative z-10 text-xs transition-colors"
+                :class="$store.antigravity_agent.healthy ? 'text-blue-400' : 'text-amber-400'"
+              ></i>
+            </div>
+          </div>
+
+          <!-- Tooltip on hover -->
+          <div
+            class="absolute top-14 right-0 w-48 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[200]"
+          >
+            <div
+              class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"
+            >
+              Audit Status
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px]">
+                <span class="text-slate-500">Last Audit:</span>
+                <span
+                  class="text-slate-300 font-mono"
+                  x-text="new Date($store.antigravity_agent.lastAudit).toLocaleTimeString()"
+                ></span>
+              </div>
+              <div class="flex justify-between text-[10px]">
+                <span class="text-slate-500">Findings:</span>
+                <span
+                  :class="$store.antigravity_agent.findingsCount > 0 ? 'text-amber-400 font-bold' : 'text-green-400'"
+                  x-text="$store.antigravity_agent.findingsCount"
+                ></span>
+              </div>
+            </div>
+          </div>
+        </div>
       </template>
 
       <!-- System Controls -->
-      <div class="flex items-center space-x-2 border-l border-slate-700/50 pl-6">
+      <div
+        class="flex items-center space-x-2 border-l border-slate-700/50 pl-6"
+      >
         <button
           @click="launchConfig()"
           class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-blue-400 transition-all border border-slate-700 shadow-inner group"
           title="Universe Settings"
         >
-          <i class="fas fa-cog transition-transform group-hover:rotate-90 text-sm"></i>
+          <i
+            class="fas fa-cog transition-transform group-hover:rotate-90 text-sm"
+          ></i>
         </button>
         <button
           @click="triggerReset()"
@@ -271,7 +420,7 @@
         </button>
       </div>
     </div>
-    <div x-show="!shell.user">
+    <div x-show="$session.currentUser.id === 'guest'">
       <div class="text-slate-400 text-sm italic">Guest Session</div>
     </div>
   </div>

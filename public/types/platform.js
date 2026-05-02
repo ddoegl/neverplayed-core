@@ -13,6 +13,7 @@ export const CONFIG_ADMIN_UI_FLOW = "org.neverplayed.config.UIFlow";
 export const SYSTEM_RESET_SERVICE = "org.neverplayed.system.Reset";
 export const AGENT_SERVICE = "org.neverplayed.agent.AgentService";
 export const STRATUM_SERVICE = "org.neverplayed.stratum.StratumService";
+export const BEING_SERVICE = "org.neverplayed.domain.BeingService";
 
 // 2. Pandino / External Services
 export const PERSISTENCE_MANAGER_SERVICE = "@pandino/persistence-manager/PersistenceManager";
@@ -50,6 +51,8 @@ export const LOG_LEVEL_PROP = "log-level";
 export const REALM_CORE = "org.neverplayed.realm.core";
 export const REALM_FOUNDATION = "org.neverplayed.realm.foundation";
 export const REALM_SHOWCASE = "org.neverplayed.realm.showcase";
+export const REALM_HABITAT = "org.neverplayed.realm.habitat";
+export const REALM_GOVERNANCE = "org.neverplayed.realm.governance";
 
 // 6. Lifecycle & Messaging
 export const CONFIG_UPDATED_TOPIC = "org/neverplayed/config/UPDATED";

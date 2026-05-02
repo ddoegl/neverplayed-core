@@ -508,30 +508,11 @@
           await pm.waitReady();
         }
 
-        // 1.2 Track Session Service (Externalized in Layer 1)
-        const sessionService = Alpine.reactive({
-          currentUser: null,
-          scopedUsers: { global: { id: "guest", attributes: {} } },
-          environment: "business-channel-web",
-        });
-
-        context.trackService(`(objectClass=${SESSION_SERVICE})`, {
-          addingService: (ref) => {
-            const svc = context.getService(ref);
-            Object.assign(sessionService, svc);
-
-            console.log(
-              "Shell Boot: Session Service connected and synchronized. 🛡️",
-            );
-            return svc;
-          },
-        }).open();
-
         Alpine.data("navigationMenu", () => ({
           flows: [],
           navServices: [],
           envServices: [],
-          session: sessionService,
+          get session() { return this.$session; },
           activeFlowId: null,
           CONFIG_ADMIN_UI_FLOW,
           REALLIFE_FLOW,

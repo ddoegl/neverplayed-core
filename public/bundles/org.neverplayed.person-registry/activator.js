@@ -48,6 +48,13 @@ export default class Activator extends BaseActivator {
                 // Rule: Infrastructure Gravity (SDN-0180)
                 // Register 'cloud' policy for infrastructure data to ensure multi-realm availability.
                 this._resolver.registerPolicy(PERSONS_PID, { tier: 'cloud' });
+
+                // Rule: Sovereign Being Grounding (Ideation: Sovereign Beings)
+                // Anchor 'person' beings in the Habitat realm.
+                this._resolver.registerPolicy('org.neverplayed.beings/person/', {
+                    realm: 'org.neverplayed.realm.habitat',
+                    tier: 'cloud'
+                });
                 
                 // Trigger re-hydration once the resolver is ready to ensure correct tiering
                 this._hydrateData();

@@ -2,6 +2,31 @@
   <div class="flex justify-between items-center">
     <h2 class="text-2xl font-bold">Person Registry</h2>
     <div class="flex items-center gap-2">
+      <!-- Sovereign Context Indicator -->
+      <div 
+        class="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border"
+        :class="$session.currentUser.isMaterialized ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : ($session.currentUser.isCarried ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-600')"
+      >
+        <template x-if="$session.currentUser.isMaterialized">
+            <i class="fas fa-mask text-indigo-500"></i>
+        </template>
+        <template x-if="$session.currentUser.isCarried">
+            <i class="fas fa-ghost text-amber-500"></i>
+        </template>
+        <template x-if="!$session.currentUser.isMaterialized && !$session.currentUser.isCarried">
+            <i class="fas fa-user-shield text-gray-400"></i>
+        </template>
+        
+        <span class="font-medium" x-text="$session.currentUser.alias || $session.currentUser.id"></span>
+        
+        <template x-if="$session.currentUser.isMaterialized">
+            <span class="text-[10px] uppercase font-bold opacity-70">Surrogate: <span x-text="$session.currentUser.activeSurrogateId"></span></span>
+        </template>
+        <template x-if="$session.currentUser.isCarried">
+            <span class="text-[10px] uppercase font-bold opacity-70">Being Focus</span>
+        </template>
+      </div>
+
       <button
         @click="openYamlEditor()"
         class="bg-gray-100 text-gray-700 px-4 py-2 rounded shadow border border-gray-200 hover:bg-gray-200"

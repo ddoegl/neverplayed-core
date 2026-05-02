@@ -7,6 +7,8 @@ The **Identity Purity Guardian** that manages reactive user state, scoped author
 ## 🏛️ Architecture & Implementation
 
 - **Multi-Persona Residency**: Supports the `scopedUsers` registry pattern, allowing multiple identities to inhabit a single coordinate simultaneously in an Identity Stack.
+- **Being Gravity (Sovereign Focus)**: Implements the "Session Soul" pattern, where a non-global login automatically promotes an identity to the session-wide Being focus, ensuring it persists across stratum jumps.
+- **Global Identity Anchoring**: Automatically registers every new identity in the `global` stack, ensuring universal recognition for Carry-over and Materialization lookups.
 - **Institutional Persistence Sync**: Centralizes persistence context shunting. Watches `session.tier` and atomically synchronizes the `PersistenceManager` with the full [Tenant/Identity/Realm/Tier] coordinate (ADR-0170). 🪐🛡️🔍
 - **Identity Hierarchy**: Implements **Sovereign Identity Scoping (ADR-0165)**, prioritizing `activeFlowId` over `activeRealmId`.
 - **Forensic Auditing**: Features a **Mutation Forensic Guard** that monitors the reactive store for direct property assignments.
@@ -26,3 +28,4 @@ The **Identity Purity Guardian** that manages reactive user state, scoped author
 - [ADR-0140](../../docs/adr/0140-sovereign-shield.md) - Sovereign Shield (CLI Normalization). 🛡️👤
 - [ADR-0165](../../docs/adr/0165-sovereign-identity-scoping.md) - Sovereign Identity Scoping (Hierarchical Sharding). 🛡️🪐
 - [ADR-0170](../../docs/adr/0170-multi-persona-residency.md) - Multi-Persona Identity Residency (Portfolios & Shunting). 🪐🛡️
+- [ADR-0175](../../docs/adr/0175-sovereign-being-lifecycle-gravity.md) - Sovereign Being Lifecycle & Focus Gravity. 🧬✨

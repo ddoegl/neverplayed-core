@@ -7,8 +7,9 @@ Left-hand side navigation panel for switching between flows, managing realms, an
 ## 🏛️ Architecture & Implementation
 
 - **Service Registry Integration**: Tracks `FLOW_SERVICE` and `REALM_SERVICE` to dynamically generate navigation links.
+- **Harmonized Session Integration**: Migrated from legacy store-based user tracking to the global `$session` magic property, ensuring identity consistency across the entire shell.
+- **Sovereign Identity Projection**: Displays visual context indicators (**Ghost** for Carried, **Mask** for Materialized) in the footer user area for real-time focus feedback.
 - **State Integration**: Uses `$store.realmManager` to highlight the current active universe and its inhabitants.
-- **Visual Feedback**: Utilizes Tailwind animations for expansion and indicator transitions.
 
 ## 🏛️ The Patterns (The State)
 

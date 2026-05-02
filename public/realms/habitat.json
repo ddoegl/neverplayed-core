@@ -1,13 +1,13 @@
 {
-    "id": "org.neverplayed.realm.community",
-    "title": "Community",
-    "icon": "fas fa-users",
+    "id": "org.neverplayed.realm.habitat",
+    "title": "Habitat",
+    "icon": "fas fa-leaf",
     "extends": ["org.neverplayed.realm.foundation"],
-    "description": "Layer 4: Defines societal structures and roles.",
+    "description": "Layer 4: Inhabited by beings. Ecosystems and niches emerge here.",
     "privileges": {
         "realm-admins": ["daniel.doegl@doegl.info", "guest"]
     },
-    "bundles": [],
+    "bundles": ["./bundles/org.neverplayed.being-service/manifest.json"],
     "domainObjects": [
         { "id": "showcase-lab", "icon": "fas fa-flask", "title": "Platform Lab" }
     ]

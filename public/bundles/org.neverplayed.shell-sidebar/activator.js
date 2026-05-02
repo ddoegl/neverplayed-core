@@ -27,8 +27,7 @@ export default class Activator extends AlpineActivator {
         // 1. Unified Shell Store (Pattern 2) + Local UI Store
         const shell = this.initStore('shell_context', {
             sidebarOpen: true,
-            sidebarState: 0,
-            user: { alias: 'Guest', avatar: '?' }
+            sidebarState: 0
         });
 
         const sidebarState = this.initStore('shell_sidebar_state', {

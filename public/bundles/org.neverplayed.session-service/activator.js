@@ -3,7 +3,7 @@
  * @module platform/bundles/org.neverplayed.session-service
  */
 
-import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE } from "../../core-types.js";
+import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE } from "../../core-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -45,7 +45,7 @@ export default class Activator {
         }).open();
 
         // 3. Track Realm Manager for Context Scoping
-        context.trackService(`(objectClass=org.neverplayed.realm.RealmManager)`, {
+        context.trackService(`(objectClass=${REALM_MANAGER_SERVICE})`, {
             addingService: (ref) => {
                 this._realm = context.getService(ref);
                 return this._realm;
@@ -103,29 +103,73 @@ export default class Activator {
             ...persistedState,
             activeFlowId: null, // Volatile
             activeRealmId: null, // Volatile (Pushed from Realm Manager)
-            tier: persistedState.tier || "local",
-            
+            activeBeingId: persistedState.activeBeingId || null,
+
             get currentUser() {
                 const scope = this.activeFlowId || this.activeRealmId || "global";
-                const stack = this.scopedUsers[scope] || this.scopedUsers["global"] || {};
-                const activeId = stack.__activeId__ || 'guest';
+                const stack = this.scopedUsers[scope] || {};
+                const activeId = stack.__activeId__;
                 
-                let user = stack[activeId];
+                let identity = (activeId && activeId !== 'guest') ? stack[activeId] : null;
                 
-                // Fallback inheritance logic
-                if (activeId === 'guest' || !user) {
-                   const globalStack = this.scopedUsers["global"] || {};
-                   user = globalStack[globalStack.__activeId__] || globalStack['guest'] || { id: 'guest' };
+                // 1. Explicit Scope Identity (Surrogate or Local Login)
+                if (identity) {
+                    return this._materialize(identity);
                 }
 
-                return user;
+                // 2. Being Carry-over (The Session Soul)
+                if (this.activeBeingId) {
+                    const profile = this._findIdentity(this.activeBeingId);
+                    if (profile) {
+                        return this._materialize({ 
+                            ...profile, 
+                            isCarried: true, 
+                            carriedFrom: profile.scope 
+                        });
+                    }
+                }
+
+                // 3. Fallback to Global Identity
+                const globalStack = this.scopedUsers["global"] || {};
+                const globalId = globalStack.__activeId__ || 'guest';
+                identity = globalStack[globalId] || globalStack['guest'] || { id: 'guest' };
+
+                return this._materialize(identity);
             },
 
-            login(user, scope = null) {
+            // Helper: Find an identity profile across any scope
+            _findIdentity(id) {
+                for (const [scope, stack] of Object.entries(this.scopedUsers)) {
+                    if (stack[id] && stack[id].email) {
+                        return { ...stack[id], scope };
+                    }
+                }
+                return null;
+            },
+
+            // Helper: Materialize surrogate if present
+            _materialize(identity) {
+                if (identity && identity.activeSurrogateId && identity.surrogates?.[identity.activeSurrogateId]) {
+                    return {
+                        ...identity,
+                        ...identity.surrogates[identity.activeSurrogateId],
+                        sid: identity.id,
+                        isMaterialized: true
+                    };
+                }
+                return identity;
+            },
+
+            setBeingFocus(beingId) {
+                this.activeBeingId = beingId;
+                logger?.info(`Session: Being focus shifted to '${beingId}'. All realms will now inhabit this identity by default.`);
+            },
+
+            login(user, scope = null, surrogate = null) {
                 const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
                 let identity;
                 if (typeof user === "string") {
-                    // Inheritance Lookup: resolve full profile from existing scopes before synthesizing a stub
+                    // Inheritance Lookup: resolve full profile from existing scopes
                     let existing = null;
                     for (const stack of Object.values(this.scopedUsers || {})) {
                         if (stack[user] && stack[user].email) {
@@ -139,28 +183,70 @@ export default class Activator {
                 }
                 const identityId = identity.uid || identity.id;
 
-                logger?.info(`Session: LOGIN requested for scope '${targetScope}' (id: ${identityId})`);
+                logger?.info(`Session: LOGIN requested for scope '${targetScope}' (id: ${identityId}${surrogate ? `, surrogate: ${surrogate.id}` : ''})`);
 
                 if (!this.scopedUsers[targetScope]) {
                     this.scopedUsers[targetScope] = { __activeId__: 'guest', guest: { id: 'guest' } };
                 }
 
                 // Upsert Identity into Stack
-                this.scopedUsers[targetScope][identityId] = { 
-                    id: identityId, 
-                    email: identity.email,
-                    firstname: identity.firstname,
-                    lastname: identity.lastname,
-                    alias: identity.alias,
-                    capabilities: identity.capabilities || [],
-                    attributes: identity.attributes || {},
-                    isTenant: targetScope === 'global'
-                };
+                if (!this.scopedUsers[targetScope][identityId]) {
+                    this.scopedUsers[targetScope][identityId] = { 
+                        id: identityId, 
+                        email: identity.email,
+                        firstname: identity.firstname,
+                        lastname: identity.lastname,
+                        alias: identity.alias,
+                        capabilities: identity.capabilities || [],
+                        attributes: identity.attributes || {},
+                        surrogates: {},
+                        activeSurrogateId: null,
+                        isTenant: targetScope === 'global'
+                    };
+                }
+
+                // Rule: Global Anchoring (Ideation: Sovereign Beings)
+                // Ensure every identity is known to the global scope for carry-over lookups.
+                if (!this.scopedUsers['global'][identityId]) {
+                    this.scopedUsers['global'][identityId] = { ...this.scopedUsers[targetScope][identityId] };
+                    logger?.debug(`Session: Anchored identity '${identityId}' in global scope.`);
+                }
+
+                // Rule: Surrogate Grafting
+                if (surrogate && surrogate.id) {
+                    const sId = surrogate.id;
+                    this.scopedUsers[targetScope][identityId].surrogates[sId] = {
+                        ...surrogate,
+                        materializedAt: new Date().toISOString()
+                    };
+                    this.scopedUsers[targetScope][identityId].activeSurrogateId = sId;
+                    logger?.info(`Session: Materialized surrogate '${sId}' for identity '${identityId}'`);
+                }
 
                 // Pivot Active Resident
                 this.scopedUsers[targetScope].__activeId__ = identityId;
                 
-                globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'login', user, scope } }));
+                // Rule: Being Gravity (Ideation: Sovereign Beings)
+                // If logging into a non-global scope with a real identity, establish as Being Focus.
+                if (targetScope !== 'global' && identityId !== 'guest') {
+                    if (!this.activeBeingId || this.activeBeingId !== identityId) {
+                        this.setBeingFocus(identityId);
+                    }
+                }
+
+                globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'login', user, scope, surrogate } }));
+            },
+
+            activateSurrogate(surrogateId, scope = null) {
+                const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
+                const stack = this.scopedUsers[targetScope];
+                if (!stack) return;
+
+                const activeId = stack.__activeId__;
+                if (stack[activeId] && stack[activeId].surrogates?.[surrogateId]) {
+                    stack[activeId].activeSurrogateId = surrogateId;
+                    logger?.info(`Session: Switched to surrogate '${surrogateId}' for identity '${activeId}' in scope '${targetScope}'`);
+                }
             },
 
             logout(scope = null) {
@@ -171,6 +257,13 @@ export default class Activator {
                 
                 if (this.scopedUsers[targetScope]) {
                     this.scopedUsers[targetScope].__activeId__ = 'guest';
+                }
+
+                // Rule: Being Dissolution
+                // If exiting a non-global scope, or if explicitly requested for global, clear the focus.
+                if (targetScope !== 'global' || scope === 'global') {
+                    this.activeBeingId = null;
+                    logger?.info(`Session: Being focus dissolved.`);
                 }
 
                 logger?.info(`Session: Coordinate [${targetScope}] now inhabited by guest.`);

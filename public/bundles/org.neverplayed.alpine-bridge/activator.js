@@ -1,5 +1,6 @@
 import Alpine from "alpinejs";
 import { BaseActivator } from "osgi-base";
+import { SESSION_SERVICE } from "core-types";
 
 /**
  * Alpine Bridge Activator
@@ -23,6 +24,17 @@ export default class Activator extends BaseActivator {
             const ref = context.getServiceReference(sid);
             return ref ? context.getService(ref) : null;
         });
+
+        // 3. Magic: $session (Reactive Identity Hub)
+        // Tracks the Session Service and exposes it as a global magic.
+        context.trackService(`(objectClass=${SESSION_SERVICE})`, {
+            addingService: (ref) => {
+                const session = context.getService(ref);
+                Alpine.magic('session', () => session);
+                this.logger.info("Alpine-Bridge: $session magic registered.");
+                return session;
+            }
+        }).open();
 
         // 3. Directive: x-service="INTERFACE_CONSTANT"
         // Injects a service instance into the local Alpine scope.

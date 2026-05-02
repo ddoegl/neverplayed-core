@@ -31,8 +31,8 @@ export default class Activator extends AlpineActivator {
         const store = this.initStore('shell_context', {
             activeRealm: { id: 'loading', title: 'Loading...', icon: 'fas fa-circle-notch fa-spin' },
             realms: [],
-            user: { alias: 'Guest', avatar: '?' },
             globalUser: null,
+            inhabitants: [],
             sidebarOpen: true,
             sidebarState: 0 // 0: Expanded, 1: Icons, 2: Hidden
         });
@@ -67,35 +67,31 @@ export default class Activator extends AlpineActivator {
             removedService: () => this._syncRealms()
         });
 
-        // 2.5 Track Stratum Service (Unified Logic)
+        // 2.5 Track Stratum Service (Inhabitants & Residents)
         this.track(`(objectClass=${STRATUM_SERVICE})`, {
             addingService: (ref) => {
                 this._stratum = context.getService(ref);
-                return this._stratum;
-            },
-            removedService: () => { this._stratum = null; }
-        });
-
-        // 3. Track Session (User Identity)
-        this.track(`(objectClass=${SESSION_SERVICE})`, {
-            addingService: (ref) => {
-                this._session = context.getService(ref);
                 
-                // Gold Standard Reactivity: Track the reactive session properties
+                // Reactive sync for Inhabitants (Persona Switcher)
                 this.effect(() => {
-                    if (this._session) {
-                        this._updateSession();
+                    if (this._stratum) {
+                        const forensic = this._stratum.inhabitants || [];
+                        const local = this._stratum.residents || [];
+                        const inhabitants = Array.from(new Set([...forensic, ...local])).filter(i => i !== 'guest');
+                        this.syncStore('shell_context', { inhabitants });
                     }
                 });
-                return this._session;
+
+                return this._stratum;
             },
             removedService: () => { 
-                this._session = null;
-                this._updateSession();
+                this._stratum = null;
+                this.syncStore('shell_context', { inhabitants: [] });
             }
         });
 
-        // 3.2 Track Auth Shield (Global Identity)
+        // 3. Track Auth Shield (Global Identity Reference)
+        // Note: Actual session context is now handled via $session magic
         this.track(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
             addingService: (ref) => {
                 const auth = context.getService(ref);
@@ -218,37 +214,6 @@ export default class Activator extends AlpineActivator {
         });
     }
 
-    _updateSession() {
-        if (this._session) {
-            const user = this._session.currentUser;
-            const globalUser = this._session.scopedUsers?.global;
-            const isGuest = !user || user.id === 'guest';
-            const isIdentityActive = !isGuest && user.id !== globalUser?.id;
-            
-            this.logger?.info(`[Header] Sync: id='${user?.id}', email='${user?.email}', isIdentityActive=${isIdentityActive}`);
-            
-            this.syncStore('shell_context', {
-                user: { 
-                    alias: isGuest ? 'Guest' : (user.alias || user.email || 'Explorer'), 
-                    avatar: (isGuest ? 'G' : (user.alias || user.email || 'E'))[0].toUpperCase(),
-                    id: user?.id,
-                    isGuest,
-                    isIdentityActive
-                },
-                tenantAlias: globalUser?.id === 'guest' ? 'Anonymous' : (globalUser?.alias || globalUser?.email || globalUser?.id || 'Operator'),
-                inhabitants: this._stratum ? (() => {
-                    const forensic = this._stratum.inhabitants || [];
-                    const local = this._stratum.residents || [];
-                    return Array.from(new Set([...forensic, ...local])).filter(i => i !== 'guest');
-                })() : []
-            });
-        } else {
-            this.syncStore('shell_context', {
-                user: { alias: 'Guest', avatar: '?', isGuest: true, isIdentityActive: false },
-                tenantAlias: 'Anonymous'
-            });
-        }
-    }
 
     async _restoreUIState(pid, store) {
         if (!this.pm) return;
