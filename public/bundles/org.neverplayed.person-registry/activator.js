@@ -97,7 +97,12 @@ export default class Activator extends BaseActivator {
         this.track(`(objectClass=${SESSION_SERVICE})`, {
             addingService: (ref) => {
                 this._session = context.getService(ref);
-                this._enrichSessionUser();
+                
+                // Reactive Capability Enrichment (SDN-0165)
+                Alpine.effect(() => {
+                    this._enrichSessionUser();
+                });
+                
                 return this._session;
             },
             removedService: () => { this._session = null; }
@@ -187,9 +192,13 @@ export default class Activator extends BaseActivator {
             isPersonAdmin: person?.authorizations?.some(a => a.company === "person-registry" && a.authorizations.includes("PERSONADMIN")) || false
         };
 
-        // Inject into current user (reactive update)
-        Object.assign(currentUser.attributes, attributes);
-        this.logger.debug(`Person Registry: Enriched session for ${currentUser.id}`, attributes);
+        // Inject into current user only if changed (prevent reactive loops)
+        if (currentUser.attributes.isRegisteredPerson !== attributes.isRegisteredPerson ||
+            currentUser.attributes.isPersonAdmin !== attributes.isPersonAdmin) {
+            
+            Object.assign(currentUser.attributes, attributes);
+            this.logger.debug(`Person Registry: Enriched session for ${currentUser.id}`, attributes);
+        }
     }
 
     /**

@@ -3,18 +3,25 @@
  * @module platform/bundles/org.neverplayed.being-service
  */
 
-import { SESSION_SERVICE, LOG_SERVICE, PERSISTENCE_RESOLVER_SERVICE, BEING_SERVICE } from "../../core-types.js";
+import { SESSION_SERVICE, LOG_SERVICE, PERSISTENCE_RESOLVER_SERVICE, BEING_SERVICE, YAML_SERVICE } from "../../core-types.js";
 import { BaseActivator } from "osgi-base";
 
 export default class Activator extends BaseActivator {
     _session = null;
     _resolver = null;
+    _yaml = null;
+    _beingsData = [];
+    _hydrationPromise = null;
 
     async onStart(context) {
         // 1. Track Session Service
         this.track(`(objectClass=${SESSION_SERVICE})`, {
-            addingService: (ref) => {
+            addingService: async (ref) => {
                 this._session = context.getService(ref);
+                if (this._hydrationPromise) await this._hydrationPromise;
+                if (this._session && this._beingsData.length > 0) {
+                    this._session.registerIdentities(this._beingsData);
+                }
                 return this._session;
             },
             removedService: () => { this._session = null; }
@@ -24,12 +31,23 @@ export default class Activator extends BaseActivator {
         this.track(`(objectClass=${PERSISTENCE_RESOLVER_SERVICE})`, {
             addingService: (ref) => {
                 this._resolver = context.getService(ref);
+                this._hydrationPromise = this._hydrateBeings();
                 return this._resolver;
             },
             removedService: () => { this._resolver = null; }
         });
 
-        // 3. Register Being Service
+        // 3. Track YAML Service (for seed data)
+        this.track(`(objectClass=${YAML_SERVICE})`, {
+            addingService: (ref) => {
+                this._yaml = context.getService(ref);
+                this._hydrationPromise = this._hydrateBeings();
+                return this._yaml;
+            },
+            removedService: () => { this._yaml = null; }
+        });
+
+        // 4. Register Being Service
         const beingService = {
             /**
              * Materialize a being as a specific surrogate.
@@ -95,10 +113,49 @@ export default class Activator extends BaseActivator {
                     };
                 }
                 return identity;
-            }
+            },
+            
+            /**
+             * Get all known beings from seed data.
+             */
+            getKnownBeings: () => this._beingsData,
+
+            /**
+             * Get a specific known being by ID.
+             */
+            getBeing: (id) => this._beingsData.find(b => b.id === id)
         };
 
         context.registerService(BEING_SERVICE, beingService);
         this.logger.info("Being Service: Registered 🧬✨");
+    }
+
+    /**
+     * Load beings from YAML data.
+     */
+    async _hydrateBeings() {
+        if (!this._yaml) {
+            this.logger.debug("Being Service: Delaying hydration, YAML service not yet available.");
+            return;
+        }
+        
+        try {
+            const url = this.resolveResource("data/beings.yaml");
+            this.logger.info(`Being Service: Fetching beings from ${url}...`);
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const text = await res.text();
+            this._beingsData = this._yaml.load(text) || [];
+            this.logger.info(`Being Service: Hydrated ${this._beingsData.length} known beings.`);
+            
+            if (this._session) {
+                this.logger.info(`Being Service: Injecting ${this._beingsData.length} beings into Session Service...`);
+                this._session.registerIdentities(this._beingsData);
+            } else {
+                this.logger.warn("Being Service: Cannot inject beings, Session Service not yet available.");
+            }
+        } catch (err) {
+            this.logger.error("Being Service: Failed to hydrate beings:", err.message);
+        }
     }
 }

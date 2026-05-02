@@ -1,0 +1,23 @@
+- id: rob
+  label: Rob Richter
+  email: rob@cli.local
+  type: person
+  homeRealm: org.neverplayed.realm.habitat
+
+- id: july
+  label: July Wiser
+  email: july@cli.local
+  type: person
+  homeRealm: org.neverplayed.realm.habitat
+
+- id: anna
+  label: Anna Hobs
+  email: anna@cli.local
+  type: person
+  homeRealm: org.neverplayed.realm.habitat
+
+- id: sc-admin
+  label: Sarah Admin
+  email: sarah.admin@testing.mail
+  type: person
+  homeRealm: org.neverplayed.realm.habitat

@@ -280,6 +280,46 @@ export default class Activator {
                 this.logout(); // Recursively call now that modal is closed
             },
 
+            registerIdentities(identities) {
+                if (!Array.isArray(identities)) return;
+                if (!this.scopedUsers || !this.scopedUsers['global']) {
+                    logger?.warn("Session: Cannot register identities yet, residency stacks not initialized.");
+                    return;
+                }
+                identities.forEach(idnt => {
+                    const id = idnt.id;
+                    const homeRealm = idnt.homeRealm || 'global';
+
+                    // 1. Global Anchoring
+                    if (!this.scopedUsers['global'][id]) {
+                        this.scopedUsers['global'][id] = {
+                            id,
+                            email: idnt.email || `${id}@cli.local`,
+                            firstname: idnt.firstname || idnt.label,
+                            lastname: idnt.lastname,
+                            alias: idnt.label || idnt.alias,
+                            attributes: idnt.attributes || {},
+                            capabilities: idnt.capabilities || [],
+                            surrogates: {},
+                            activeSurrogateId: null,
+                            isTenant: false
+                        };
+                        logger?.info(`Session: Registered identity '${id}' in global stack.`);
+                    }
+
+                    // 2. Realm Inhabitation (for shell visibility)
+                    if (homeRealm !== 'global') {
+                        if (!this.scopedUsers[homeRealm]) {
+                            this.scopedUsers[homeRealm] = { __activeId__: 'guest', guest: { id: 'guest' } };
+                        }
+                        if (!this.scopedUsers[homeRealm][id]) {
+                            this.scopedUsers[homeRealm][id] = { ...this.scopedUsers['global'][id], isTenant: false };
+                            logger?.info(`Session: Inhabited identity '${id}' in home realm '${homeRealm}'.`);
+                        }
+                    }
+                });
+            },
+
             promoteUser(user) {
                 if (user && user.isSuperuser) {
                     logger?.info("Session: PROMOTE requested for superuser", user.email);

@@ -4,6 +4,9 @@
     "Bundle-Name": "Being Service",
     "Bundle-Description": "Manages the materialization of Sovereign Beings and their Surrogates across realms (Layer 1).",
     "Bundle-Activator": "activator.js",
+    "Bundle-Assets": [
+        "data/beings.yaml"
+    ],
     "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.domain.BeingService\"",
     "Configuration": {
         "log-level": "INFO"
