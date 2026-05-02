@@ -7,7 +7,9 @@ import {
     FLOW_SERVICE, 
     CONFIG_ADMIN_SERVICE, 
     SHELL_HOST_SERVICE, 
-    SHELL_COMMAND_SERVICE 
+    SHELL_COMMAND_SERVICE,
+    LIMES_SERVICE,
+    SESSION_SERVICE
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
@@ -40,15 +42,26 @@ export default class Activator extends AlpineActivator {
             const internalFlows = new Map();
             let caSvc = null;
             let hostSvc = null;
+            let limesSvc = null;
+            let sessionSvc = null;
 
             const syncFlows = () => {
                 const uniqueByFlowId = new Map();
                 this.logger.debug(`Shell Sidebar: Syncing ${internalFlows.size} internal flows...`);
                 for (const item of internalFlows.values()) {
                     const config = caSvc?.getConfiguration(item.bsn)?.getProperties();
-                    const isVisible = config?.sidebar !== undefined 
+                    let isVisible = config?.sidebar !== undefined 
                         ? config.sidebar 
                         : (item.sidebarProp !== undefined ? item.sidebarProp : true);
+
+                    // Institutional Privilege Filtering
+                    if (isVisible && limesSvc && sessionSvc?.currentUser) {
+                        const allowed = limesSvc.isAllowed(sessionSvc.currentUser, `FLOW_VIEW:${item.id}`);
+                        if (!allowed) {
+                            this.logger.debug(`Shell Sidebar: Flow ${item.id} hidden by Limes.`);
+                            isVisible = false;
+                        }
+                    }
 
                     if (isVisible) uniqueByFlowId.set(item.id, item);
                 }
@@ -92,6 +105,26 @@ export default class Activator extends AlpineActivator {
                             return hostSvc;
                         },
                         removedService: () => { hostSvc = null; }
+                    });
+
+                    // Track Limes (Privilege Guard)
+                    this.track(`(objectClass=${LIMES_SERVICE})`, {
+                        addingService: (ref) => {
+                            limesSvc = context.getService(ref);
+                            syncFlows();
+                            return limesSvc;
+                        },
+                        removedService: () => { limesSvc = null; syncFlows(); }
+                    });
+
+                    // Track Session (Context)
+                    this.track(`(objectClass=${SESSION_SERVICE})`, {
+                        addingService: (ref) => {
+                            sessionSvc = context.getService(ref);
+                            syncFlows();
+                            return sessionSvc;
+                        },
+                        removedService: () => { sessionSvc = null; syncFlows(); }
                     });
 
                     // Track Flows

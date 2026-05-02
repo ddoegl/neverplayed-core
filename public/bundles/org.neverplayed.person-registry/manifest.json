@@ -14,6 +14,7 @@
         "flowType": "system-flow",
         "channels": ["business-channel-web"],
         "sidebar": true,
-        "icon": "fas fa-users"
+        "icon": "fas fa-users",
+        "required-permissions": ["person-admin"]
     }
 }

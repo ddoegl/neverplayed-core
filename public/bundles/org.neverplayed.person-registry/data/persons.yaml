@@ -5,6 +5,8 @@
   userids: ["rob", "robby"]
   emails: ["rob.richter@some.mail.provider"]
   authorizations:
+    - company: person-registry
+      authorizations: ["PERSONADMIN"]
     - company: bikevalue
       authorizations: ["CARDADMINISTRATION"]
     - company: annahobs
