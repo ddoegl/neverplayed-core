@@ -16,8 +16,38 @@
   type: person
   homeRealm: org.neverplayed.realm.habitat
 
+- id: john
+  label: John Mayor
+  email: [john@cli.local]
+  type: person
+  homeRealm: org.neverplayed.realm.habitat
+
+- id: bactor
+  label: Adam Bactor
+  email: [bactor@cli.local]
+  type: person
+  homeRealm: org.neverplayed.realm.habitat
+
+- id: joemiller
+  label: Joe Miller
+  email: [joe@cli.local]
+  type: person
+  homeRealm: org.neverplayed.realm.habitat
+
+- id: sc-user-1
+  label: Mike Migrator
+  email: [mike.migrator@cli.local]
+  type: person
+  homeRealm: org.neverplayed.realm.habitat
+
 - id: sc-admin
   label: Sarah Admin
   email: sarah.admin@testing.mail
+  type: person
+  homeRealm: org.neverplayed.realm.habitat
+
+- id: dd
+  label: Daniel Doegl
+  email: dd@cli.local
   type: person
   homeRealm: org.neverplayed.realm.habitat
