@@ -165,18 +165,23 @@ export default class Activator {
                             await explorerStore.refreshTopology();
                         }
                     } catch (err) {
-                        self._logger.error("Stratographer Jump Failed:", err.message);
+                        self._logger.warn(`Stratographer Jump Failed: ${err.message}`);
                         alert(`Jump Failed: ${err.message}`);
                     }
                 },
 
                 async switchTo(id) {
                     if (self._realmManager) {
-                        await self._realmManager.switchRealm(id);
-                        // Force Topology Recalibration
-                        const explorerStore = Alpine.store('explorer');
-                        if (explorerStore) {
-                            await explorerStore.refreshTopology();
+                        try {
+                            await self._realmManager.switchRealm(id);
+                            // Force Topology Recalibration
+                            const explorerStore = Alpine.store('explorer');
+                            if (explorerStore) {
+                                await explorerStore.refreshTopology();
+                            }
+                        } catch (err) {
+                            self._logger.warn(`Stratographer Realm Switch Failed: ${err.message}`);
+                            alert(`Switch Failed: ${err.message}`);
                         }
                     }
                 }

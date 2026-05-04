@@ -52,19 +52,21 @@ export default class Activator extends BaseActivator {
             /**
              * Materialize a being as a specific surrogate.
              * @param {string} beingId - The Level 1 Identity ID (e.g., 'rob')
-             * @param {string} surrogateId - The functional role (e.g., 'person', 'registry-admin')
-             * @param {Object} attributes - Functional attributes for the surrogate
+             * @param {string} [surrogateId] - The functional role (defaults to initial coordinate or 'guest')
+             * @param {Object} [attributes] - Functional attributes for the surrogate
              * @param {string} [realmId] - Optional target realm for the materialization
              */
-            materialize: (beingId, surrogateId, attributes = {}, realmId = null) => {
+            materialize: (beingId, surrogateId = null, attributes = {}, realmId = null) => {
                 if (!this._session) throw new Error("Session Service unavailable");
 
-                const targetRealm = realmId || this._session.activeRealmId || 'global';
+                const being = this.getBeing(beingId);
+                const targetSurrogate = surrogateId || being?.initial?.surrogate || 'guest';
+                const targetRealm = realmId || being?.initial?.realm || this._session.activeRealmId || 'global';
                 
-                this.logger.info(`Being Service: Materializing ${beingId} as ${surrogateId} in realm ${targetRealm}`);
+                this.logger.info(`Being Service: Materializing ${beingId} as ${targetSurrogate} in realm ${targetRealm}`);
                 
                 this._session.login(beingId, targetRealm, {
-                    id: surrogateId,
+                    id: targetSurrogate,
                     ...attributes,
                     beingId
                 });
@@ -83,16 +85,22 @@ export default class Activator extends BaseActivator {
                 this._session.setBeingFocus(beingId);
                 
                 // Ensure the being is logged into the current realm at least as a baseline
-                const realm = this._session.activeRealmId || 'global';
+                const being = this.getBeing(beingId);
+                const realm = this._session.activeRealmId || being?.initial?.realm || 'global';
                 this._session.login(beingId, realm);
             },
 
             /**
-             * Resolve the home realm for a being type.
+             * Resolve the home realm for a being (L1) or type (Legacy).
              */
-            getBeingHome: (type) => {
+            getBeingHome: (beingIdOrType) => {
+                // 1. L1 Resolution (Ontological Grounding)
+                const being = this.getBeing(beingIdOrType);
+                if (being && being.initial?.realm) return being.initial.realm;
+
+                // 2. Legacy Type Resolution (Policy-based)
                 if (!this._resolver) return null;
-                const policy = this._resolver.getPolicy(`org.neverplayed.beings/${type}/`);
+                const policy = this._resolver.getPolicy(`org.neverplayed.beings/${beingIdOrType}/`);
                 return policy ? policy.realm : null;
             },
 

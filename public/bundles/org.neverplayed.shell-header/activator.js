@@ -116,18 +116,23 @@ export default class Activator extends AlpineActivator {
             },
 
             async switchRealm(id) {
-                // Priority A: Orchestrated switch via Realm Manager
-                const rmRef = context.getServiceReference(REALM_MANAGER_SERVICE);
-                if (rmRef) {
-                    await context.getService(rmRef).switchRealm(id);
-                    return;
-                }
-                // Priority B: Direct fallback switch
-                const refs = (context.getServiceReferences(REALM_SERVICE) || []);
-                const target = refs.find(ref => ref.getProperty('realm.id') === id);
-                if (target) {
-                    const svc = context.getService(target);
-                    if (svc && typeof svc.switch === 'function') await svc.switch(true);
+                try {
+                    // Priority A: Orchestrated switch via Realm Manager
+                    const rmRef = context.getServiceReference(REALM_MANAGER_SERVICE);
+                    if (rmRef) {
+                        await context.getService(rmRef).switchRealm(id);
+                        return;
+                    }
+                    // Priority B: Direct fallback switch
+                    const refs = (context.getServiceReferences(REALM_SERVICE) || []);
+                    const target = refs.find(ref => ref.getProperty('realm.id') === id);
+                    if (target) {
+                        const svc = context.getService(target);
+                        if (svc && typeof svc.switch === 'function') await svc.switch(true);
+                    }
+                } catch (err) {
+                    this.logger?.warn(`[ShellHeader] Realm Switch Failed: ${err.message}`);
+                    alert(`Switch Failed: ${err.message}`);
                 }
             },
             

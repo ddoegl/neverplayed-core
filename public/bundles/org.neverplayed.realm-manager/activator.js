@@ -17,7 +17,8 @@ import {
     REALM_REGISTERED_TOPIC, 
     REALM_UNREGISTERED_TOPIC,
     AUTH_SHIELD_SERVICE,
-    FLOW_SERVICE
+    FLOW_SERVICE,
+    LIMES_SERVICE
 } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import { BaseActivator } from "osgi-base";
@@ -46,6 +47,8 @@ export default class Activator extends BaseActivator {
     _flowService = null;
     _flowTracker = null;
     _flows = new Map(); // Store discovered flows: id -> service
+    _limes = null;
+    _limesTracker = null;
 
     onStart(context) {
         // 1. Initialize Logger
@@ -192,6 +195,28 @@ export default class Activator extends BaseActivator {
             }
         });
         this._flowTracker.open();
+        
+        // 1.9 Track Limes Service (Access Guard)
+        this._limesTracker = context.trackService(`(objectClass=${LIMES_SERVICE})`, {
+            addingService: (ref) => {
+                this._limes = context.getService(ref);
+                this.logger?.info("Realm Manager: Limes Guard connected. Access control active.");
+
+                // Rule: Markov Blanket Injection (SDN-0192)
+                // Dynamically register strategies for all already discovered realms
+                for (const realm of this._realms.values()) {
+                    if (realm.strategies) {
+                        this.logger?.info(`Realm Manager: Injecting Markov Blanket for universe '${realm.id}'`);
+                        for (const [id, def] of Object.entries(realm.strategies)) {
+                            this._limes.registerStrategy(id, def);
+                        }
+                    }
+                }
+                return this._limes;
+            },
+            removedService: () => { this._limes = null; }
+        });
+        this._limesTracker.open();
 
         this._registerCLI(context);
 
@@ -243,6 +268,7 @@ export default class Activator extends BaseActivator {
         if (this._factoryTracker) this._factoryTracker.close();
         if (this._authTracker) this._authTracker.close();
         if (this._flowTracker) this._flowTracker.close();
+        if (this._limesTracker) this._limesTracker.close();
         if (this.logger) this.logger.info("Realm Manager: Stopped.");
     }
 
@@ -570,6 +596,14 @@ export default class Activator extends BaseActivator {
             }
             this.logger?.info(`Realm Manager: Registered universe '${manifest.id}' (${manifest.title})`);
 
+            // Rule: Markov Blanket Injection (SDN-0192)
+            if (this._limes && manifest.strategies) {
+                this.logger?.info(`Realm Manager: Injecting Markov Blanket for universe '${manifest.id}'`);
+                for (const [strategyId, definition] of Object.entries(manifest.strategies)) {
+                    this._limes.registerStrategy(strategyId, definition);
+                }
+            }
+
             // 1.9 Resilience: Unregister old service if it exists (prevents duplication in UI)
             const oldReg = this._realmRegs.get(manifest.id);
             if (oldReg) {
@@ -648,6 +682,10 @@ export default class Activator extends BaseActivator {
     }
 
     _switchRealm(context, id, interactive = false) {
+        // Rule: Transition Resilience (SDN-0182)
+        // Ensure the lock promise chain recovers from previous failures to prevent 'stuck' states.
+        this._lock = this._lock.catch(() => { /* recover chain */ });
+
         return this._lock = this._lock.then(async () => {
             if (this._pendingTransition) {
                 throw new Error("A transition is already in progress. Type '/realm next' to proceed or '/realm abort' to cancel.");
@@ -656,6 +694,24 @@ export default class Activator extends BaseActivator {
             try {
                 this.logger?.info(`Realm Manager: Initiating Context Transition to universe '${id}'...`);
                 
+                // 0. Access Guard (Markov Blanket)
+                if (this._limes && this.session?.currentUser) {
+                    const user = this.session.currentUser;
+                    const strategyId = `REALM_ACCESS:${id}`;
+                    
+                    // Diagnostic: Ontological State
+                    this.logger?.debug(`Realm Manager: Ontological Check for '${id}' | User: ${user.id} | Surrogate: ${user.surrogateId || 'NONE'} | Materialized: ${!!user.isMaterialized}`);
+                    
+                    const allowed = this._limes.isAllowed(user, strategyId, { realmId: id });
+                    
+                    this.logger?.debug(`Realm Manager: Access Check Result for '${id}': ${allowed ? 'ALLOWED' : 'DENIED'}`);
+
+                    if (!allowed && id === 'org.neverplayed.realm.governance') {
+                         // Specific Ontological Guard: Governance requires Personhood
+                         throw new Error(`Sovereign Block: Universe '${id}' only recognizes Persons. Please materialize as a Person before entry.`);
+                    }
+                }
+
                 // 1. Resolve Hierarchy
                 const hierarchy = await this._resolveHierarchy(id);
                 if (hierarchy.length === 0) throw new Error(`Realm '${id}' not found.`);
@@ -686,7 +742,7 @@ export default class Activator extends BaseActivator {
                 return this._executeTransitionPhase('ONTOLOGY');
             } catch (err) {
                 this._pendingTransition = null;
-                this.logger?.error(`Realm Manager: Switch failed for '${id}':`, err.message);
+                this.logger?.warn(`Realm Manager: Switch failed for '${id}':`, err.message);
                 throw err;
             }
         });

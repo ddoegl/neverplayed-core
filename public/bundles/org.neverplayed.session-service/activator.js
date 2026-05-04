@@ -119,7 +119,7 @@ export default class Activator {
 
                 // 2. Being Carry-over (The Session Soul)
                 if (this.activeBeingId) {
-                    const profile = this._findIdentity(this.activeBeingId);
+                    const profile = this._findIdentity(this.activeBeingId, scope);
                     if (profile) {
                         return this._materialize({ 
                             ...profile, 
@@ -138,7 +138,20 @@ export default class Activator {
             },
 
             // Helper: Find an identity profile across any scope
-            _findIdentity(id) {
+            _findIdentity(id, preferredScope = null) {
+                // 1. Try preferred scope first (Inhabitation over Carry-over)
+                if (preferredScope && this.scopedUsers[preferredScope]?.[id]) {
+                    return { ...this.scopedUsers[preferredScope][id], scope: preferredScope };
+                }
+
+                // 2. Try to find a Materialized version anywhere (Persona Carry-over)
+                for (const [scope, stack] of Object.entries(this.scopedUsers)) {
+                    if (stack[id] && stack[id].activeSurrogateId && stack[id].email) {
+                        return { ...stack[id], scope };
+                    }
+                }
+
+                // 3. Fallback to any other scope (e.g., Global anchor)
                 for (const [scope, stack] of Object.entries(this.scopedUsers)) {
                     if (stack[id] && stack[id].email) {
                         return { ...stack[id], scope };
@@ -150,10 +163,18 @@ export default class Activator {
             // Helper: Materialize surrogate if present
             _materialize(identity) {
                 if (identity && identity.activeSurrogateId && identity.surrogates?.[identity.activeSurrogateId]) {
+                    const surrogate = identity.surrogates[identity.activeSurrogateId];
+                    
+                    // Diagnostic: Materialization Trace
+                    if (identity.id !== 'guest') {
+                        logger?.debug(`Session: Materializing '${identity.id}' as '${identity.activeSurrogateId}' (Surrogate Internal ID: ${surrogate.id})`);
+                    }
+
                     return {
                         ...identity,
-                        ...identity.surrogates[identity.activeSurrogateId],
-                        sid: identity.id,
+                        ...surrogate,
+                        id: identity.id, // Being ID (L1) must remain the primary identifier
+                        surrogateId: surrogate.id, // Functional Role ID (L6)
                         isMaterialized: true
                     };
                 }
@@ -288,7 +309,7 @@ export default class Activator {
                 }
                 identities.forEach(idnt => {
                     const id = idnt.id;
-                    const homeRealm = idnt.homeRealm || 'global';
+                    const homeRealm = idnt.initial?.realm || idnt.homeRealm || 'global';
 
                     // 1. Global Anchoring
                     if (!this.scopedUsers['global'][id]) {
@@ -313,7 +334,20 @@ export default class Activator {
                             this.scopedUsers[homeRealm] = { __activeId__: 'guest', guest: { id: 'guest' } };
                         }
                         if (!this.scopedUsers[homeRealm][id]) {
-                            this.scopedUsers[homeRealm][id] = { ...this.scopedUsers['global'][id], isTenant: false };
+                            const userObj = { ...this.scopedUsers['global'][id], isTenant: false };
+                            
+                            // Rule: Initial Surrogate Provisioning (L6)
+                            const initialSurrogate = idnt.initial?.surrogate;
+                            if (initialSurrogate) {
+                                userObj.surrogates[initialSurrogate] = {
+                                    id: initialSurrogate,
+                                    materializedAt: new Date().toISOString()
+                                };
+                                userObj.activeSurrogateId = initialSurrogate;
+                                logger?.info(`Session: Provisioned initial surrogate '${initialSurrogate}' for identity '${id}' in realm '${homeRealm}'.`);
+                            }
+
+                            this.scopedUsers[homeRealm][id] = userObj;
                             logger?.info(`Session: Inhabited identity '${id}' in home realm '${homeRealm}'.`);
                         }
                     }

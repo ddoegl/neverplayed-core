@@ -177,27 +177,41 @@ export default class Activator extends BaseActivator {
     }
 
     /**
-     * Capability Enrichment: Inject domain-specific privileges into the global session.
+     * Capability Enrichment: Inject domain-specific privileges into the session stacks.
      */
     _enrichSessionUser() {
         if (!this._session || !this._personsData || this._personsData.length === 0) return;
 
-        const currentUser = this._session.currentUser;
-        if (!currentUser || currentUser.id === 'guest') return;
+        // 1. Resolve target Being ID (L1 Identity focus)
+        const activeBeingId = this._session.activeBeingId;
+        if (!activeBeingId || activeBeingId === 'guest') return;
 
-        const person = this._personsData.find(p => p.id === currentUser.id || (p.userids || []).includes(currentUser.id));
+        // 2. Resolve Person Record (L5 Semantics)
+        const person = this._personsData.find(p => p.id === activeBeingId || (p.userids || []).includes(activeBeingId));
         
         const attributes = {
             isRegisteredPerson: !!person,
             isPersonAdmin: person?.authorizations?.some(a => a.company === "person-registry" && a.authorizations.includes("PERSONADMIN")) || false
         };
 
-        // Inject into current user only if changed (prevent reactive loops)
-        if (currentUser.attributes.isRegisteredPerson !== attributes.isRegisteredPerson ||
-            currentUser.attributes.isPersonAdmin !== attributes.isPersonAdmin) {
-            
-            Object.assign(currentUser.attributes, attributes);
-            this.logger.debug(`Person Registry: Enriched session for ${currentUser.id}`, attributes);
+        // 3. Institutional Injection: Update all resident instances in the session stacks
+        let enrichedCount = 0;
+        Object.values(this._session.scopedUsers || {}).forEach(stack => {
+            const identity = stack[activeBeingId];
+            if (identity) {
+                // Change detection to prevent reactive loops
+                if (identity.attributes.isRegisteredPerson !== attributes.isRegisteredPerson ||
+                    identity.attributes.isPersonAdmin !== attributes.isPersonAdmin) {
+                    
+                    identity.attributes.isRegisteredPerson = attributes.isRegisteredPerson;
+                    identity.attributes.isPersonAdmin = attributes.isPersonAdmin;
+                    enrichedCount++;
+                }
+            }
+        });
+
+        if (enrichedCount > 0) {
+            this.logger.debug(`Person Registry: Enriched '${activeBeingId}' in ${enrichedCount} scope stacks.`, attributes);
         }
     }
 

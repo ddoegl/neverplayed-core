@@ -8,5 +8,13 @@
         "realm-admins": ["daniel.doegl@doegl.info", "guest"]
     },
     "bundles": ["./bundles/org.neverplayed.person-registry/manifest.json"],
+    "strategies": {
+        "REALM_ACCESS:org.neverplayed.realm.governance": {
+            "operator": "AND",
+            "matchers": [
+                { "type": "matchAttribute", "key": "surrogateId", "value": "person" }
+            ]
+        }
+    },
     "domainObjects": []
 }

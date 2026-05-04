@@ -25,5 +25,8 @@ This document establishes the core principles and architectural guidelines for t
 ## 6. Graphify Knowledge Graph
 <!-- include: .agents/rules/graphify.md -->
 
+## 7. Ontological Grounding
+<!-- include: .agents/rules/ontology-grounding.md -->
+
 ---
-*Constitution v1.2.0 - Refactored for Modular Enforcement*
+*Constitution v1.3.0 - Integrated Ontological Grounding*
