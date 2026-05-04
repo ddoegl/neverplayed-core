@@ -706,9 +706,10 @@ export default class Activator extends BaseActivator {
                     
                     this.logger?.debug(`Realm Manager: Access Check Result for '${id}': ${allowed ? 'ALLOWED' : 'DENIED'}`);
 
-                    if (!allowed && id === 'org.neverplayed.realm.governance') {
-                         // Specific Ontological Guard: Governance requires Personhood
-                         throw new Error(`Sovereign Block: Universe '${id}' only recognizes Persons. Please materialize as a Person before entry.`);
+                    if (!allowed) {
+                         const manifest = this._realms.get(id);
+                         const msg = manifest?.onAccessDenied || `Sovereign Block: Access to universe '${id}' denied. Please verify your ontological status.`;
+                         throw new Error(msg);
                     }
                 }
 
