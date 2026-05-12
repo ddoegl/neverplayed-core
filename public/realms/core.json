@@ -28,11 +28,16 @@
         "./bundles/org.neverplayed.shell-header/manifest.json",
         "./bundles/org.neverplayed.shell-sidebar/manifest.json",
         "./bundles/org.neverplayed.shell-cli/manifest.json",
+        "./bundles/org.neverplayed.shell-cli-ext/manifest.json",
         "./bundles/org.neverplayed.shell-cli-dom/manifest.json",
         "./bundles/org.neverplayed.system-reset/manifest.json",
         "./bundles/org.neverplayed.config-admin/manifest.json",
         "./bundles/org.neverplayed.event-monitor/manifest.json",
-        "./bundles/org.neverplayed.alpine-inspector/manifest.json"
+        "./bundles/org.neverplayed.alpine-inspector/manifest.json",
+        "./bundles/org.neverplayed.plexus/manifest.json",
+        "./bundles/org.neverplayed.plexus-sensor/manifest.json",
+        "./bundles/org.neverplayed.plexus-tracing/manifest.json",
+        "./bundles/org.neverplayed.plexus-test/manifest.json"
     ],
     "bundles-parked": [
         "./bundles/org.neverplayed.agent.antigravity/manifest.json",

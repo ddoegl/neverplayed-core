@@ -1,4 +1,4 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, BIZ_FUNC_DATA_SERVICE, BIZ_FUNCS_PID, LOG_SERVICE } from "shared-types";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, BIZ_FUNC_DATA_SERVICE, BIZ_FUNCS_PID, LOG_SERVICE, PLEXUS_KNOWLEDGE_PROVIDER } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -41,6 +41,7 @@ export default class Activator {
 
     const dataService = {
       getBusinessFunctions: () => businessFunctions,
+      getKnowledge: () => businessFunctions,
       setBusinessFunctions: (newData) => {
         businessFunctions = newData;
         pm.store(BIZ_FUNCS_PID_VAL, businessFunctions);
@@ -57,6 +58,11 @@ export default class Activator {
     };
 
     context.registerService(BIZ_FUNC_DATA_SERVICE, dataService);
+
+    // Register as Plexus Knowledge Provider
+    context.registerService(PLEXUS_KNOWLEDGE_PROVIDER, dataService, { 
+        "plexus.domain": "business-functions" 
+    });
 
     context.registerService(BO_EXTENSION_SERVICE, {
       id: "businessFunctions",

@@ -6,7 +6,8 @@
 import { 
     STRATUM_SERVICE, 
     LOG_SERVICE, 
-    PERSISTENCE_MANAGER_SERVICE 
+    PERSISTENCE_MANAGER_SERVICE,
+    PLEXUS_SENSOR_SERVICE
 } from "../../core-types.js";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -139,7 +140,8 @@ export default class Activator {
                             value: identId, 
                             type: 'WHO', 
                             color: isActive ? '#10b981' : '#22d3ee', 
-                            identityId: identId 
+                            identityId: identId,
+                            sensing: { matchers: [{ persona: 'advanced' }] } // Identities sensed by advanced persona
                          });
                          links.push({ source: activeRealmNodeId, target: nodeId });
                     });
@@ -153,8 +155,22 @@ export default class Activator {
                 } else {
                     const strata = [
                         { id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' },
-                        { id: 'realm', label: 'Realm', value: stratum.realmId, type: 'WHERE', color: '#a855f7' },
-                        { id: 'identity', label: 'Identity', value: stratum.identityId, type: 'WHO', color: '#10b981' },
+                        { 
+                            id: 'realm', 
+                            label: 'Realm', 
+                            value: stratum.realmId, 
+                            type: 'WHERE', 
+                            color: '#a855f7',
+                            sensing: { matchers: [{ realm: stratum.realmId }] }
+                        },
+                        { 
+                            id: 'identity', 
+                            label: 'Identity', 
+                            value: stratum.identityId, 
+                            type: 'WHO', 
+                            color: '#10b981',
+                            sensing: { matchers: [{ persona: 'advanced' }] }
+                        },
                         { id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' }
                     ];
                     const connections = [ { source: 'tenant', target: 'identity' }, { source: 'identity', target: 'realm' }, { source: 'realm', target: 'tier' } ];
@@ -168,10 +184,13 @@ export default class Activator {
                 store.activeNode = node;
                 store.loadingVault = true;
                 store.vaultKeys = [];
+                store.perceptualTrace = null;
+
                 try {
                     const pmRef = context.getServiceReference(PERSISTENCE_MANAGER_SERVICE, "(implementation=selector-proxy)");
                     const pm = pmRef ? context.getService(pmRef) : null;
                     if (!pm) throw new Error("Persistence Manager not found");
+
                     const allKeys = await pm.listKeys("");
                     const matching = [];
                     for (const key of allKeys) {
@@ -190,10 +209,30 @@ export default class Activator {
                         if (isMatch) matching.push({ key, value: await pm.load(key), probe });
                     }
                     store.vaultKeys = matching;
-                } catch (err) { self._logger.error("Vault Scan Failed:", err.message); }
-                finally { store.loadingVault = false; }
+
+                    // Perceptual Trace Recovery Integration (On-Demand Probe)
+                    if (self._sensor) {
+                        const traceInfo = self._sensor.probe(node);
+                        store.perceptualTrace = traceInfo;
+                        self._logger.info(`🪐 Master Cockpit: Perceptual Probe for '${node.id}':`, traceInfo);
+                    }
+                } catch (err) { 
+                    self._logger.error("Vault Scan Failed:", err.message); 
+                } finally { 
+                    store.loadingVault = false; 
+                }
             }
         });
+
+        // Track Plexus Sensor for Perceptual Trace Recovery
+        context.trackService(`(objectClass=${PLEXUS_SENSOR_SERVICE})`, {
+            addingService: (ref) => {
+                this._sensor = context.getService(ref);
+                this._logger.info("🪐 Master Cockpit: Plexus Sensor Service Connected.");
+                return this._sensor;
+            },
+            removedService: () => { this._sensor = null; }
+        }).open();
     }
 
     _setupOpticalTracker(d3) {

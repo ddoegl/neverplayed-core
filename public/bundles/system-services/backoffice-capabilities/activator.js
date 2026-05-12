@@ -5,8 +5,9 @@ import { YAML_SERVICE, BO_EXTENSION_SERVICE, YAML_EDITOR_SERVICE, BIZ_FUNC_DATA_
     EVALUATOR_SERVICE,
     CAPABILITIES_PID,
     PERMISSIONS_PID,
-    FEATURES_PID
-} from "shared-types";
+    FEATURES_PID,
+    PLEXUS_KNOWLEDGE_PROVIDER
+} from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -31,7 +32,6 @@ export default class Activator {
         if (!persistentData) {
             persistentData = yamlData;
         } else {
-            // Force sync YAML updates (especially IDs and Keys) into persistence
             if (Array.isArray(yamlData)) {
                 yamlData.forEach(yItem => {
                     const idx = persistentData.findIndex(pItem => pItem.id === yItem.id);
@@ -65,6 +65,7 @@ export default class Activator {
 
     const capabilitiesService = {
       getStrategies: () => capabilities,
+      getKnowledge: () => capabilities,
       setStrategies: (newCaps) => {
         capabilities = newCaps;
         pm.store(CAPABILITIES_PID_VAL, capabilities);
@@ -77,6 +78,7 @@ export default class Activator {
 
     const permissionsService = {
       getPermissions: () => permissions,
+      getKnowledge: () => permissions,
       setPermissions: (newPerms) => {
         permissions = newPerms;
         pm.store(PERMISSIONS_PID_VAL, permissions);
@@ -89,6 +91,7 @@ export default class Activator {
 
     const featuresService = {
       getFeatures: () => features,
+      getKnowledge: () => features,
       setFeatures: (newFeatures) => {
         features = newFeatures;
         pm.store(FEATURES_PID_VAL, features);
@@ -103,6 +106,11 @@ export default class Activator {
     context.registerService(CAPABILITIES_DATA_SERVICE, capabilitiesService);
     context.registerService(PERMISSION_DATA_SERVICE, permissionsService);
     context.registerService(FEATURE_DATA_SERVICE, featuresService);
+
+    // Register as Plexus Knowledge Providers
+    context.registerService(PLEXUS_KNOWLEDGE_PROVIDER, capabilitiesService, { "plexus.domain": "capabilities" });
+    context.registerService(PLEXUS_KNOWLEDGE_PROVIDER, permissionsService, { "plexus.domain": "permissions" });
+    context.registerService(PLEXUS_KNOWLEDGE_PROVIDER, featuresService, { "plexus.domain": "features" });
 
     // 3. Register Harmonized Evaluator Plugin
     context.registerService(EVALUATOR_SERVICE, {
@@ -133,22 +141,13 @@ export default class Activator {
         }
     });
 
-    // 4. Shared state for the bundle
     this.availableRoles = [];
-    this.availablePrimitives = [{ id: "matchAlways" }];
     this.hostState = null;
 
-    context.trackService(BIZ_FUNC_DATA_SERVICE, {
+    context.trackService(`(objectClass=${BIZ_FUNC_DATA_SERVICE})`, {
       addingService: (ref) => {
         this.availableRoles = context.getService(ref).getBusinessFunctions() || [];
         if (this.hostState) this.hostState.parsedBusinessFunctions = this.availableRoles;
-      }
-    }).open();
-
-    context.trackService(RULES_DATA_SERVICE, {
-      addingService: (ref) => {
-        this.availablePrimitives = context.getService(ref).getStrategies() || [];
-        // Available primitives are now centrally handled via poc.evaluator.engine in global-state
       }
     }).open();
 
@@ -161,7 +160,6 @@ export default class Activator {
       onActivate: (hostState) => {
         this.hostState = hostState;
         
-        // Re-fetch LIVE Business Functions and Rule Strategies directly from services on activation
         const bfRef = context.getServiceReference(BIZ_FUNC_DATA_SERVICE);
         if (bfRef) {
             this.availableRoles = context.getService(bfRef).getBusinessFunctions() || [];
@@ -198,9 +196,7 @@ export default class Activator {
           hostState.parsedCapabilities.push({
             id: `NEW_STRATEGY_${Date.now()}`,
             operator: "AND",
-            matchers: [
-              { type: "matchAlways" }
-            ],
+            matchers: [{ type: "matchAlways" }],
             keys: [],
             features: []
           });
@@ -217,7 +213,6 @@ export default class Activator {
         hostState.saveCapabilities = () => capabilitiesService.setStrategies(hostState.parsedCapabilities);
         hostState.saveCatalog = () => featuresService.setFeatures(hostState.parsedFeatures || {});
         hostState.savePermissions = () => permissionsService.setPermissions(hostState.parsedPermissions);
-        
         hostState.recompile?.();
       },
     });

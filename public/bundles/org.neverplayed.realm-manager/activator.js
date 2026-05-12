@@ -702,9 +702,17 @@ export default class Activator extends BaseActivator {
                     // Diagnostic: Ontological State
                     this.logger?.debug(`Realm Manager: Ontological Check for '${id}' | User: ${user.id} | Surrogate: ${user.surrogateId || 'NONE'} | Materialized: ${!!user.isMaterialized}`);
                     
-                    const allowed = this._limes.isAllowed(user, strategyId, { realmId: id });
-                    
-                    this.logger?.debug(`Realm Manager: Access Check Result for '${id}': ${allowed ? 'ALLOWED' : 'DENIED'}`);
+                    // Rule: Leniency on Missing Strategies (SDN-0201)
+                    // If no specific strategy is registered, we assume the realm is 'Open' or 'Sovereign-by-Identity'.
+                    const strategy = this._limes.getStrategies().find(s => s.id === strategyId);
+                    let allowed = true;
+
+                    if (strategy) {
+                        allowed = this._limes.isAllowed(user, strategyId, { realmId: id });
+                        this.logger?.debug(`Realm Manager: Access Check Result for '${id}': ${allowed ? 'ALLOWED' : 'DENIED'}`);
+                    } else {
+                        this.logger?.debug(`Realm Manager: No specific strategy found for '${id}'. Defaulting to ALLOWED.`);
+                    }
 
                     if (!allowed) {
                          const manifest = this._realms.get(id);

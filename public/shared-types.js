@@ -41,6 +41,7 @@ export const PERMISSION_DATA_SERVICE = "org.neverplayed.backoffice/permissions/d
 export const FEATURE_DATA_SERVICE = "org.neverplayed.backoffice/features/data";
 export const PLEXUS_ENGINE_SERVICE = "org.neverplayed.plexus/engine";
 export const PLEXUS_TRACING_UI = "org.neverplayed.plexus/tracing/ui";
+export const PLEXUS_SENSOR_SERVICE = "org.neverplayed.plexus/sensor";
 export const LIMES_SERVICE = "org.neverplayed.limes.LimesService";
 export const DOMAIN_OBJECT_REGISTRY_SERVICE = "org.neverplayed.domain.Registry";
 export const DOMAIN_OBJECT_INSTANCE_SERVICE = "org.neverplayed.domain.Instance";

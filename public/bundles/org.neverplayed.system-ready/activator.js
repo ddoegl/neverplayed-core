@@ -13,6 +13,7 @@ import {
     CAPABILITIES_DATA_SERVICE, 
     BIZ_FUNC_DATA_SERVICE,
     PLEXUS_ENGINE_SERVICE,
+    PLEXUS_SENSOR_SERVICE,
     TOPICS_DATA_SERVICE,
     CAMPAIGNS_SERVICE
 } from "core-types";
@@ -29,7 +30,8 @@ export default class Activator {
             BIZ_FUNC_DATA_SERVICE,
             TOPICS_DATA_SERVICE,
             CAMPAIGNS_SERVICE,
-            PLEXUS_ENGINE_SERVICE
+            PLEXUS_ENGINE_SERVICE,
+            PLEXUS_SENSOR_SERVICE
         ];
 
         const readyState = new Set();

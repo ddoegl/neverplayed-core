@@ -125,6 +125,52 @@ export default class Activator extends BaseActivator {
                 log(result);
             }
         });
+
+        // /level command
+        context.registerService(SHELL_COMMAND_SERVICE, {
+            name: "level",
+            description: "[beginner|advanced] - Switch persona level (Daniela Mode vs Expert Mode)",
+            execute: async (args, ctx, log) => {
+                const targetLevel = args[0]?.toLowerCase();
+                if (!['beginner', 'advanced'].includes(targetLevel)) {
+                    log("Usage: /level [beginner|advanced]", "error");
+                    return;
+                }
+
+                const sessionRef = ctx.getServiceReference(SESSION_SERVICE);
+                const session = sessionRef ? ctx.getService(sessionRef) : null;
+                if (!session) {
+                    log("Session Service not found.", "error");
+                    return;
+                }
+
+                const user = session.currentUser;
+                if (!user || user.id === 'guest') {
+                    log("No active user session found. Please login first.", "error");
+                    return;
+                }
+
+                log(`Switching persona level to: ${targetLevel}...`);
+
+                // Rule: Persona Materialization (Stigmergic Perception)
+                // We define a synthetic surrogate for the desired level
+                const surrogate = {
+                    id: `${user.id}-${targetLevel}`,
+                    level: targetLevel,
+                    label: targetLevel === 'beginner' ? "Beginner Mode" : "Expert Mode",
+                    attributes: {
+                        "persona.level": targetLevel,
+                        "visibility.level": targetLevel === 'beginner' ? 1 : 5
+                    }
+                };
+
+                // Inject/Activate surrogate in the current realm scope
+                session.login(user.id, null, surrogate);
+                
+                log({ text: `SUCCESS: Identity Materialized as ${surrogate.label}`, color: "green", bold: true });
+                log(`Perception shifted. Universe scanning initiated...`);
+            }
+        });
     }
 
     stop() {}

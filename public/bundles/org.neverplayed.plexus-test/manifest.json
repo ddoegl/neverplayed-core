@@ -1,0 +1,8 @@
+{
+  "Bundle-ManifestVersion": "2",
+  "Bundle-SymbolicName": "org.neverplayed.plexus-test",
+  "Bundle-Name": "Plexus Test Suite",
+  "Bundle-Description": "Automated verification for Plexus Engine and Sensor",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js"
+}

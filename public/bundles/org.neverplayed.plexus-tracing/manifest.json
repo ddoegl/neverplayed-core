@@ -1,0 +1,8 @@
+{
+  "Bundle-ManifestVersion": "2",
+  "Bundle-SymbolicName": "org.neverplayed.plexus-tracing",
+  "Bundle-Name": "Plexus Tracing UI",
+  "Bundle-Description": "Diagnostic UI for Plexus Matcher Engine",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js"
+}

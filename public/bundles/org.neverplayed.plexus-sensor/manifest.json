@@ -1,0 +1,8 @@
+{
+  "Bundle-ManifestVersion": "2",
+  "Bundle-SymbolicName": "org.neverplayed.plexus-sensor",
+  "Bundle-Name": "Plexus Sensor",
+  "Bundle-Description": "High-level Sensing Layer for Beings and Surrogates",
+  "Bundle-Version": "1.0.0",
+  "Bundle-Activator": "./activator.js"
+}

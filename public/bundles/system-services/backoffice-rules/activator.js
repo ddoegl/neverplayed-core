@@ -1,4 +1,4 @@
-import { YAML_SERVICE, BO_EXTENSION_SERVICE, RULES_DATA_SERVICE, RULES_PID } from "shared-types";
+import { YAML_SERVICE, BO_EXTENSION_SERVICE, RULES_DATA_SERVICE, RULES_PID, PLEXUS_KNOWLEDGE_PROVIDER } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
 export default class Activator {
@@ -10,6 +10,7 @@ export default class Activator {
     const pm = context.getService(pmRef);
 
     const RULES_PID_VAL = RULES_PID;
+    
     // Load/Seed Data for Rules
     let strategies = null;
     try {
@@ -33,28 +34,33 @@ export default class Activator {
         strategies = newStrategies;
         pm.store(RULES_PID_VAL, strategies);
       },
+      // Plexus BYOS Integration
+      getKnowledge: () => strategies,
+      
       // Legacy compatibility
       getRules: () => strategies,
       setRules: (s) => dataService.setStrategies(s)
     };
 
-    // Provide data as its own service (in case others need it before Host injects it)
+    // Provide data as its own service
     context.registerService(RULES_DATA_SERVICE, dataService);
 
-    // Register Extension Service
+    // Register as Plexus Knowledge Provider
+    context.registerService(PLEXUS_KNOWLEDGE_PROVIDER, dataService, { 
+        "plexus.domain": "rules" 
+    });
+
+    // Register Extension Service for Backoffice UI
     context.registerService(BO_EXTENSION_SERVICE, {
       id: "rules",
       name: "Rule Strategies",
-      icon: "fas fa-microchip", // Better icon for primitives
+      icon: "fas fa-microchip",
       templateUrl: "./bundles/system-services/backoffice-rules/templates/rule-strategies.html",
       onActivate: (hostState) => {
         hostState.parsedRuleStrategies = strategies;
-        
         hostState.saveRuleStrategies = () => {
             dataService.setStrategies(hostState.parsedRuleStrategies);
         };
-
-        // Trigger Recompile
         hostState.recompile?.();
       },
     });
