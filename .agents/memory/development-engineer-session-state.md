@@ -1,18 +1,20 @@
 # Development Engineer - Session State
 
 ## Current Goal
-Harmonize the Stratographer Ontology Architecture by unifying terminology to "grounding" (Idealist/Realist) and centralizing the perception-shift logic within the `SessionService` to prevent surrogate data loss and maintain cross-bundle state synchronization.
+Unify and scale the ontological grounding of surrogates by implementing a centralized Surrogate Registry (`surrogates.yaml`) to seed base hardware capabilities (intrinsic senses like `ToolUse` and `Language`) onto materialized identities.
 
 ## Completed Items
-- **Terminology Harmonization:** Replaced all legacy `level` (`beginner`/`advanced`) concepts with `grounding` (`idealist`/`realist`) across the CLI (`/grounding`), Perceiver Service core mappings, and UI components (`Stratographer` dashboard, `stratum-hud`).
-- **Surrogate Augmentation:** Abstracted the surrogate materialization logic from the CLI and UI into a new centralized `session.shiftGrounding(targetGrounding)` method. This injects the proper perceptual senses (`IdealistVision`, `ForensicVision`, `ArchitectControl`) while preserving the base surrogate ID instead of destructively replacing it.
-- **Reactivity Bugfix:** Fixed an Alpine.js race condition in the Stratographer UI where toggling the grounding perspective highlighted the *opposite* state. Introduced a reactive `_grounding` property with optimistic updates, synchronized via the `PERCEIVER_CHANGED_TOPIC` event listener.
-- **Documentation:** Updated the `GEMINI.md` constitution to reflect the new `/grounding` command.
+- **Surrogate Registry Scaffolding:** Created a central capability mapping file at `public/bundles/org.neverplayed.being-service/data/surrogates.yaml` defining base capabilities for `person` and `guest`.
+- **Ecosystem Hydration:** Updated `being-service/activator.js` to asynchronously load `surrogates.yaml` alongside `beings.yaml` via the OSGi `YAML_SERVICE` on bundle startup.
+- **Being Enrichment Pipeline:** Enhanced `being-service/activator.js`'s identity registration logic to enrich each registered being's initial state with `surrogateData` mapped from the new registry.
+- **Session Capability Integration:** Patched `session-service/activator.js` to spread `surrogateData` into the materialized surrogate's state profile, guaranteeing that base senses are hydrated correctly on boot.
+- **Materialization Capabilities:** Updated `being-service/activator.js`'s `materialize()` to fetch base capabilities using `getSurrogate()` and inject them into `session.login()` requests.
+- **Git Branch Consolidation:** Comitted the finalized, functional changes to the isolated worktree branch and safely merged it back into the main repository's focus branch (`architectural-cleanup-1`).
 
 ## Pending Items
-- Await the next handover ticket (likely from the `forensic-analyst` or `cognitive-architect`) to proceed with further architectural evolution or bug remediation.
-- Monitor for any unexpected ontological side-effects from the non-destructive Surrogate Augmentation pattern.
+- Monitor the reactively shifted grounding states (e.g. `/grounding` transitions) to ensure non-destructive merging behaves smoothly with other bundles.
+- Await the next handover ticket containing additional architectural directives or bug remediations.
 
 ## Key Decisions & Context
-- **Non-Destructive Augmentation:** When a user shifts grounding, we now retain their existing `user.surrogateId` and merge new perception-specific senses into their existing array (filtering out old ones first). This prevents their primary identity from being overwritten by a generic `${user.id}-beginner` surrogate.
-- **Headless Isolation:** The refactor adheres strictly to ADR-0034. The CLI and UI bundles no longer manually attempt to synchronize the `PerceiverService`; they rely purely on the `SessionService` executing a `login`, which naturally propagates `SESSION_CHANGED_TOPIC` across the OSGi ecosystem.
+- **Declarative Grounding:** Standardized capability definitions out of code and into `surrogates.yaml`, aligning strictly with the "Configuration over Code" constitutional mandate.
+- **Integration Preservation:** Left the CLI/UI layer context clean and decoupled, making identity stacks in the Session Service the single source of truth for populated capabilities.
