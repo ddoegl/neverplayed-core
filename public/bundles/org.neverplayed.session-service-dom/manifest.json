@@ -1,0 +1,9 @@
+{
+    "Bundle-ManifestVersion": "2",
+    "Bundle-SymbolicName": "org.neverplayed.session-service-dom",
+    "Bundle-Name": "Session Service DOM Adapter",
+    "Bundle-Description": "Translates Headless OSGi EventAdmin session changes into DOM CustomEvents.",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"@pandino/event-admin/EventHandler\""
+}

@@ -5,7 +5,7 @@ This document establishes the core principles and architectural guidelines for t
 ## 0. Persona & Operative Mode
 <!-- include: .agents/rules/persona.md -->
 > [!NOTE]
-> Currently operating in default mode. Use `/level` to switch between beginner and advanced personas.
+> Currently operating in default mode. Use `/grounding` to switch between idealist and realist personas.
 
 ## 1. Architectural Foundation (OSGi)
 <!-- include: .agents/rules/architecture-osgi.md -->

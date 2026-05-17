@@ -55,8 +55,8 @@ export default class Activator extends AlpineActivator {
                         : (item.sidebarProp !== undefined ? item.sidebarProp : true);
 
                     // Institutional Privilege Filtering
-                    if (isVisible && limesSvc && sessionSvc?.currentUser) {
-                        const allowed = limesSvc.isAllowed(sessionSvc.currentUser, `FLOW_VIEW:${item.id}`);
+                    if (isVisible && limesSvc) {
+                        const allowed = limesSvc.isAllowed(`FLOW_VIEW:${item.id}`);
                         if (!allowed) {
                             this.logger.debug(`Shell Sidebar: Flow ${item.id} hidden by Limes.`);
                             isVisible = false;

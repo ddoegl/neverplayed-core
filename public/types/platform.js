@@ -33,6 +33,8 @@ export const YAML_SERVICE = "org.neverplayed.yaml.YamlService";
 export const YAML_EDITOR_SERVICE = "org.neverplayed.yaml.Editor";
 export const ENV_SERVICE = "org.neverplayed.system.EnvService";
 export const PERSISTENCE_RESOLVER_SERVICE = "org.neverplayed.persistence.Resolver";
+export const PERCEIVER_SERVICE = "org.neverplayed.perceiver.PerceiverService";
+export const PLEXUS_ENRICHER_SERVICE = "org.neverplayed.plexus.EnrichmentService";
 
 // 4. Persistence & PIDs
 export const SHELL_CONFIG_PID = "org.neverplayed.shell.cli";
@@ -60,6 +62,8 @@ export const REALM_CHANGED_TOPIC = "org/neverplayed/realm/CHANGED";
 export const REALM_REGISTERED_TOPIC = "org/neverplayed/realm/REGISTERED";
 export const REALM_UNREGISTERED_TOPIC = "org/neverplayed/realm/UNREGISTERED";
 export const AGENT_AUDIT_COMPLETED_TOPIC = "org/neverplayed/agent/AUDIT_COMPLETED";
+export const PERCEIVER_CHANGED_TOPIC = "org/neverplayed/perceiver/CHANGED";
+export const SESSION_CHANGED_TOPIC = "org/neverplayed/session/CHANGED";
 
 // 6. OSGi Bundle States
 export const BUNDLE_STATE_UNINSTALLED = 1;
@@ -74,6 +78,7 @@ export const BUNDLE_STATUS_ACTIVE = "ACTIVE";
 export const SELECTION_SERVICE = "org.neverplayed.selection.SelectionService";
 export const ACTION_REGISTRY_SERVICE = "org.neverplayed.action.ActionRegistry";
 export const ACTION_SERVICE = "org.neverplayed.action.ActionService";
+export const PLEXUS_EVALUATOR_SERVICE = "org.neverplayed.plexus.Evaluator";
 export const PLEXUS_ENGINE_SERVICE = "org.neverplayed.plexus.Engine";
 export const PLEXUS_TRACING_UI = "org.neverplayed.plexus.TracingUI";
 export const PLEXUS_SENSOR_SERVICE = "org.neverplayed.plexus.Sensor";

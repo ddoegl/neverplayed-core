@@ -23,7 +23,7 @@ export default class Activator extends CoreActivator {
                     if (pmRef) {
                         const pm = this.context.getService(pmRef);
                         if (typeof pm.clear === 'function') {
-                            await pm.clear();
+                            await pm.clear({ global: true });
                         } else {
                             localStorage.clear();
                         }

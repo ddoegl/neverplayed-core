@@ -1,11 +1,11 @@
-# Graph Report - neverplayed  (2026-05-11)
+# Graph Report - neverplayed  (2026-05-12)
 
 ## Corpus Check
-- 229 files · ~266,386 words
+- 235 files · ~269,032 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 970 nodes · 1003 edges · 135 communities detected
+- 991 nodes · 1013 edges · 139 communities detected
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 10 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -80,6 +80,7 @@
 - [[_COMMUNITY_Community 67|Community 67]]
 - [[_COMMUNITY_Community 68|Community 68]]
 - [[_COMMUNITY_Community 69|Community 69]]
+- [[_COMMUNITY_Community 70|Community 70]]
 - [[_COMMUNITY_Community 71|Community 71]]
 - [[_COMMUNITY_Community 72|Community 72]]
 - [[_COMMUNITY_Community 73|Community 73]]
@@ -108,7 +109,6 @@
 - [[_COMMUNITY_Community 96|Community 96]]
 - [[_COMMUNITY_Community 97|Community 97]]
 - [[_COMMUNITY_Community 98|Community 98]]
-- [[_COMMUNITY_Community 99|Community 99]]
 - [[_COMMUNITY_Community 100|Community 100]]
 - [[_COMMUNITY_Community 101|Community 101]]
 - [[_COMMUNITY_Community 102|Community 102]]
@@ -123,6 +123,7 @@
 - [[_COMMUNITY_Community 111|Community 111]]
 - [[_COMMUNITY_Community 112|Community 112]]
 - [[_COMMUNITY_Community 113|Community 113]]
+- [[_COMMUNITY_Community 114|Community 114]]
 - [[_COMMUNITY_Community 115|Community 115]]
 - [[_COMMUNITY_Community 116|Community 116]]
 - [[_COMMUNITY_Community 117|Community 117]]
@@ -131,20 +132,23 @@
 - [[_COMMUNITY_Community 120|Community 120]]
 - [[_COMMUNITY_Community 121|Community 121]]
 - [[_COMMUNITY_Community 122|Community 122]]
-- [[_COMMUNITY_Community 123|Community 123]]
 - [[_COMMUNITY_Community 124|Community 124]]
 - [[_COMMUNITY_Community 125|Community 125]]
 - [[_COMMUNITY_Community 126|Community 126]]
 - [[_COMMUNITY_Community 127|Community 127]]
 - [[_COMMUNITY_Community 128|Community 128]]
+- [[_COMMUNITY_Community 129|Community 129]]
 - [[_COMMUNITY_Community 130|Community 130]]
 - [[_COMMUNITY_Community 131|Community 131]]
 - [[_COMMUNITY_Community 132|Community 132]]
 - [[_COMMUNITY_Community 133|Community 133]]
 - [[_COMMUNITY_Community 134|Community 134]]
 - [[_COMMUNITY_Community 135|Community 135]]
-- [[_COMMUNITY_Community 136|Community 136]]
 - [[_COMMUNITY_Community 137|Community 137]]
+- [[_COMMUNITY_Community 138|Community 138]]
+- [[_COMMUNITY_Community 139|Community 139]]
+- [[_COMMUNITY_Community 140|Community 140]]
+- [[_COMMUNITY_Community 141|Community 141]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `fn()` - 27 edges
@@ -153,7 +157,7 @@
 4. `UIFactory` - 22 edges
 5. `Activator` - 20 edges
 6. `BaseActivator` - 17 edges
-7. `Activator` - 17 edges
+7. `Activator` - 14 edges
 8. `Activator` - 13 edges
 9. `n()` - 12 edges
 10. `BundleTestHarness` - 11 edges
@@ -213,48 +217,48 @@ Cohesion: 0.11
 Nodes (1): BundleTestHarness
 
 ### Community 10 - "Community 10"
-Cohesion: 0.21
-Nodes (1): Activator
-
-### Community 11 - "Community 11"
 Cohesion: 0.15
 Nodes (14): AtomicAction, create_action_nav(), create_card(), create_text_input(), DomainObjectConfig, DomainObjectSpec, Converts the model to a clean dictionary for YAML serialization, removing None v, Serializes the specification to YAML format. (+6 more)
 
-### Community 12 - "Community 12"
+### Community 11 - "Community 11"
 Cohesion: 0.14
 Nodes (2): AlpineActivator, CoreAlpineActivator
+
+### Community 12 - "Community 12"
+Cohesion: 0.18
+Nodes (1): Activator
 
 ### Community 13 - "Community 13"
 Cohesion: 0.24
 Nodes (1): Activator
 
 ### Community 14 - "Community 14"
-Cohesion: 0.25
-Nodes (1): Activator
-
-### Community 15 - "Community 15"
 Cohesion: 0.31
 Nodes (1): Activator
 
-### Community 16 - "Community 16"
+### Community 15 - "Community 15"
 Cohesion: 0.27
 Nodes (1): Activator
 
-### Community 17 - "Community 17"
-Cohesion: 0.33
-Nodes (1): AgentService
-
-### Community 18 - "Community 18"
+### Community 16 - "Community 16"
 Cohesion: 0.22
 Nodes (2): Activator, DenoInstallerService
 
-### Community 19 - "Community 19"
-Cohesion: 0.22
-Nodes (4): evaluateDynamic(), evaluateDynamic(), execute(), log()
+### Community 17 - "Community 17"
+Cohesion: 0.27
+Nodes (1): Activator
 
-### Community 20 - "Community 20"
+### Community 18 - "Community 18"
+Cohesion: 0.33
+Nodes (1): AgentService
+
+### Community 19 - "Community 19"
 Cohesion: 0.27
 Nodes (3): LimesService, MockRegistry, PersistenceSelector
+
+### Community 20 - "Community 20"
+Cohesion: 0.22
+Nodes (4): evaluateDynamic(), evaluateDynamic(), execute(), log()
 
 ### Community 21 - "Community 21"
 Cohesion: 0.22
@@ -269,60 +273,60 @@ Cohesion: 0.36
 Nodes (1): Activator
 
 ### Community 24 - "Community 24"
-Cohesion: 0.39
+Cohesion: 0.36
 Nodes (1): Activator
 
 ### Community 25 - "Community 25"
+Cohesion: 0.36
+Nodes (1): Activator
+
+### Community 26 - "Community 26"
+Cohesion: 0.39
+Nodes (1): Activator
+
+### Community 27 - "Community 27"
 Cohesion: 0.38
 Nodes (1): UserSelector
 
-### Community 26 - "Community 26"
-Cohesion: 0.38
-Nodes (1): AuthorizationSelector
-
-### Community 27 - "Community 27"
+### Community 28 - "Community 28"
 Cohesion: 0.29
 Nodes (2): Activator, checkAccess()
 
-### Community 28 - "Community 28"
-Cohesion: 0.38
-Nodes (1): Activator
-
 ### Community 29 - "Community 29"
-Cohesion: 0.4
-Nodes (1): Activator
+Cohesion: 0.38
+Nodes (1): AuthorizationSelector
 
 ### Community 30 - "Community 30"
 Cohesion: 0.33
-Nodes (1): DenoPersistenceManager
+Nodes (1): Activator
 
 ### Community 31 - "Community 31"
-Cohesion: 0.4
-Nodes (2): auditBundles(), loadIdentities()
+Cohesion: 0.47
+Nodes (1): Activator
 
 ### Community 32 - "Community 32"
 Cohesion: 0.33
-Nodes (1): Activator
+Nodes (1): DenoPersistenceManager
 
 ### Community 33 - "Community 33"
-Cohesion: 0.33
+Cohesion: 0.4
 Nodes (1): Activator
 
 ### Community 34 - "Community 34"
-Cohesion: 0.33
+Cohesion: 0.4
 Nodes (1): Activator
 
 ### Community 35 - "Community 35"
 Cohesion: 0.4
-Nodes (1): Activator
+Nodes (2): auditBundles(), loadIdentities()
 
 ### Community 36 - "Community 36"
 Cohesion: 0.33
-Nodes (2): Activator, StringInverterImpl
+Nodes (1): Activator
 
 ### Community 37 - "Community 37"
-Cohesion: 0.4
-Nodes (1): Activator
+Cohesion: 0.33
+Nodes (2): Activator, StringInverterImpl
 
 ### Community 38 - "Community 38"
 Cohesion: 0.4
@@ -337,15 +341,15 @@ Cohesion: 0.4
 Nodes (1): Activator
 
 ### Community 41 - "Community 41"
-Cohesion: 0.5
-Nodes (1): DomainActivator
+Cohesion: 0.4
+Nodes (1): Activator
 
 ### Community 42 - "Community 42"
-Cohesion: 0.5
+Cohesion: 0.4
 Nodes (1): Activator
 
 ### Community 43 - "Community 43"
-Cohesion: 0.4
+Cohesion: 0.5
 Nodes (1): Activator
 
 ### Community 44 - "Community 44"
@@ -358,7 +362,7 @@ Nodes (1): Activator
 
 ### Community 46 - "Community 46"
 Cohesion: 0.5
-Nodes (1): Activator
+Nodes (1): DomainActivator
 
 ### Community 47 - "Community 47"
 Cohesion: 0.5
@@ -381,8 +385,8 @@ Cohesion: 0.5
 Nodes (1): Activator
 
 ### Community 52 - "Community 52"
-Cohesion: 0.67
-Nodes (2): init(), rebuild()
+Cohesion: 0.5
+Nodes (1): Activator
 
 ### Community 53 - "Community 53"
 Cohesion: 0.5
@@ -390,7 +394,7 @@ Nodes (1): Activator
 
 ### Community 54 - "Community 54"
 Cohesion: 0.5
-Nodes (1): Activator
+Nodes (1): AtomicSelect
 
 ### Community 55 - "Community 55"
 Cohesion: 0.5
@@ -452,6 +456,10 @@ Nodes (1): Activator
 Cohesion: 0.5
 Nodes (1): Activator
 
+### Community 70 - "Community 70"
+Cohesion: 0.5
+Nodes (1): Activator
+
 ### Community 71 - "Community 71"
 Cohesion: 0.5
 Nodes (1): Activator
@@ -489,8 +497,8 @@ Cohesion: 0.5
 Nodes (1): Activator
 
 ### Community 80 - "Community 80"
-Cohesion: 0.67
-Nodes (1): AtomicMasterDetail
+Cohesion: 0.5
+Nodes (1): Activator
 
 ### Community 81 - "Community 81"
 Cohesion: 0.5
@@ -517,8 +525,8 @@ Cohesion: 0.5
 Nodes (1): Activator
 
 ### Community 87 - "Community 87"
-Cohesion: 0.5
-Nodes (1): Activator
+Cohesion: 0.67
+Nodes (1): AtomicMasterDetail
 
 ### Community 88 - "Community 88"
 Cohesion: 0.5
@@ -526,7 +534,7 @@ Nodes (1): Activator
 
 ### Community 89 - "Community 89"
 Cohesion: 0.5
-Nodes (1): AtomicSelect
+Nodes (1): Activator
 
 ### Community 90 - "Community 90"
 Cohesion: 0.5
@@ -564,13 +572,9 @@ Nodes (1): Activator
 Cohesion: 0.5
 Nodes (1): Activator
 
-### Community 99 - "Community 99"
-Cohesion: 0.5
-Nodes (1): Activator
-
 ### Community 100 - "Community 100"
-Cohesion: 0.5
-Nodes (1): Activator
+Cohesion: 0.67
+Nodes (2): init(), rebuild()
 
 ### Community 101 - "Community 101"
 Cohesion: 0.5
@@ -593,24 +597,24 @@ Cohesion: 0.5
 Nodes (1): Activator
 
 ### Community 106 - "Community 106"
-Cohesion: 0.67
+Cohesion: 0.5
 Nodes (1): Activator
 
 ### Community 107 - "Community 107"
-Cohesion: 0.67
+Cohesion: 0.5
 Nodes (1): Activator
 
 ### Community 108 - "Community 108"
-Cohesion: 0.67
+Cohesion: 0.5
 Nodes (1): Activator
 
 ### Community 109 - "Community 109"
-Cohesion: 0.67
+Cohesion: 0.5
 Nodes (1): Activator
 
 ### Community 110 - "Community 110"
 Cohesion: 0.67
-Nodes (1): AtomicRadio
+Nodes (1): AtomicCheckbox
 
 ### Community 111 - "Community 111"
 Cohesion: 0.67
@@ -618,11 +622,15 @@ Nodes (1): Activator
 
 ### Community 112 - "Community 112"
 Cohesion: 0.67
-Nodes (1): Activator
+Nodes (1): AtomicButton
 
 ### Community 113 - "Community 113"
 Cohesion: 0.67
-Nodes (1): AtomicInput
+Nodes (1): Activator
+
+### Community 114 - "Community 114"
+Cohesion: 0.67
+Nodes (1): Activator
 
 ### Community 115 - "Community 115"
 Cohesion: 0.67
@@ -650,19 +658,15 @@ Nodes (1): Activator
 
 ### Community 121 - "Community 121"
 Cohesion: 0.67
-Nodes (1): Activator
+Nodes (1): AtomicRadio
 
 ### Community 122 - "Community 122"
 Cohesion: 0.67
 Nodes (1): Activator
 
-### Community 123 - "Community 123"
-Cohesion: 0.67
-Nodes (1): Activator
-
 ### Community 124 - "Community 124"
 Cohesion: 0.67
-Nodes (1): AtomicHero
+Nodes (1): Activator
 
 ### Community 125 - "Community 125"
 Cohesion: 0.67
@@ -680,13 +684,17 @@ Nodes (1): Activator
 Cohesion: 0.67
 Nodes (1): Activator
 
+### Community 129 - "Community 129"
+Cohesion: 0.67
+Nodes (1): Activator
+
 ### Community 130 - "Community 130"
 Cohesion: 0.67
-Nodes (1): AtomicButton
+Nodes (1): Activator
 
 ### Community 131 - "Community 131"
 Cohesion: 0.67
-Nodes (1): Activator
+Nodes (1): AtomicHero
 
 ### Community 132 - "Community 132"
 Cohesion: 0.67
@@ -704,11 +712,23 @@ Nodes (1): Activator
 Cohesion: 0.67
 Nodes (1): Activator
 
-### Community 136 - "Community 136"
-Cohesion: 0.67
-Nodes (1): AtomicCheckbox
-
 ### Community 137 - "Community 137"
+Cohesion: 0.67
+Nodes (1): Activator
+
+### Community 138 - "Community 138"
+Cohesion: 0.67
+Nodes (1): AtomicInput
+
+### Community 139 - "Community 139"
+Cohesion: 0.67
+Nodes (1): Activator
+
+### Community 140 - "Community 140"
+Cohesion: 0.67
+Nodes (1): Activator
+
+### Community 141 - "Community 141"
 Cohesion: 0.67
 Nodes (1): Activator
 
@@ -725,97 +745,97 @@ Nodes (1): Activator
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 9`** (20 nodes): `ui-factory.test.ts`, `core-bundles.test.ts`, `fn()`, `persistence-matrix.test.ts`, `setupShuntMock()`, `persistence-resilience.test.ts`, `realm-management.test.ts`, `session-selection-sync.test.ts`, `BundleTestHarness`, `.constructor()`, `.getBundleContext()`, `.getContext()`, `.getDocument()`, `.getService()`, `.getWindow()`, `.init()`, `.installBundles()`, `._setupGlobalsOnce()`, `.stop()`, `test-harness.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 10`** (18 nodes): `Activator`, `.clear()`, `._getEffectiveContextForKey()`, `._getPreferredTierForKey()`, `._getProvider()`, `.listKeys()`, `.load()`, `.onStop()`, `.probe()`, `._pruneLimboState()`, `._purgeTenantVault()`, `.setContext()`, `.setMode()`, `.setRoutingPolicy()`, `.start()`, `.store()`, `.waitReady()`, `activator.js`
+- **Thin community `Community 11`** (16 nodes): `AlpineActivator`, `.constructor()`, `.effect()`, `.initStore()`, `.render()`, `.stop()`, `.syncStore()`, `.track()`, `CoreAlpineActivator`, `.constructor()`, `.initStore()`, `.render()`, `.stop()`, `.syncStore()`, `.track()`, `alpine-base.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 12`** (16 nodes): `AlpineActivator`, `.constructor()`, `.effect()`, `.initStore()`, `.render()`, `.stop()`, `.syncStore()`, `.track()`, `CoreAlpineActivator`, `.constructor()`, `.initStore()`, `.render()`, `.stop()`, `.syncStore()`, `.track()`, `alpine-base.js`
+- **Thin community `Community 12`** (15 nodes): `Activator`, `.clear()`, `._deriveMarkForKey()`, `.getContext()`, `._getPreferredTierForKey()`, `._getProvider()`, `.listKeys()`, `.load()`, `.probe()`, `.setContext()`, `.start()`, `.stop()`, `.store()`, `.waitReady()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 13`** (14 nodes): `Activator`, `._attemptShunt()`, `._getDocId()`, `.load()`, `.onStart()`, `.onStop()`, `._processShuntQueue()`, `._queueShunt()`, `._registerService()`, `._scrubPayload()`, `._setupSync()`, `._shuntedFetch()`, `.store()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 14`** (11 nodes): `Activator`, `._bufferTrace()`, `._extractDOMTrace()`, `._getPerceiverContext()`, `._getTrace()`, `._probeDOM()`, `._probeNow()`, `.sense()`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 14`** (11 nodes): `Activator`, `._briefResolver()`, `.constructor()`, `._isRegistryAdmin()`, `.onCoreStart()`, `.onStop()`, `.refreshMaster()`, `.registerInstanceService()`, `.seed()`, `.sync()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 15`** (11 nodes): `Activator`, `._briefResolver()`, `.constructor()`, `._isRegistryAdmin()`, `.onCoreStart()`, `.onStop()`, `.refreshMaster()`, `.registerInstanceService()`, `.seed()`, `.sync()`, `activator.js`
+- **Thin community `Community 15`** (10 nodes): `Activator`, `._bufferTrace()`, `._extractMark()`, `._getMark()`, `._probeDOM()`, `._probeNow()`, `.sense()`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 16`** (10 nodes): `Activator`, `.constructor()`, `.onStart()`, `.onStop()`, `.reapplySecurityByService()`, `.registerAtomicComponents()`, `.registerSecurity()`, `.scanDomainObjects()`, `.scanLocalStorage()`, `activator.js`
+- **Thin community `Community 16`** (10 nodes): `Activator`, `.start()`, `.stop()`, `DenoInstallerService`, `.constructor()`, `.handleInstall()`, `.stopWatch()`, `.watch()`, `activator.ts`, `installer-service.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 17`** (10 nodes): `AgentService`, `.audit()`, `.constructor()`, `.initStore()`, `.recordAudit()`, `.recover()`, `.shout()`, `.status()`, `.syncInternal()`, `agent-service.js`
+- **Thin community `Community 17`** (10 nodes): `Activator`, `.constructor()`, `.onStart()`, `.onStop()`, `.reapplySecurityByService()`, `.registerAtomicComponents()`, `.registerSecurity()`, `.scanDomainObjects()`, `.scanLocalStorage()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 18`** (10 nodes): `Activator`, `.start()`, `.stop()`, `DenoInstallerService`, `.constructor()`, `.handleInstall()`, `.stopWatch()`, `.watch()`, `activator.ts`, `installer-service.ts`
+- **Thin community `Community 18`** (10 nodes): `AgentService`, `.audit()`, `.constructor()`, `.initStore()`, `.recordAudit()`, `.recover()`, `.shout()`, `.status()`, `.syncInternal()`, `agent-service.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 21`** (9 nodes): `ActionRegistry`, `.constructor()`, `.getAction()`, `.getActions()`, `.register()`, `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 23`** (8 nodes): `Activator`, `._injectTemplate()`, `._renderGraph()`, `._setupExplorerStore()`, `._setupOpticalTracker()`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 24`** (8 nodes): `Activator`, `.handleCommand()`, `.log()`, `.onCoreStart()`, `.onCoreStop()`, `.renderHelp()`, `.resolveServiceRef()`, `activator.js`
+- **Thin community `Community 24`** (8 nodes): `Activator`, `.notify()`, `.onStart()`, `.onStop()`, `.setContext()`, `._syncFromRealmManager()`, `._syncFromSession()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 25`** (7 nodes): `UserSelector`, `.connectedCallback()`, `.constructor()`, `.render()`, `.users()`, `.value()`, `user-selector.js`
+- **Thin community `Community 25`** (8 nodes): `Activator`, `._injectTemplate()`, `.onStart()`, `.onStop()`, `._renderGraph()`, `._setupExplorerStore()`, `._setupOpticalTracker()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 26`** (7 nodes): `AuthorizationSelector`, `.authorizations()`, `.connectedCallback()`, `.constructor()`, `.render()`, `.value()`, `authorization-selector.js`
+- **Thin community `Community 26`** (8 nodes): `Activator`, `.handleCommand()`, `.log()`, `.onCoreStart()`, `.onCoreStop()`, `.renderHelp()`, `.resolveServiceRef()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 27`** (7 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`, `firebase-auth.js`, `checkAccess()`, `sendInvitationRequest()`
+- **Thin community `Community 27`** (7 nodes): `UserSelector`, `.connectedCallback()`, `.constructor()`, `.render()`, `.users()`, `.value()`, `user-selector.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 28`** (7 nodes): `Activator`, `._injectHUD()`, `.launch()`, `._setupAlpineHUD()`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 28`** (7 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`, `firebase-auth.js`, `checkAccess()`, `sendInvitationRequest()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 29`** (6 nodes): `Activator`, `.initializeAgent()`, `.onCoreStart()`, `.onCoreStop()`, `.stopAgent()`, `activator.js`
+- **Thin community `Community 29`** (7 nodes): `AuthorizationSelector`, `.authorizations()`, `.connectedCallback()`, `.constructor()`, `.render()`, `.value()`, `authorization-selector.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 30`** (6 nodes): `boot()`, `constructor()`, `DenoPersistenceManager`, `.load()`, `.store()`, `headless-boot.ts`
+- **Thin community `Community 30`** (6 nodes): `Activator`, `._maybeRunTests()`, `.onStart()`, `.onStop()`, `._runSuite()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 31`** (6 nodes): `auditBundles()`, `auditIdentifiers()`, `getArgValue()`, `loadIdentities()`, `resolveBundlesForLayer()`, `lint-arch.ts`
+- **Thin community `Community 31`** (6 nodes): `Activator`, `._injectHUD()`, `._setupAlpineHUD()`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 32`** (6 nodes): `Activator`, `._maybeRunTests()`, `.onStart()`, `.onStop()`, `._runSuite()`, `activator.js`
+- **Thin community `Community 32`** (6 nodes): `boot()`, `constructor()`, `DenoPersistenceManager`, `.load()`, `.store()`, `headless-boot.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 33`** (6 nodes): `Activator`, `.evaluatePermission()`, `.evaluateScopeIntersection()`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 33`** (6 nodes): `Activator`, `.initializeAgent()`, `.onCoreStart()`, `.onCoreStop()`, `.stopAgent()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 34`** (6 nodes): `Activator`, `.constructor()`, `.onStart()`, `._restoreUIState()`, `._syncRealms()`, `activator.js`
+- **Thin community `Community 34`** (6 nodes): `Activator`, `._enrichSessionUser()`, `._hydrateData()`, `.launch()`, `.onStart()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 35`** (6 nodes): `Activator`, `._enrichSessionUser()`, `._hydrateData()`, `.launch()`, `.onStart()`, `activator.js`
+- **Thin community `Community 35`** (6 nodes): `auditBundles()`, `auditIdentifiers()`, `getArgValue()`, `loadIdentities()`, `resolveBundlesForLayer()`, `lint-arch.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 36`** (6 nodes): `Activator`, `.start()`, `.stop()`, `StringInverterImpl`, `.invert()`, `string-inverter.js`
+- **Thin community `Community 36`** (6 nodes): `Activator`, `.constructor()`, `.onStart()`, `._restoreUIState()`, `._syncRealms()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 37`** (5 nodes): `Activator`, `.onStart()`, `.startTerminal()`, `.stop()`, `activator.js`
+- **Thin community `Community 37`** (6 nodes): `Activator`, `.start()`, `.stop()`, `StringInverterImpl`, `.invert()`, `string-inverter.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 38`** (5 nodes): `Activator`, `.runSelfTests()`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 39`** (5 nodes): `Activator`, `.runSelfTests()`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 39`** (5 nodes): `Activator`, `._initializeSession()`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 40`** (5 nodes): `Activator`, `.publishEvent()`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 41`** (5 nodes): `DomainActivator`, `.constructor()`, `.onCoreStart()`, `.onDomainStart()`, `domain-base.js`
+- **Thin community `Community 41`** (5 nodes): `Activator`, `.onStart()`, `.startTerminal()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 42`** (5 nodes): `Activator`, `.onStart()`, `.onStop()`, `.sync()`, `activator.js`
+- **Thin community `Community 42`** (5 nodes): `Activator`, `.start()`, `.stop()`, `stringInverterImpl()`, `bundle-b.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 43`** (5 nodes): `Activator`, `.start()`, `.stop()`, `stringInverterImpl()`, `bundle-b.js`
+- **Thin community `Community 43`** (5 nodes): `Activator`, `.onStart()`, `.onStop()`, `.sync()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 44`** (5 nodes): `Activator`, `.onStart()`, `.onStop()`, `._runSuite()`, `activator.js`
+- **Thin community `Community 44`** (5 nodes): `Activator`, `._getBundleConfig()`, `.onStart()`, `.onStop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 45`** (5 nodes): `Activator`, `._initializeSession()`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 45`** (5 nodes): `Activator`, `.onStart()`, `.onStop()`, `._runSuite()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 46`** (4 nodes): `Activator`, `.onStart()`, `.stop()`, `activator.js`
+- **Thin community `Community 46`** (5 nodes): `DomainActivator`, `.constructor()`, `.onCoreStart()`, `.onDomainStart()`, `domain-base.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 47`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 47`** (4 nodes): `Activator`, `.onStart()`, `._resolveEffectivePolicy()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 48`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 49`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 50`** (4 nodes): `Activator`, `.addLog()`, `.onStart()`, `activator.js`
+- **Thin community `Community 50`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 51`** (4 nodes): `Activator`, `.onCoreStart()`, `.onStop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 52`** (4 nodes): `cleanup()`, `init()`, `rebuild()`, `license-3d.js`
+- **Thin community `Community 52`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 53`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
+- **Thin community `Community 53`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 54`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 54`** (4 nodes): `AtomicSelect`, `._handleSelectChange()`, `.render()`, `atomic-select.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 55`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 55`** (4 nodes): `Activator`, `.onStart()`, `.onStop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 56`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 57`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
+- **Thin community `Community 57`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 58`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 59`** (4 nodes): `Activator`, `.onStart()`, `.onStop()`, `activator.js`
+- **Thin community `Community 59`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 60`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -823,127 +843,127 @@ Nodes (1): Activator
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 62`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 63`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 63`** (4 nodes): `Activator`, `.start()`, `activator.js`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 64`** (4 nodes): `Activator`, `.onStart()`, `.stop()`, `activator.js`
+- **Thin community `Community 64`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 65`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 65`** (4 nodes): `Activator`, `.onStart()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 66`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 67`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 68`** (4 nodes): `Activator`, `.onStart()`, `.stop()`, `activator.js`
+- **Thin community `Community 68`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 69`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 69`** (4 nodes): `Activator`, `.start()`, `.stop()`, `bundle-a.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 71`** (4 nodes): `Activator`, `.onStart()`, `.onStop()`, `activator.js`
+- **Thin community `Community 70`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 71`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 72`** (4 nodes): `Activator`, `.onStart()`, `.onStop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 73`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 74`** (4 nodes): `Activator`, `.start()`, `.stop()`, `bundle-a.js`
+- **Thin community `Community 74`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 75`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 76`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
+- **Thin community `Community 76`** (4 nodes): `Activator`, `._registerIfReady()`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 77`** (4 nodes): `Activator`, `.onStart()`, `.onStop()`, `activator.js`
+- **Thin community `Community 77`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 78`** (4 nodes): `Activator`, `.onStart()`, `._resolveEffectivePolicy()`, `activator.js`
+- **Thin community `Community 78`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 79`** (4 nodes): `Activator`, `.onStart()`, `.onStop()`, `activator.js`
+- **Thin community `Community 79`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 80`** (4 nodes): `AtomicMasterDetail`, `.connectedCallback()`, `.render()`, `atomic-master-detail.js`
+- **Thin community `Community 80`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 81`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 82`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 82`** (4 nodes): `Activator`, `.onStart()`, `.onStop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 83`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 84`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 85`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 85`** (4 nodes): `Activator`, `.onStart()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 86`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 87`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 87`** (4 nodes): `AtomicMasterDetail`, `.connectedCallback()`, `.render()`, `atomic-master-detail.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 88`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 88`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 89`** (4 nodes): `AtomicSelect`, `._handleSelectChange()`, `.render()`, `atomic-select.js`
+- **Thin community `Community 89`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 90`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 90`** (4 nodes): `Activator`, `.onStart()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 91`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 92`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
+- **Thin community `Community 92`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 93`** (4 nodes): `Activator`, `._hydrateBeings()`, `.onStart()`, `activator.js`
+- **Thin community `Community 93`** (4 nodes): `Activator`, `.onStart()`, `.onStop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 94`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.syncSelection()`
+- **Thin community `Community 94`** (4 nodes): `Activator`, `.onStart()`, `.onStop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 95`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
+- **Thin community `Community 95`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 96`** (4 nodes): `Activator`, `.start()`, `activator.js`, `activator.js`
+- **Thin community `Community 96`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.syncSelection()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 97`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 97`** (4 nodes): `Activator`, `.addLog()`, `.onStart()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 98`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 99`** (4 nodes): `Activator`, `._registerIfReady()`, `.start()`, `activator.js`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 100`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 100`** (4 nodes): `cleanup()`, `init()`, `rebuild()`, `license-3d.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 101`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 102`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 102`** (4 nodes): `Activator`, `._hydrateBeings()`, `.onStart()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 103`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
+- **Thin community `Community 103`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 104`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 105`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 106`** (3 nodes): `activator.js`, `Activator`, `.start()`
+- **Thin community `Community 106`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 107`** (3 nodes): `Activator`, `.start()`, `activator.js`
+- **Thin community `Community 107`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 108`** (3 nodes): `Activator`, `.start()`, `activator.js`
+- **Thin community `Community 108`** (4 nodes): `activator.js`, `Activator`, `.start()`, `.stop()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 109`** (3 nodes): `Activator`, `.start()`, `activator.js`
+- **Thin community `Community 109`** (4 nodes): `Activator`, `.start()`, `.stop()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 110`** (3 nodes): `AtomicRadio`, `.render()`, `atomic-radio.js`
+- **Thin community `Community 110`** (3 nodes): `AtomicCheckbox`, `.render()`, `atomic-checkbox.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 111`** (3 nodes): `activator.js`, `Activator`, `.start()`
+- **Thin community `Community 111`** (3 nodes): `Activator`, `.onStart()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 112`** (3 nodes): `Activator`, `.start()`, `activator.js`
+- **Thin community `Community 112`** (3 nodes): `AtomicButton`, `.render()`, `atomic-button.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 113`** (3 nodes): `AtomicInput`, `.render()`, `atomic-input.js`
+- **Thin community `Community 113`** (3 nodes): `Activator`, `.start()`, `activator.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 114`** (3 nodes): `Activator`, `.onCoreStart()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 115`** (3 nodes): `activator.js`, `Activator`, `.start()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 116`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 117`** (3 nodes): `Activator`, `.start()`, `activator.js`
+- **Thin community `Community 117`** (3 nodes): `activator.js`, `Activator`, `.start()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 118`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 119`** (3 nodes): `activator.js`, `Activator`, `.start()`
+- **Thin community `Community 119`** (3 nodes): `Activator`, `.onStart()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 120`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 121`** (3 nodes): `Activator`, `.onStart()`, `activator.js`
+- **Thin community `Community 121`** (3 nodes): `AtomicRadio`, `.render()`, `atomic-radio.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 122`** (3 nodes): `Activator`, `.onCoreStart()`, `activator.js`
+- **Thin community `Community 122`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 123`** (3 nodes): `Activator`, `.start()`, `activator.js`
+- **Thin community `Community 124`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 124`** (3 nodes): `AtomicHero`, `.render()`, `atomic-hero.js`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 125`** (3 nodes): `Activator`, `.onCoreStart()`, `activator.js`
+- **Thin community `Community 125`** (3 nodes): `activator.js`, `Activator`, `.start()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 126`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -951,21 +971,29 @@ Nodes (1): Activator
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 128`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 130`** (3 nodes): `AtomicButton`, `.render()`, `atomic-button.js`
+- **Thin community `Community 129`** (3 nodes): `activator.js`, `Activator`, `.start()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 131`** (3 nodes): `Activator`, `.start()`, `activator.js`
+- **Thin community `Community 130`** (3 nodes): `activator.js`, `Activator`, `.start()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 132`** (3 nodes): `activator.js`, `Activator`, `.start()`
+- **Thin community `Community 131`** (3 nodes): `AtomicHero`, `.render()`, `atomic-hero.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 133`** (3 nodes): `Activator`, `.onStart()`, `activator.js`
+- **Thin community `Community 132`** (3 nodes): `Activator`, `.onCoreStart()`, `activator.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 133`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 134`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 135`** (3 nodes): `activator.js`, `Activator`, `.start()`
+- **Thin community `Community 135`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 136`** (3 nodes): `AtomicCheckbox`, `.render()`, `atomic-checkbox.js`
+- **Thin community `Community 137`** (3 nodes): `Activator`, `.start()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 137`** (3 nodes): `Activator`, `.onStart()`, `activator.js`
+- **Thin community `Community 138`** (3 nodes): `AtomicInput`, `.render()`, `atomic-input.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 139`** (3 nodes): `Activator`, `.start()`, `activator.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 140`** (3 nodes): `activator.js`, `Activator`, `.start()`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 141`** (3 nodes): `Activator`, `.onStart()`, `activator.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions

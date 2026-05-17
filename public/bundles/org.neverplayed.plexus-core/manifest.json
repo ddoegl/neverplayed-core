@@ -1,0 +1,10 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.plexus-core",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Name": "Plexus Core",
+    "Bundle-Description": "Stateless matching engine for stigmergic perception.",
+    "Import-Package": [
+        "core-types"
+    ]
+}

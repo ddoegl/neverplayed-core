@@ -1,0 +1,11 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.perceiver-service",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Perceiver Context Service",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Description": "Centralizes identity and perception state for the NeverPlayed universe.",
+    "Import-Package": [
+        "core-types"
+    ],
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.perceiver.PerceiverService\""
+}

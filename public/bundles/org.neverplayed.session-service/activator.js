@@ -3,7 +3,7 @@
  * @module platform/bundles/org.neverplayed.session-service
  */
 
-import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE } from "../../core-types.js";
+import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, SESSION_CHANGED_TOPIC } from "../../core-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -15,6 +15,8 @@ export default class Activator {
     _pmRank = -1;
     _session = null;
     _initializing = false;
+    _eventAdmin = null;
+    _eventFactory = null;
 
     start(context) {
         // 1. Logger Integration
@@ -36,7 +38,13 @@ export default class Activator {
                 // If we are NOT initialized, or the new provider is significantly better (higher rank), trigger hydration.
                 if (!this._initializing || rank > this._pmRank) {
                     this._pm = context.getService(ref);
+                    const oldRank = this._pmRank;
                     this._pmRank = rank;
+                    
+                    if (oldRank !== -1) {
+                        this._logger?.info(`Session Service: Upgraded Persistence Manager from Rank [${oldRank}] to [${rank}].`);
+                    }
+                    
                     this._initializeSession(context);
                 }
                 return this._pm;
@@ -51,6 +59,26 @@ export default class Activator {
                 return this._realm;
             },
             removedService: () => { this._realm = null; }
+        }).open();
+
+        // 4. Track Event Admin & Factory
+        context.trackService(`(objectClass=${EVENT_ADMIN_SERVICE})`, {
+            addingService: (ref) => { 
+                this._eventAdmin = context.getService(ref);
+                if (this._eventAdmin?.build && !this._eventFactory) {
+                    this._eventFactory = this._eventAdmin;
+                }
+                return this._eventAdmin; 
+            },
+            removedService: () => { this._eventAdmin = null; }
+        }).open();
+
+        context.trackService(`(objectClass=${EVENT_FACTORY_SERVICE})`, {
+            addingService: (ref) => { 
+                this._eventFactory = context.getService(ref); 
+                return this._eventFactory; 
+            },
+            removedService: () => { this._eventFactory = null; }
         }).open();
     }
 
@@ -97,6 +125,7 @@ export default class Activator {
         this._logger.info(`Session Service: DISK-LOAD COMPLETE. Residency Stacks Grafted.`);
 
         const logger = this._logger;
+        const self = this;
 
         // Create Reactive Session State
         this._session = Alpine.reactive({
@@ -255,7 +284,17 @@ export default class Activator {
                     }
                 }
 
-                globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'login', user, scope, surrogate } }));
+                if (self._eventAdmin && self._eventFactory) {
+                    const evt = self._eventFactory.build(SESSION_CHANGED_TOPIC, { 
+                        type: 'login', 
+                        user: this.currentUser,
+                        scope: targetScope, 
+                        surrogate 
+                    });
+                    self._eventAdmin.postEvent(evt);
+                } else {
+                    logger?.warn("Session: Cannot broadcast login, EventAdmin not ready.");
+                }
             },
 
             activateSurrogate(surrogateId, scope = null) {
@@ -288,7 +327,45 @@ export default class Activator {
                 }
 
                 logger?.info(`Session: Coordinate [${targetScope}] now inhabited by guest.`);
-                globalThis.dispatchEvent(new CustomEvent('session-changed', { detail: { type: 'logout', scope: targetScope } }));
+                if (self._eventAdmin && self._eventFactory) {
+                    const evt = self._eventFactory.build(SESSION_CHANGED_TOPIC, { 
+                        type: 'logout', 
+                        scope: targetScope 
+                    });
+                    self._eventAdmin.postEvent(evt);
+                } else {
+                    logger?.warn("Session: Cannot broadcast logout, EventAdmin not ready.");
+                }
+            },
+
+            shiftGrounding(targetGrounding, scope = null) {
+                const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
+                const user = this.currentUser;
+                if (!user || user.id === 'guest') {
+                    logger?.warn("Session: Cannot shift grounding for guest or inactive user.");
+                    return;
+                }
+
+                const currentSurrogateId = user.surrogateId || 'person';
+                const currentSenses = user.senses || [];
+                
+                // Strip out any previously applied perceptual senses
+                const baseSenses = currentSenses.filter(s => 
+                    !["IdealistVision", "ForensicVision", "ArchitectControl"].includes(s)
+                );
+                
+                const newSenses = targetGrounding === 'idealist' 
+                    ? ["IdealistVision"] 
+                    : ["IdealistVision", "ForensicVision", "ArchitectControl"];
+
+                const surrogate = {
+                    id: currentSurrogateId,
+                    grounding: targetGrounding,
+                    label: targetGrounding === 'idealist' ? "Idealist Mode" : "Realist Mode",
+                    senses: [...baseSenses, ...newSenses]
+                };
+
+                this.login(user.id, targetScope, surrogate);
             },
 
             _generateBootstrapCode() {
@@ -402,7 +479,7 @@ export default class Activator {
                     tenantId,
                     identityId,
                     realmId: this._session.activeRealmId || "unknown",
-                    tier: this._session.tier || "local"
+                    tier: "local"
                 };
                 
                 if (typeof this._pm.setContext === 'function') {

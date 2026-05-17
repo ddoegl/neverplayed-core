@@ -144,9 +144,9 @@
   <div class="flex items-center space-x-6">
     <!-- Session & Identity Info -->
     <div class="flex items-center space-x-6">
-      <!-- Layer 1: Infrastructure Identity (Auth Shield) -->
+      <!-- Layer 1: Infrastructure Identity (Perceiver Being) -->
       <div
-        x-show="shell.globalUser"
+        x-show="shell.perceiver.being"
         class="flex items-center space-x-2 border-l border-slate-700/50 pl-6 group"
       >
         <div class="text-right hidden sm:block">
@@ -157,7 +157,7 @@
           </div>
           <div
             class="text-[11px] font-mono text-blue-400/80 group-hover:text-blue-400 transition-colors"
-            x-text="shell.globalUser?.email || 'N/A'"
+            x-text="shell.perceiver.being?.email || 'N/A'"
           >
           </div>
         </div>
@@ -397,7 +397,7 @@
         <button
           id="btn-universe-settings"
           @click="launchConfig()"
-          data-sensing='{"persona": "advanced"}'
+          x-show="shell.perceiver.observerMode === 'realist' || shell.perceiver.surrogate.level === 'advanced'"
           class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-blue-400 transition-all border border-slate-700 shadow-inner group"
           title="Universe Settings"
         >
@@ -408,7 +408,7 @@
         <button
           id="btn-factory-reset"
           @click="triggerReset()"
-          data-sensing='{"persona": "advanced"}'
+          x-show="shell.perceiver.observerMode === 'realist' || shell.perceiver.surrogate.level === 'advanced'"
           class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-red-400 transition-all border border-slate-700 shadow-inner"
           title="Factory Reset Reality"
         >

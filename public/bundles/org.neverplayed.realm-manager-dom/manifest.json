@@ -1,0 +1,9 @@
+{
+    "Bundle-ManifestVersion": "2",
+    "Bundle-SymbolicName": "org.neverplayed.realm-manager-dom",
+    "Bundle-Name": "Realm Manager DOM Adapter",
+    "Bundle-Description": "Translates Headless OSGi EventAdmin realm changes into DOM CustomEvents.",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"@pandino/event-admin/EventHandler\""
+}

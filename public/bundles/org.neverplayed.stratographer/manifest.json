@@ -9,7 +9,7 @@
         "templates/dashboard.html"
     ],
     "Require-Bundle": "org.neverplayed.stratum-core",
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.flow.Flow\"",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.flow.FlowService\"",
     "Configuration": {
         "log-level": "INFO",
         "mountPoint": "#shell-host-root",

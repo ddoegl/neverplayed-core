@@ -66,15 +66,15 @@
         class="flex p-0.5 bg-slate-950/50 rounded-xl border border-slate-800/50"
       >
         <button
-          @click="$store.explorer.perspective = 'idealist'"
-          :class="$store.explorer.perspective === 'idealist' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : 'text-slate-500 hover:text-slate-300 border-transparent'"
+          @click="$store.explorer.grounding = 'idealist'"
+          :class="$store.explorer.grounding === 'idealist' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : 'text-slate-500 hover:text-slate-300 border-transparent'"
           class="px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all"
         >
           Idealist
         </button>
         <button
-          @click="$store.explorer.perspective = 'realist'"
-          :class="$store.explorer.perspective === 'realist' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'text-slate-500 hover:text-slate-300 border-transparent'"
+          @click="$store.explorer.grounding = 'realist'"
+          :class="$store.explorer.grounding === 'realist' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'text-slate-500 hover:text-slate-300 border-transparent'"
           class="px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all"
         >
           Realist

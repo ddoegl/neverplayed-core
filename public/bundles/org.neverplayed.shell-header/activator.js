@@ -7,6 +7,8 @@ import {
     STRATUM_SERVICE,
     PERSISTENCE_MANAGER_SERVICE,
     AUTH_SHIELD_SERVICE,
+    PERCEIVER_SERVICE,
+    PERCEIVER_CHANGED_TOPIC,
     SHELL_UI_CONTEXT_PID
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
@@ -20,6 +22,7 @@ export default class Activator extends AlpineActivator {
     constructor() {
         super();
         this._session = null;
+        this._perceiver = null;
     }
 
     async onStart(context) {
@@ -31,10 +34,39 @@ export default class Activator extends AlpineActivator {
         const store = this.initStore('shell_context', {
             activeRealm: { id: 'loading', title: 'Loading...', icon: 'fas fa-circle-notch fa-spin' },
             realms: [],
-            globalUser: null,
             inhabitants: [],
             sidebarOpen: true,
-            sidebarState: 0 // 0: Expanded, 1: Icons, 2: Hidden
+            sidebarState: 0, // 0: Expanded, 1: Icons, 2: Hidden
+            perceiver: {
+                being: null,
+                surrogate: { grounding: 'idealist', senses: [] },
+                realm: { id: 'unknown' },
+                observerMode: 'idealist'
+            }
+        });
+
+        // Track Perceiver Service (New Perceptual Source of Truth)
+        this.track(`(objectClass=${PERCEIVER_SERVICE})`, {
+            addingService: (ref) => {
+                this._perceiver = context.getService(ref);
+                this.syncStore('shell_context', { perceiver: this._perceiver.getContext() });
+                return this._perceiver;
+            },
+            removedService: () => {
+                this._perceiver = null;
+            }
+        });
+
+        // Listen for Perceiver Changes
+        this.context.registerService("@pandino/event-admin/EventHandler", {
+            handleEvent: (event) => {
+                if (this._perceiver) {
+                    this.syncStore('shell_context', { perceiver: this._perceiver.getContext() });
+                    this.logger?.debug(`[ShellHeader] Perceiver context synchronized.`);
+                }
+            }
+        }, {
+            "event.topics": [PERCEIVER_CHANGED_TOPIC]
         });
 
         // Track Persistence Manager for Gold Standard Persistence (Pattern 4)
@@ -87,20 +119,6 @@ export default class Activator extends AlpineActivator {
             removedService: () => { 
                 this._stratum = null;
                 this.syncStore('shell_context', { inhabitants: [] });
-            }
-        });
-
-        // 3. Track Auth Shield (Global Identity Reference)
-        // Note: Actual session context is now handled via $session magic
-        this.track(`(objectClass=${AUTH_SHIELD_SERVICE})`, {
-            addingService: (ref) => {
-                const auth = context.getService(ref);
-                const gUser = auth.getCurrentUser ? auth.getCurrentUser() : null;
-                this.syncStore('shell_context', { globalUser: gUser });
-                return auth;
-            },
-            removedService: () => {
-                this.syncStore('shell_context', { globalUser: null });
             }
         });
 

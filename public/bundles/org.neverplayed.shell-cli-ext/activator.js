@@ -6,7 +6,8 @@
 import { 
     SESSION_SERVICE, 
     SELECTION_SERVICE, 
-    SHELL_COMMAND_SERVICE 
+    SHELL_COMMAND_SERVICE,
+    PERCEIVER_SERVICE
 } from "core-types";
 import { BaseActivator } from "osgi-base";
 import { sendInvitationRequest } from "../../auth-shield.js";
@@ -126,14 +127,14 @@ export default class Activator extends BaseActivator {
             }
         });
 
-        // /level command
+        // /grounding command
         context.registerService(SHELL_COMMAND_SERVICE, {
-            name: "level",
-            description: "[beginner|advanced] - Switch persona level (Daniela Mode vs Expert Mode)",
+            name: "grounding",
+            description: "[idealist|realist] - Switch persona grounding",
             execute: async (args, ctx, log) => {
-                const targetLevel = args[0]?.toLowerCase();
-                if (!['beginner', 'advanced'].includes(targetLevel)) {
-                    log("Usage: /level [beginner|advanced]", "error");
+                const targetGrounding = args[0]?.toLowerCase();
+                if (!['idealist', 'realist'].includes(targetGrounding)) {
+                    log("Usage: /grounding [idealist|realist]", "error");
                     return;
                 }
 
@@ -150,25 +151,15 @@ export default class Activator extends BaseActivator {
                     return;
                 }
 
-                log(`Switching persona level to: ${targetLevel}...`);
+                log(`Switching persona grounding to: ${targetGrounding}...`);
 
-                // Rule: Persona Materialization (Stigmergic Perception)
-                // We define a synthetic surrogate for the desired level
-                const surrogate = {
-                    id: `${user.id}-${targetLevel}`,
-                    level: targetLevel,
-                    label: targetLevel === 'beginner' ? "Beginner Mode" : "Expert Mode",
-                    attributes: {
-                        "persona.level": targetLevel,
-                        "visibility.level": targetLevel === 'beginner' ? 1 : 5
-                    }
-                };
-
-                // Inject/Activate surrogate in the current realm scope
-                session.login(user.id, null, surrogate);
-                
-                log({ text: `SUCCESS: Identity Materialized as ${surrogate.label}`, color: "green", bold: true });
-                log(`Perception shifted. Universe scanning initiated...`);
+                if (typeof session.shiftGrounding === 'function') {
+                    session.shiftGrounding(targetGrounding);
+                    log({ text: `SUCCESS: Identity Grounding Materialized as ${targetGrounding === 'idealist' ? 'Idealist Mode' : 'Realist Mode'}`, color: "green", bold: true });
+                    log(`Perception shifted. Universe scanning initiated...`);
+                } else {
+                    log("shiftGrounding method not available on session.", "error");
+                }
             }
         });
     }

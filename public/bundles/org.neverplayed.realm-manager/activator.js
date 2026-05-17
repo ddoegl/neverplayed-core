@@ -1011,9 +1011,6 @@ export default class Activator extends BaseActivator {
                 });
             }
 
-            // Global Event (Alpine/Vanilla)
-            globalThis.dispatchEvent(new CustomEvent("realm-switched", { detail: { id: pt.id, manifest: pt.manifest } }));
-
             // OSGi EventAdmin Broadcast
             if (this._eventAdmin && this._eventFactory) {
                 this.logger?.info(`[RealmManager] Broadcasting Universe Change: ${pt.id} on topic ${REALM_CHANGED_TOPIC}`);

@@ -18,12 +18,9 @@ export default class Activator extends BaseActivator {
 
         const getPhysicalKey = (key, options = {}) => {
             // Rule: Bootstrap Anchor (SDN-0165)
-            // The session state defines the identity, so it must be discoverable 
-            // at boot before any identity is resolved.
             if (key.startsWith("pandino.session") || key.includes("config.admin")) {
                 return `np:v1:guest:unknown:guest:${key}`;
             }
-            // Areal Stigmergy Radii
             if (options.scope === "shared") {
                 return `np:v1:${this._context.tenantId}:${this._context.realmId}:__shared__:${key}`;
             }
@@ -35,7 +32,7 @@ export default class Activator extends BaseActivator {
 
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
             setContext: (ctx) => {
-                this.logger.info(`[DIAGNOSTICS] LocalStorage: Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
+                console.log(`[LocalStorage] Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
                 this._context = ctx;
             },
 
@@ -56,7 +53,10 @@ export default class Activator extends BaseActivator {
                 try {
                     const physicalKey = getPhysicalKey(key, options);
                     const stringVal = typeof val === 'string' ? val : JSON.stringify(val);
+                    
+                    console.info(`[LocalStorage] EXECUTING SETITEM: ${physicalKey}`);
                     storage.setItem(physicalKey, stringVal);
+                    
                     this.logger.debug(`LocalStorage: Stored [${key}] -> [${physicalKey}]`);
                 } catch (e) {
                     this.logger.error(`LocalStorage: Failed to store [${key}]`, e);
@@ -76,7 +76,7 @@ export default class Activator extends BaseActivator {
                     if (this._context.showAll && k.startsWith(realmPrefix)) {
                          if (k.includes(`:${prefix}`)) {
                              const parts = k.split(':');
-                             const logicalKey = parts.slice(5).join(':'); // Adjusted for realm dimension
+                             const logicalKey = parts.slice(5).join(':'); 
                              if (logicalKey.startsWith(prefix)) results.push(logicalKey);
                          }
                     } else if (k.startsWith(identityPrefix)) {
@@ -90,7 +90,7 @@ export default class Activator extends BaseActivator {
             },
 
             clear: (options = {}) => {
-                const physicalPrefix = getPhysicalKey("");
+                const physicalPrefix = options.global ? "np:v1:" : getPhysicalKey("");
                 const protectedKeys = (options.except || []).map(k => getPhysicalKey(k));
                 const victims = [];
                 
@@ -101,8 +101,11 @@ export default class Activator extends BaseActivator {
                     }
                 }
                 
-                victims.forEach(k => storage.removeItem(k));
-                this.logger.debug(`LocalStorage Persistence: Cleared ${victims.length} entries for identity ${this._context.identityId}. (Protected: ${protectedKeys.length})`);
+                victims.forEach(k => {
+                    console.info(`[LocalStorage] EXECUTING REMOVEITEM: ${k}`);
+                    storage.removeItem(k);
+                });
+                this.logger.debug(`LocalStorage Persistence: Cleared ${victims.length} entries (Global: ${!!options.global}).`);
             }
         }, {
             "capability": "sys:persistence",

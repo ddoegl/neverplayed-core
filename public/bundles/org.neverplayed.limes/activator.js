@@ -1,27 +1,62 @@
-import { FLOW_SERVICE, YAML_SERVICE, LIMES_SERVICE, LOG_SERVICE, LIMES_STRATEGIES_PID } from "core-types";
+import { 
+    FLOW_SERVICE, 
+    YAML_SERVICE, 
+    LIMES_SERVICE, 
+    LOG_SERVICE, 
+    LIMES_STRATEGIES_PID,
+    PLEXUS_EVALUATOR_SERVICE,
+    PERCEIVER_SERVICE,
+    PLEXUS_ENRICHER_SERVICE
+} from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
+/**
+ * Limes Guarding Service
+ * v2.6.5 - Refactored to use PLEXUS_EVALUATOR_SERVICE (OSGi Modularity Compliance).
+ */
 export default class Activator {
     start(context) {
-        this.logger = console; // Fallback to console initially
+        this.logger = console;
+        this.perceiver = null;
+        this.enricher = null;
+        this.evaluator = null;
         
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
                 const svc = context.getService(ref);
                 this.logger = svc.getLogger(context.getBundle().getSymbolicName());
                 this.logger.info("Limes: Connected to System Logger.");
-                // FORCE: Override with console for debugging
-                //this.logger = console;
-            },
-            removedService: () => {
-                this.logger = { 
-                    info: console.log, 
-                    log: console.log, 
-                    debug: console.debug, 
-                    warn: console.warn, 
-                    error: console.error 
-                };
             }
+        }).open();
+
+        // Track the Evaluator Service (SDN-0206 - Modularity Compliance)
+        context.trackService(`(objectClass=${PLEXUS_EVALUATOR_SERVICE})`, {
+            addingService: (ref) => {
+                this.evaluator = context.getService(ref);
+                this.logger.info("Limes: Bound to Plexus Evaluator Service.");
+                return this.evaluator;
+            },
+            removedService: () => { this.evaluator = null; }
+        }).open();
+
+        // Track the Perceiver Service for cognitive context
+        context.trackService(`(objectClass=${PERCEIVER_SERVICE})`, {
+            addingService: (ref) => {
+                this.perceiver = context.getService(ref);
+                this.logger.info("Limes: Bound to Perceiver Service.");
+                return this.perceiver;
+            },
+            removedService: () => { this.perceiver = null; }
+        }).open();
+
+        // Track the Enricher Service for stigmergic context
+        context.trackService(`(objectClass=${PLEXUS_ENRICHER_SERVICE})`, {
+            addingService: (ref) => {
+                this.enricher = context.getService(ref);
+                this.logger.info("Limes: Bound to Plexus Enricher Service.");
+                return this.enricher;
+            },
+            removedService: () => { this.enricher = null; }
         }).open();
 
         const flowRegistry = new Map();
@@ -29,7 +64,6 @@ export default class Activator {
         let pmInstance = null;
         let yamlInstance = null;
 
-        // 1. Manage Strategies Registry (via YAML + PM)
         const loadStrategies = async (yaml, pm) => {
             if (!yaml || !pm) return;
             this.logger.info("Limes: Loading strategies from YAML & PM...");
@@ -40,27 +74,20 @@ export default class Activator {
             const text = await res.text();
             const yamlStrategies = yaml.load(text) || [];
             
-            const persistentStrategies = pm.load(LIMES_STRATEGIES_PID) || [];
+            const persistentStrategies = await pm.load(LIMES_STRATEGIES_PID) || [];
             yamlStrategies.forEach(ys => {
                 const idx = persistentStrategies.findIndex(ps => ps.id === ys.id);
-                if (idx === -1) {
-                    persistentStrategies.push(ys);
-                } else {
-                    persistentStrategies[idx] = ys;
-                }
+                if (idx === -1) persistentStrategies.push(ys);
+                else persistentStrategies[idx] = ys;
             });
-            pm.store(LIMES_STRATEGIES_PID, persistentStrategies);
+            await pm.store(LIMES_STRATEGIES_PID, persistentStrategies);
             (persistentStrategies || []).forEach(s => strategyRegistry.set(s.id, s));
         };
 
-        console.log(`DEBUG: Limes tracking PM with key: ${PM_INTERFACE_KEY}`);
         context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
             addingService: async (ref) => {
-                console.log("DEBUG: Limes found PM service!");
                 pmInstance = context.getService(ref);
-                if (typeof pmInstance.waitReady === 'function') {
-                    await pmInstance.waitReady();
-                }
+                if (typeof pmInstance.waitReady === 'function') await pmInstance.waitReady();
                 loadStrategies(yamlInstance, pmInstance);
             }
         }).open();
@@ -78,9 +105,7 @@ export default class Activator {
             const configKey = Object.keys(headers).find(k => k.toLowerCase() === 'configuration');
             const configPriming = headers[configKey];
             if (!configPriming) return {};
-            try {
-                return typeof configPriming === 'string' ? JSON.parse(configPriming) : configPriming;
-            } catch (_e) { return {}; }
+            try { return typeof configPriming === 'string' ? JSON.parse(configPriming) : configPriming; } catch (_e) { return {}; }
         };
 
         context.trackService(`(objectClass=${FLOW_SERVICE})`, {
@@ -88,15 +113,10 @@ export default class Activator {
                 const id = ref.getProperty("flow.id");
                 if (id) {
                     const bConfig = getBundleConfig(ref.bundle);
-                    flowRegistry.set(id, {
-                        requiredPermissions: bConfig["required-permissions"] || []
-                    });
+                    flowRegistry.set(id, { requiredPermissions: bConfig["required-permissions"] || [] });
                 }
             },
-            removedService: (ref) => {
-                const id = ref.getProperty("flow.id");
-                flowRegistry.delete(id);
-            }
+            removedService: (ref) => { flowRegistry.delete(ref.getProperty("flow.id")); }
         }).open();
 
         const getEvaluatedData = (userId) => {
@@ -123,9 +143,31 @@ export default class Activator {
                 pmInstance?.store(LIMES_STRATEGIES_PID, all);
                 this.logger.info(`Limes: Strategy deleted and persisted: ${id}`);
             },
-            isAllowed: (userOrId, strategyId, runtimeContext = {}) => {
-                const userCap = (typeof userOrId === 'object' && userOrId !== null) ? userOrId : getEvaluatedData(userOrId);
-                if (!userCap) return false;
+            isAllowed: (arg1, arg2, arg3) => {
+                if (!this.evaluator) return false;
+
+                let strategyId, runtimeContext, userOverride;
+
+                // Polymorphic Detection: (strategyId, context) vs (userOrId, strategyId, context)
+                if (typeof arg1 === 'string' && (arg2 === undefined || typeof arg2 === 'object')) {
+                    strategyId = arg1;
+                    runtimeContext = arg2 || {};
+                } else {
+                    userOverride = arg1;
+                    strategyId = arg2;
+                    runtimeContext = arg3 || {};
+                }
+
+                if (!strategyId || typeof strategyId !== 'string') {
+                    this.logger?.warn("Limes: isAllowed called with invalid strategyId:", strategyId);
+                    return false;
+                }
+
+                const userCap = (typeof userOverride === 'object' && userOverride !== null) ? userOverride : getEvaluatedData(userOverride);
+                const perceiverContext = this.perceiver?.getContext() || { 
+                    being: userCap || { id: userOverride }, 
+                    realm: "org.neverplayed.realm.core" 
+                };
 
                 let strategy = strategyRegistry.get(strategyId);
                 
@@ -144,93 +186,25 @@ export default class Activator {
 
                 if (!strategy) return false;
 
-                const matchers = strategy.matchers || [];
-                const operator = strategy.operator || 'AND';
-                const results = matchers.map(m => {
-                    let res = false;
-                    switch (m.type) {
-                        case 'matchPermission': res = this.evaluatePermission(userCap, m.value, runtimeContext); break;
-                        case 'matchScopeIntersection': res = this.evaluateScopeIntersection(userCap, m.permission || m.value, m.property, runtimeContext); break;
-                        case 'matchProperty': res = runtimeContext[m.key] === m.value; break;
-                        case 'matchPropertyEmpty': res = !runtimeContext[m.key]; break;
-                        case 'matchPropertyNotEmpty': res = !!runtimeContext[m.key]; break;
-                        case 'matchAttribute': {
-                            const val = userCap[m.key] !== undefined ? userCap[m.key] : userCap.attributes?.[m.key];
-                            this.logger.debug(`Limes: [matchAttribute] key=${m.key}, required=${m.value}, actual=${val}`);
-                            res = val === m.value; 
-                            break;
-                        }
-                        case 'matchAlways': res = m.value !== false; break;
-                        case 'matchNever': res = false; break;
-                        default: res = false;
-                    }
-                    return res;
-                });
+                // Normalize evaluation context
+                const evaluationContext = {
+                    ...(userCap || perceiverContext.being),
+                    surrogate: perceiverContext.surrogate,
+                    realm: perceiverContext.realm,
+                    ...runtimeContext
+                };
 
-                return operator === 'AND' ? results.every(r => r === true) : results.some(r => r === true);
+                const config = {
+                    enricher: this.enricher,
+                    logger: this.logger
+                };
+
+                const result = this.evaluator.evaluateMatchers(strategy.matchers, strategy.operator || 'AND', evaluationContext, config);
+                return result !== false;
             }
         };
 
         context.registerService(LIMES_SERVICE, limesService);
-    }
-
-    /**
-     * Checks if a user has a specific permission key.
-     */
-    evaluatePermission(userCap, key, _ctx) {
-        if (!userCap.grantedKeys) return false;
-        const normalized = String(key).toLowerCase().replace(/:/g, '_');
-        const allowed = Object.keys(userCap.grantedKeys).some(k => k.toLowerCase().replace(/:/g, '_') === normalized);
-        this.logger.debug(`Limes: [evaluatePermission] key=${key} (${normalized}) -> allowed=${allowed}`);
-        return allowed;
-    }
-
-    /**
-     * Checks if the user's scope for a permission intersects with the context property.
-     */
-    evaluateScopeIntersection(userCap, permissionKey, contextProperty, runtimeContext) {
-        if (!permissionKey) {
-            this.logger.warn("Limes: evaluateScopeIntersection called without permissionKey");
-            return false;
-        }
-        const normalizedKey = String(permissionKey).toLowerCase();
-        
-        // Find ALL instances of the permission in the capability AST (categories)
-        // SHADOWING FIX: Check all categories, if any allows, it's allowed.
-        const permissionsFound = [];
-        for (const cat of (userCap.capabilities || [])) {
-            const p = (cat.permissions || []).find(p => p.key.toLowerCase() === normalizedKey);
-            if (p) {
-                permissionsFound.push(p);
-            }
-        }
-
-        if (permissionsFound.length === 0) {
-            this.logger.debug(`Limes: [evaluateScopeIntersection] key=${permissionKey} -> false (no perm found)`);
-            return false;
-        }
-
-        const match = permissionsFound.some(foundPerm => {
-            // Wildcard / ALL scope
-            if (!foundPerm.customers || foundPerm.customers.length === 0) return true;
-
-            // Scoped match
-            let requiredScope = runtimeContext[contextProperty];
-            // FALLBACK: If top-level property missing, check metadata for common patterns
-            if (!requiredScope && contextProperty === 'customers') {
-                requiredScope = runtimeContext.metadata?.companyId || runtimeContext.metadata?.customerId || runtimeContext.metadata?.targetPersonId;
-            }
-
-            if (!requiredScope) return false;
-
-            if (Array.isArray(requiredScope)) {
-                return requiredScope.some(id => foundPerm.customers.includes(id));
-            }
-            return foundPerm.customers.includes(requiredScope);
-        });
-
-        this.logger.debug(`Limes: [evaluateScopeIntersection] key=${permissionKey}, prop=${contextProperty}, ctxVal=${runtimeContext[contextProperty]} -> match=${match}`);
-        return match;
     }
 
     stop(_context) {}

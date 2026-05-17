@@ -1,0 +1,10 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.stratum-hud",
+    "Bundle-Version": "1.1.0",
+    "Bundle-Name": "Stratum HUD",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Description": "High-fidelity real-time status instrument for the NeverPlayed universe.",
+    "Import-Package": [
+        "core-types"
+    ]
+}

@@ -1,67 +1,67 @@
 import { 
     PLEXUS_ENGINE_SERVICE, 
-    SESSION_SERVICE, 
+    PERCEIVER_SERVICE, 
+    PERCEIVER_CHANGED_TOPIC,
     PLEXUS_SENSOR_SERVICE,
-    LOG_SERVICE,
-    REALM_MANAGER_SERVICE
+    LOG_SERVICE
 } from "core-types";
 
 export default class Activator {
     start(context) {
         this._context = context;
-        this.loggerReference = context.getServiceReference(LOG_SERVICE);
-        this.logger = this.loggerReference ? context.getService(this.loggerReference) : console;
+        this.logger = console;
+
+        context.trackService(`(objectClass=${LOG_SERVICE})`, {
+            addingService: (ref) => {
+                const svc = context.getService(ref);
+                this.logger = svc.getLogger("plexus-sensor");
+            }
+        }).open();
 
         this._engine = null;
-        this._session = null;
-        this._realmManager = null;
-        this._traceBuffer = []; // Perceptual Log for Trace Recovery
-        this._stateCache = new Map(); // Performance Cache
+        this._perceiver = null;
+        this._traceBuffer = []; 
+        this._stateCache = new Map(); 
 
         // Track Engine
         context.trackService(`(objectClass=${PLEXUS_ENGINE_SERVICE})`, {
             addingService: (ref) => {
                 this._engine = context.getService(ref);
-                this._probeNow(true); // Initial probe when engine arrives
+                this._probeNow(true);
                 return this._engine;
             },
             removedService: () => { this._engine = null; }
         }).open();
 
-        // Track Session
-        context.trackService(`(objectClass=${SESSION_SERVICE})`, {
+        // Track Perceiver
+        context.trackService(`(objectClass=${PERCEIVER_SERVICE})`, {
             addingService: (ref) => {
-                this._session = context.getService(ref);
-                return this._session;
+                this._perceiver = context.getService(ref);
+                this._probeNow(true);
+                return this._perceiver;
             },
-            removedService: () => { this._session = null; }
+            removedService: () => { this._perceiver = null; }
         }).open();
 
-        // Track Realm Manager
-        context.trackService(`(objectClass=${REALM_MANAGER_SERVICE})`, {
-            addingService: (ref) => {
-                this._realmManager = context.getService(ref);
-                return this._realmManager;
-            },
-            removedService: () => { this._realmManager = null; }
-        }).open();
+        // 4. Reactive Listeners for Perceiver Shift
+        context.registerService("@pandino/event-admin/EventHandler", {
+            handleEvent: () => this._probeNow(true)
+        }, {
+            "event.topics": [PERCEIVER_CHANGED_TOPIC]
+        });
 
-        // 4. Reactive Listeners for Perceptual Shift
-        globalThis.addEventListener('realm-switched', () => this._probeNow(true));
-        globalThis.addEventListener('session-changed', () => this._probeNow(true));
-
-        // 5. DOM Evolution Watcher (MutationObserver)
+        // 5. DOM Evolution Watcher (MutationObserver) - Using 'data-mark'
         this._observer = new MutationObserver((mutations) => {
             let needsProbe = false;
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
                     for (const node of mutation.addedNodes) {
-                        if (node.nodeType === 1 && (node.matches?.('[data-sensing], [data-trace-matchers]') || node.querySelector?.('[data-sensing], [data-trace-matchers]'))) {
+                        if (node.nodeType === 1 && (node.matches?.('[data-mark]') || node.querySelector?.('[data-mark]'))) {
                             needsProbe = true;
                             break;
                         }
                     }
-                } else if (mutation.type === 'attributes' && (mutation.attributeName === 'data-sensing' || mutation.attributeName === 'data-trace-matchers')) {
+                } else if (mutation.type === 'attributes' && (mutation.attributeName === 'data-mark')) {
                     needsProbe = true;
                 }
                 if (needsProbe) break;
@@ -72,51 +72,21 @@ export default class Activator {
             childList: true, 
             subtree: true, 
             attributes: true, 
-            attributeFilter: ['data-sensing', 'data-trace-matchers'] 
+            attributeFilter: ['data-mark'] 
         });
 
         // 6. Register Sensor Service
         context.registerService(PLEXUS_SENSOR_SERVICE, {
             sense: (entity, observerContext) => this.sense(entity, observerContext),
             probeDOM: (container) => this._probeDOM(container),
-            probeRegistry: (filter) => {
-                const refs = context.getServiceReferences(null, filter) || [];
-                return refs.filter(ref => {
-                    const trace = ref.getProperty("plexus.sensing");
-                    if (!trace) return true;
-                    return this.sense({ sensing: trace });
-                });
-            },
             recoverTrace: (entityId) => {
                 if (!entityId) return this._traceBuffer[0] || null;
                 return this._traceBuffer.find(t => t.id === entityId) || null;
             },
-            probe: (entity, observerContext) => {
-                const trace = this._getTrace(entity);
-                if (!trace) return null;
-                const ctx = observerContext || this._getPerceiverContext();
-                if (!ctx) return null;
-                const matcherEngine = this._engine?.getMatcherEngine();
-                if (!matcherEngine) return null;
-                const matched = matcherEngine.evaluate(trace.matchers, trace.operator || 'AND', ctx);
-                const isSensible = matched !== false;
-                
-                // Return a "synthetic" trace entry for on-demand recovery
-                return {
-                    id: entity.id || 'anonymous',
-                    timestamp: Date.now(),
-                    trace,
-                    context: { 
-                        userId: ctx.id || ctx.userId, 
-                        persona: ctx.level || ctx.surrogate?.level, 
-                        realm: ctx.realm?.id 
-                    },
-                    result: isSensible,
-                    matches: matched
-                };
-            },
             getTraceBuffer: () => [...this._traceBuffer]
         });
+
+        this.logger.info("Plexus Sensor: Active (Stigmergic Mode) 📡");
     }
 
     _probeNow(forceBroadcast = false) {
@@ -124,15 +94,14 @@ export default class Activator {
     }
 
     _probeDOM(container = document.body, forceBroadcast = false) {
-        if (!this._engine) return;
-        const elements = container.querySelectorAll('[data-sensing], [data-trace-matchers]');
+        if (!this._engine || !this._perceiver) return;
+        const elements = container.querySelectorAll('[data-mark]');
         elements.forEach(el => {
-            const traceData = this._extractDOMTrace(el);
-            const cacheKey = el.id || traceData.id || 'anon';
+            const markData = this._extractMark(el);
+            const cacheKey = el.id || markData.id || 'anon';
             
-            // Check cache to avoid redundant sensing logic
             const prevResult = this._stateCache.get(cacheKey);
-            const isSensible = this.sense(traceData, null, !forceBroadcast && (prevResult !== undefined));
+            const isSensible = this.sense(markData, null, !forceBroadcast && (prevResult !== undefined));
 
             if (isSensible) {
                 el.style.display = "";
@@ -142,7 +111,6 @@ export default class Activator {
                 el.setAttribute('aria-hidden', 'true');
             }
 
-            // Update cache and broadcast ONLY on change or forced request
             if (isSensible !== prevResult || forceBroadcast) {
                 this._stateCache.set(cacheKey, isSensible);
             }
@@ -150,42 +118,43 @@ export default class Activator {
     }
 
     sense(entity, observerContext, skipBroadcast = false) {
-        const trace = this._getTrace(entity);
-        if (!trace) return true; // Rule: Sovereignty of the Unmarked
+        const mark = this._getMark(entity);
+        if (!mark) return true; 
 
-        const ctx = observerContext || this._getPerceiverContext();
+        const ctx = observerContext || this._perceiver?.getContext();
         if (!ctx) return false;
 
-        const matcherEngine = this._engine?.getMatcherEngine();
-        if (!matcherEngine) return false;
+        const evaluationContext = {
+            ...ctx.being,
+            surrogate: ctx.surrogate,
+            realm: ctx.realm
+        };
 
-        const matched = matcherEngine.evaluate(trace.matchers, trace.operator || 'AND', ctx);
+        const matched = this._engine?.evaluate(mark.matchers, mark.operator || 'AND', evaluationContext);
         const isSensible = matched !== false;
 
-        // Trace Buffering & Broadcast (Throttled by skipBroadcast)
         if (!skipBroadcast) {
-            this._bufferTrace(entity, trace, ctx, isSensible, matched);
+            this._bufferTrace(entity, mark, ctx, isSensible, matched);
         }
 
         return isSensible;
     }
 
-    _getTrace(entity) {
+    _getMark(entity) {
         if (!entity) return null;
-        // Support both direct objects and metadata wrappers
-        return entity.sensing || entity.visibility || null;
+        return entity.mark || entity.sensing || entity.visibility || null;
     }
 
-    _extractDOMTrace(el) {
+    _extractMark(el) {
         try {
-            const raw = el.getAttribute('data-sensing') || el.getAttribute('data-trace-matchers');
+            const raw = el.getAttribute('data-mark');
             if (!raw) return {};
             const matchers = JSON.parse(raw);
             return { 
-                id: el.id || 'anonymous-element',
-                sensing: { 
+                id: el.id || 'anonymous-mark',
+                mark: { 
                     matchers: Array.isArray(matchers) ? matchers : [matchers],
-                    operator: el.getAttribute('data-trace-operator') || 'AND'
+                    operator: el.getAttribute('data-mark-operator') || 'AND'
                 } 
             };
         } catch (e) {
@@ -193,46 +162,23 @@ export default class Activator {
         }
     }
 
-    _getPerceiverContext() {
-        if (!this._session || !this._session.currentUser) {
-            return null;
-        }
-        
-        const user = this._session.currentUser;
-        const realmId = this._session.activeRealmId || "unknown";
-        
-        return this._engine?.getMatcherEngine()?.normalizeContext(
-            user, 
-            null, 
-            [], 
-            { 
-                id: user.surrogateId || user.id, 
-                level: user.level || "advanced",
-                attributes: user.attributes || {}
-            },
-            { id: realmId }
-        );
-    }
-
-    _bufferTrace(entity, trace, context, result, matches) {
+    _bufferTrace(entity, mark, context, result, matches) {
         const id = entity.id || 'anonymous';
         const entry = {
             id,
             timestamp: Date.now(),
-            trace,
+            mark,
             context: { 
-                userId: context.id || context.userId, 
-                persona: context.level || context.surrogate?.level, 
+                being: context.being?.id, 
+                surrogate: context.surrogate?.level, 
                 realm: context.realm?.id 
             },
             result,
             matches
         };
-        // Circular buffer of 100 entries
         this._traceBuffer.unshift(entry);
         if (this._traceBuffer.length > 100) this._traceBuffer.pop();
 
-        // High-Priority Forensic Broadcast
         globalThis.dispatchEvent(new CustomEvent('plexus-perceptual-update', { detail: entry }));
     }
 

@@ -142,7 +142,7 @@
           >Global Account</span>
           <span
             class="text-[9px] font-mono text-blue-500 truncate leading-none"
-            x-text="$session.scopedUsers?.global?.__activeId__ || 'N/A'"
+            x-text="(($session.scopedUsers?.global || {})[$session.scopedUsers?.global?.__activeId__])?.email || $session.scopedUsers?.global?.__activeId__ || 'N/A'"
           ></span>
         </div>
 

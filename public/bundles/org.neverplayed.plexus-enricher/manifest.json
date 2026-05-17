@@ -1,0 +1,11 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.plexus-enricher",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Plexus Enricher",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Description": "Domain-specific perception enrichment for Plexus.",
+    "Import-Package": [
+        "core-types"
+    ],
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.plexus.PlexusEnricherService\""
+}

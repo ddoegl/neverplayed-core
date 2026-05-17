@@ -92,21 +92,47 @@ In addition to ephemeral UI elements, **Data Traces** stored in the system's Vau
 4. **Evaluation (Matching Engine)**: The Engine compares the **Rich Context** against the **Mark**.
 5. **Materialization (Plexus)**: Based on the result, the object/trace is "materialized" (Visible/Sensed) or remains "invisible" (Occluded/Occluded).
 
-## 9. From "Levels" to "Capabilities"
+## 9. From "Levels" to "Capabilities" (The Perspective Shift)
 
-### The Legacy State (Attribute-Based)
-Currently, the `/level` command materializes a synthetic Surrogate with a simple `persona.level` attribute. Sensing is hardcoded to look for `"persona": "advanced"`. This is a one-dimensional "difficulty slider."
+The transition from a linear difficulty slider to a multidimensional Capability Model is grounded in the shift between two fundamental perspectives:
 
-### The Target State (Ontologically Grounded)
-We are moving toward a multidimensional **Capability Model** where a Surrogate is defined by a collection of granular **Senses**:
-- **StigmergicSight**: The ability to see forensic traces.
-- **RealmResonance**: The ability to sense nodes in specific architectural strata.
-- **InstitutionalAuthority**: The ability to perceive nodes requiring specific Limes-aligned roles.
+### Beginner Mode: The Idealist Perspective
+- **The Perceiver**: The Being acting *within* the universe.
+- **Sensing Filter**: Heavily restricted. Perception is limited to "Materialized" objects that are relevant to the Being's immediate survival or task.
+- **Reality Constraints**: External "Architectural" elements (e.g., Universe Settings, Data Reset, Forensic Traces) are **occluded**. For an Idealist Surrogate, these elements simply do not exist in their sensible world.
+- **Analogy**: The character inside the game who doesn't know they are in a simulation.
 
-## 10. Deprecation Note
+### Advanced Mode: The Realist Perspective
+- **The Perceiver**: The External Observer or "Architect" probing the universe.
+- **Sensing Filter**: Fully transparent. The Realist Surrogate can pierce the Markov Blanket and the Sensory Filter to see all **Marks** and **Traces**.
+- **Reality Control**: Access to the "Forensic Vault" and "Universe Settings" is materialized. This Surrogate sees the universe as a whole and can impact its underlying state.
+- **Analogy**: The developer with the console open, seeing the source code and the game world simultaneously.
+
+## 10. Terminology Alignment: HUD vs. Stratographer
+
+- **Idealist HUD**: The "Always-On" instrument for the Beginner. It shows only the "Vital Signs" and "Local Senses."
+- **Realist Stratographer**: The full explorer for the Advanced user. It provides the "Total View" and "Forensic Insight."
+
+## 11. Subjective Reality vs. Analytical Vantage Point
+
+To harmonize the `/level` command with the Stratum Explorer's toggle, we distinguish between the **Subjective Reality** of the participant and the **Analytical Vantage Point** of the observer:
+
+### The Being's Subjective Reality (`/level`)
+- **Defined By**: The Surrogate's Capability Inventory.
+- **Impact**: Determines what is "sensed" or "materialized" in the Being's lived experience (Shell, Header, Realm).
+- **Scope**: Internal to the Being. If the Being is a "Beginner," they literally cannot sense the Universe Settings mark.
+
+### The Observer's Analytical Vantage Point (Explorer Toggle)
+- **Defined By**: The forensic mode of the Stratographer.
+- **Impact**: Determines how the External Observer views the Being's world.
+    - **Idealist View**: Filters the world through the Being's active capabilities. The Observer sees exactly what the Being sees.
+    - **Realist View**: Bypasses all sensory filters. The Observer sees the "Truth" (all Marks and Traces), even those occluded from the Being's current subjective reality.
+- **Harmonization**: When the `/level` changes, the **Subjective Reality** shifts. If the Observer is in **Idealist View**, their vision shifts in sync with the Being. If the Observer is in **Realist View**, they see the shift occur "under the hood" but their own vision remains unrestricted.
+
+## 12. Deprecation Note
 This document supersedes and deprecates the following drifting ideation files:
 - `docs/ideation/stigmergic-sensing-plexus.md`
 - `docs/ideation/sensing-capabilities.md`
 
 ---
-*Draft v2.3.0 - 2026-05-12 - Unified Markov/Plexus Model & Forensic Terminology*
+*Draft v2.5.0 - 2026-05-12 - Modes mapped to Idealist/Realist Perspectives*
