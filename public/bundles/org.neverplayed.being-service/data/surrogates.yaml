@@ -1,0 +1,10 @@
+- id: person
+  label: Person
+  senses:
+    - ToolUse
+    - Language
+
+- id: guest
+  label: Guest
+  senses:
+    - Language

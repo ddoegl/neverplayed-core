@@ -414,14 +414,16 @@ export default class Activator {
                             const userObj = { ...this.scopedUsers['global'][id], isTenant: false };
                             
                             // Rule: Initial Surrogate Provisioning (L6)
-                            const initialSurrogate = idnt.initial?.surrogate;
-                            if (initialSurrogate) {
-                                userObj.surrogates[initialSurrogate] = {
-                                    id: initialSurrogate,
+                            const initialSurrogateId = idnt.initial?.surrogate;
+                            const initialSurrogateData = idnt.initial?.surrogateData || {};
+                            if (initialSurrogateId) {
+                                userObj.surrogates[initialSurrogateId] = {
+                                    id: initialSurrogateId,
+                                    ...initialSurrogateData,
                                     materializedAt: new Date().toISOString()
                                 };
-                                userObj.activeSurrogateId = initialSurrogate;
-                                logger?.info(`Session: Provisioned initial surrogate '${initialSurrogate}' for identity '${id}' in realm '${homeRealm}'.`);
+                                userObj.activeSurrogateId = initialSurrogateId;
+                                logger?.info(`Session: Provisioned initial surrogate '${initialSurrogateId}' for identity '${id}' in realm '${homeRealm}'.`);
                             }
 
                             this.scopedUsers[homeRealm][id] = userObj;

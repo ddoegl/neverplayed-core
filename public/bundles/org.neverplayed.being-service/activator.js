@@ -11,6 +11,7 @@ export default class Activator extends BaseActivator {
     _resolver = null;
     _yaml = null;
     _beingsData = [];
+    _surrogatesData = [];
     _hydrationPromise = null;
 
     async onStart(context) {
@@ -20,7 +21,19 @@ export default class Activator extends BaseActivator {
                 this._session = context.getService(ref);
                 if (this._hydrationPromise) await this._hydrationPromise;
                 if (this._session && this._beingsData.length > 0) {
-                    this._session.registerIdentities(this._beingsData);
+                    const enrichedBeings = this._beingsData.map(b => {
+                        if (b.initial?.surrogate) {
+                            return { 
+                                ...b, 
+                                initial: { 
+                                    ...b.initial, 
+                                    surrogateData: this._surrogatesData.find(s => s.id === b.initial.surrogate) || {} 
+                                } 
+                            };
+                        }
+                        return b;
+                    });
+                    this._session.registerIdentities(enrichedBeings);
                 }
                 return this._session;
             },
@@ -62,11 +75,13 @@ export default class Activator extends BaseActivator {
                 const being = this.getBeing(beingId);
                 const targetSurrogate = surrogateId || being?.initial?.surrogate || 'guest';
                 const targetRealm = realmId || being?.initial?.realm || this._session.activeRealmId || 'global';
+                const surrogateData = this.getSurrogate(targetSurrogate) || {};
                 
                 this.logger.info(`Being Service: Materializing ${beingId} as ${targetSurrogate} in realm ${targetRealm}`);
                 
                 this._session.login(beingId, targetRealm, {
                     id: targetSurrogate,
+                    ...surrogateData,
                     ...attributes,
                     beingId
                 });
@@ -131,16 +146,18 @@ export default class Activator extends BaseActivator {
             /**
              * Get a specific known being by ID.
              */
-            getBeing: (id) => this._beingsData.find(b => b.id === id)
+            getBeing: (id) => this._beingsData.find(b => b.id === id),
+
+            /**
+             * Get a specific known surrogate by ID.
+             */
+            getSurrogate: (id) => this._surrogatesData.find(s => s.id === id)
         };
 
         context.registerService(BEING_SERVICE, beingService);
         this.logger.info("Being Service: Registered 🧬✨");
     }
 
-    /**
-     * Load beings from YAML data.
-     */
     async _hydrateBeings() {
         if (!this._yaml) {
             this.logger.debug("Being Service: Delaying hydration, YAML service not yet available.");
@@ -148,6 +165,15 @@ export default class Activator extends BaseActivator {
         }
         
         try {
+            // 1. Hydrate Surrogates
+            const surrogatesUrl = this.resolveResource("data/surrogates.yaml");
+            this.logger.info(`Being Service: Fetching surrogates from ${surrogatesUrl}...`);
+            const surrogatesRes = await fetch(surrogatesUrl);
+            if (!surrogatesRes.ok) throw new Error(`HTTP ${surrogatesRes.status}`);
+            this._surrogatesData = this._yaml.load(await surrogatesRes.text()) || [];
+            this.logger.info(`Being Service: Hydrated ${this._surrogatesData.length} known surrogates.`);
+
+            // 2. Hydrate Beings
             const url = this.resolveResource("data/beings.yaml");
             this.logger.info(`Being Service: Fetching beings from ${url}...`);
             const res = await fetch(url);
@@ -158,12 +184,24 @@ export default class Activator extends BaseActivator {
             
             if (this._session) {
                 this.logger.info(`Being Service: Injecting ${this._beingsData.length} beings into Session Service...`);
-                this._session.registerIdentities(this._beingsData);
+                const enrichedBeings = this._beingsData.map(b => {
+                    if (b.initial?.surrogate) {
+                        return { 
+                            ...b, 
+                            initial: { 
+                                ...b.initial, 
+                                surrogateData: this._surrogatesData.find(s => s.id === b.initial.surrogate) || {} 
+                            } 
+                        };
+                    }
+                    return b;
+                });
+                this._session.registerIdentities(enrichedBeings);
             } else {
                 this.logger.warn("Being Service: Cannot inject beings, Session Service not yet available.");
             }
         } catch (err) {
-            this.logger.error("Being Service: Failed to hydrate beings:", err.message);
+            this.logger.error("Being Service: Failed to hydrate beings or surrogates:", err.message);
         }
     }
 }
