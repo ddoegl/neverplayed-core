@@ -6,7 +6,8 @@ import {
     PERCEIVER_SERVICE,
     PLEXUS_ENRICHER_SERVICE,
     PLEXUS_KNOWLEDGE_PROVIDER,
-    PLEXUS_EVALUATOR_SERVICE
+    PLEXUS_EVALUATOR_SERVICE,
+    KNOWLEDGE_PROVIDER_SERVICE
 } from "core-types";
 
 export default class Activator {
@@ -15,6 +16,7 @@ export default class Activator {
         this.logger = console;
         this.enricher = null;
         this.evaluator = null;
+        this.knowledgeProviders = [];
 
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
@@ -81,6 +83,17 @@ export default class Activator {
             }
         }).open();
 
+        context.trackService(`(objectClass=${KNOWLEDGE_PROVIDER_SERVICE})`, {
+            addingService: (ref) => {
+                const provider = context.getService(ref);
+                this.knowledgeProviders.push(provider);
+                return provider;
+            },
+            removedService: (ref, provider) => {
+                this.knowledgeProviders = this.knowledgeProviders.filter(p => p !== provider);
+            }
+        }).open();
+
         // Register Engine Service
         context.registerService(PLEXUS_ENGINE_SERVICE, {
           evaluate: (matchers, operator, ctx, runtimeConfig = {}) => {
@@ -91,6 +104,7 @@ export default class Activator {
                   licenses: state.licenses,
                   roleAliases: state.roleAliases,
                   logger: this.logger,
+                  knowledgeProviders: this.knowledgeProviders,
                   ...runtimeConfig
               };
               return this.evaluator.evaluateMatchers(matchers, operator || 'AND', ctx, config);
@@ -101,7 +115,8 @@ export default class Activator {
                   return this.evaluator.evaluateMatchers(matchers, operator, ctx, {
                       enricher: this.enricher,
                       roleAliases: state.roleAliases,
-                      licenseCustomers: state.licenses.flatMap(l => l.customers || [])
+                      licenseCustomers: state.licenses.flatMap(l => l.customers || []),
+                      knowledgeProviders: this.knowledgeProviders
                   });
               },
               getPrimitives: () => {

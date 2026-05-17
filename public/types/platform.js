@@ -84,6 +84,7 @@ export const PLEXUS_TRACING_UI = "org.neverplayed.plexus.TracingUI";
 export const PLEXUS_SENSOR_SERVICE = "org.neverplayed.plexus.Sensor";
 export const PLEXUS_PID = "org.neverplayed.plexus.engine";
 export const PLEXUS_KNOWLEDGE_PROVIDER = "org.neverplayed.plexus.KnowledgeProvider";
+export const KNOWLEDGE_PROVIDER_SERVICE = "org.neverplayed.plexus.KnowledgeProviderService";
 export const DOMAIN_OBJECT_REGISTRY_SERVICE = "org.neverplayed.domain.Registry";
 export const DOMAIN_OBJECT_INSTANCE_SERVICE = "org.neverplayed.domain.Instance";
 export const DOMAIN_STRATEGY_SERVICE = "org.neverplayed.domain.Strategy";

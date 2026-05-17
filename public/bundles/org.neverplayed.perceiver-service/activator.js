@@ -8,7 +8,8 @@ import {
     PERCEIVER_CHANGED_TOPIC,
     REALM_CHANGED_TOPIC,
     SESSION_SERVICE,
-    REALM_MANAGER_SERVICE
+    REALM_MANAGER_SERVICE,
+    KNOWLEDGE_PROVIDER_SERVICE
 } from "core-types";
 import { BaseActivator } from "osgi-base";
 
@@ -22,7 +23,7 @@ import { BaseActivator } from "osgi-base";
 export default class Activator extends BaseActivator {
     _state = {
         being: null,
-        surrogate: { grounding: "idealist", senses: ["IdealistVision"] },
+        surrogate: { grounding: "idealist", senses: [] },
         realm: "org.neverplayed.realm.core",
         observerMode: "idealist" 
     };
@@ -117,6 +118,23 @@ export default class Activator extends BaseActivator {
             getContext: () => ({ ...this._state }),
             setContext: (patch) => this.setContext(patch)
         });
+
+        // 6. Register Default Grounding Provider
+        this._groundingProviderReg = context.registerService(KNOWLEDGE_PROVIDER_SERVICE, {
+            enrich: (ctx) => {
+                if (!ctx.surrogate) return;
+                if (!ctx.surrogate.senses) ctx.surrogate.senses = [];
+                const mode = ctx.surrogate.grounding || ctx.observerMode || "idealist";
+                const inject = (sense) => { if (!ctx.surrogate.senses.includes(sense)) ctx.surrogate.senses.push(sense); };
+                if (mode === "realist") {
+                    inject("IdealistVision");
+                    inject("ForensicVision");
+                    inject("ArchitectControl");
+                } else {
+                    inject("IdealistVision");
+                }
+            }
+        });
     }
 
     _syncFromSession(session) {
@@ -166,6 +184,7 @@ export default class Activator extends BaseActivator {
         if (this._realmTracker) this._realmTracker.close();
         if (this._realmHandlerReg) this._realmHandlerReg.unregister();
         if (this._perceiverReg) this._perceiverReg.unregister();
+        if (this._groundingProviderReg) this._groundingProviderReg.unregister();
         globalThis.removeEventListener('session-changed', this._onSessionChanged);
     }
 

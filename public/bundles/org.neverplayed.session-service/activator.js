@@ -354,15 +354,11 @@ export default class Activator {
                     !["IdealistVision", "ForensicVision", "ArchitectControl"].includes(s)
                 );
                 
-                const newSenses = targetGrounding === 'idealist' 
-                    ? ["IdealistVision"] 
-                    : ["IdealistVision", "ForensicVision", "ArchitectControl"];
-
                 const surrogate = {
                     id: currentSurrogateId,
                     grounding: targetGrounding,
                     label: targetGrounding === 'idealist' ? "Idealist Mode" : "Realist Mode",
-                    senses: [...baseSenses, ...newSenses]
+                    senses: baseSenses
                 };
 
                 this.login(user.id, targetScope, surrogate);

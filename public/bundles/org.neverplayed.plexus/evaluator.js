@@ -87,6 +87,12 @@ const Primitives = {
  * Evaluates a set of matchers (terms) against a context.
  */
 export function evaluateMatchers(matchers, operator = 'AND', context, config) {
+    if (config && config.knowledgeProviders) {
+        config.knowledgeProviders.forEach(provider => {
+            if (typeof provider.enrich === 'function') provider.enrich(context);
+        });
+    }
+
     // If no matchers, it's a global match (matchAlways equivalent)
     if (!Array.isArray(matchers) || matchers.length === 0) return [true];
 
@@ -303,6 +309,12 @@ const Domains = {
 };
 
 export function evaluateDynamic(config, context) {
+    if (config && config.knowledgeProviders) {
+        config.knowledgeProviders.forEach(provider => {
+            if (typeof provider.enrich === 'function') provider.enrich(context);
+        });
+    }
+
     const grantedKeys = new Map();
     const categories = [];
     const results = {};
