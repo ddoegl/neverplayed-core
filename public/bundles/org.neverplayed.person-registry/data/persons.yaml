@@ -12,6 +12,7 @@
     - company: annahobs
       authorizations: ["GENERAL"]
   template: content/persons/person.md
+  status: "ACTIVE_CITIZEN_000001"
 - id: july
   firstname: July
   lastname: Wiser
@@ -19,6 +20,7 @@
   emails: ["july.wiser@some.mail.provider"]
   authorizations: []
   template: content/persons/person.md
+  status: "ACTIVE_CITIZEN_092384"
 - id: anna
   firstname: Anna
   lastname: Hobs

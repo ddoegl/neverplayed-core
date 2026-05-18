@@ -18,7 +18,8 @@ import {
     REALM_UNREGISTERED_TOPIC,
     AUTH_SHIELD_SERVICE,
     FLOW_SERVICE,
-    LIMES_SERVICE
+    LIMES_SERVICE,
+    TRANSITION_PARTICIPANT_INTERFACE
 } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import { BaseActivator } from "osgi-base";
@@ -218,6 +219,21 @@ export default class Activator extends BaseActivator {
         });
         this._limesTracker.open();
 
+        // 1.10 Track Transition Participants (Atomic Coordinator)
+        this._participants = new Set();
+        this._participantTracker = context.trackService(`(objectClass=${TRANSITION_PARTICIPANT_INTERFACE})`, {
+            addingService: (ref) => {
+                const svc = context.getService(ref);
+                this._participants.add(svc);
+                this.logger?.info(`Realm Manager: Registered Transition Participant: ${ref.getBundle().getSymbolicName()}`);
+                return svc;
+            },
+            removedService: (_ref, svc) => {
+                this._participants.delete(svc);
+            }
+        });
+        this._participantTracker.open();
+
         this._registerCLI(context);
 
         // Pre-initialize promises to prevent waitReady race (Step 1)
@@ -231,6 +247,7 @@ export default class Activator extends BaseActivator {
                 const targetId = isNaN(id) ? id : this._orderedRealmIds[parseInt(id) - 1];
                 return this._switchRealm(this.context, targetId, interactive);
             },
+            coordinateTransition: (proposed) => this._coordinateTransition(proposed),
             nextStep: () => this._nextStep(),
             abort: () => { this._pendingTransition = null; },
             getTransitionStatus: () => this._pendingTransition ? { ...this._pendingTransition, context: undefined } : null,
@@ -269,6 +286,7 @@ export default class Activator extends BaseActivator {
         if (this._authTracker) this._authTracker.close();
         if (this._flowTracker) this._flowTracker.close();
         if (this._limesTracker) this._limesTracker.close();
+        if (this._participantTracker) this._participantTracker.close();
         if (this.logger) this.logger.info("Realm Manager: Stopped.");
     }
 
@@ -681,6 +699,138 @@ export default class Activator extends BaseActivator {
         }
     }
 
+    _coordinateTransition(proposed) {
+        // Ensure the lock promise chain recovers from previous failures to prevent 'stuck' states.
+        this._lock = this._lock.catch(() => { /* recover chain */ });
+
+        return this._lock = this._lock.then(async () => {
+            if (this._pendingTransition) {
+                throw new Error("A transition is already in progress.");
+            }
+
+            try {
+                this.logger?.info(`Realm Manager [Coordinator]: Initiating transition to realm '${proposed.realmId}' for identity '${proposed.identityId}'...`);
+                
+                // 1. Resolve Hierarchy and Manifest early
+                const hierarchy = await this._resolveHierarchy(proposed.realmId);
+                if (hierarchy.length === 0) throw new Error(`Realm '${proposed.realmId}' not found.`);
+                const manifest = this._realms.get(proposed.realmId);
+
+                // --- Phase 1: Fan-In (Prepare & Veto) ---
+                this.logger?.info(`Realm Manager [Coordinator]: Starting Phase 1 (Fan-In/Prepare) for '${proposed.realmId}'...`);
+                
+                // Internal prep logic: Auto-Materialization check
+                let activeSurrogate = null;
+                if (this.session && proposed.identityId !== 'guest' && manifest) {
+                    // Look up the being cross-scope
+                    const userProfile = this.session.getResolvedIdentity(proposed.identityId) || {};
+                    const surrogates = userProfile.surrogates || {};
+                    const surrogateKeys = Object.keys(surrogates);
+                    
+                    this.logger?.info(`Realm Manager [Coordinator]: Sensing '${proposed.identityId}'. Current role: '${userProfile.surrogateId || 'naked'}', recognized: ${JSON.stringify(manifest.recognizedSurrogates)}, possessed surrogates: ${JSON.stringify(surrogateKeys)}`);
+                    
+                    if (!userProfile.surrogateId && manifest.recognizedSurrogates && manifest.recognizedSurrogates.length > 0) {
+                        const available = manifest.recognizedSurrogates.find(sId => surrogates[sId]);
+                        this.logger?.info(`Realm Manager [Coordinator]: Sensed recognized surrogate: '${available || 'NONE'}'`);
+                        if (available) {
+                            activeSurrogate = surrogates[available];
+                            this.logger?.info(`Realm Manager [Coordinator]: Being '${proposed.identityId}' will be materialized as '${available}'.`);
+                        }
+                    } else if (userProfile.surrogateId) {
+                        activeSurrogate = surrogates[userProfile.surrogateId];
+                    }
+                }
+
+                // Check Limes guard early
+                if (this._limes && proposed.identityId !== 'guest') {
+                    const strategyId = `REALM_ACCESS:${proposed.realmId}`;
+                    const strategy = this._limes.getStrategies().find(s => s.id === strategyId);
+                    if (strategy) {
+                        // Construct transient user representation to check access
+                        const tempUser = {
+                            id: proposed.identityId,
+                            surrogateId: activeSurrogate?.id || null,
+                            isMaterialized: !!activeSurrogate,
+                            ...(activeSurrogate || {})
+                        };
+                        const allowed = this._limes.isAllowed(tempUser, strategyId, { realmId: proposed.realmId });
+                        if (!allowed) {
+                            const msg = manifest?.onAccessDenied || `Sovereign Block: Access to universe '${proposed.realmId}' denied for '${proposed.identityId}'.`;
+                            throw new Error(msg);
+                        }
+                    }
+                }
+
+                // Invoke external participants' onPrepareTransition
+                for (const participant of this._participants) {
+                    try {
+                        const allowed = await participant.onPrepareTransition(proposed);
+                        if (allowed === false) {
+                            throw new Error(`Vetoed by participant.`);
+                        }
+                    } catch (e) {
+                        throw new Error(`Transition vetoed by participant during preparation: ${e.message}`);
+                    }
+                }
+
+                this.logger?.info(`Realm Manager [Coordinator]: Phase 1 (Fan-In/Prepare) SUCCESS.`);
+
+                // --- Phase 2: Atomic Commit ---
+                this.logger?.info(`Realm Manager [Coordinator]: Starting Phase 2 (Atomic Commit) for '${proposed.realmId}'...`);
+                
+                // Mutate the session activeRealmId and activeBeingId atomically
+                if (this.session) {
+                    this.session.activeRealmId = proposed.realmId;
+                    this.session.activeBeingId = proposed.identityId;
+                    
+                    // Call session.login to construct the resident stack and activate the surrogate if materialized
+                    await this.session.login(proposed.identityId, proposed.realmId, activeSurrogate);
+                }
+
+                this.logger?.info(`Realm Manager [Coordinator]: Phase 2 (Atomic Commit) SUCCESS.`);
+
+                // --- Phase 3: Fan-Out (Commit/Activate) ---
+                this.logger?.info(`Realm Manager [Coordinator]: Starting Phase 3 (Fan-Out/Activate) for '${proposed.realmId}'...`);
+                
+                // Grafts the full structural transition (purge legacy, surge target)
+                const surgePlan = await this._prepareSurgePlan(this.context, hierarchy);
+                this._pendingTransition = {
+                    id: proposed.realmId,
+                    manifest,
+                    hierarchy,
+                    surgePlan,
+                    currentPhase: 'PLAN_READY',
+                    milestone: 'RESOLVED',
+                    auto: true
+                };
+
+                await this._executeTransitionPhase('ONTOLOGY');
+                
+                // Notify external participants of commit completion
+                const activeContext = {
+                    realmId: proposed.realmId,
+                    identityId: proposed.identityId,
+                    perspective: proposed.perspective,
+                    aperture: proposed.aperture,
+                    tenantId: proposed.tenantId
+                };
+                for (const participant of this._participants) {
+                    try {
+                        await participant.onCommitTransition(activeContext);
+                    } catch (e) {
+                        this.logger?.error(`Error during onCommitTransition for participant:`, e);
+                    }
+                }
+
+                this.logger?.info(`Realm Manager [Coordinator]: Phase 3 (Fan-Out/Activate) COMPLETE. System Operational. 🌌`);
+                return { status: 'COMPLETE', message: `Atomic transition to '${proposed.realmId}' complete.` };
+            } catch (err) {
+                this.logger?.warn(`Realm Manager [Coordinator]: Transition aborted:`, err.message);
+                throw err;
+            }
+        });
+    }
+
     _switchRealm(context, id, interactive = false) {
         // Rule: Transition Resilience (SDN-0182)
         // Ensure the lock promise chain recovers from previous failures to prevent 'stuck' states.
@@ -694,6 +844,26 @@ export default class Activator extends BaseActivator {
             try {
                 this.logger?.info(`Realm Manager: Initiating Context Transition to universe '${id}'...`);
                 
+                // 1. Resolve Hierarchy and Manifest early
+                const hierarchy = await this._resolveHierarchy(id);
+                if (hierarchy.length === 0) throw new Error(`Realm '${id}' not found.`);
+                const manifest = this._realms.get(id);
+
+                // Auto-Materialization logic (The Realm senses the Being)
+                if (this.session && this.session.currentUser && manifest) {
+                    const user = this.session.currentUser;
+                    this.logger?.info(`Realm Manager: SENSING START for '${user.id}'. surrogateId: '${user.surrogateId || 'naked'}', recognized: ${JSON.stringify(manifest.recognizedSurrogates)}, possessed surrogates: ${JSON.stringify(Object.keys(user.surrogates || {}))}`);
+                    if (!user.surrogateId && manifest.recognizedSurrogates && manifest.recognizedSurrogates.length > 0) {
+                        // Being is naked, check if they possess a recognized surrogate
+                        const available = manifest.recognizedSurrogates.find(sId => user.surrogates && user.surrogates[sId]);
+                        this.logger?.info(`Realm Manager: Available matching surrogate: '${available || 'NONE'}'`);
+                        if (available) {
+                            this.logger?.info(`Realm Manager: Being '${user.id}' arrived naked. Realm '${id}' sensed and materialized recognized surrogate '${available}'.`);
+                            this.session.activateSurrogate(available, id); // activate it for the target realm!
+                        }
+                    }
+                }
+
                 // 0. Access Guard (Markov Blanket)
                 if (this._limes && this.session?.currentUser) {
                     const user = this.session.currentUser;
@@ -715,17 +885,10 @@ export default class Activator extends BaseActivator {
                     }
 
                     if (!allowed) {
-                         const manifest = this._realms.get(id);
                          const msg = manifest?.onAccessDenied || `Sovereign Block: Access to universe '${id}' denied. Please verify your ontological status.`;
                          throw new Error(msg);
                     }
                 }
-
-                // 1. Resolve Hierarchy
-                const hierarchy = await this._resolveHierarchy(id);
-                if (hierarchy.length === 0) throw new Error(`Realm '${id}' not found.`);
-
-                const manifest = this._realms.get(id);
 
                 // 2. Prepare Surge Plan (Reconciliation)
                 const surgePlan = await this._prepareSurgePlan(context, hierarchy);

@@ -8,12 +8,15 @@ import {
     PERSONS_SERVICE, 
     PERSON_REGISTRY_FLOW, 
     PERSISTENCE_RESOLVER_SERVICE, 
+    PERSISTENCE_MANAGER_SERVICE,
     YAML_SERVICE, 
     YAML_EDITOR_SERVICE,
     LIMES_SERVICE,
-    SESSION_SERVICE
+    SESSION_SERVICE,
+    KNOWLEDGE_PROVIDER_SERVICE,
+    TRANSITION_PARTICIPANT_INTERFACE
 } from "core-types";
-import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
+import { INTERFACE_KEY as _PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import { BaseActivator } from "osgi-base";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -30,6 +33,7 @@ export default class Activator extends BaseActivator {
     _limes = null;
     _session = null;
 
+    // deno-lint-ignore require-await
     async onStart(context) {
         // 1. Track YAML Service (for seed data parsing)
         this.track(`(objectClass=${YAML_SERVICE})`, {
@@ -120,6 +124,20 @@ export default class Activator extends BaseActivator {
         // Dual Registration: new core-types constant + legacy shared-types constant
         context.registerService(PERSONS_SERVICE, this._dataService);
         context.registerService(PERSONS_SERVICE_LEGACY, this._dataService);
+        
+        // Register as Transition Participant
+        context.registerService(TRANSITION_PARTICIPANT_INTERFACE, {
+            // deno-lint-ignore require-await
+            onPrepareTransition: async (proposed) => {
+                this.logger.debug(`Person Registry [TransitionParticipant]: Preparing for proposed context:`, proposed);
+            },
+            // deno-lint-ignore require-await
+            onCommitTransition: async (_committed) => {
+                this.logger.info(`Person Registry [TransitionParticipant]: Transition Committed. Enforcing enrichment...`);
+                this._enrichSessionUser();
+            }
+        });
+
         this.logger.info("Person Registry: Data service registered (dual objectClass).");
 
         // 5. Register Flow Service
@@ -129,6 +147,21 @@ export default class Activator extends BaseActivator {
             "icon": this.config.icon || "fas fa-users",
             "sidebar": this.config.sidebar !== false,
             ...this.config
+        });
+
+        // 7. Register Knowledge Provider for Dynamic Senses
+        context.registerService(KNOWLEDGE_PROVIDER_SERVICE, {
+            enrich: (ctx) => {
+                // The being's attributes are populated by _enrichSessionUser
+                const isPersonAdmin = ctx.being?.attributes?.isPersonAdmin || false;
+                const activeRealmId = (typeof ctx.realm === 'object' && ctx.realm !== null) ? ctx.realm.id : ctx.realm;
+                
+                if (isPersonAdmin && activeRealmId === 'org.neverplayed.realm.governance') {
+                    if (!ctx.surrogate.senses.includes("SensePersonhood")) {
+                        ctx.surrogate.senses.push("SensePersonhood");
+                    }
+                }
+            }
         });
 
         this.logger.info("Person Registry: Registered 👥");
@@ -180,10 +213,21 @@ export default class Activator extends BaseActivator {
      * Capability Enrichment: Inject domain-specific privileges into the session stacks.
      */
     _enrichSessionUser() {
-        if (!this._session || !this._personsData || this._personsData.length === 0) return;
-
-        // 1. Resolve target Being ID (L1 Identity focus)
+        if (!this._session) return;
+        
+        // Force Alpine to track activeBeingId, activeRealmId, and scopedUsers structure by reading them at the top
         const activeBeingId = this._session.activeBeingId;
+        const activeRealmId = this._session.activeRealmId;
+        const scopedUsers = this._session.scopedUsers || {};
+        
+        // Deeply track stack dictionary additions/removals
+        Object.values(scopedUsers).forEach(stack => {
+            const _triggerTracker = Object.keys(stack);
+        });
+
+        this.logger.info(`Person Registry: _enrichSessionUser invoked. activeBeingId: '${activeBeingId}', activeRealmId: '${activeRealmId}', PersonsData: ${this._personsData?.length}`);
+        
+        if (!this._personsData || this._personsData.length === 0) return;
         if (!activeBeingId || activeBeingId === 'guest') return;
 
         // 2. Resolve Person Record (L5 Semantics)
@@ -199,6 +243,13 @@ export default class Activator extends BaseActivator {
         Object.values(this._session.scopedUsers || {}).forEach(stack => {
             const identity = stack[activeBeingId];
             if (identity) {
+                // Provision default 'person' surrogate. All beings handled here possess the 'person' surrogate, even if unregistered.
+                if (!identity.surrogates || !identity.surrogates['person']) {
+                    if (!identity.surrogates) identity.surrogates = {};
+                    identity.surrogates['person'] = { id: 'person', label: 'Person Surrogate' };
+                    enrichedCount++;
+                }
+
                 // Change detection to prevent reactive loops
                 if (identity.attributes.isRegisteredPerson !== attributes.isRegisteredPerson ||
                     identity.attributes.isPersonAdmin !== attributes.isPersonAdmin) {
@@ -213,6 +264,20 @@ export default class Activator extends BaseActivator {
         if (enrichedCount > 0) {
             this.logger.debug(`Person Registry: Enriched '${activeBeingId}' in ${enrichedCount} scope stacks.`, attributes);
         }
+
+        // 4. Emit Personhood Trace for Stratographer
+        if (person && person.status) {
+            const pmRef = this.context.getServiceReference(PERSISTENCE_MANAGER_SERVICE, "(implementation=selector-proxy)");
+            const pm = pmRef ? this.context.getService(pmRef) : null;
+            if (pm) {
+                pm.store("identity.personhood", {
+                    $stigmergy: {
+                        matcher: "SensePersonhood",
+                        value: person.status
+                    }
+                }).catch(e => this.logger.error("Failed to emit personhood trace:", e));
+            }
+        }
     }
 
     /**
@@ -220,6 +285,7 @@ export default class Activator extends BaseActivator {
      */
     async launch(targetElement, _params = {}) {
         this.logger.info("Person Registry: Launching flow...");
+        // deno-lint-ignore no-this-alias
         const self = this;
 
         // 1. Institutional Privilege Guard (Limes)

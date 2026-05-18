@@ -25,6 +25,7 @@ export const EVENT_TOPIC = "event.topics";
 // 3. Infrastructure Services
 export const REALM_MANAGER_SERVICE = "org.neverplayed.realm.RealmManager";
 export const REALM_SERVICE = "org.neverplayed.realm.RealmService";
+export const TRANSITION_PARTICIPANT_INTERFACE = "org.neverplayed.TransitionParticipant";
 export const SHELL_HOST_SERVICE = "org.neverplayed.shell.ShellHost";
 export const SHELL_CLI_SERVICE = "org.neverplayed.shell.ShellCLI";
 export const AUTH_SHIELD_SERVICE = "org.neverplayed.auth.AuthShield";

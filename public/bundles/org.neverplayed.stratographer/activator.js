@@ -89,6 +89,7 @@ export default class Activator {
                 const store = Alpine.store('explorer');
                 if (store) {
                     store._grounding = self._perceiver?.getContext().observerMode || "idealist";
+                    store.senses = self._perceiver?.getEnrichedSenses?.() || [];
                     store.refreshTopology();
                 }
             }
@@ -101,6 +102,7 @@ export default class Activator {
             const store = Alpine.store('explorer');
             if (store) {
                 store._grounding = self._perceiver?.getContext().observerMode || "idealist";
+                store.senses = self._perceiver?.getEnrichedSenses?.() || [];
                 store.refreshTopology();
             }
         };
@@ -152,6 +154,7 @@ export default class Activator {
             _lastValueHash: "",
             visible: false,
             _grounding: self._perceiver?.getContext().observerMode || "idealist",
+            senses: self._perceiver?.getEnrichedSenses?.() || [],
             
             get grounding() {
                 return this._grounding;

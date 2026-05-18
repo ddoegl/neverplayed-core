@@ -149,14 +149,23 @@ export default class Activator {
                 // 2. Perspective Alignment
                 this.perspective = perspective;
 
-                // 3. Identity Pivot (Sovereign Login)
-                if (this._sourceSession) {
-                    await this._sourceSession.login(identity, realm);
-                }
-
-                // 4. Realm Pivot (Structural Transition)
-                if (this._sourceRealm && realm) {
-                    await this._sourceRealm.switchRealm(realm);
+                // 3. Coordinated Context Transition (Atomic Coordinator)
+                if (this._sourceRealm && realm && typeof this._sourceRealm.coordinateTransition === 'function') {
+                    await this._sourceRealm.coordinateTransition({
+                        realmId: realm,
+                        identityId: identity,
+                        perspective,
+                        aperture,
+                        tenantId: tenant
+                    });
+                } else {
+                    // Fallback to legacy/uncorrelated switch if coordinateTransition is not supported
+                    if (this._sourceSession) {
+                        await this._sourceSession.login(identity, realm);
+                    }
+                    if (this._sourceRealm && realm) {
+                        await this._sourceRealm.switchRealm(realm);
+                    }
                 }
 
                 // 5. Aperture Pivot (Flow Transition)

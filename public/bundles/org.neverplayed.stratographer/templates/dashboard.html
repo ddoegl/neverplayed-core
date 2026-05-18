@@ -120,6 +120,28 @@
             </div>
           </div>
 
+          <!-- Active Sensory Spectrum -->
+          <div class="pt-3 mt-3 border-t border-slate-800/50 space-y-2 mb-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[8px] font-black text-slate-700 uppercase tracking-tighter">
+                Active Sensory Spectrum
+              </span>
+              <i class="fas fa-satellite-dish text-[8px] text-cyan-500/50"></i>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <template x-for="sense in $store.explorer.senses" :key="sense">
+                <span 
+                  class="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest border transition-all"
+                  :class="['ToolUse', 'Language'].includes(sense) ? 'bg-slate-800/50 text-slate-400 border-slate-700' : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(6,182,212,0.2)]'"
+                  x-text="sense"
+                ></span>
+              </template>
+              <template x-if="!$store.explorer.senses || $store.explorer.senses.length === 0">
+                <span class="text-[8px] text-slate-600 italic">No Senses Active</span>
+              </template>
+            </div>
+          </div>
+
           <!-- Secondary Residents -->
           <template x-if="inhabitants.length > 1">
             <div class="pt-3 border-t border-slate-800/50 space-y-2">

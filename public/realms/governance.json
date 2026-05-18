@@ -8,6 +8,7 @@
         "realm-admins": ["daniel.doegl@doegl.info", "guest"]
     },
     "bundles": ["./bundles/org.neverplayed.person-registry/manifest.json"],
+    "recognizedSurrogates": ["person"],
     "onAccessDenied": "Universe 'org.neverplayed.realm.governance' only recognizes Persons. Please materialize as a Person before entry.",
     "strategies": {
         "REALM_ACCESS:org.neverplayed.realm.governance": {

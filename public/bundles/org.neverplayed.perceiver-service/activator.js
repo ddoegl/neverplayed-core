@@ -31,6 +31,7 @@ export default class Activator extends BaseActivator {
     _eventAdmin = null;
     _eventFactory = null;
     _perceiverReg = null;
+    _providers = new Set();
 
     onStart(context) {
         // 1. Logger
@@ -83,6 +84,22 @@ export default class Activator extends BaseActivator {
         });
         this._realmTracker.open();
 
+        // Track Knowledge Providers for Dynamic Senses
+        this._kpTracker = context.trackService(`(objectClass=${KNOWLEDGE_PROVIDER_SERVICE})`, {
+            addingService: (ref) => {
+                const svc = context.getService(ref);
+                this._providers.add(svc);
+                this.notify(); // Re-notify on new senses
+                return svc;
+            },
+            removedService: (ref) => {
+                const svc = context.getService(ref);
+                if (svc) this._providers.delete(svc);
+                this.notify();
+            }
+        });
+        this._kpTracker.open();
+
         // 4. Listen for Real-time Shifts
         // 4a. OSGi Realm Changes
         this._realmHandlerReg = context.registerService(EVENT_HANDLER_INTERFACE, {
@@ -116,7 +133,24 @@ export default class Activator extends BaseActivator {
             getRealm: () => this._state.realm,
             getObserverMode: () => this._state.observerMode,
             getContext: () => ({ ...this._state }),
-            setContext: (patch) => this.setContext(patch)
+            setContext: (patch) => this.setContext(patch),
+            getEnrichedSenses: () => {
+                const ctx = {
+                    ...this._state,
+                    surrogate: JSON.parse(JSON.stringify(this._state.surrogate || { senses: [] }))
+                };
+                if (!ctx.surrogate.senses) ctx.surrogate.senses = [];
+                for (const provider of this._providers) {
+                    if (typeof provider.enrich === 'function') {
+                        try {
+                            provider.enrich(ctx);
+                        } catch (err) {
+                            this.logger?.warn("Perceiver: Provider enrich failed", err);
+                        }
+                    }
+                }
+                return ctx.surrogate.senses;
+            }
         });
 
         // 6. Register Default Grounding Provider
@@ -182,6 +216,7 @@ export default class Activator extends BaseActivator {
         if (this._efTracker) this._efTracker.close();
         if (this._sessionTracker) this._sessionTracker.close();
         if (this._realmTracker) this._realmTracker.close();
+        if (this._kpTracker) this._kpTracker.close();
         if (this._realmHandlerReg) this._realmHandlerReg.unregister();
         if (this._perceiverReg) this._perceiverReg.unregister();
         if (this._groundingProviderReg) this._groundingProviderReg.unregister();

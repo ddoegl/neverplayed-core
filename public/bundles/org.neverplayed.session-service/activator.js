@@ -3,7 +3,7 @@
  * @module platform/bundles/org.neverplayed.session-service
  */
 
-import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, SESSION_CHANGED_TOPIC } from "../../core-types.js";
+import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE as _LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, SESSION_CHANGED_TOPIC, TRANSITION_PARTICIPANT_INTERFACE } from "../../core-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -125,6 +125,7 @@ export default class Activator {
         this._logger.info(`Session Service: DISK-LOAD COMPLETE. Residency Stacks Grafted.`);
 
         const logger = this._logger;
+        // deno-lint-ignore no-this-alias
         const self = this;
 
         // Create Reactive Session State
@@ -208,6 +209,10 @@ export default class Activator {
                     };
                 }
                 return identity;
+            },
+
+            getResolvedIdentity(beingId) {
+                return this._findIdentity(beingId);
             },
 
             setBeingFocus(beingId) {
@@ -459,6 +464,19 @@ export default class Activator {
 
         // Register the Service
         context.registerService(SESSION_SERVICE, this._session);
+        
+        // Register as Transition Participant
+        context.registerService(TRANSITION_PARTICIPANT_INTERFACE, {
+            // deno-lint-ignore require-await
+            onPrepareTransition: async (proposed) => {
+                this._logger.info(`Session [TransitionParticipant]: Preparing for pivot to '${proposed.realmId}' for user '${proposed.identityId}'`);
+            },
+            // deno-lint-ignore require-await
+            onCommitTransition: async (committed) => {
+                this._logger.info(`Session [TransitionParticipant]: Transition committed. Active context is now:`, committed);
+            }
+        });
+
         this._logger.info("Session Service: Registered 🛡️✨");
 
         // Set up Persistence Sync
