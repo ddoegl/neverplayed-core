@@ -91,22 +91,20 @@ export class StratumServiceImpl {
 
     async getInhabitants() {
         if (!this._sourcePM) return [];
+        const currentRealm = this.realmId;
         const allKeys = await this._sourcePM.listKeys("");
         const inhabitants = new Set();
         for (const key of allKeys) {
              const probe = await this._sourcePM.probe(key);
-             if (probe && probe.context && probe.context.identityId) {
+             if (probe && probe.context && probe.context.identityId && probe.context.realmId === currentRealm) {
                  inhabitants.add(probe.context.identityId);
              }
         }
         if (this._sourceSession?.scopedUsers) {
-            Object.values(this._sourceSession.scopedUsers).forEach(stack => {
-                if (stack && typeof stack === 'object') {
-                    Object.values(stack).forEach(user => {
-                        if (user && typeof user === 'object' && user.id) {
-                            inhabitants.add(user.id);
-                        }
-                    });
+            const stack = this._sourceSession.scopedUsers[currentRealm] || {};
+            Object.values(stack).forEach(u => {
+                if (u && typeof u === 'object' && u.id) {
+                    inhabitants.add(u.id);
                 }
             });
         }

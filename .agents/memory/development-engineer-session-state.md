@@ -4,12 +4,17 @@
 Await the next instruction or handover ticket to proceed with further architectural or feature development.
 
 ## Completed Items
+- **Residency Scope Isolation Fix**:
+  - Remediated `getInhabitants()` in `org.neverplayed.stratum-core/activator.js` to isolate resident aggregation strictly to the active realm scope.
+  - Isolated database scans by filtering persistence manager keys against `probe.context.realmId === currentRealm`.
+  - Isolated session stack scanning to only iterate over `this._sourceSession.scopedUsers[currentRealm]`.
+- **Unit Testing**:
+  - Upgraded the `stratum-logic.test.ts` test suite with a new, comprehensive test for scope isolation.
+  - Validated that `getInhabitants()` correctly aggregates users (both from PM probes and active session stacks) belonging to the active realm, whilst strictly ignoring globally active identities or probes belonging to different realms.
+  - Verified all unit tests pass cleanly.
 - **Residency Drift Bug Fix**:
   - Fixed `getInhabitants()` in `org.neverplayed.stratum-core/activator.js` to correctly iterate over values inside the scope stacks nested under `scopedUsers`, ensuring all active residents are properly aggregated.
   - Exported `StratumServiceImpl` from `activator.js` to facilitate testing.
-- **Unit Testing**:
-  - Added a new unit test to `stratum-logic.test.ts` verifying that `getInhabitants()` correctly aggregates users from multiple scopedUsers stacks while excluding guest identities.
-  - Verified that all unit tests pass cleanly.
 - **Manifest Capability Alignment**: Updated `Provide-Capability` attributes in the `manifest.json` files for `stratum-core`, `shell-sidebar`, `shell-header`, and `person-registry` to ensure strict OSGi service advertisement compliance (ADR-0022).
 - **Drift & Magic String Remediation**:
   - Replaced magic strings in `person-registry/activator.js` with the `REALM_GOVERNANCE` constant imported from `core-types`.
@@ -28,6 +33,7 @@ Await the next instruction or handover ticket to proceed with further architectu
 - Await the next handover ticket or architectural assignment.
 
 ## Key Decisions & Context
+- **Active Realm Sovereignty**: Hardened the logic inside `getInhabitants` to respect the system architecture rule that realms operate entirely isolated from one another.
 - **OSGi Test Synchronization**: Used `session.setBeingFocus()` in integration tests to properly align active identity context shifts, triggering the corresponding reactive effects for user attribute enrichment.
 - **Specific Service Reference Resolution**: Used `context.getServiceReferences` in tests to query all registered `KnowledgeProviderService` instances and isolate the one registered specifically by `org.neverplayed.person-registry`, avoiding lookup pollution from other bundles.
 - **Domain Prefix Constant Isolation**: Leveraged `NEVERPLAYED_PREFIX` in path parsing to preserve domain namespacing without magic string checking.

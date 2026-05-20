@@ -76,13 +76,19 @@ Deno.test("Stratum Service: Should handle guest fallback correctly", () => {
     assertEquals(stratum.toURI(), "np://guest/guest/core/shell?tier=local");
 });
 
-Deno.test("Stratum Service: Should aggregate inhabitants correctly from scopedUsers stacks", async () => {
-    // Instantiate StratumServiceImpl
+Deno.test("Stratum Service: Should aggregate inhabitants correctly with scope isolation", async () => {
+    // 1. Instantiate StratumServiceImpl
     const service = new StratumServiceImpl(console);
     
+    // 2. Mock Realm Manager to return a specific active realm
+    let activeRealm = "org.neverplayed.realm.governance";
+    service._sourceRealm = {
+        getActiveRealm: () => activeRealm
+    };
+
     // Mock the session with scopedUsers stack structure
     service._sourceSession = {
-        currentUser: { id: "alice" },
+        currentUser: { id: "guest" }, // Set to guest so we isolate stack and PM probes
         scopedUsers: {
             global: {
                 __activeId__: "alice",
@@ -97,16 +103,44 @@ Deno.test("Stratum Service: Should aggregate inhabitants correctly from scopedUs
         }
     };
 
-    // Mock Persistence Manager with listKeys that returns empty (so it doesn't try to probe anything)
+    // Mock Persistence Manager with keys containing context details (to verify DB Scan Isolation)
     service._sourcePM = {
-        listKeys: async () => []
+        listKeys: async () => ["session-state", "probe-charles", "probe-david"],
+        probe: async (key) => {
+            if (key === "probe-charles") {
+                return { context: { identityId: "charles", realmId: "org.neverplayed.realm.governance" } };
+            }
+            if (key === "probe-david") {
+                return { context: { identityId: "david", realmId: "global" } };
+            }
+            return null;
+        }
     };
 
-    const inhabitants = await service.getInhabitants();
-
-    // Inhabitants should contain alice and rob, and exclude guest
-    assertEquals(inhabitants.includes("alice"), true);
+    // Active Realm: org.neverplayed.realm.governance
+    // Inhabitants should contain:
+    // - "rob" (from active session scope stack)
+    // - "charles" (from PM probe in active realm)
+    // - Should exclude: "alice" (from global stack), "david" (from global PM probe), "guest"
+    let inhabitants = await service.getInhabitants();
     assertEquals(inhabitants.includes("rob"), true);
+    assertEquals(inhabitants.includes("charles"), true);
+    assertEquals(inhabitants.includes("alice"), false);
+    assertEquals(inhabitants.includes("david"), false);
+    assertEquals(inhabitants.includes("guest"), false);
+    assertEquals(inhabitants.length, 2);
+
+    // Switch Active Realm to global
+    activeRealm = "global";
+    // Inhabitants should contain:
+    // - "alice" (from active global session stack)
+    // - "david" (from PM probe in active global realm)
+    // - Should exclude: "rob", "charles", "guest"
+    inhabitants = await service.getInhabitants();
+    assertEquals(inhabitants.includes("alice"), true);
+    assertEquals(inhabitants.includes("david"), true);
+    assertEquals(inhabitants.includes("rob"), false);
+    assertEquals(inhabitants.includes("charles"), false);
     assertEquals(inhabitants.includes("guest"), false);
     assertEquals(inhabitants.length, 2);
 });
