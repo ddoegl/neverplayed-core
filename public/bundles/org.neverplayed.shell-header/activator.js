@@ -108,8 +108,7 @@ export default class Activator extends AlpineActivator {
             get activeFlow() { return globalThis.backofficeState?.activeFlow || globalThis.businessPortalState?.activeFlow; },
             
             toggleSidebar() {
-                this.shell.sidebarOpen = !this.shell.sidebarOpen;
-                globalThis.dispatchEvent(new CustomEvent('shell:sidebar-toggle', { detail: { open: this.shell.sidebarOpen } }));
+                this.shell.sidebarState = (this.shell.sidebarState + 1) % 3;
             },
 
             async switchRealm(id) {

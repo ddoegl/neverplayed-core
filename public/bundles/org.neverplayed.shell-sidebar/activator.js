@@ -9,7 +9,13 @@ import {
     SHELL_HOST_SERVICE, 
     SHELL_COMMAND_SERVICE,
     LIMES_SERVICE,
-    SESSION_SERVICE
+    SESSION_SERVICE,
+    EVENT_HANDLER_INTERFACE,
+    EVENT_TOPIC,
+    REALM_CHANGED_TOPIC,
+    SESSION_CHANGED_TOPIC,
+    CONFIG_UPDATED_TOPIC,
+    STRATUM_CHANGED_TOPIC
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
@@ -157,15 +163,22 @@ export default class Activator extends AlpineActivator {
                         }
                     });
 
-                    // Global Listeners (Harmonized topics)
-                    globalThis.addEventListener('shell:sidebar-toggle', () => this.toggleCollapse());
-                    globalThis.addEventListener('shell:flows-updated', () => syncFlows());
-                    globalThis.addEventListener('config-updated', () => syncFlows());
-                    
-                    globalThis.addEventListener('realm-switched', () => {
-                        this.logger?.debug("Shell Sidebar: Realm changed, syncing flows...");
-                        syncFlows();
-                    });
+                    // Register OSGi EventHandler for State Events (ADR-0034 alignment)
+                    const eventProps = {
+                        [EVENT_TOPIC]: [
+                            REALM_CHANGED_TOPIC,
+                            SESSION_CHANGED_TOPIC,
+                            CONFIG_UPDATED_TOPIC,
+                            STRATUM_CHANGED_TOPIC
+                        ]
+                    };
+                    const handler = {
+                        handleEvent: (event) => {
+                            this.logger?.debug(`Shell Sidebar: Event ${event.getTopic()} caught. Syncing flows...`);
+                            syncFlows();
+                        }
+                    };
+                    context.registerService(EVENT_HANDLER_INTERFACE, handler, eventProps);
                 },
 
                 launch(id) {
@@ -191,7 +204,7 @@ export default class Activator extends AlpineActivator {
             execute: async (args, ctx, log) => {
                 const target = args[0];
                 if (!target) {
-                    globalThis.dispatchEvent(new CustomEvent('shell:sidebar-toggle'));
+                    shell.sidebarState = (shell.sidebarState + 1) % 3;
                     log("Toggled global sidebar.");
                 } else {
                     const caRef = ctx.getServiceReference(CONFIG_ADMIN_SERVICE);
@@ -204,7 +217,6 @@ export default class Activator extends AlpineActivator {
                             const props = config.getProperties() || {};
                             const newState = !props.sidebar;
                             await config.update({ ...props, sidebar: newState });
-                            globalThis.dispatchEvent(new CustomEvent('shell:flows-updated'));
                             log(`Sidebar property for ${bsn} set to: ${newState}`);
                         }
                     }
