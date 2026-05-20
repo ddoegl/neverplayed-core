@@ -1,5 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.220.0/assert/mod.ts";
 import { SESSION_SERVICE, REALM_MANAGER_SERVICE, PERSISTENCE_MANAGER_SERVICE } from "../../../types/platform.js";
+import { StratumServiceImpl } from "../activator.js";
 
 /**
  * Stratum Logic Test Suite
@@ -73,4 +74,39 @@ Deno.test("Stratum Service: Should handle guest fallback correctly", () => {
 
     const stratum = aggregateStratum(mockGuestSession, mockRealm, mockPM);
     assertEquals(stratum.toURI(), "np://guest/guest/core/shell?tier=local");
+});
+
+Deno.test("Stratum Service: Should aggregate inhabitants correctly from scopedUsers stacks", async () => {
+    // Instantiate StratumServiceImpl
+    const service = new StratumServiceImpl(console);
+    
+    // Mock the session with scopedUsers stack structure
+    service._sourceSession = {
+        currentUser: { id: "alice" },
+        scopedUsers: {
+            global: {
+                __activeId__: "alice",
+                guest: { id: "guest" },
+                alice: { id: "alice", email: "alice@cli.local" }
+            },
+            "org.neverplayed.realm.governance": {
+                __activeId__: "rob",
+                guest: { id: "guest" },
+                rob: { id: "rob", email: "rob@cli.local" }
+            }
+        }
+    };
+
+    // Mock Persistence Manager with listKeys that returns empty (so it doesn't try to probe anything)
+    service._sourcePM = {
+        listKeys: async () => []
+    };
+
+    const inhabitants = await service.getInhabitants();
+
+    // Inhabitants should contain alice and rob, and exclude guest
+    assertEquals(inhabitants.includes("alice"), true);
+    assertEquals(inhabitants.includes("rob"), true);
+    assertEquals(inhabitants.includes("guest"), false);
+    assertEquals(inhabitants.length, 2);
 });

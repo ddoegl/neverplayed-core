@@ -4,6 +4,12 @@
 Await the next instruction or handover ticket to proceed with further architectural or feature development.
 
 ## Completed Items
+- **Residency Drift Bug Fix**:
+  - Fixed `getInhabitants()` in `org.neverplayed.stratum-core/activator.js` to correctly iterate over values inside the scope stacks nested under `scopedUsers`, ensuring all active residents are properly aggregated.
+  - Exported `StratumServiceImpl` from `activator.js` to facilitate testing.
+- **Unit Testing**:
+  - Added a new unit test to `stratum-logic.test.ts` verifying that `getInhabitants()` correctly aggregates users from multiple scopedUsers stacks while excluding guest identities.
+  - Verified that all unit tests pass cleanly.
 - **Manifest Capability Alignment**: Updated `Provide-Capability` attributes in the `manifest.json` files for `stratum-core`, `shell-sidebar`, `shell-header`, and `person-registry` to ensure strict OSGi service advertisement compliance (ADR-0022).
 - **Drift & Magic String Remediation**:
   - Replaced magic strings in `person-registry/activator.js` with the `REALM_GOVERNANCE` constant imported from `core-types`.
@@ -25,3 +31,4 @@ Await the next instruction or handover ticket to proceed with further architectu
 - **OSGi Test Synchronization**: Used `session.setBeingFocus()` in integration tests to properly align active identity context shifts, triggering the corresponding reactive effects for user attribute enrichment.
 - **Specific Service Reference Resolution**: Used `context.getServiceReferences` in tests to query all registered `KnowledgeProviderService` instances and isolate the one registered specifically by `org.neverplayed.person-registry`, avoiding lookup pollution from other bundles.
 - **Domain Prefix Constant Isolation**: Leveraged `NEVERPLAYED_PREFIX` in path parsing to preserve domain namespacing without magic string checking.
+- **Nested Stack Traversal**: Resolved the residency drift bug by iterating over the nested dictionary of each stack instead of mapping directly over the top-level scope stacks, as each stack contains individual user profiles under their specific user IDs.

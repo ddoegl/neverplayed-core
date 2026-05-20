@@ -20,7 +20,7 @@ import {
     NEVERPLAYED_PREFIX
 } from "../../core-types.js";
 
-class StratumServiceImpl {
+export class StratumServiceImpl {
     constructor(logger) {
         this._logger = logger;
         this._perspective = "idealist";
@@ -100,8 +100,14 @@ class StratumServiceImpl {
              }
         }
         if (this._sourceSession?.scopedUsers) {
-            Object.values(this._sourceSession.scopedUsers).forEach(u => {
-                if (u.id) inhabitants.add(u.id);
+            Object.values(this._sourceSession.scopedUsers).forEach(stack => {
+                if (stack && typeof stack === 'object') {
+                    Object.values(stack).forEach(user => {
+                        if (user && typeof user === 'object' && user.id) {
+                            inhabitants.add(user.id);
+                        }
+                    });
+                }
             });
         }
         if (this._sourceSession?.currentUser) inhabitants.add(this._sourceSession.currentUser.id);
