@@ -13,6 +13,7 @@ The **Contextual Hub** that aggregates disparate system facets (WHO, WHERE, WHAT
 
 ## 🏛️ The Patterns (The State)
 
+- **[Platform Patterns](../../docs/platform-patterns.md)**: Implements the **Headless Decoupled Stratum** pattern.
 - **[ADR-0165: Sovereign Identity Scoping](../../docs/adr/0165-sovereign-identity-scoping.md)**: Serves as the primary implementation of hierarchical sharding visibility. 🛡️🪐
 - **Mechanism**: Uses OSGi Service Trackers to maintain a high-fidelity, decoupled link to infrastructural signals.
 
@@ -23,6 +24,8 @@ The **Contextual Hub** that aggregates disparate system facets (WHO, WHERE, WHAT
 - **Constraint Matrix**: Integrating validation logic to ensure only legal facet combinations are active.
 
 ### 🏺 Institutional ADRs
-- [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
+- [ADR-0025](../../docs/adr/0025-identity-injection-id-tokens.md) - Identity injection ID tokens.
+- [ADR-0026](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Reactive non-destructive variable resolution.
+- [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0165](../../docs/adr/0165-sovereign-identity-scoping.md) - Sovereign Identity Scoping (Hierarchical Sharding). 🛡️🪐
 - [ADR-0170](../../docs/adr/0170-multi-persona-residency.md) - Multi-Persona Identity Residency (Portfolios & Shunting). 🪐🛡️

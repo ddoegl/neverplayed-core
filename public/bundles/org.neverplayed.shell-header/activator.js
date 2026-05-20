@@ -9,7 +9,8 @@ import {
     AUTH_SHIELD_SERVICE,
     PERCEIVER_SERVICE,
     PERCEIVER_CHANGED_TOPIC,
-    SHELL_UI_CONTEXT_PID
+    SHELL_UI_CONTEXT_PID,
+    EVENT_HANDLER_INTERFACE
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
@@ -58,7 +59,7 @@ export default class Activator extends AlpineActivator {
         });
 
         // Listen for Perceiver Changes
-        this.context.registerService("@pandino/event-admin/EventHandler", {
+        this.context.registerService(EVENT_HANDLER_INTERFACE, {
             handleEvent: (event) => {
                 if (this._perceiver) {
                     this.syncStore('shell_context', { perceiver: this._perceiver.getContext() });

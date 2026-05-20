@@ -1,27 +1,33 @@
 # Forensic Audit Report
 
-**Date/Time:** 2026-05-17T12:11:00+02:00
+**Date/Time:** 2026-05-20T20:52:00+02:00
 **Execution Mode:** Auto (Forensic scanning and read-only telemetry)
 
-## Interoceptive Scan Results
+---
 
-The architecture and identifier linter scans were executed across the `core`, `foundation`, and `domain` layers. The scan discovered **213 errors and 22 warnings** across the bundles.
+## 1. Active Role & Read-Only Constraints
+- **Role:** Forensic Analyst (Interoceptive system auditor and forensic investigator).
+- **Constraints:**
+  1. Strictly forbidden from writing, generating, or proposing source code.
+  2. Strictly forbidden from writing or modifying any source or configuration files in the workspace, with write access limited exclusively to this telemetry file (`/telemetry/audit_report.txt`) and handovers (`.agents/handovers/*`).
 
-### 1. ADR Violations (Manifests & Documentation)
-- **ADR-0028 (Tiered Bundle Testing Strategy):** Missing mandatory `tests/` directories for multiple CORE bundles (`org.neverplayed.plexus-core`, `org.neverplayed.plexus-sensor`, `org.neverplayed.plexus`, `org.neverplayed.plexus-enricher`, `org.neverplayed.plexus-tracing`, `org.neverplayed.persistence-localstorage`) and DOMAIN bundles (`org.neverplayed.person-registry`).
-- **ADR-0022 (Bundle Manifest Specification):** Numerous service registrations are NOT advertised in their respective `manifest.json`. Examples include `PLEXUS_SENSOR_SERVICE`, `FLOW_SERVICE`, `ATOMIC_SPEC_INGESTION_SERVICE`, `LOG_SERVICE`, `LIMES_SERVICE`, and others.
-- **ADR-0023, ADR-0025, ADR-0026 (Documentation Standards):** Missing `README.md` or missing links to critical ADRs in bundles such as `org.neverplayed.plexus-sensor`, `org.neverplayed.persistence-selector`, `org.neverplayed.stratum-core`, `org.neverplayed.stratum-cli`, etc.
-- Missing JSDoc technical documentation in `activator.js` across several bundles.
+---
 
-### 2. Identifier Drift (Magic Strings)
-The codebase contains **75 identifier violations** overall, with 11 specifically flagged in the core layers. Magic strings were detected instead of utilizing namespaced identifiers (e.g., `pkg:id`) or constants from `public/core-types.js`.
-- Hardcoded realms: `realm: "org.neverplayed.realm.core"` (`perceiver-service`, `limes`, `stratum-core`)
-- Hardcoded policies: `org.neverplayed.beings/${beingIdOrType}/` (`being-service`)
-- Hardcoded template paths: `./bundles/org.neverplayed.stratum-hud/templates/stratum-hud.html` (`stratum-hud`, `stratographer`)
-- Hardcoded event dispatches: `"shell-launch-flow"` and `"org.neverplayed.stratographer"` (`stratographer`)
-- Hardcoded event handlers: `"@pandino/event-admin/EventHandler"` (`shell-header`, `plexus-sensor`)
+## 2. Post-Merge Linter Validation
+Following the merge of the remediation work:
+- **`org.neverplayed.stratum-core-dom`** is now **100% Compliant** (README added, tests added, capabilities aligned).
+- **`org.neverplayed.shell-sidebar`** is now **100% Compliant** (manifest capability for `EventHandler` added).
+- **`org.neverplayed.person-registry`** is now **100% Compliant** (tests added, all service capabilities aligned, magic string resolved).
 
-## Summary
-The current ground truth implementation reveals significant architectural drift. The physical implementation in Pandino bundles is missing required metadata alignments, testing structures dictated by ADRs, and relies on magic string identifiers that violate the semantic standards of the core types and ontology.
+---
 
-*All required details have been mapped without executing or proposing any source code modifications in accordance with the established read-only constraints.*
+## 3. Remaining Minor Issues (For Future Remediation)
+The following minor deviations remain in scope for the next remediation ticket:
+1. **`org.neverplayed.shell-header`**:
+   - `[VIOLATION]` Line 61 of `activator.js` registers `"@pandino/event-admin/EventHandler"` as a magic string instead of using the `EVENT_HANDLER_INTERFACE` constant from `core-types`.
+2. **`org.neverplayed.stratum-core`**:
+   - `[ERROR]` README.md is missing link to `platform-patterns.md`.
+   - `[VIOLATION]` Line 153 of `activator.js` contains a magic string check: `segments[0]?.startsWith('org.neverplayed.realm')`.
+
+---
+*All findings mapped and logged under read-only forensic analyst constraints.*

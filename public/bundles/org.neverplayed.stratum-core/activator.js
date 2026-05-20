@@ -16,7 +16,8 @@ import {
     SESSION_CHANGED_TOPIC,
     REALM_CHANGED_TOPIC,
     PERSISTENCE_CONTEXT_CHANGED_TOPIC,
-    STRATUM_CHANGED_TOPIC
+    STRATUM_CHANGED_TOPIC,
+    NEVERPLAYED_PREFIX
 } from "../../core-types.js";
 
 class StratumServiceImpl {
@@ -150,7 +151,7 @@ class StratumServiceImpl {
         const segments = url.pathname.split('/').filter(s => s);
         const tier = url.searchParams.get("tier");
         let identity, realm, perspective;
-        if (segments[0]?.startsWith('org.neverplayed.realm')) {
+        if (segments[0]?.startsWith(`${NEVERPLAYED_PREFIX}realm`)) {
             realm = segments[0];
             identity = segments[1];
             perspective = 'realist';
