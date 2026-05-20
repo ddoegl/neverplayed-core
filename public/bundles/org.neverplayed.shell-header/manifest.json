@@ -4,6 +4,7 @@
     "Bundle-Name": "Shell Header UI",
     "Bundle-Description": "Top navigation and session management bar (Reactive OSGi).",
     "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"@pandino/event-admin/EventHandler\"",
     "Import-Service": [
         "@pandino/event-admin/EventAdmin",
         "org.neverplayed.realm.RealmManager"

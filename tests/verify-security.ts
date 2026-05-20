@@ -1,25 +1,59 @@
 import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-nodejs@0.8.33";
 import Pandino from "https://esm.sh/@pandino/pandino@0.8.33/denonext/pandino.mjs";
 import { resolve, join } from "https://deno.land/std@0.221.0/path/mod.ts";
+import { SHELL_CLI_SERVICE } from "core-types";
 
 const BASE_URL = `file://${Deno.cwd()}/public/`;
 
-// 1. Unified Environment Mocks
-const mockDoc = {
-    createElement: () => ({ style: {}, appendChild: () => {}, addEventListener: () => {}, setAttribute: () => {}, querySelector: () => null, querySelectorAll: () => [] }),
-    head: { appendChild: () => {} },
-    body: { appendChild: () => {}, style: {} },
-    querySelector: () => null,
-    querySelectorAll: () => [],
-    addEventListener: () => {},
-};
-
+// 1. Unified Happy-DOM Environment Setup
+import { Window } from "https://esm.sh/happy-dom@13.3.8";
+const domWindow = new Window();
+const constructors = [
+    'Node', 'Element', 'HTMLElement', 'HTMLDivElement', 'HTMLSpanElement', 'HTMLButtonElement',
+    'HTMLInputElement', 'HTMLSelectElement', 'HTMLTextAreaElement', 'HTMLStyleElement',
+    'CustomEvent', 'Event', 'MutationObserver', 'IntersectionObserver', 'ResizeObserver',
+    'CharacterData', 'DocumentFragment', 'NamedNodeMap', 'Text', 'Comment', 'Attr',
+    'CustomElementRegistry'
+];
+const instances = [
+    'window', 'document', 'navigator', 'location', 'history',
+    'customElements', 'localStorage', 'sessionStorage'
+];
 // deno-lint-ignore no-explicit-any
-(globalThis as any).document = mockDoc;
+const winAny = domWindow as any;
+[...constructors, ...instances].forEach(key => {
+    // deno-lint-ignore no-explicit-any
+    if (winAny[key] && !(globalThis as any)[key]) {
+        try {
+            // deno-lint-ignore no-explicit-any
+            (globalThis as any)[key] = winAny[key];
+        } catch (_e) { /* ignore */ }
+    }
+});
+// Fallback: Catch any other Passthrough constructors not in our list
+Object.getOwnPropertyNames(winAny).forEach(key => {
+    // deno-lint-ignore no-explicit-any
+    if (key[0] === key[0].toUpperCase() && typeof winAny[key] === 'function' && !(globalThis as any)[key]) {
+        try {
+            // deno-lint-ignore no-explicit-any
+            (globalThis as any)[key] = winAny[key];
+        } catch (_err) { /* empty */ }
+    }
+});
 // deno-lint-ignore no-explicit-any
 (globalThis as any).window = globalThis;
 // deno-lint-ignore no-explicit-any
+(globalThis as any).document = domWindow.document;
+// deno-lint-ignore no-explicit-any
+(globalThis as any).navigator = domWindow.navigator;
+// deno-lint-ignore no-explicit-any
 (globalThis as any).NEVERPLAYED_BASE_URL = BASE_URL;
+if (!(globalThis as any).location) {
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).location = { href: 'http://localhost/', hostname: 'localhost' };
+}
+
+
 
 // 2. Mock Non-Admin User (initially)
 const headlessUser = {
@@ -72,6 +106,10 @@ async function main() {
         "bundles/org.neverplayed.persistence-selector/manifest.json",
         "bundles/org.neverplayed.system-logger/manifest.json",
         "bundles/org.neverplayed.yaml-service/manifest.json",
+        "bundles/org.neverplayed.session-service/manifest.json",
+        "bundles/org.neverplayed.perceiver-service/manifest.json",
+        "bundles/org.neverplayed.plexus-core/manifest.json",
+        "bundles/org.neverplayed.plexus-enricher/manifest.json",
         "bundles/org.neverplayed.auth-shield/manifest.json",
         "bundles/org.neverplayed.limes/manifest.json",
         "bundles/org.neverplayed.config-admin/manifest.json",
@@ -110,7 +148,7 @@ async function main() {
         console.log(` - Service: ${classes} (Bundle: ${ref.getBundle()?.getSymbolicName()})`);
     });
 
-    const shellRef = context.getServiceReference("@neverplayed/shell-cli/service");
+    const shellRef = context.getServiceReference(SHELL_CLI_SERVICE);
     if (!shellRef) {
         console.error("Shell service not found! Available services:");
         allRefs.forEach(ref => console.log(" -", ref.getProperty("objectClass")));
@@ -140,7 +178,7 @@ async function main() {
     headlessUser.attributes = { 'neverplayed-admin': true };
     
     // Restart bundles to pick up new global state
-    const bundlesToRestart = ["@neverplayed/auth-shield", "@neverplayed/shell-cli"];
+    const bundlesToRestart = ["org.neverplayed.auth-shield", "org.neverplayed.shell-cli"];
     for (const bsn of bundlesToRestart) {
         // deno-lint-ignore no-explicit-any
         const bundle = context.getBundles().find((b: any) => b.getSymbolicName() === bsn);
@@ -155,7 +193,7 @@ async function main() {
     await new Promise(r => setTimeout(r, 2000));
 
     // Re-acquire shell service
-    const newShellRef = context.getServiceReference("@neverplayed/shell-cli/service");
+    const newShellRef = context.getServiceReference(SHELL_CLI_SERVICE);
     if (!newShellRef) {
         console.error("Shell service not found after restart!");
         Deno.exit(1);

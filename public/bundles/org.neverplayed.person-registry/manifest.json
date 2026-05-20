@@ -9,7 +9,7 @@
         "templates/form.html",
         "data/persons.yaml"
     ],
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.PersonsService\"",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.PersonsService\", osgi.service; objectClass=\"org.neverplayed.infrastructure/persons/data\", osgi.service; objectClass=\"org.neverplayed.TransitionParticipant\", osgi.service; objectClass=\"org.neverplayed.flow.FlowService\", osgi.service; objectClass=\"org.neverplayed.plexus.KnowledgeProviderService\"",
     "Configuration": {
         "flowType": "system-flow",
         "channels": ["business-channel-web"],

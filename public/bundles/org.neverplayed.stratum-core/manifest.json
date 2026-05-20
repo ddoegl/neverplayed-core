@@ -4,7 +4,7 @@
     "Bundle-Name": "Stratum Core",
     "Bundle-Description": "Aggregates multi-facet state (Tenant, Identity, Realm, Tier) into a unified Stratum context (Layer 1).",
     "Bundle-Activator": "activator.js",
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.stratum.StratumService\"",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.stratum.StratumService\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\"",
     "Configuration": {
         "log-level": "INFO"
     },

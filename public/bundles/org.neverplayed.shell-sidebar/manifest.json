@@ -4,7 +4,7 @@
     "Bundle-Description": "Reactive navigation sidebar for flow discovery and realm switching (Gold Standard).",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "activator.js",
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.shell.Command\"",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.shell.Command\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\"",
     "Configuration": {
         "context": "barebones",
         "mountPoint": "#shell-sidebar-root",

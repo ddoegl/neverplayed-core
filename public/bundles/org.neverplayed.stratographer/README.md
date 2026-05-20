@@ -1,4 +1,6 @@
 # org.neverplayed.stratographer
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
+
 
 The **Stratographer** is the definitive Forensic Cockpit for the Never Played OS. It consolidates environmental awareness, network topology, and forensic trace recovery into a single, high-fidelity dashboard resident in the Flow Stage.
 

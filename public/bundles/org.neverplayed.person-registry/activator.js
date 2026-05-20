@@ -14,7 +14,8 @@ import {
     LIMES_SERVICE,
     SESSION_SERVICE,
     KNOWLEDGE_PROVIDER_SERVICE,
-    TRANSITION_PARTICIPANT_INTERFACE
+    TRANSITION_PARTICIPANT_INTERFACE,
+    REALM_GOVERNANCE
 } from "core-types";
 import { INTERFACE_KEY as _PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import { BaseActivator } from "osgi-base";
@@ -156,7 +157,7 @@ export default class Activator extends BaseActivator {
                 const isPersonAdmin = ctx.being?.attributes?.isPersonAdmin || false;
                 const activeRealmId = (typeof ctx.realm === 'object' && ctx.realm !== null) ? ctx.realm.id : ctx.realm;
                 
-                if (isPersonAdmin && activeRealmId === 'org.neverplayed.realm.governance') {
+                if (isPersonAdmin && activeRealmId === REALM_GOVERNANCE) {
                     if (!ctx.surrogate.senses.includes("SensePersonhood")) {
                         ctx.surrogate.senses.push("SensePersonhood");
                     }

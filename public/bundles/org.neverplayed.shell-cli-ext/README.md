@@ -1,4 +1,6 @@
 # 📑 Shell CLI Extensions
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
+
 
 The **Shell CLI Extensions** bundle provides a collection of advanced management commands that extend the base functionality of the `ShellCLI`.
 

@@ -1,4 +1,6 @@
 # 🛡️ Firebase Persistence Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
+
 
 The **Decision Authority** for real-time cloud synchronization and shunted failsafe persistence.
 

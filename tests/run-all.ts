@@ -6,7 +6,7 @@
  */
 
 const tests = [
-  "test-persistence-shunting.ts",
+  "persistence-shunting.test.ts",
   "test-lean-activator.ts",
   "test-universal-shunting.ts",
   "test-firebase-auth.ts",
