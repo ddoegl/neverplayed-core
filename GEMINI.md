@@ -29,4 +29,4 @@ This document establishes the core principles and architectural guidelines for t
 <!-- include: .agents/rules/ontology-grounding.md -->
 
 ---
-*Constitution v1.3.0 - Integrated Ontological Grounding*
+*Constitution v1.4.0 - Headless Decoupled Stratum*

@@ -22,6 +22,7 @@
         "./bundles/org.neverplayed.realm-manager-dom/manifest.json",
         "./bundles/org.neverplayed.perceiver-service/manifest.json",
         "./bundles/org.neverplayed.stratum-core/manifest.json",
+        "./bundles/org.neverplayed.stratum-core-dom/manifest.json",
         "./bundles/org.neverplayed.stratum-cli/manifest.json",
         "./bundles/org.neverplayed.stratographer/manifest.json",
         "./bundles/org.neverplayed.stratum-hud/manifest.json",

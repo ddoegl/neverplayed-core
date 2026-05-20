@@ -5,7 +5,8 @@ import {
     LIMES_SERVICE, 
     CONFIG_ADMIN_SERVICE,
     SHELL_CLI_SERVICE,
-    PERSISTENCE_MANAGER_SERVICE
+    PERSISTENCE_MANAGER_SERVICE,
+    STRATUM_SERVICE
 } from "core-types";
 
 Deno.test({
@@ -121,6 +122,22 @@ Deno.test({
             h.type === 'output' && h.content?.text?.includes("Available Commands:")
         );
         assertEquals(found, true, "Help output should contain 'Available Commands:'");
+    });
+
+    await t.step("Stratum Core: Headless OSGi Service", async () => {
+        // deno-lint-ignore no-explicit-any
+        const stratum: any = await harness.getService(STRATUM_SERVICE);
+        assertExists(stratum, "Stratum service should be registered");
+
+        // Verify properties and headless methods
+        assertEquals(typeof stratum.getHierarchy, "function");
+        assertEquals(typeof stratum.getInhabitants, "function");
+        assertEquals(typeof stratum.login, "function");
+        assertEquals(typeof stratum.logout, "function");
+        
+        // Check initial state
+        assertExists(stratum.residents);
+        assertExists(stratum.tier);
     });
 
     // Cleanup

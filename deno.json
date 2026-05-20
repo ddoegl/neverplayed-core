@@ -24,7 +24,8 @@
     "lint:arch:core": "deno run -A scripts/lint-arch.ts --layer core",
     "lint:arch:foundation": "deno run -A scripts/lint-arch.ts --layer foundation",
     "lint:arch:domain": "deno run -A scripts/lint-arch.ts --layer domain",
-    "mcp": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/mcp-server.ts"
+    "mcp": "deno run -A --location http://localhost --import-map scripts/import-map.json scripts/mcp-server.ts",
+    "graphify:watch": "graphify watch"
   },
   "lint": {
     "files": {

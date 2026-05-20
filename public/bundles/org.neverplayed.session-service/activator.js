@@ -3,7 +3,7 @@
  * @module platform/bundles/org.neverplayed.session-service
  */
 
-import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE as _LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, SESSION_CHANGED_TOPIC, TRANSITION_PARTICIPANT_INTERFACE } from "../../core-types.js";
+import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE as _LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, SESSION_CHANGED_TOPIC, TRANSITION_PARTICIPANT_INTERFACE, PERSISTENCE_CONTEXT_CHANGED_TOPIC } from "../../core-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -501,6 +501,10 @@ export default class Activator {
                 if (typeof this._pm.setContext === 'function') {
                     this._logger?.info(`Session: Syncing Persistence Context -> Tenant: ${tenantId}, Realm: ${ctx.realmId}, Identity: ${identityId}, Tier: ${ctx.tier}`);
                     await this._pm.setContext(ctx);
+                    if (self._eventAdmin && self._eventFactory) {
+                        const evt = self._eventFactory.build(PERSISTENCE_CONTEXT_CHANGED_TOPIC, ctx);
+                        self._eventAdmin.postEvent(evt);
+                    }
                 }
 
                 // Identity Purity Sink: Iterate through stacks and sanitize guests

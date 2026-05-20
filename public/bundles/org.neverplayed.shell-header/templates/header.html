@@ -260,14 +260,14 @@
             </template>
 
             <!-- List: Available Inhabitants (Residency Switcher) -->
-            <template x-if="shell.inhabitants?.length > 0">
+            <template x-if="$store.stratum.inhabitants?.length > 0">
               <div class="py-2">
                 <div
                   class="px-3 pb-2 text-[9px] uppercase text-slate-500 font-bold tracking-widest"
                 >
                   Available Inhabitants
                 </div>
-                <template x-for="id in shell.inhabitants" :key="id">
+                <template x-for="id in $store.stratum.inhabitants" :key="id">
                   <button
                     x-show="id !== $session.currentUser.id"
                     @click="login(id); showPersona = false"

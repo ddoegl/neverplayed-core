@@ -99,28 +99,7 @@ export default class Activator extends AlpineActivator {
             removedService: () => this._syncRealms()
         });
 
-        // 2.5 Track Stratum Service (Inhabitants & Residents)
-        this.track(`(objectClass=${STRATUM_SERVICE})`, {
-            addingService: (ref) => {
-                this._stratum = context.getService(ref);
-                
-                // Reactive sync for Inhabitants (Persona Switcher)
-                this.effect(() => {
-                    if (this._stratum) {
-                        const forensic = this._stratum.inhabitants || [];
-                        const local = this._stratum.residents || [];
-                        const inhabitants = Array.from(new Set([...forensic, ...local])).filter(i => i !== 'guest');
-                        this.syncStore('shell_context', { inhabitants });
-                    }
-                });
 
-                return this._stratum;
-            },
-            removedService: () => { 
-                this._stratum = null;
-                this.syncStore('shell_context', { inhabitants: [] });
-            }
-        });
 
         // 4. Render UI (Atomic & Guarded)
         const self = this;
@@ -155,9 +134,10 @@ export default class Activator extends AlpineActivator {
             },
             
             async logout(scope = null) {
-                if (self._stratum) {
-                    const targetScope = scope || self._stratum.realmId;
-                    await self._stratum.logout(targetScope);
+                const stratum = globalThis.Alpine?.store('stratum');
+                if (stratum) {
+                    const targetScope = scope || stratum.realmId;
+                    await stratum.logout(targetScope);
                     // Only reload on global logout (Operator Dissolution)
                     if (targetScope === 'global') {
                         location.reload();
@@ -166,15 +146,17 @@ export default class Activator extends AlpineActivator {
             },
 
             async login(id) {
-                if (id && self._stratum) {
-                    await self._stratum.login(id);
+                const stratum = globalThis.Alpine?.store('stratum');
+                if (id && stratum) {
+                    await stratum.login(id);
                 }
             },
 
             async identityLogin() {
                 const identity = prompt("Enter Identity ID (e.g. daniela-dev):");
-                if (identity && self._stratum) {
-                    await self._stratum.login(identity);
+                const stratum = globalThis.Alpine?.store('stratum');
+                if (identity && stratum) {
+                    await stratum.login(identity);
                 }
             },
 

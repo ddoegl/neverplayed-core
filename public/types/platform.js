@@ -65,6 +65,8 @@ export const REALM_UNREGISTERED_TOPIC = "org/neverplayed/realm/UNREGISTERED";
 export const AGENT_AUDIT_COMPLETED_TOPIC = "org/neverplayed/agent/AUDIT_COMPLETED";
 export const PERCEIVER_CHANGED_TOPIC = "org/neverplayed/perceiver/CHANGED";
 export const SESSION_CHANGED_TOPIC = "org/neverplayed/session/CHANGED";
+export const PERSISTENCE_CONTEXT_CHANGED_TOPIC = "org/neverplayed/persistence/CONTEXT_CHANGED";
+export const STRATUM_CHANGED_TOPIC = "org/neverplayed/stratum/CHANGED";
 
 // 6. OSGi Bundle States
 export const BUNDLE_STATE_UNINSTALLED = 1;

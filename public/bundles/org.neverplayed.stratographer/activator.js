@@ -16,7 +16,8 @@ import {
     EVENT_HANDLER_INTERFACE,
     EVENT_TOPIC,
     BUNDLE_TYPE_ADMIN,
-    SESSION_SERVICE
+    SESSION_SERVICE,
+    STRATUM_CHANGED_TOPIC
 } from "../../core-types.js";
 import _Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -83,8 +84,8 @@ export default class Activator {
             removedService: () => { this._sensor = null; }
         }).open();
 
-        // 6. Register as EventHandler for Perceiver Changes
-        context.registerService(EVENT_HANDLER_INTERFACE, {
+        // 6. Register as EventHandler for Perceiver and Stratum Changes
+        this._eventRegistration = context.registerService(EVENT_HANDLER_INTERFACE, {
             handleEvent: (event) => {
                 const store = Alpine.store('explorer');
                 if (store) {
@@ -92,21 +93,13 @@ export default class Activator {
                     store.senses = self._perceiver?.getEnrichedSenses?.() || [];
                     store.refreshTopology();
                 }
+                if (typeof globalThis.dispatchEvent === 'function') {
+                    globalThis.dispatchEvent(new CustomEvent('stratum-changed'));
+                }
             }
         }, {
-            [EVENT_TOPIC]: [PERCEIVER_CHANGED_TOPIC]
+            [EVENT_TOPIC]: [PERCEIVER_CHANGED_TOPIC, STRATUM_CHANGED_TOPIC]
         });
-
-        // 7. Pulse Refresh
-        this._shuntListener = () => {
-            const store = Alpine.store('explorer');
-            if (store) {
-                store._grounding = self._perceiver?.getContext().observerMode || "idealist";
-                store.senses = self._perceiver?.getEnrichedSenses?.() || [];
-                store.refreshTopology();
-            }
-        };
-        globalThis.addEventListener('pm-context-shifted', this._shuntListener);
 
         // 8. Register Reactive Store
         this._setupExplorerStore(context);
@@ -424,9 +417,8 @@ export default class Activator {
                         this._syncInhabitants();
                     };
 
-                    globalThis.addEventListener('pm-context-shifted', syncUI);
-                    globalThis.addEventListener('realm-switched', syncUI);
-                    globalThis.addEventListener('session-changed', syncUI);
+                    self._dashboardSyncUI = syncUI;
+                    globalThis.addEventListener('stratum-changed', self._dashboardSyncUI);
 
                     this.$watch('$store.explorer.grounding', () => {
                         this.jumpTarget = self._stratum?.toURI();
@@ -533,7 +525,12 @@ export default class Activator {
     }
 
     stop() {
-        if (this._shuntListener) globalThis.removeEventListener('pm-context-shifted', this._shuntListener);
+        if (this._eventRegistration) {
+            try { this._eventRegistration.unregister(); } catch(e) {}
+        }
+        if (this._dashboardSyncUI) {
+            globalThis.removeEventListener('stratum-changed', this._dashboardSyncUI);
+        }
         if (this._renderListener) globalThis.removeEventListener('explorer-render-request', this._renderListener);
         this._logger.info("Stratographer: Stopped.");
     }
