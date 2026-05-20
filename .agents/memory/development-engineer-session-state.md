@@ -1,19 +1,20 @@
 # Development Engineer - Session State
 
 ## Current Goal
-Implement the Dynamic Surrogate Augmentation Engine using a `KNOWLEDGE_PROVIDER_SERVICE` OSGi pattern to dynamically inject sensory capabilities during matching without permanently branding them into persisted surrogate state.
+Await the next instruction or handover ticket to proceed with further architectural cleanups.
 
 ## Completed Items
-- **Platform Definitions**: Defined `KNOWLEDGE_PROVIDER_SERVICE` in `public/types/platform.js`.
-- **Plexus Enrichment Engine**: Refactored `org.neverplayed.plexus` (`activator.js` and `evaluator.js`) to dynamically track knowledge providers and mutate the active context with `provider.enrich(context)` directly before match evaluation.
-- **Removed Hardcoded Injections**: Purged hardcoded UI-layer senses (`IdealistVision`, `ForensicVision`, `ArchitectControl`) from `org.neverplayed.session-service` and `org.neverplayed.perceiver-service` initialization logic.
-- **Grounding Provider**: Implemented a default OSGi Knowledge Provider inside `org.neverplayed.perceiver-service` that acts as the oracle, injecting the appropriate capabilities depending on if the user is in `idealist` or `realist` mode.
-- **Git State**: Merged all changes from the `feature/dynamic-augmentation` worktree into the primary `architectural-cleanup-1` branch and cleaned up the isolated worktree.
+- **Headless Stratum Core**: Completely decoupled `org.neverplayed.stratum-core` from Alpine.js and DOM-specific structures, leaving it as a pure environment-agnostic ES6 class.
+- **Event-Driven Egress**: Added `PERSISTENCE_CONTEXT_CHANGED_TOPIC` and `STRATUM_CHANGED_TOPIC` to `public/types/platform.js`. Refactored `org.neverplayed.session-service` to dispatch the context changes.
+- **Reactivity Extender**: Created `org.neverplayed.stratum-core-dom` bundle that acts as a bridge, listening to OSGi events and updating the global Alpine `$store.stratum` reactive store.
+- **UI Components Migrated**:
+  - **shell-header**: Updated templates and component actions to read from/delegate to `$store.stratum`.
+  - **stratographer**: Migrated from obsolete DOM events to `STRATUM_CHANGED_TOPIC` OSGi signals and unified DOM egress, with proper bundle lifecycle cleanup.
+- **Verification & Integration**: Registered the new adapter bundle in `public/realms/core.json`. Added validation tests in `tests/core-bundles.test.ts` and verified successful headless boot execution.
 
 ## Pending Items
-- Await the next handover ticket from the Cognitive Architect or Forensic Analyst.
+- Await the next handover ticket or architectural assignment.
 
 ## Key Decisions & Context
-- **Context Mutation**: Chosen to mutate the `context` object directly during matching rather than deep-cloning, to prioritize memory efficiency.
-- **Provider Ordering**: Retained a simple, flat array mapping for knowledge providers rather than introducing an OSGi `service.ranking` priority layer, to keep initial complexity low.
-- **Naming Conventions**: Reused existing naming conventions. The `KNOWLEDGE_PROVIDER_SERVICE` constant is mapped to `org.neverplayed.plexus.KnowledgeProviderService` to avoid conflicts with the existing domain-data loaders.
+- **Decoupled Extension Pattern**: Separated the core logic from UI reactive bindings into distinct bundles (`stratum-core` and `stratum-core-dom`) to ensure that headless environments can run core services without browser APIs or Alpine dependencies.
+- **Unified Egress**: Standardized DOM components to update via a single CustomEvent (`stratum-changed`) triggered by the OSGi event handler, rather than multiple separate event listeners.
