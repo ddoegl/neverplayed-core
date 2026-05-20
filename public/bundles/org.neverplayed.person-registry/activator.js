@@ -270,7 +270,7 @@ export default class Activator extends BaseActivator {
             const pmRef = this.context.getServiceReference(PERSISTENCE_MANAGER_SERVICE, "(implementation=selector-proxy)");
             const pm = pmRef ? this.context.getService(pmRef) : null;
             if (pm) {
-                pm.store("identity.personhood", {
+                pm.store(`identity.personhood:${person.id}`, {
                     $stigmergy: {
                         matcher: "SensePersonhood",
                         value: person.status

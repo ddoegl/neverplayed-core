@@ -3,9 +3,6 @@ console.log("Persistence Selector: Evaluating Activator File...");
 import { 
     PERSISTENCE_MANAGER_SERVICE, 
     LOG_SERVICE, 
-    PERSISTENCE_RESOLVER_SERVICE, 
-    SHELL_COMMAND_SERVICE,
-    PERCEIVER_SERVICE,
     PLEXUS_SENSOR_SERVICE
 } from "../../core-types.js";
 
@@ -25,6 +22,7 @@ export default class Activator {
     _context = { tenantId: "guest", realmId: "unknown", identityId: "guest" };
     _lastRealmId = "unknown";
 
+    // deno-lint-ignore require-await
     async start(context) {
         console.log("Persistence Selector: start() called.");
         this.context = context;
@@ -92,26 +90,44 @@ export default class Activator {
         await Promise.allSettled(tasks);
     }
 
+    _enrichOptionsForKey(key, options) {
+        if (key && typeof key === "string" && key.startsWith("identity.personhood:")) {
+            const targetId = key.split(":")[1];
+            if (targetId) {
+                options.identityId = targetId;
+            }
+        }
+        return options;
+    }
+
     load(key, options = {}) {
+        const enrichedOptions = { ...options };
+        this._enrichOptionsForKey(key, enrichedOptions);
         const preferredTier = this._getPreferredTierForKey(key);
         const preferredProvider = this._getProvider(preferredTier);
         if (preferredProvider) {
             try {
-                const data = preferredProvider.load(key, options);
+                const data = preferredProvider.load(key, enrichedOptions);
                 if (data !== null && data !== undefined) return data;
-            } catch (_e) {}
+            } catch (_e) {
+                // ignore preferred provider lookup failures
+            }
         }
         for (const p of this._providers) {
             if (p.svc === preferredProvider) continue; 
             try {
-                const data = p.svc.load(key, options);
+                const data = p.svc.load(key, enrichedOptions);
                 if (data !== null && data !== undefined) return data;
-            } catch (_e) {}
+            } catch (_e) {
+                // ignore backup provider lookup failures
+            }
         }
         return this._volatileStore.get(key) || null;
     }
 
     async store(key, val, options = {}) {
+        const enrichedOptions = { ...options };
+        this._enrichOptionsForKey(key, enrichedOptions);
         const tier = this._getPreferredTierForKey(key);
         const providerEntry = this._providers.find(p => p.tier === tier) || this._providers.find(p => p.tier === "local");
         
@@ -120,7 +136,7 @@ export default class Activator {
         if (this.logger && this.logger.info) this.logger.info(logMsg);
 
         if (providerEntry) {
-            return await providerEntry.svc.store(key, val, options);
+            return await providerEntry.svc.store(key, val, enrichedOptions);
         }
         
         this._volatileStore.set(key, val);
@@ -131,7 +147,9 @@ export default class Activator {
             if (typeof p.svc.listKeys === 'function') {
                 try {
                     return await p.svc.listKeys(prefix) || [];
-                } catch (err) { return []; }
+                } catch (_err) {
+                    return [];
+                }
             }
             return [];
         });
@@ -174,11 +192,17 @@ export default class Activator {
      * Required for forensic dashboards like Stratographer.
      */
     async probe(key) {
+        const enrichedOptions = {};
+        this._enrichOptionsForKey(key, enrichedOptions);
+        const targetIdentityId = enrichedOptions.identityId || this._context.identityId;
+        const probeContext = { ...this._context, identityId: targetIdentityId };
+
         // 1. Check Volatile Store
         if (this._volatileStore.has(key)) {
             return {
                 physicalTier: "volatile",
-                effectiveContext: this._context,
+                context: probeContext,
+                effectiveContext: probeContext,
                 implementation: "memory"
             };
         }
@@ -188,20 +212,23 @@ export default class Activator {
             let found = false;
             try {
                 if (typeof p.svc.probe === 'function') {
-                    found = await p.svc.probe(key);
+                    found = await p.svc.probe(key, enrichedOptions);
                 } else {
-                    const val = await p.svc.load(key);
+                    const val = await p.svc.load(key, enrichedOptions);
                     found = (val !== null && val !== undefined);
                 }
 
                 if (found) {
                     return {
                         physicalTier: p.tier,
-                        effectiveContext: this._context, // Providers share the selector's context
+                        context: probeContext,
+                        effectiveContext: probeContext,
                         implementation: p.impl
                     };
                 }
-            } catch (_e) {}
+            } catch (_e) {
+                // ignore provider lookup errors
+            }
         }
         return null;
     }
@@ -213,6 +240,9 @@ export default class Activator {
         if (key.startsWith("universe.config.")) {
             return { matchers: [{ type: "matchSense", value: "ArchitectControl" }] };
         }
+        if (key.startsWith("identity.personhood:") || key.includes("identity.personhood")) {
+            return { matchers: [{ type: "matchSense", value: "SensePersonhood" }] };
+        }
         return null;
     }
 
@@ -221,7 +251,11 @@ export default class Activator {
         console.info(`Selector: Context Shift -> [${ctx.tenantId}][${ctx.realmId}]`);
         for (const p of this._providers) {
             if (typeof p.svc.setContext === 'function') {
-                try { await p.svc.setContext(this._context); } catch (e) {}
+                try {
+                    await p.svc.setContext(this._context);
+                } catch (_e) {
+                    // ignore
+                }
             }
         }
     }

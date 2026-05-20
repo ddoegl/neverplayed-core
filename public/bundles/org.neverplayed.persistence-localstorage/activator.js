@@ -27,7 +27,8 @@ export default class Activator extends BaseActivator {
             if (options.scope === "global") {
                 return `np:v1:${this._context.tenantId}:__global__:__shared__:${key}`;
             }
-            return `np:v1:${this._context.tenantId}:${this._context.realmId}:${this._context.identityId}:${key}`;
+            const identityId = options.identityId || this._context.identityId;
+            return `np:v1:${this._context.tenantId}:${this._context.realmId}:${identityId}:${key}`;
         };
 
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
@@ -79,10 +80,18 @@ export default class Activator extends BaseActivator {
                              const logicalKey = parts.slice(5).join(':'); 
                              if (logicalKey.startsWith(prefix)) results.push(logicalKey);
                          }
-                    } else if (k.startsWith(identityPrefix)) {
-                         const logicalKey = k.substring(identityPrefix.length);
-                         if (logicalKey.startsWith(prefix)) {
-                             results.push(logicalKey);
+                    } else {
+                         if (k.startsWith(identityPrefix)) {
+                             const logicalKey = k.substring(identityPrefix.length);
+                             if (logicalKey.startsWith(prefix)) {
+                                 results.push(logicalKey);
+                             }
+                         } else if (k.startsWith(realmPrefix)) {
+                             const parts = k.split(':');
+                             const logicalKey = parts.slice(5).join(':');
+                             if (logicalKey.startsWith("identity.personhood:") && logicalKey.startsWith(prefix)) {
+                                 results.push(logicalKey);
+                             }
                          }
                     }
                 }

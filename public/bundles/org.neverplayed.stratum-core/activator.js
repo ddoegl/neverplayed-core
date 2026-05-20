@@ -33,6 +33,7 @@ export default class Activator {
         // 2. Initialize Reactive Stratum Service
         this._service = Alpine.reactive({
             _pulse: 0,
+            inhabitants: [],  // Synchronous reactive cache, refreshed via _refreshInhabitants()
             get tenantId() {
                 this._pulse; // Dependency
                 const globalStack = this._sourceSession?.scopedUsers?.["global"];
@@ -106,6 +107,11 @@ export default class Activator {
                 if (this._sourceSession?.currentUser) inhabitants.add(this._sourceSession.currentUser.id);
 
                 return Array.from(inhabitants).filter(id => id !== 'guest');
+            },
+
+            // Sync reactive inhabitants cache (call this after any state change that might add residents)
+            async _refreshInhabitants() {
+                this.inhabitants = await this.getInhabitants();
             },
 
             get residents() {
@@ -202,11 +208,22 @@ export default class Activator {
             _sourcePM: null
         });
  
-        // 2.1 Listen for System Shunts
+        // 2.1 Listen for System Shunts & Wire reactive inhabitants refresh
+        Alpine.effect(() => {
+            // Depend on _pulse — re-run whenever anything pulses state
+            const _p = this._service._pulse;
+            // Schedule async refresh in next microtask to avoid blocking effects
+            Promise.resolve(_p).then(() => this._service._refreshInhabitants());
+        });
+
         globalThis.addEventListener("pm-context-shifted", () => {
             this._logger.info("Stratum Core: System Shunt detected. Pulsing state...");
             this._service._pulse++;
         });
+
+        // Listen for realm and session changes to re-pulse inhabitants
+        globalThis.addEventListener("session-changed", () => { this._service._pulse++; });
+        globalThis.addEventListener("realm-switched", () => { this._service._pulse++; });
 
         // 3. Service Trackers
         context.trackService(`(objectClass=${SESSION_SERVICE})`, {
@@ -231,6 +248,7 @@ export default class Activator {
             addingService: (ref) => {
                 this._service._sourcePM = context.getService(ref);
                 this._logger.debug("Stratum Core: Persistence Manager linked.");
+                this._service._refreshInhabitants(); // Initial population now that PM is available
                 return this._service._sourcePM;
             },
             removedService: () => { this._service._sourcePM = null; }

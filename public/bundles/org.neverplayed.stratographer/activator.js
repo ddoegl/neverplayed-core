@@ -189,7 +189,7 @@ export default class Activator {
 
                 if (perceiver.observerMode === 'realist') {
                     const hierarchy = await stratum.getHierarchy();
-                    const forensic = stratum.inhabitants || [];
+                    const forensic = await stratum.getInhabitants();
                     const local = stratum.residents || [];
                     const inhabitantIdsSet = new Set([...forensic, ...local, beingId]);
                     const inhabitantIds = Array.from(inhabitantIdsSet).filter(i => i !== 'guest' || i === beingId);
@@ -282,8 +282,42 @@ export default class Activator {
                     store.vaultKeys = matching;
 
                     if (self._sensor) {
-                        // Protocol: sense (buffers trace) then recover
-                        self._sensor.sense({ id: node.id, label: node.label });
+                        // Synthesize the mark for this node type so the sensor can evaluate it.
+                        // For identity/resident nodes, we look at the vault keys to find stigmergic marks
+                        // (e.g. identity.personhood:* traces) and collect their matchers.
+                        let synthMark = null;
+                        if (node.id === 'identity' || node.id.startsWith('identity:')) {
+                            // Collect all distinct matchers from the matching vault keys
+                            const matchers = [];
+                            for (const { probe } of matching) {
+                                if (probe.physicalTier) {
+                                    // Find the logical key's derived mark from the PM
+                                    // Prefer stigmergic $stigmergy metadata from the value
+                                }
+                            }
+                            // Probe the personhood trace key directly for this identity
+                            const targetId = node.identityId || node.value;
+                            const personhoodKey = `identity.personhood:${targetId}`;
+                            const pTrace = await pm.probe(personhoodKey);
+                            if (pTrace) {
+                                // Load the value to extract the stigmergy matcher
+                                const pVal = await pm.load(personhoodKey);
+                                if (pVal?.$stigmergy?.matcher) {
+                                    matchers.push({ type: 'matchSense', value: pVal.$stigmergy.matcher });
+                                } else {
+                                    // Fallback: use the standard SensePersonhood mark
+                                    matchers.push({ type: 'matchSense', value: 'SensePersonhood' });
+                                }
+                                synthMark = { matchers };
+                            }
+                        }
+
+                        if (synthMark) {
+                            // sense() with the synthesized mark descriptor so recoverTrace captures it
+                            self._sensor.sense({ id: node.id, label: node.label, mark: synthMark });
+                        } else {
+                            self._sensor.sense({ id: node.id, label: node.label });
+                        }
                         const traceInfo = self._sensor.recoverTrace(node.id);
                         store.perceptualTrace = traceInfo;
                     }
@@ -412,9 +446,9 @@ export default class Activator {
                     });
                 },
 
-                _syncInhabitants() {
+                async _syncInhabitants() {
                     if (!self._stratum) return;
-                    const forensic = self._stratum.inhabitants || [];
+                    const forensic = await self._stratum.getInhabitants();
                     const local = self._stratum.residents || [];
                     this.inhabitants = Array.from(new Set([...forensic, ...local])).filter(i => i !== 'guest');
                 },

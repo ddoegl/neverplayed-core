@@ -124,9 +124,17 @@ export default class Activator {
         const ctx = observerContext || this._perceiver?.getContext();
         if (!ctx) return false;
 
+        // Use enriched senses from all Knowledge Providers so that dynamically
+        // granted senses (e.g. SensePersonhood for PERSONADMIN in governance)
+        // are present during Plexus evaluation. getContext() only returns raw
+        // state with senses: [] — providers never run unless asked.
+        const enrichedSenses = observerContext
+            ? (ctx.surrogate?.senses || [])
+            : (this._perceiver?.getEnrichedSenses() || ctx.surrogate?.senses || []);
+
         const evaluationContext = {
             ...ctx.being,
-            surrogate: ctx.surrogate,
+            surrogate: { ...ctx.surrogate, senses: enrichedSenses },
             realm: ctx.realm
         };
 
@@ -134,7 +142,7 @@ export default class Activator {
         const isSensible = matched !== false;
 
         if (!skipBroadcast) {
-            this._bufferTrace(entity, mark, ctx, isSensible, matched);
+            this._bufferTrace(entity, mark, { ...ctx, surrogate: { ...ctx.surrogate, senses: enrichedSenses } }, isSensible, matched);
         }
 
         return isSensible;
@@ -162,16 +170,28 @@ export default class Activator {
         }
     }
 
-    _bufferTrace(entity, mark, context, result, matches) {
+    _bufferTrace(entity, mark, context, result, rawMatches) {
         const id = entity.id || 'anonymous';
+
+        // Derive human-readable match labels from the mark's matchers,
+        // since evaluateMatchers() returns [true] rather than matched values.
+        let matches = [];
+        if (result !== false && mark?.matchers) {
+            matches = mark.matchers
+                .map(m => m.value || m.sense || m.persona || m.realm || m.type || String(m))
+                .filter(Boolean);
+        } else if (Array.isArray(rawMatches)) {
+            matches = rawMatches.filter(m => m !== true && m !== false).map(String);
+        }
+
         const entry = {
             id,
             timestamp: Date.now(),
             mark,
             context: { 
-                being: context.being?.id, 
-                surrogate: context.surrogate?.level, 
-                realm: context.realm?.id 
+                persona: context.being?.id, 
+                grounding: context.surrogate?.grounding, 
+                realm: (typeof context.realm === 'object' && context.realm !== null) ? context.realm.id : context.realm
             },
             result,
             matches

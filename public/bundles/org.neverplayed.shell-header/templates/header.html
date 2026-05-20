@@ -157,7 +157,7 @@
           </div>
           <div
             class="text-[11px] font-mono text-blue-400/80 group-hover:text-blue-400 transition-colors"
-            x-text="shell.perceiver.being?.email || 'N/A'"
+            x-text="(($session.scopedUsers?.global || {})[$session.scopedUsers?.global?.__activeId__])?.email || $session.scopedUsers?.global?.__activeId__ || 'N/A'"
           >
           </div>
         </div>
