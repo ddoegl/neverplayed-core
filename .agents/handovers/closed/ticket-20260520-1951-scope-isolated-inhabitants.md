@@ -2,10 +2,12 @@
 
 - **From:** Forensic Analyst
 - **To:** Development Engineer
+- **Status:** ✅ Closed — Implemented 2026-05-21
+
 - **Context:** Following the initial fix to list inhabitants, the current implementation pulls residents from *all* scope stacks in `scopedUsers` (global leakage). The goal is to restrict `getInhabitants()` to only return the inhabitants and historical traces of the *current active realm scope*.
 
 ## Objectives
-- [ ] **Remediate `getInhabitants()` in `org.neverplayed.stratum-core`**:
+- [x] **Remediate `getInhabitants()` in `org.neverplayed.stratum-core`**:
   - Open [activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.stratum-core/activator.js#L92-L109).
   - Retrieve the current active realm scope: `const currentRealm = this.realmId;`.
   - **Database Scan Isolation**: Only add `probe.context.identityId` from the persistence manager keys if `probe.context.realmId === currentRealm`.
@@ -20,7 +22,7 @@
         });
     }
     ```
-- [ ] **Update / Add Unit Test**:
+- [x] **Update / Add Unit Test**:
   - In [stratum-logic.test.ts](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.stratum-core/tests/stratum-logic.test.ts), add a test validating that `getInhabitants()` only extracts users associated with the active realm scope and excludes users from other inactive scopes.
   - Execute `deno test --no-check -A --location http://localhost public/bundles/org.neverplayed.stratum-core/tests/` to ensure all tests pass.
 
