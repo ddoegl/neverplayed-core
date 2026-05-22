@@ -365,6 +365,45 @@
             </div>
           </template>
 
+          <!-- Realm Cognition Panel (TAME) -->
+          <template x-if="$store.explorer.realmCognition">
+            <div class="bg-purple-950/20 border border-purple-500/30 rounded-2xl p-4 mb-4 shadow-lg shadow-purple-500/5">
+              <div class="flex items-center space-x-2 mb-3">
+                <i class="fas fa-brain text-purple-400 text-xs"></i>
+                <span class="text-[9px] uppercase tracking-[0.2em] font-black text-purple-300">Realm Cognition (TAME)</span>
+              </div>
+              <div class="space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-slate-400">Homeostatic Status</span>
+                  <template x-if="$store.explorer.realmCognition.predictionError === 0">
+                    <span class="text-[9px] px-2 py-0.5 rounded font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
+                      Stable (Homeostasis)
+                    </span>
+                  </template>
+                  <template x-if="$store.explorer.realmCognition.predictionError > 0">
+                    <span class="text-[9px] px-2 py-0.5 rounded font-black bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider animate-pulse">
+                      Inference Triggered
+                    </span>
+                  </template>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-slate-400">Prediction Error</span>
+                  <span class="text-[10px] font-mono font-bold text-slate-200" 
+                        :class="$store.explorer.realmCognition.predictionError > 0 ? 'text-amber-400' : 'text-slate-300'"
+                        x-text="$store.explorer.realmCognition.predictionError.toFixed(2)"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-slate-400">Active Surrogate</span>
+                  <span class="text-[10px] text-purple-400 font-mono" x-text="$store.explorer.realmCognition.activeSurrogate"></span>
+                </div>
+                <div class="flex flex-col space-y-1 pt-2 mt-2 border-t border-purple-500/15">
+                  <span class="text-[8px] uppercase text-purple-400/60 font-black">Light Cone Boundary</span>
+                  <span class="text-[10px] font-mono text-slate-300" x-text="$store.explorer.realmCognition.lightCone"></span>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <!-- Realm World Model: Trace-Makers -->
           <div
             x-show="$store.explorer.activeNode?.id?.startsWith('realm:') && $store.explorer.activeNodeTraceMakers?.length > 0"

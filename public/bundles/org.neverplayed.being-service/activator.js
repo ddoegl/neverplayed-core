@@ -145,12 +145,42 @@ export default class Activator extends BaseActivator {
             /**
              * Get all known beings from seed data.
              */
-            getKnownBeings: () => this._beingsData,
+            getKnownBeings: () => {
+                const standardRealms = [
+                    "org.neverplayed.realm.core",
+                    "org.neverplayed.realm.foundation",
+                    "org.neverplayed.realm.showcase",
+                    "org.neverplayed.realm.habitat",
+                    "org.neverplayed.realm.governance"
+                ];
+                const synthesizedRealms = standardRealms.map(realmId => ({
+                    id: `realm:${realmId}`,
+                    label: `Realm Mind (${realmId.split('.').pop()})`,
+                    email: `${realmId}@neverplayed.realm`,
+                    originRealmId: realmId,
+                    isRealmBeing: true,
+                    surrogates: ['system-collector', 'sovereign-guard']
+                }));
+                return [...this._beingsData, ...synthesizedRealms];
+            },
 
             /**
              * Get a specific known being by ID.
              */
-            getBeing: (id) => this._beingsData.find(b => b.id === id),
+            getBeing: (id) => {
+                if (id && id.startsWith('realm:')) {
+                    const realmId = id.substring(6);
+                    return {
+                        id: id,
+                        label: `Realm Mind (${realmId.split('.').pop()})`,
+                        email: `${realmId}@neverplayed.realm`,
+                        originRealmId: realmId,
+                        isRealmBeing: true,
+                        surrogates: ['system-collector', 'sovereign-guard']
+                    };
+                }
+                return this._beingsData.find(b => b.id === id);
+            },
 
             /**
              * Get a specific known surrogate by ID.

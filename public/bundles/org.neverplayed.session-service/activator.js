@@ -275,11 +275,13 @@ export default class Activator {
                         activeSurrogateId: null,
                         isTenant: targetScope === 'global',
                         loggedIn: true,
-                        grounding: resolvedGrounding
+                        grounding: resolvedGrounding,
+                        lastActiveTime: Date.now()
                     };
                 } else {
                     this.scopedUsers[targetScope][identityId].loggedIn = true;
                     this.scopedUsers[targetScope][identityId].grounding = resolvedGrounding;
+                    this.scopedUsers[targetScope][identityId].lastActiveTime = Date.now();
                     if (!this.scopedUsers[targetScope][identityId].originRealmId) {
                         this.scopedUsers[targetScope][identityId].originRealmId = identity.originRealmId || identity.initial?.originRealmId || identity.initial?.realm || identity.homeRealm || 'global';
                     }
@@ -295,6 +297,7 @@ export default class Activator {
                         this.scopedUsers['global'][identityId].originRealmId = this.scopedUsers[targetScope][identityId].originRealmId;
                     }
                     this.scopedUsers['global'][identityId].grounding = resolvedGrounding;
+                    this.scopedUsers['global'][identityId].lastActiveTime = Date.now();
                 }
 
                 // Rule: Surrogate Grafting / Deactivation
@@ -347,18 +350,20 @@ export default class Activator {
                 }
             },
 
-            logout(scope = null) {
+            logout(scope = null, userId = null) {
                 const activeScope = this.activeFlowId || this.activeRealmId;
                 const targetScope = scope || activeScope || 'global';
                 
-                logger?.info(`Session: LOGOUT (Exit Resident) requested for scope '${targetScope}'`);
+                logger?.info(`Session: LOGOUT (Exit Resident) requested for scope '${targetScope}'${userId ? ` for user '${userId}'` : ''}`);
                 
                 if (this.scopedUsers[targetScope]) {
-                    const activeId = this.scopedUsers[targetScope].__activeId__;
-                    if (activeId && activeId !== 'guest' && this.scopedUsers[targetScope][activeId]) {
-                        this.scopedUsers[targetScope][activeId].loggedIn = false;
+                    const targetUserId = userId || this.scopedUsers[targetScope].__activeId__;
+                    if (targetUserId && targetUserId !== 'guest' && this.scopedUsers[targetScope][targetUserId]) {
+                        this.scopedUsers[targetScope][targetUserId].loggedIn = false;
                     }
-                    this.scopedUsers[targetScope].__activeId__ = 'guest';
+                    if (this.scopedUsers[targetScope].__activeId__ === targetUserId) {
+                        this.scopedUsers[targetScope].__activeId__ = 'guest';
+                    }
                 }
 
                 // Rule: Being Dissolution
@@ -452,7 +457,8 @@ export default class Activator {
                             surrogates: {},
                             activeSurrogateId: null,
                             isTenant: false,
-                            loggedIn: false
+                            loggedIn: false,
+                            lastActiveTime: Date.now()
                         };
                         logger?.info(`Session: Registered identity '${id}' in global stack.`);
                     } else if (!this.scopedUsers['global'][id].originRealmId) {
@@ -465,7 +471,7 @@ export default class Activator {
                             this.scopedUsers[homeRealm] = { __activeId__: 'guest', guest: { id: 'guest' } };
                         }
                         if (!this.scopedUsers[homeRealm][id]) {
-                            const userObj = { ...this.scopedUsers['global'][id], isTenant: false, loggedIn: false };
+                            const userObj = { ...this.scopedUsers['global'][id], isTenant: false, loggedIn: false, lastActiveTime: Date.now() };
                             
                             // Rule: Initial Surrogate Provisioning (L6)
                             const initialSurrogateId = idnt.initial?.surrogate || 'observer';

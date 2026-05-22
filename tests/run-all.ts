@@ -15,7 +15,8 @@ const tests = [
   "core-bundles.test.ts",
   "persistence-resilience.test.ts",
   "perceiver-carryover-sync.test.ts",
-  "ontology-harmony.test.ts"
+  "ontology-harmony.test.ts",
+  "realm-as-being.test.ts"
 ];
 
 console.log("🏛️  Never Played: Strategic Regression Suite Starting...");

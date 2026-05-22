@@ -14,6 +14,7 @@ export const SYSTEM_RESET_SERVICE = "org.neverplayed.system.Reset";
 export const AGENT_SERVICE = "org.neverplayed.agent.AgentService";
 export const STRATUM_SERVICE = "org.neverplayed.stratum.StratumService";
 export const BEING_SERVICE = "org.neverplayed.domain.BeingService";
+export const REALM_COGNITION_SERVICE = "org.neverplayed.realm.RealmCognitionService";
 
 // 2. Pandino / External Services
 export const PERSISTENCE_MANAGER_SERVICE = "@pandino/persistence-manager/PersistenceManager";

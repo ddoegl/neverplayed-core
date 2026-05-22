@@ -18,7 +18,9 @@ import {
     BUNDLE_TYPE_ADMIN,
     SESSION_SERVICE,
     STRATUM_CHANGED_TOPIC,
-    BEING_SERVICE
+    BEING_SERVICE,
+    REALM_COGNITION_SERVICE,
+    SESSION_CHANGED_TOPIC
 } from "../../core-types.js";
 import _Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -32,6 +34,7 @@ export default class Activator {
     _perceiver = null;
     _sensor = null;
     _beingService = null;
+    _cognitionServices = null;
     _renderListener = null;
     _shuntListener = null;
 
@@ -99,6 +102,29 @@ export default class Activator {
             }
         }).open();
 
+        // Track Realm Cognition Services
+        this._cognitionServices = new Map();
+        context.trackService(`(objectClass=${REALM_COGNITION_SERVICE})`, {
+            addingService: (ref) => {
+                const service = context.getService(ref);
+                const realmId = ref.getProperty("realm.id");
+                if (realmId && service) {
+                    this._cognitionServices.set(realmId, service);
+                }
+                const store = Alpine.store('explorer');
+                if (store) store.refreshTopology();
+                return service;
+            },
+            removedService: (ref) => {
+                const realmId = ref.getProperty("realm.id");
+                if (realmId) {
+                    this._cognitionServices.delete(realmId);
+                }
+                const store = Alpine.store('explorer');
+                if (store) store.refreshTopology();
+            }
+        }).open();
+
         // 6. Register as EventHandler for Perceiver and Stratum Changes
         this._eventRegistration = context.registerService(EVENT_HANDLER_INTERFACE, {
             handleEvent: (event) => {
@@ -113,7 +139,7 @@ export default class Activator {
                 }
             }
         }, {
-            [EVENT_TOPIC]: [PERCEIVER_CHANGED_TOPIC, STRATUM_CHANGED_TOPIC]
+            [EVENT_TOPIC]: [PERCEIVER_CHANGED_TOPIC, STRATUM_CHANGED_TOPIC, SESSION_CHANGED_TOPIC]
         });
 
         // 8. Register Reactive Store
@@ -160,6 +186,7 @@ export default class Activator {
             loadingVault: false,
             perceptualTrace: null,
             activeNodeTraceMakers: [],
+            realmCognition: null,
             _lastValueHash: "",
             visible: false,
             _grounding: self._perceiver?.getContext().observerMode || "idealist",
@@ -376,7 +403,7 @@ export default class Activator {
                     const hasTraces = traceMakers.includes(beingId);
                     const strata = [
                         { id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' },
-                        { id: 'realm', label: 'Realm', value: realmId, type: 'WHERE', color: '#a855f7' },
+                        { id: 'realm', label: 'Realm', value: realmId, type: 'WHERE', color: '#a855f7', realmId: realmId },
                         { 
                             id: 'identity', 
                             label: hasTraces ? 'Observer (with traces)' : 'Observer', 
@@ -395,6 +422,17 @@ export default class Activator {
                     store.nodes = [ strata[0], strata[2], strata[1], strata[3] ];
                     store.links = connections;
                 }
+
+                // Resolve predictionError for all nodes representing a realm
+                store.nodes.forEach(node => {
+                    if (node.id === 'realm' || node.id.startsWith('realm:')) {
+                        const rId = node.realmId || node.value;
+                        const service = self._cognitionServices?.get(rId);
+                        node.predictionError = service ? service.getPredictionError() : 0.0;
+                    } else {
+                        node.predictionError = 0.0;
+                    }
+                });
             },
 
             inspectVault: async (node) => {
@@ -404,6 +442,18 @@ export default class Activator {
                 store.vaultKeys = [];
                 store.perceptualTrace = null;
                 store.activeNodeTraceMakers = [];
+
+                if (node.id === 'realm' || node.id.startsWith('realm:')) {
+                    const rId = node.realmId || node.value;
+                    const service = self._cognitionServices?.get(rId);
+                    store.realmCognition = {
+                        predictionError: service ? service.getPredictionError() : 0.0,
+                        activeSurrogate: 'sovereign-guard',
+                        lightCone: 'Session (Lazy Horizon) / Spatial Bedrock'
+                    };
+                } else {
+                    store.realmCognition = null;
+                }
 
                 if (node.id.startsWith('realm:')) {
                     const currentRealmId = self._stratum?.realmId;
@@ -548,6 +598,28 @@ export default class Activator {
             .attr("stroke", d => d.borderType === 'double-trace' ? '#f59e0b' : d.color)
             .attr("stroke-width", 1.5)
             .attr("stroke-dasharray", d => d.borderType === 'double-trace' ? '3,3' : null);
+
+        // Pulse ring for realm prediction error or cognition state
+        const realmNode = node.filter(d => d.id === 'realm' || d.id.startsWith('realm:'));
+        const pulseCircle = realmNode.append("circle")
+            .attr("r", 16)
+            .attr("fill", "none")
+            .attr("stroke", "#a855f7")
+            .attr("stroke-width", 2)
+            .attr("stroke-dasharray", d => d.predictionError > 0 ? "4,4" : null)
+            .attr("class", "cognition-ring");
+
+        pulseCircle.append("animate")
+            .attr("attributeName", "r")
+            .attr("values", "14;18;14")
+            .attr("dur", "2s")
+            .attr("repeatCount", "indefinite");
+        
+        pulseCircle.append("animate")
+            .attr("attributeName", "stroke-opacity")
+            .attr("values", "1;0.4;1")
+            .attr("dur", "2s")
+            .attr("repeatCount", "indefinite");
 
         node.append("circle")
             .attr("r", 8)
