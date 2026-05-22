@@ -115,6 +115,13 @@ export default class Activator {
                     __activeId__: activeId
                 };
             }
+            // Sync/repair the loggedIn flag based on __activeId__
+            const activeId = scopedUsers[scope].__activeId__;
+            Object.keys(scopedUsers[scope]).forEach(key => {
+                if (key !== 'guest' && key !== '__activeId__') {
+                    scopedUsers[scope][key].loggedIn = (key === activeId);
+                }
+            });
         });
 
         const persistedState = {
@@ -192,7 +199,12 @@ export default class Activator {
 
             // Helper: Materialize surrogate if present
             _materialize(identity) {
-                if (identity && identity.activeSurrogateId && identity.surrogates?.[identity.activeSurrogateId]) {
+                if (!identity) return identity;
+                const base = {
+                    ...identity,
+                    grounding: identity.grounding || 'idealist'
+                };
+                if (identity.activeSurrogateId && identity.surrogates?.[identity.activeSurrogateId]) {
                     const surrogate = identity.surrogates[identity.activeSurrogateId];
                     
                     // Diagnostic: Materialization Trace
@@ -201,14 +213,15 @@ export default class Activator {
                     }
 
                     return {
-                        ...identity,
+                        ...base,
                         ...surrogate,
                         id: identity.id, // Being ID (L1) must remain the primary identifier
                         surrogateId: surrogate.id, // Functional Role ID (L6)
-                        isMaterialized: true
+                        isMaterialized: true,
+                        grounding: identity.grounding || surrogate.grounding || 'idealist'
                     };
                 }
-                return identity;
+                return base;
             },
 
             getResolvedIdentity(beingId) {
@@ -220,7 +233,7 @@ export default class Activator {
                 logger?.info(`Session: Being focus shifted to '${beingId}'. All realms will now inhabit this identity by default.`);
             },
 
-            login(user, scope = null, surrogate = null) {
+            login(user, scope = null, surrogate = undefined) {
                 const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
                 let identity;
                 if (typeof user === "string") {
@@ -244,6 +257,9 @@ export default class Activator {
                     this.scopedUsers[targetScope] = { __activeId__: 'guest', guest: { id: 'guest' } };
                 }
 
+                // Resolve root grounding to preserve/upsert
+                const resolvedGrounding = identity.grounding || (this.scopedUsers[targetScope][identityId] ? this.scopedUsers[targetScope][identityId].grounding : null) || 'idealist';
+
                 // Upsert Identity into Stack
                 if (!this.scopedUsers[targetScope][identityId]) {
                     this.scopedUsers[targetScope][identityId] = { 
@@ -254,10 +270,19 @@ export default class Activator {
                         alias: identity.alias,
                         capabilities: identity.capabilities || [],
                         attributes: identity.attributes || {},
+                        originRealmId: identity.originRealmId || identity.initial?.originRealmId || identity.initial?.realm || identity.homeRealm || 'global',
                         surrogates: {},
                         activeSurrogateId: null,
-                        isTenant: targetScope === 'global'
+                        isTenant: targetScope === 'global',
+                        loggedIn: true,
+                        grounding: resolvedGrounding
                     };
+                } else {
+                    this.scopedUsers[targetScope][identityId].loggedIn = true;
+                    this.scopedUsers[targetScope][identityId].grounding = resolvedGrounding;
+                    if (!this.scopedUsers[targetScope][identityId].originRealmId) {
+                        this.scopedUsers[targetScope][identityId].originRealmId = identity.originRealmId || identity.initial?.originRealmId || identity.initial?.realm || identity.homeRealm || 'global';
+                    }
                 }
 
                 // Rule: Global Anchoring (Ideation: Sovereign Beings)
@@ -265,9 +290,14 @@ export default class Activator {
                 if (!this.scopedUsers['global'][identityId]) {
                     this.scopedUsers['global'][identityId] = { ...this.scopedUsers[targetScope][identityId] };
                     logger?.debug(`Session: Anchored identity '${identityId}' in global scope.`);
+                } else {
+                    if (!this.scopedUsers['global'][identityId].originRealmId) {
+                        this.scopedUsers['global'][identityId].originRealmId = this.scopedUsers[targetScope][identityId].originRealmId;
+                    }
+                    this.scopedUsers['global'][identityId].grounding = resolvedGrounding;
                 }
 
-                // Rule: Surrogate Grafting
+                // Rule: Surrogate Grafting / Deactivation
                 if (surrogate && surrogate.id) {
                     const sId = surrogate.id;
                     this.scopedUsers[targetScope][identityId].surrogates[sId] = {
@@ -276,6 +306,9 @@ export default class Activator {
                     };
                     this.scopedUsers[targetScope][identityId].activeSurrogateId = sId;
                     logger?.info(`Session: Materialized surrogate '${sId}' for identity '${identityId}'`);
+                } else if (surrogate === null) {
+                    this.scopedUsers[targetScope][identityId].activeSurrogateId = null;
+                    logger?.info(`Session: Deactivated surrogate (naked observer state) for identity '${identityId}'`);
                 }
 
                 // Pivot Active Resident
@@ -321,6 +354,10 @@ export default class Activator {
                 logger?.info(`Session: LOGOUT (Exit Resident) requested for scope '${targetScope}'`);
                 
                 if (this.scopedUsers[targetScope]) {
+                    const activeId = this.scopedUsers[targetScope].__activeId__;
+                    if (activeId && activeId !== 'guest' && this.scopedUsers[targetScope][activeId]) {
+                        this.scopedUsers[targetScope][activeId].loggedIn = false;
+                    }
                     this.scopedUsers[targetScope].__activeId__ = 'guest';
                 }
 
@@ -351,20 +388,32 @@ export default class Activator {
                     return;
                 }
 
-                const currentSurrogateId = user.surrogateId || 'person';
-                const currentSenses = user.senses || [];
+                // 1. Update root grounding in target scope & global anchor
+                if (this.scopedUsers[targetScope]?.[user.id]) {
+                    this.scopedUsers[targetScope][user.id].grounding = targetGrounding;
+                }
+                if (this.scopedUsers['global']?.[user.id]) {
+                    this.scopedUsers['global'][user.id].grounding = targetGrounding;
+                }
+
+                // 2. Fetch current surrogate ID to decide how to login.
+                const activeSurrogateId = this.scopedUsers[targetScope]?.[user.id]?.activeSurrogateId;
                 
-                // Strip out any previously applied perceptual senses
-                const baseSenses = currentSenses.filter(s => 
-                    !["IdealistVision", "ForensicVision", "ArchitectControl"].includes(s)
-                );
-                
-                const surrogate = {
-                    id: currentSurrogateId,
-                    grounding: targetGrounding,
-                    label: targetGrounding === 'idealist' ? "Idealist Mode" : "Realist Mode",
-                    senses: baseSenses
-                };
+                let surrogate = null;
+                if (activeSurrogateId) {
+                    const rawSurrogate = this.scopedUsers[targetScope][user.id].surrogates[activeSurrogateId];
+                    const currentSenses = rawSurrogate?.senses || [];
+                    const baseSenses = currentSenses.filter(s => 
+                        !["IdealistVision", "ForensicVision", "ArchitectControl"].includes(s)
+                    );
+                    surrogate = {
+                        ...rawSurrogate,
+                        id: activeSurrogateId,
+                        grounding: targetGrounding,
+                        label: targetGrounding === 'idealist' ? "Idealist Mode" : "Realist Mode",
+                        senses: baseSenses
+                    };
+                }
 
                 this.login(user.id, targetScope, surrogate);
             },
@@ -387,7 +436,7 @@ export default class Activator {
                 }
                 identities.forEach(idnt => {
                     const id = idnt.id;
-                    const homeRealm = idnt.initial?.realm || idnt.homeRealm || 'global';
+                    const homeRealm = idnt.originRealmId || idnt.initial?.originRealmId || idnt.initial?.realm || idnt.homeRealm || 'global';
 
                     // 1. Global Anchoring
                     if (!this.scopedUsers['global'][id]) {
@@ -399,11 +448,15 @@ export default class Activator {
                             alias: idnt.label || idnt.alias,
                             attributes: idnt.attributes || {},
                             capabilities: idnt.capabilities || [],
+                            originRealmId: homeRealm,
                             surrogates: {},
                             activeSurrogateId: null,
-                            isTenant: false
+                            isTenant: false,
+                            loggedIn: false
                         };
                         logger?.info(`Session: Registered identity '${id}' in global stack.`);
+                    } else if (!this.scopedUsers['global'][id].originRealmId) {
+                        this.scopedUsers['global'][id].originRealmId = homeRealm;
                     }
 
                     // 2. Realm Inhabitation (for shell visibility)
@@ -412,20 +465,18 @@ export default class Activator {
                             this.scopedUsers[homeRealm] = { __activeId__: 'guest', guest: { id: 'guest' } };
                         }
                         if (!this.scopedUsers[homeRealm][id]) {
-                            const userObj = { ...this.scopedUsers['global'][id], isTenant: false };
+                            const userObj = { ...this.scopedUsers['global'][id], isTenant: false, loggedIn: false };
                             
                             // Rule: Initial Surrogate Provisioning (L6)
-                            const initialSurrogateId = idnt.initial?.surrogate;
+                            const initialSurrogateId = idnt.initial?.surrogate || 'observer';
                             const initialSurrogateData = idnt.initial?.surrogateData || {};
-                            if (initialSurrogateId) {
-                                userObj.surrogates[initialSurrogateId] = {
-                                    id: initialSurrogateId,
-                                    ...initialSurrogateData,
-                                    materializedAt: new Date().toISOString()
-                                };
-                                userObj.activeSurrogateId = initialSurrogateId;
-                                logger?.info(`Session: Provisioned initial surrogate '${initialSurrogateId}' for identity '${id}' in realm '${homeRealm}'.`);
-                            }
+                            userObj.surrogates[initialSurrogateId] = {
+                                id: initialSurrogateId,
+                                ...initialSurrogateData,
+                                materializedAt: new Date().toISOString()
+                            };
+                            userObj.activeSurrogateId = initialSurrogateId;
+                            logger?.info(`Session: Provisioned initial surrogate '${initialSurrogateId}' for identity '${id}' in realm '${homeRealm}'.`);
 
                             this.scopedUsers[homeRealm][id] = userObj;
                             logger?.info(`Session: Inhabited identity '${id}' in home realm '${homeRealm}'.`);

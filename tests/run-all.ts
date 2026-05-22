@@ -13,7 +13,9 @@ const tests = [
   "test-mcp-client.ts",
   "verify-security.ts",
   "core-bundles.test.ts",
-  "persistence-resilience.test.ts"
+  "persistence-resilience.test.ts",
+  "perceiver-carryover-sync.test.ts",
+  "ontology-harmony.test.ts"
 ];
 
 console.log("🏛️  Never Played: Strategic Regression Suite Starting...");

@@ -70,11 +70,18 @@ export class StratumServiceImpl {
         return ctx?.tier || "local";
     }
 
-    get residents() {
+    get occupants() {
         if (!this._sourceSession || !this._sourceSession.scopedUsers) return [];
         const scope = this.realmId;
         const stack = this._sourceSession.scopedUsers[scope] || {};
-        return Object.keys(stack).filter(id => id !== 'guest' && id !== '__activeId__');
+        return Object.keys(stack).filter(id => {
+            if (id === 'guest' || id === '__activeId__') return false;
+            return stack[id] && stack[id].loggedIn === true;
+        });
+    }
+
+    get residents() {
+        return this.occupants;
     }
 
     toURI() {
@@ -89,27 +96,25 @@ export class StratumServiceImpl {
         return await this._sourceRealm.getHierarchy(this.realmId);
     }
 
-    async getInhabitants() {
+    async getTraceMakers() {
         if (!this._sourcePM) return [];
         const currentRealm = this.realmId;
         const allKeys = await this._sourcePM.listKeys("");
-        const inhabitants = new Set();
+        const traceMakers = new Set();
         for (const key of allKeys) {
              const probe = await this._sourcePM.probe(key);
              if (probe && probe.context && probe.context.identityId && probe.context.realmId === currentRealm) {
-                 inhabitants.add(probe.context.identityId);
+                  traceMakers.add(probe.context.identityId);
              }
         }
-        if (this._sourceSession?.scopedUsers) {
-            const stack = this._sourceSession.scopedUsers[currentRealm] || {};
-            Object.values(stack).forEach(u => {
-                if (u && typeof u === 'object' && u.id) {
-                    inhabitants.add(u.id);
-                }
-            });
-        }
-        if (this._sourceSession?.currentUser) inhabitants.add(this._sourceSession.currentUser.id);
-        return Array.from(inhabitants).filter(id => id !== 'guest');
+        return Array.from(traceMakers).filter(id => id !== 'guest');
+    }
+
+    async getInhabitants() {
+        const occupants = this.occupants;
+        const traceMakers = await this.getTraceMakers();
+        const union = new Set([...occupants, ...traceMakers]);
+        return Array.from(union);
     }
 
     async _refreshInhabitants() {
@@ -125,6 +130,10 @@ export class StratumServiceImpl {
         this._updatePending = true;
         Promise.resolve().then(async () => {
             this._updatePending = false;
+            const grounding = this._sourceSession?.currentUser?.grounding;
+            if (grounding && (grounding === 'idealist' || grounding === 'realist')) {
+                this._perspective = grounding;
+            }
             await this._refreshInhabitants();
             this._broadcastChanged();
         });
@@ -140,6 +149,7 @@ export class StratumServiceImpl {
                 tier: this.tier,
                 perspective: this.perspective,
                 inhabitants: [...this.inhabitants],
+                occupants: [...this.occupants],
                 residents: [...this.residents]
             };
             const event = this._eventFactory.build(STRATUM_CHANGED_TOPIC, properties);

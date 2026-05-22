@@ -110,11 +110,19 @@ export class BundleTestHarness {
         (globalThis as any).navigator = window.navigator;
         // deno-lint-ignore no-explicit-any
         (globalThis as any).NEVERPLAYED_BASE_URL = this.baseUrl;
-        
         // deno-lint-ignore no-explicit-any
-        if (!(globalThis as any).location) {
-            // deno-lint-ignore no-explicit-any
-            (globalThis as any).location = { href: 'http://localhost/', hostname: 'localhost' };
+        const loc = (globalThis as any).location;
+        if (!loc || !loc.origin || loc.origin === "null" || loc.origin === "about:blank") {
+            try {
+                Object.defineProperty(globalThis, "location", {
+                    value: { href: 'http://localhost/', hostname: 'localhost', origin: 'http://localhost' },
+                    writable: true,
+                    configurable: true
+                });
+            } catch (_err) {
+                // deno-lint-ignore no-explicit-any
+                (globalThis as any).location = { href: 'http://localhost/', hostname: 'localhost', origin: 'http://localhost' };
+            }
         }
     }
 
@@ -126,6 +134,7 @@ export class BundleTestHarness {
         // The "Golden" Deno Fetcher Logic - Upgraded for remote support
         const denoFetcher = async (url: string | URL) => {
             let urlStr = url instanceof URL ? url.toString() : url;
+            console.log("denoFetcher fetching url:", urlStr);
             
             // Remote URLs: Use native fetch directly
             if (urlStr.startsWith("https://") || (urlStr.startsWith("http://") && !urlStr.includes("localhost"))) {
@@ -179,12 +188,58 @@ export class BundleTestHarness {
             } as any;
         };
 
-        // Initialize Pandino with the exact baseline configuration plus fetcher override
+        // Initialize Pandino with the exact baseline configuration plus custom fetcher and importer overrides for Deno
         const finalConfig = {
             ...loaderConfiguration,
             "pandino.loader.fetcher": denoFetcher,
             "pandino.base.url": this.baseUrl,
+            "pandino.manifest.fetcher": {
+                async fetch(resource: string, baseUrl?: string) {
+                    let urlStr: string;
+                    if (baseUrl) {
+                        urlStr = new URL(resource, baseUrl).toString();
+                    } else {
+                        urlStr = resource;
+                    }
+                    const text = await denoFetcher(urlStr);
+                    if (text === null) {
+                        throw new Error(`Failed to fetch manifest: ${urlStr}`);
+                    }
+                    return JSON.parse(text);
+                }
+            },
+            "pandino.bundle.importer": {
+                async import(activatorPath: string, context: any, baseUrl?: string) {
+                    console.log(`[Custom Importer Args] length=${arguments.length}`);
+                    for (let idx = 0; idx < arguments.length; idx++) {
+                        const val = arguments[idx];
+                        console.log(`  - arg[${idx}]: type=${typeof val}, value=${typeof val === 'object' ? String(val) : String(val)}`);
+                    }
+                    
+                    let absoluteUrl: string;
+                    // Let's find any string argument that looks like a path/URL to use as base URL
+                    let base: string | undefined = undefined;
+                    for (let idx = 0; idx < arguments.length; idx++) {
+                        const val = arguments[idx];
+                        if (typeof val === 'string' && (val.includes('/') || val.includes('\\')) && val !== activatorPath) {
+                            base = val;
+                        }
+                    }
+                    console.log(`[Custom Importer Resolved Base] base="${base}"`);
+                    if (base && base.includes("://")) {
+                        absoluteUrl = new URL(activatorPath, base).toString();
+                    } else if (base) {
+                        const baseFileUrl = base.startsWith("/") ? `file://${base}` : base;
+                        absoluteUrl = new URL(activatorPath, baseFileUrl).toString();
+                    } else {
+                        absoluteUrl = activatorPath.startsWith("/") ? `file://${activatorPath}` : activatorPath;
+                    }
+                    console.log(`[Custom Importer Resolved] absoluteUrl="${absoluteUrl}"`);
+                    return await import(absoluteUrl);
+                }
+            }
         };
+
 
         // deno-lint-ignore no-explicit-any
         this.pandino = new Pandino(finalConfig as any);
@@ -192,6 +247,32 @@ export class BundleTestHarness {
         await this.pandino.init();
         await this.pandino.start();
         this.context = this.pandino.getBundleContext();
+
+        // Wrap installBundle at the prototype level to resolve relative bundle paths during tests for all bundles
+        const contextProto = Object.getPrototypeOf(this.context);
+        if (contextProto && typeof contextProto.installBundle === "function" && !contextProto.installBundle.__wrapped) {
+            const originalInstallBundle = contextProto.installBundle;
+            // deno-lint-ignore no-explicit-any
+            contextProto.installBundle = function (manifestOrUrl: any) {
+                if (typeof manifestOrUrl === "string") {
+                    let urlStr = manifestOrUrl;
+                    if (!urlStr.includes("://") && !urlStr.startsWith("data:")) {
+                        let relativePath = urlStr;
+                        if (relativePath.startsWith("./")) {
+                            relativePath = relativePath.slice(2);
+                        }
+                        if (relativePath.startsWith("/")) {
+                            relativePath = relativePath.slice(1);
+                        }
+                        const baseUrl = `file://${Deno.cwd()}/public/`;
+                        urlStr = `${baseUrl}${relativePath}`;
+                    }
+                    return originalInstallBundle.call(this, urlStr);
+                }
+                return originalInstallBundle.call(this, manifestOrUrl);
+            };
+            contextProto.installBundle.__wrapped = true;
+        }
 
         return this.context;
     }

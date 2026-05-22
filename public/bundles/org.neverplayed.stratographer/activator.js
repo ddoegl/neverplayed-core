@@ -17,7 +17,8 @@ import {
     EVENT_TOPIC,
     BUNDLE_TYPE_ADMIN,
     SESSION_SERVICE,
-    STRATUM_CHANGED_TOPIC
+    STRATUM_CHANGED_TOPIC,
+    BEING_SERVICE
 } from "../../core-types.js";
 import _Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -30,6 +31,7 @@ export default class Activator {
     _realmManager = null;
     _perceiver = null;
     _sensor = null;
+    _beingService = null;
     _renderListener = null;
     _shuntListener = null;
 
@@ -82,6 +84,19 @@ export default class Activator {
                 return this._sensor;
             },
             removedService: () => { this._sensor = null; }
+        }).open();
+
+        // Track Being Service
+        context.trackService(`(objectClass=${BEING_SERVICE})`, {
+            addingService: (ref) => {
+                this._beingService = context.getService(ref);
+                const store = Alpine.store('explorer');
+                if (store) store.refreshTopology();
+                return this._beingService;
+            },
+            removedService: () => { 
+                this._beingService = null; 
+            }
         }).open();
 
         // 6. Register as EventHandler for Perceiver and Stratum Changes
@@ -182,11 +197,131 @@ export default class Activator {
 
                 if (perceiver.observerMode === 'realist') {
                     const hierarchy = await stratum.getHierarchy();
-                    const forensic = await stratum.getInhabitants();
-                    const local = stratum.residents || [];
-                    const inhabitantIdsSet = new Set([...forensic, ...local, beingId]);
-                    const inhabitantIds = Array.from(inhabitantIdsSet).filter(i => i !== 'guest' || i === beingId);
+                    const occupants = stratum.occupants || stratum.residents || [];
+                    const traceMakers = (typeof stratum.getTraceMakers === 'function') ? await stratum.getTraceMakers() : [];
+                    const knownBeings = self._beingService ? self._beingService.getKnownBeings() : [];
                     
+                    const beingsToRender = new Map();
+                    
+                    knownBeings.forEach(being => {
+                        const home = self._beingService.getBeingHome(being.id);
+                        const isHome = home === realmId;
+                        
+                        const isOccupant = occupants.includes(being.id);
+                        const isTraceMaker = traceMakers.includes(being.id);
+                        const isActiveObserver = being.id === beingId;
+                        
+                        if (isActiveObserver) {
+                            beingsToRender.set(being.id, {
+                                state: 'observer',
+                                color: '#10b981',
+                                label: 'Observer',
+                                opacity: 1.0,
+                                strokeStyle: 'solid',
+                                borderType: 'double',
+                                value: being.id
+                            });
+                        } else if (isOccupant) {
+                            if (isHome) {
+                                beingsToRender.set(being.id, {
+                                    state: 'resident',
+                                    color: '#a855f7',
+                                    label: 'Resident',
+                                    opacity: 1.0,
+                                    strokeStyle: 'solid',
+                                    borderType: 'thick',
+                                    value: being.id
+                                });
+                            } else {
+                                beingsToRender.set(being.id, {
+                                    state: 'visitor',
+                                    color: '#22d3ee',
+                                    label: 'Visitor',
+                                    opacity: 1.0,
+                                    strokeStyle: 'solid',
+                                    borderType: 'standard',
+                                    value: being.id
+                                });
+                            }
+                        } else if (isTraceMaker) {
+                            beingsToRender.set(being.id, {
+                                state: 'trace-maker',
+                                color: '#f59e0b',
+                                label: 'Trace-Maker',
+                                opacity: 0.6,
+                                strokeStyle: 'dashed',
+                                borderType: 'standard',
+                                value: being.id
+                            });
+                        } else if (isHome) {
+                            beingsToRender.set(being.id, {
+                                state: 'offline-resident',
+                                color: '#64748b',
+                                label: 'Offline Resident',
+                                opacity: 1.0,
+                                strokeStyle: 'dotted',
+                                borderType: 'standard',
+                                value: being.id
+                            });
+                        }
+                    });
+
+                    // Dynamic/test occupants
+                    occupants.forEach(id => {
+                        if (!beingsToRender.has(id)) {
+                            const isActiveObserver = id === beingId;
+                            if (isActiveObserver) {
+                                beingsToRender.set(id, {
+                                    state: 'observer',
+                                    color: '#10b981',
+                                    label: 'Observer',
+                                    opacity: 1.0,
+                                    strokeStyle: 'solid',
+                                    borderType: 'double',
+                                    value: id
+                                });
+                            } else {
+                                beingsToRender.set(id, {
+                                    state: 'visitor',
+                                    color: '#22d3ee',
+                                    label: 'Visitor',
+                                    opacity: 1.0,
+                                    strokeStyle: 'solid',
+                                    borderType: 'standard',
+                                    value: id
+                                });
+                            }
+                        }
+                    });
+
+                    // Dynamic/test trace-makers
+                    traceMakers.forEach(id => {
+                        if (!beingsToRender.has(id)) {
+                            beingsToRender.set(id, {
+                                state: 'trace-maker',
+                                color: '#f59e0b',
+                                label: 'Trace-Maker',
+                                opacity: 0.6,
+                                strokeStyle: 'dashed',
+                                borderType: 'standard',
+                                value: id
+                            });
+                        }
+                    });
+
+                    // Active observer fallback
+                    if (!beingsToRender.has(beingId) && beingId !== 'guest') {
+                        beingsToRender.set(beingId, {
+                            state: 'observer',
+                            color: '#10b981',
+                            label: 'Observer',
+                            opacity: 1.0,
+                            strokeStyle: 'solid',
+                            borderType: 'double',
+                            value: beingId
+                        });
+                    }
+
                     const nodes = [];
                     const links = [];
 
@@ -209,16 +344,19 @@ export default class Activator {
                     }
 
                     const activeRealmNodeId = `realm:${realmId}`;
-                    inhabitantIds.forEach(identId => {
+                    beingsToRender.forEach((props, identId) => {
                          const nodeId = `identity:${identId}`;
-                         const isActive = identId === beingId;
                          nodes.push({ 
                             id: nodeId, 
-                            label: isActive ? 'Active' : 'Resident', 
-                            value: identId, 
+                            label: props.label, 
+                            value: props.value, 
                             type: 'WHO', 
-                            color: isActive ? '#10b981' : '#22d3ee', 
-                            identityId: identId
+                            color: props.color, 
+                            identityId: identId,
+                            ontologicalState: props.state,
+                            opacity: props.opacity,
+                            strokeStyle: props.strokeStyle,
+                            borderType: props.borderType
                          });
                          links.push({ source: activeRealmNodeId, target: nodeId });
                     });
@@ -232,7 +370,18 @@ export default class Activator {
                     const strata = [
                         { id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' },
                         { id: 'realm', label: 'Realm', value: realmId, type: 'WHERE', color: '#a855f7' },
-                        { id: 'identity', label: 'Identity', value: beingId, type: 'WHO', color: '#10b981' },
+                        { 
+                            id: 'identity', 
+                            label: 'Observer', 
+                            value: beingId, 
+                            type: 'WHO', 
+                            color: '#10b981', 
+                            identityId: beingId, 
+                            ontologicalState: 'observer',
+                            opacity: 1.0,
+                            strokeStyle: 'solid',
+                            borderType: 'double'
+                        },
                         { id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' }
                     ];
                     const connections = [ { source: 'tenant', target: 'identity' }, { source: 'identity', target: 'realm' }, { source: 'realm', target: 'tier' } ];
@@ -356,8 +505,46 @@ export default class Activator {
         const svg = d3.select(container).append("svg").attr("width", "100%").attr("height", "100%").attr("viewBox", [0, 0, width, height]).attr("style", "max-width: 100%; height: auto;");
         const simulation = d3.forceSimulation(nodes).force("link", d3.forceLink(links).id(d => d.id).distance(120)).force("charge", d3.forceManyBody().strength(-800)).force("center", d3.forceCenter(width / 2, height / 2));
         const link = svg.append("g").attr("stroke", "rgba(148, 163, 184, 0.2)").attr("stroke-width", 1.5).selectAll("line").data(links).join("line");
-        const node = svg.append("g").selectAll("g").data(nodes).join("g").attr("class", "node-group").style("cursor", "pointer").on("click", (_e, d) => { Alpine.store('explorer').inspectVault(d); }).call(d3.drag().on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }).on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; }).on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
-        node.append("circle").attr("r", 8).attr("class", "visual").attr("fill", d => d.color).attr("stroke", "#1e293b");
+        const node = svg.append("g")
+            .selectAll("g")
+            .data(nodes)
+            .join("g")
+            .attr("class", "node-group")
+            .style("cursor", "pointer")
+            .style("opacity", d => d.opacity !== undefined ? d.opacity : 1)
+            .on("click", (_e, d) => { Alpine.store('explorer').inspectVault(d); })
+            .call(d3.drag()
+                .on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
+                .on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+            );
+
+        // Double border outer ring for observer state
+        node.filter(d => d.borderType === 'double')
+            .append("circle")
+            .attr("r", 12)
+            .attr("fill", "none")
+            .attr("stroke", d => d.color)
+            .attr("stroke-width", 1.5);
+
+        node.append("circle")
+            .attr("r", 8)
+            .attr("class", "visual")
+            .attr("fill", d => d.color)
+            .attr("stroke", d => {
+                if (d.borderType === 'thick') return "#f8fafc";
+                return "#1e293b";
+            })
+            .attr("stroke-width", d => {
+                if (d.borderType === 'thick') return 2.5;
+                return 1.5;
+            })
+            .attr("stroke-dasharray", d => {
+                if (d.strokeStyle === 'dashed') return "3,3";
+                if (d.strokeStyle === 'dotted') return "1,3";
+                return null;
+            });
+
         node.append("text").attr("dy", -18).attr("text-anchor", "middle").attr("fill", "#94a3b8").style("font-size", "10px").style("font-weight", "600").style("text-transform", "uppercase").text(d => d.label);
         node.append("text").attr("dy", 24).attr("text-anchor", "middle").attr("fill", "#f8fafc").style("font-family", "monospace").style("font-size", "12px").text(d => d.value);
         simulation.on("tick", () => {
@@ -441,7 +628,7 @@ export default class Activator {
                 async _syncInhabitants() {
                     if (!self._stratum) return;
                     const forensic = await self._stratum.getInhabitants();
-                    const local = self._stratum.residents || [];
+                    const local = self._stratum.occupants || self._stratum.residents || [];
                     this.inhabitants = Array.from(new Set([...forensic, ...local])).filter(i => i !== 'guest');
                 },
 

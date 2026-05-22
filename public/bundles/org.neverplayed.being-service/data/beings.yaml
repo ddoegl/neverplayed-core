@@ -1,6 +1,7 @@
 - id: rob
   label: Rob Richter
   email: rob@cli.local
+  originRealmId: org.neverplayed.realm.habitat
   initial:
     realm: org.neverplayed.realm.habitat
     surrogate: person
@@ -8,6 +9,7 @@
 - id: july
   label: July Wiser
   email: july@cli.local
+  originRealmId: org.neverplayed.realm.habitat
   initial:
     realm: org.neverplayed.realm.habitat
     surrogate: person
@@ -15,6 +17,7 @@
 - id: anna
   label: Anna Hobs
   email: anna@cli.local
+  originRealmId: org.neverplayed.realm.habitat
   initial:
     realm: org.neverplayed.realm.habitat
     surrogate: person
@@ -22,6 +25,7 @@
 - id: john
   label: John Mayor
   email: john@cli.local
+  originRealmId: org.neverplayed.realm.habitat
   initial:
     realm: org.neverplayed.realm.habitat
     surrogate: person
@@ -29,6 +33,7 @@
 - id: bactor
   label: Adam Bactor
   email: bactor@cli.local
+  originRealmId: org.neverplayed.realm.habitat
   initial:
     realm: org.neverplayed.realm.habitat
     surrogate: person
@@ -36,6 +41,7 @@
 - id: joemiller
   label: Joe Miller
   email: joe@cli.local
+  originRealmId: org.neverplayed.realm.habitat
   initial:
     realm: org.neverplayed.realm.habitat
     surrogate: person
@@ -43,6 +49,7 @@
 - id: sc-user-1
   label: Mike Migrator
   email: mike.migrator@cli.local
+  originRealmId: org.neverplayed.realm.habitat
   initial:
     realm: org.neverplayed.realm.habitat
     surrogate: person
@@ -50,6 +57,7 @@
 - id: sc-admin
   label: Sarah Admin
   email: sarah.admin@testing.mail
+  originRealmId: org.neverplayed.realm.habitat
   initial:
     realm: org.neverplayed.realm.habitat
     surrogate: person
@@ -57,6 +65,7 @@
 - id: dd
   label: Daniel Doegl
   email: dd@cli.local
+  originRealmId: org.neverplayed.realm.habitat
   initial:
     realm: org.neverplayed.realm.habitat
     surrogate: person

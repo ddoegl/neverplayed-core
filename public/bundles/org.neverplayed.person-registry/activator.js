@@ -244,11 +244,13 @@ export default class Activator extends BaseActivator {
         Object.values(this._session.scopedUsers || {}).forEach(stack => {
             const identity = stack[activeBeingId];
             if (identity) {
-                // Provision default 'person' surrogate. All beings handled here possess the 'person' surrogate, even if unregistered.
-                if (!identity.surrogates || !identity.surrogates['person']) {
-                    if (!identity.surrogates) identity.surrogates = {};
-                    identity.surrogates['person'] = { id: 'person', label: 'Person Surrogate' };
-                    enrichedCount++;
+                // Provision default 'person' surrogate ONLY if registered.
+                if (person) {
+                    if (!identity.surrogates || !identity.surrogates['person']) {
+                        if (!identity.surrogates) identity.surrogates = {};
+                        identity.surrogates['person'] = { id: 'person', label: 'Person Surrogate' };
+                        enrichedCount++;
+                    }
                 }
 
                 // Change detection to prevent reactive loops

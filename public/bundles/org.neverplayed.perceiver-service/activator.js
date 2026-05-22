@@ -66,12 +66,15 @@ export default class Activator extends BaseActivator {
         this._efTracker.open();
 
         // 3. Track Session & Realm for Initial Sync
+        this._session = null;
         this._sessionTracker = context.trackService(`(objectClass=${SESSION_SERVICE})`, {
             addingService: (ref) => {
                 const session = context.getService(ref);
+                this._session = session;
                 this._syncFromSession(session);
                 return session;
-            }
+            },
+            removedService: () => { this._session = null; }
         });
         this._sessionTracker.open();
 
@@ -107,6 +110,11 @@ export default class Activator extends BaseActivator {
                 const realmId = event.getProperty("realm.id");
                 if (realmId) {
                     this.setContext({ realm: realmId });
+                    // Sync carry-over being from session without triggering session.login
+                    // (switchRealm does not invoke login, so perceiver.being must be refreshed here)
+                    if (this._session) {
+                        this._syncFromSession(this._session);
+                    }
                 }
             }
         }, { [EVENT_TOPIC]: [REALM_CHANGED_TOPIC] });
@@ -116,12 +124,15 @@ export default class Activator extends BaseActivator {
             if (e.detail && e.detail.type === 'login') {
                 const user = e.detail.user;
                 const surrogate = e.detail.surrogate;
+                const grounding = (user && user.grounding) || (surrogate && surrogate.grounding) || 'idealist';
+                const resolvedSurrogate = (user && user.activeSurrogateId) ? (surrogate || user.surrogates?.[user.activeSurrogateId] || null) : null;
                 this.setContext({ 
                     being: user, 
-                    surrogate: surrogate || this._state.surrogate 
+                    surrogate: resolvedSurrogate,
+                    observerMode: grounding
                 });
             } else if (e.detail && e.detail.type === 'logout') {
-                this.setContext({ being: null });
+                this.setContext({ being: null, surrogate: null });
             }
         };
         globalThis.addEventListener('session-changed', this._onSessionChanged);
@@ -176,9 +187,11 @@ export default class Activator extends BaseActivator {
         const user = session.currentUser;
         if (user) {
             const surrogate = user.activeSurrogateId ? (user.surrogates?.[user.activeSurrogateId] || null) : null;
+            const grounding = user.grounding || (surrogate ? surrogate.grounding : null) || 'idealist';
             this.setContext({ 
                 being: user.id !== 'guest' ? user : null,
-                surrogate: surrogate || (user.id === 'guest' ? { grounding: 'idealist', senses: [] } : this._state.surrogate)
+                surrogate: user.id !== 'guest' ? surrogate : { grounding: 'idealist', senses: [] },
+                observerMode: grounding
             });
         }
     }
@@ -199,6 +212,14 @@ export default class Activator extends BaseActivator {
         // Beginner level implies 'Idealist' mode (view through the being's senses).
         if (patch.surrogate && patch.surrogate.grounding) {
             patch.observerMode = patch.surrogate.grounding;
+        }
+
+        if (patch.being && patch.being.grounding) {
+            patch.observerMode = patch.being.grounding;
+            const targetSurrogate = patch.surrogate !== undefined ? patch.surrogate : this._state.surrogate;
+            if (targetSurrogate) {
+                patch.surrogate = { ...targetSurrogate, grounding: patch.being.grounding };
+            }
         }
 
         this._state = { ...this._state, ...patch };

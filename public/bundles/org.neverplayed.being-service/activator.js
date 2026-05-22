@@ -72,10 +72,10 @@ export default class Activator extends BaseActivator {
             materialize: (beingId, surrogateId = null, attributes = {}, realmId = null) => {
                 if (!this._session) throw new Error("Session Service unavailable");
 
-                const being = this.getBeing(beingId);
+                const being = beingService.getBeing(beingId);
                 const targetSurrogate = surrogateId || being?.initial?.surrogate || 'guest';
                 const targetRealm = realmId || being?.initial?.realm || this._session.activeRealmId || 'global';
-                const surrogateData = this.getSurrogate(targetSurrogate) || {};
+                const surrogateData = beingService.getSurrogate(targetSurrogate) || {};
                 
                 this.logger.info(`Being Service: Materializing ${beingId} as ${targetSurrogate} in realm ${targetRealm}`);
                 
@@ -100,7 +100,7 @@ export default class Activator extends BaseActivator {
                 this._session.setBeingFocus(beingId);
                 
                 // Ensure the being is logged into the current realm at least as a baseline
-                const being = this.getBeing(beingId);
+                const being = beingService.getBeing(beingId);
                 const realm = this._session.activeRealmId || being?.initial?.realm || 'global';
                 this._session.login(beingId, realm);
             },
@@ -110,8 +110,12 @@ export default class Activator extends BaseActivator {
              */
             getBeingHome: (beingIdOrType) => {
                 // 1. L1 Resolution (Ontological Grounding)
-                const being = this.getBeing(beingIdOrType);
-                if (being && being.initial?.realm) return being.initial.realm;
+                const being = beingService.getBeing(beingIdOrType);
+                if (being) {
+                    if (being.originRealmId) return being.originRealmId;
+                    if (being.initial?.originRealmId) return being.initial.originRealmId;
+                    if (being.initial?.realm) return being.initial.realm;
+                }
 
                 // 2. Legacy Type Resolution (Policy-based)
                 if (!this._resolver) return null;

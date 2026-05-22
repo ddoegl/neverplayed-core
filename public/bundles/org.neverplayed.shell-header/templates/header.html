@@ -259,15 +259,15 @@
               </button>
             </template>
 
-            <!-- List: Available Inhabitants (Residency Switcher) -->
-            <template x-if="$store.stratum.inhabitants?.length > 0">
+            <!-- List: Active Beings (Residency Switcher) -->
+            <template x-if="$store.stratum.occupants?.length > 0">
               <div class="py-2">
                 <div
                   class="px-3 pb-2 text-[9px] uppercase text-slate-500 font-bold tracking-widest"
                 >
-                  Available Inhabitants
+                  Active Beings
                 </div>
-                <template x-for="id in $store.stratum.inhabitants" :key="id">
+                <template x-for="id in $store.stratum.occupants" :key="id">
                   <button
                     x-show="id !== $session.currentUser.id"
                     @click="login(id); showPersona = false"
@@ -397,7 +397,7 @@
         <button
           id="btn-universe-settings"
           @click="launchConfig()"
-          x-show="shell.perceiver.observerMode === 'realist' || shell.perceiver.surrogate.level === 'advanced'"
+          x-show="shell.perceiver.observerMode === 'realist' || shell.perceiver.surrogate?.level === 'advanced'"
           class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-blue-400 transition-all border border-slate-700 shadow-inner group"
           title="Universe Settings"
         >
@@ -408,7 +408,7 @@
         <button
           id="btn-factory-reset"
           @click="triggerReset()"
-          x-show="shell.perceiver.observerMode === 'realist' || shell.perceiver.surrogate.level === 'advanced'"
+          x-show="shell.perceiver.observerMode === 'realist' || shell.perceiver.surrogate?.level === 'advanced'"
           class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-red-400 transition-all border border-slate-700 shadow-inner"
           title="Factory Reset Reality"
         >

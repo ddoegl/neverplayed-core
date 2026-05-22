@@ -8,3 +8,8 @@
   label: Guest
   senses:
     - Language
+
+- id: observer
+  label: Observer
+  senses:
+    - Language

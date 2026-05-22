@@ -36,6 +36,7 @@ export default class Activator {
             tier: 'local',
             perspective: 'idealist',
             inhabitants: [],
+            occupants: [],
             residents: [],
             _stratumSvc: null,
 
@@ -100,6 +101,7 @@ export default class Activator {
         store.tier = this._stratum.tier;
         store.perspective = this._stratum.perspective;
         store.inhabitants = [...(this._stratum.inhabitants || [])];
+        store.occupants = [...(this._stratum.occupants || [])];
         store.residents = [...(this._stratum.residents || [])];
     }
 
