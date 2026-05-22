@@ -787,6 +787,11 @@ export default class Activator extends BaseActivator {
         // 5. Phase 2: Atomic Commit
         this.logger?.info(`Realm Manager: Starting Phase 2 (Atomic Commit) for '${realmId}'...`);
         if (this.session) {
+            const previousRealmId = this.session.activeRealmId;
+            if (previousRealmId && previousRealmId !== realmId) {
+                this.logger?.info(`Realm Manager: Pruning residency stack for previous realm '${previousRealmId}' via logout.`);
+                this.session.logout(previousRealmId);
+            }
             this.session.activeRealmId = realmId;
             this.session.activeBeingId = identityId;
             

@@ -128,10 +128,12 @@ async function main() {
         waitReady: () => Promise.resolve(),
         listKeys: (_prefix: string) => Object.keys(pmStore),
         probe: (key: string) => {
-            if (key.includes("ghost")) {
+            if (key.startsWith("identity.personhood:")) {
+                const parts = key.split(":");
+                const identityId = parts[parts.length - 1];
                 return {
                     context: {
-                        identityId: "ghost",
+                        identityId: identityId,
                         realmId: "org.neverplayed.realm.habitat"
                     }
                 };
@@ -393,6 +395,50 @@ async function main() {
     assertEquals(perceiver.getSurrogate(), null, "Perceiver surrogate should remain null");
     assertEquals(perceiver.getObserverMode(), "realist", "Perceiver observer mode should be realist");
     console.log("✅ Naked observer shift without materialization verified");
+
+    // ==========================================
+    // NEW INTEGRATION TESTS FOR TICKET-20260522-2100
+    // ==========================================
+
+    // 11. Dual-State Observer Visuals
+    console.log("TEST: Seeding historical trace for 'nakedUser' to verify double-trace border style...");
+    pmStore["identity.personhood:nakedUser"] = { $stigmergy: { matcher: "SensePersonhood" } };
+    
+    // Refresh topology to trigger dual-state styling
+    await explorerStore.refreshTopology();
+    await settle();
+
+    const currentNodes = explorerStore.nodes;
+    const nakedUserNode = currentNodes.find((n: any) => n.identityId === "nakedUser");
+    assertExists(nakedUserNode, "nakedUser node must exist in topology");
+    assertEquals(nakedUserNode.borderType, "double-trace", "Naked observer with traces must have double-trace border type");
+    assertEquals(nakedUserNode.label, "Observer (with traces)", "Naked observer node label must indicate traces");
+    console.log("✅ verified double-trace border style for active observer with traces");
+
+    // 12. Active Realm Trace-Maker Inspector
+    console.log("TEST: Verifying active realm trace-maker inspector...");
+    const activeRealmNode = currentNodes.find((n: any) => n.id === "realm:org.neverplayed.realm.habitat");
+    assertExists(activeRealmNode, "active realm node must exist");
+    
+    await explorerStore.inspectVault(activeRealmNode);
+    await settle();
+    
+    const activeTraceMakers = explorerStore.activeNodeTraceMakers;
+    assertExists(activeTraceMakers, "activeNodeTraceMakers must exist on store");
+    assertEquals(activeTraceMakers.includes("ghost"), true, "activeNodeTraceMakers must contain ghost");
+    assertEquals(activeTraceMakers.includes("nakedUser"), true, "activeNodeTraceMakers must contain nakedUser");
+    console.log("✅ verified activeNodeTraceMakers population on active realm node inspection");
+
+    // 13. Session Residency Pruning
+    console.log("TEST: Performing switchRealm to Governance to verify residency pruning on previous realm...");
+    // Switch to Governance realm
+    await realmManager.switchRealm("org.neverplayed.realm.governance");
+    await settle();
+
+    // Check that previous realm (Habitat) occupant stack has been pruned (active user should be guest)
+    const habitatActiveUser = session.scopedUsers["org.neverplayed.realm.habitat"]?.__activeId__;
+    assertEquals(habitatActiveUser, "guest", "Habitat active user should have been pruned to guest");
+    console.log("✅ verified residency pruning on previous realm upon transition");
 
     console.log("\n✨ ALL ONTOLOGY HARMONY VERIFICATIONS PASSED! ✨");
     

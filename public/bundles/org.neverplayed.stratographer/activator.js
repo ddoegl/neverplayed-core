@@ -159,6 +159,7 @@ export default class Activator {
             vaultKeys: [],
             loadingVault: false,
             perceptualTrace: null,
+            activeNodeTraceMakers: [],
             _lastValueHash: "",
             visible: false,
             _grounding: self._perceiver?.getContext().observerMode || "idealist",
@@ -187,7 +188,11 @@ export default class Activator {
                 
                 const beingId = perceiver.being?.id || 'guest';
                 const realmId = (typeof perceiver.realm === 'object' && perceiver.realm !== null) ? perceiver.realm.id : perceiver.realm;
-                const currentHash = `${stratum.tenantId}|${realmId}|${beingId}|${stratum.tier}|${perceiver.observerMode}|${JSON.stringify(perceiver.surrogate)}`;
+                
+                const occupants = stratum.occupants || stratum.residents || [];
+                const traceMakers = (typeof stratum.getTraceMakers === 'function') ? await stratum.getTraceMakers() : [];
+                
+                const currentHash = `${stratum.tenantId}|${realmId}|${beingId}|${stratum.tier}|${perceiver.observerMode}|${JSON.stringify(perceiver.surrogate)}|${occupants.join(',')}|${traceMakers.join(',')}`;
                 
                 const store = Alpine.store('explorer');
                 if (store._lastValueHash === currentHash && store.nodes.length > 0) return;
@@ -197,8 +202,6 @@ export default class Activator {
 
                 if (perceiver.observerMode === 'realist') {
                     const hierarchy = await stratum.getHierarchy();
-                    const occupants = stratum.occupants || stratum.residents || [];
-                    const traceMakers = (typeof stratum.getTraceMakers === 'function') ? await stratum.getTraceMakers() : [];
                     const knownBeings = self._beingService ? self._beingService.getKnownBeings() : [];
                     
                     const beingsToRender = new Map();
@@ -212,13 +215,14 @@ export default class Activator {
                         const isActiveObserver = being.id === beingId;
                         
                         if (isActiveObserver) {
+                            const hasTraces = traceMakers.includes(being.id);
                             beingsToRender.set(being.id, {
                                 state: 'observer',
                                 color: '#10b981',
-                                label: 'Observer',
+                                label: hasTraces ? 'Observer (with traces)' : 'Observer',
                                 opacity: 1.0,
                                 strokeStyle: 'solid',
-                                borderType: 'double',
+                                borderType: hasTraces ? 'double-trace' : 'double',
                                 value: being.id
                             });
                         } else if (isOccupant) {
@@ -271,13 +275,14 @@ export default class Activator {
                         if (!beingsToRender.has(id)) {
                             const isActiveObserver = id === beingId;
                             if (isActiveObserver) {
+                                const hasTraces = traceMakers.includes(id);
                                 beingsToRender.set(id, {
                                     state: 'observer',
                                     color: '#10b981',
-                                    label: 'Observer',
+                                    label: hasTraces ? 'Observer (with traces)' : 'Observer',
                                     opacity: 1.0,
                                     strokeStyle: 'solid',
-                                    borderType: 'double',
+                                    borderType: hasTraces ? 'double-trace' : 'double',
                                     value: id
                                 });
                             } else {
@@ -311,13 +316,14 @@ export default class Activator {
 
                     // Active observer fallback
                     if (!beingsToRender.has(beingId) && beingId !== 'guest') {
+                        const hasTraces = traceMakers.includes(beingId);
                         beingsToRender.set(beingId, {
                             state: 'observer',
                             color: '#10b981',
-                            label: 'Observer',
+                            label: hasTraces ? 'Observer (with traces)' : 'Observer',
                             opacity: 1.0,
                             strokeStyle: 'solid',
-                            borderType: 'double',
+                            borderType: hasTraces ? 'double-trace' : 'double',
                             value: beingId
                         });
                     }
@@ -367,12 +373,13 @@ export default class Activator {
                     store.nodes = nodes;
                     store.links = links;
                 } else {
+                    const hasTraces = traceMakers.includes(beingId);
                     const strata = [
                         { id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' },
                         { id: 'realm', label: 'Realm', value: realmId, type: 'WHERE', color: '#a855f7' },
                         { 
                             id: 'identity', 
-                            label: 'Observer', 
+                            label: hasTraces ? 'Observer (with traces)' : 'Observer', 
                             value: beingId, 
                             type: 'WHO', 
                             color: '#10b981', 
@@ -380,7 +387,7 @@ export default class Activator {
                             ontologicalState: 'observer',
                             opacity: 1.0,
                             strokeStyle: 'solid',
-                            borderType: 'double'
+                            borderType: hasTraces ? 'double-trace' : 'double'
                         },
                         { id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' }
                     ];
@@ -396,6 +403,20 @@ export default class Activator {
                 store.loadingVault = true;
                 store.vaultKeys = [];
                 store.perceptualTrace = null;
+                store.activeNodeTraceMakers = [];
+
+                if (node.id.startsWith('realm:')) {
+                    const currentRealmId = self._stratum?.realmId;
+                    if (node.realmId === currentRealmId) {
+                        if (self._stratum && typeof self._stratum.getTraceMakers === 'function') {
+                            try {
+                                store.activeNodeTraceMakers = await self._stratum.getTraceMakers();
+                            } catch (e) {
+                                self._logger.error("Failed to fetch active node trace makers", e);
+                            }
+                        }
+                    }
+                }
 
                 try {
                     const pmRef = context.getServiceReference(PERSISTENCE_MANAGER_SERVICE, "(implementation=selector-proxy)");
@@ -520,12 +541,13 @@ export default class Activator {
             );
 
         // Double border outer ring for observer state
-        node.filter(d => d.borderType === 'double')
+        node.filter(d => d.borderType === 'double' || d.borderType === 'double-trace')
             .append("circle")
             .attr("r", 12)
             .attr("fill", "none")
-            .attr("stroke", d => d.color)
-            .attr("stroke-width", 1.5);
+            .attr("stroke", d => d.borderType === 'double-trace' ? '#f59e0b' : d.color)
+            .attr("stroke-width", 1.5)
+            .attr("stroke-dasharray", d => d.borderType === 'double-trace' ? '3,3' : null);
 
         node.append("circle")
             .attr("r", 8)
