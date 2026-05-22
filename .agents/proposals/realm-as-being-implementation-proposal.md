@@ -80,24 +80,31 @@ We register system-level surrogates in `surrogates.yaml` that are restricted str
 
 ## 🧬 Part 2: The Homeostasis Loop (The TAME Engine)
 
-Each Realm bundle will run a background **Homeostasis Loop** (the Realm's active cognitive state) to actively minimize free energy (prediction error) within its cognitive light cone.
+Each Realm bundle will run a background **Homeostasis Loop** (the Realm's active cognitive state) that triggers on discrete state changes to minimize free energy (prediction error) within its cognitive light cone.
+
+> [!IMPORTANT]
+> **Temporal Decay via Pattern A: Just-in-Time (Lazy) Homeostasis**  
+> Rather than running active pollers or intervals (like `setInterval`), the loop operates reactively on discrete events. Stale occupant timeouts (e.g. 30s of inactivity) are checked lazily when new session/realm/persistence events occur or when the UI queries the status. If no events occur, the system remains completely dormant (saving resources), and state is reconciled "just-in-time" when the next observer event arrives.
+
 
 ```mermaid
 sequenceDiagram
-    participant Loop as Realm Homeostasis Loop
+    participant OSGi as OSGi EventAdmin
+    participant Loop as Realm Cognition Service
     participant Stratum as Stratum Core (Interoception)
     participant Limes as Limes Guard (Exteroception)
     participant System as System Actions (Active Inference)
     
-    loop Every Homeostatic Interval (e.g. 5000ms)
-        Loop->>Stratum: Scan inhabitants & persistence drift (Interoception)
-        Loop->>Limes: Scan active capabilities & session stack (Exteroception)
-        Loop->>Loop: Compute Variational Free Energy (Prediction Error)
-        alt Prediction Error > Threshold
-            Loop->>System: Execute Active Inference (Homeostatic action)
-            Note over System: Prune residency, purge stale traces, trigger bundle surge
-        end
+    OSGi->>Loop: Session/Realm Event (discrete trigger)
+    Note over Loop: Queue microtask to evaluate homeostasis
+    Loop->>Stratum: Scan occupants & persistence drift (Interoception)
+    Loop->>Limes: Scan active capabilities & session stack (Exteroception)
+    Loop->>Loop: Compute Variational Free Energy (Prediction Error)
+    alt Prediction Error > Threshold
+        Loop->>System: Execute Active Inference (Homeostatic action)
+        Note over System: Prune residency, purge stale traces, trigger bundle surge
     end
+end
 ```
 
 ### 1. The Cognition Service interface
@@ -109,24 +116,38 @@ export const REALM_COGNITION_SERVICE = "org.neverplayed.realm.RealmCognitionServ
 ```
 
 ### 2. Implementation in the Realm Activator
-The Realm bundle implements the cognition service and spawns the homeostasis loop:
+The Realm bundle implements the cognition service and listens for discrete session, realm, and persistence events:
 
 ```javascript
 // public/bundles/org.neverplayed.realm.core/activator.js
+import { EventHandler } from '@pandino/event-admin';
+
 export default class Activator {
     start(context) {
         this._context = context;
         this._realmId = "org.neverplayed.realm.core";
         this._predictionError = 0.0;
         
-        // Spawn the homeostatic loop (Temporal Cognitive Light Cone = 5s intervals)
-        this._loopInterval = setInterval(() => this.homeostasisStep(), 5000);
+        // Listen to discrete state change events to drive homeostasis reactively
+        this._eventHandlerReg = context.registerService(EventHandler, this, {
+            "event.topics": [
+                "org/neverplayed/session/CHANGED",
+                "org/neverplayed/realm/CHANGED",
+                "org/neverplayed/persistence/CHANGED"
+            ]
+        });
         
         context.registerService(REALM_COGNITION_SERVICE, this, { realmId: this._realmId });
     }
 
     stop() {
-        clearInterval(this._loopInterval);
+        this._eventHandlerReg?.unregister();
+    }
+
+    // OSGi Event Handler callback
+    handleEvent(event) {
+        // Evaluate homeostasis in a microtask to execute after the current event flow settles
+        queueMicrotask(() => this.homeostasisStep());
     }
 
     async homeostasisStep() {
@@ -219,7 +240,7 @@ When selecting the active Realm node, the right pane displays the Realm's cognit
     <div class="space-y-2 text-xs font-mono">
       <div class="flex justify-between">
         <span class="text-slate-500">Cognitive Light Cone:</span>
-        <span class="text-slate-300">Session (5000ms) / Spatial Bedrock</span>
+        <span class="text-slate-300">Session (Lazy Horizon) / Spatial Bedrock</span>
       </div>
       <div class="flex justify-between">
         <span class="text-slate-500">Active Surrogate:</span>
