@@ -118,3 +118,40 @@ The following targets have been fully aligned and implemented:
     *   Renamed session-bound `residents` to `occupants` (with `residents` retained as an alias for backwards compatibility).
     *   Renamed persistence-bound `getInhabitants()` to `getTraceMakers()`.
     *   Introduced computed `getInhabitants()` as the union of active occupants and trace-makers: $\text{Inhabitants} = \text{occupants} \cup \text{traceMakers}$.
+
+---
+
+## 6. The Realm as a Being: Scale-Free Cognition & Cognitive Light Cones
+
+Applying Michael Levin's **TAME (Technological Approach to Mind Everywhere)** framework, we formalize the conceptualization that a **Realm** is itself a cognitive agent—a high-order **Being** containing nested sub-agents. 
+
+### Scale-Free Cognitive Holons
+Every level of the *Never Played* ecosystem constitutes a cognitive agent (a *holon*) operating on its own level of organization:
+1. **L1 Being (Individual Identity)**: Pursues personal goals, materializes surrogates, and acts in the world.
+2. **Realm (Ecosystem Collective)**: Coalesces individual behaviors, regulates occupant status, manages dynamic bundle lifecycles (surges), and maintains persistent state.
+3. **Tenant (Global Authority)**: Enforces systemic boundaries and anchors identity namespaces.
+
+### Cognitive Light Cones
+An agent's cognitive capability is bounded by its **Cognitive Light Cone**—the spatial and temporal horizon of the goals it can measure, care about, and actively influence:
+
+```mermaid
+graph TD
+    subgraph Horizons ["Spatio-Temporal Horizon (Cognitive Light Cone)"]
+        TenantCone["Tenant-Level Cone: Epochs / Multi-Realm Ecosystem"]
+        RealmCone["Realm-Level Cone: Sessions / Spatial Bedrock & Soil"]
+        BeingCone["Being-Level Cone: Real-time / Immediate Surrogacy"]
+    end
+    
+    TenantCone -->|Contains / Constrains| RealmCone
+    RealmCone -->|Contains / Constrains| BeingCone
+```
+
+*   **Being Light Cone (Narrow/Fast)**: Operates in real-time. Bounded by the active surrogate's current sensory capabilities (e.g., `IdealistVision`). Its goals are immediate: transition to a room, modify a local state, or leave a trace.
+*   **Realm Light Cone (Broad/Slower)**: Operates across sessions and boundaries. Bounded by the spatial layout of its bedrock/soil and the temporal lifetime of the database stratum. Its goals are homeostatic: maintaining structural integrity, pruning stale occupant stacks, and resolving prediction errors when incompatible surrogates enter.
+*   **Tenant Light Cone (Deepest/Slowest)**: Operates across epochs and namespaces. Bounded by the global persistence tier and authentication domains.
+
+### Active Inference & Homeostatic Regulation of the Realm
+As a high-order Being, the Realm minimizes its variational free energy (surprise) through active regulatory loops:
+*   **Exteroceptive Prediction Errors**: A Being attempting to transition into the Realm with an un-reified surrogate creates a prediction error. The Realm resolves this by deactivating the surrogate (naked observer fallback) or auto-materializing a recognized surrogate to maintain ontological harmony.
+*   **Interoceptive Self-Forensics**: By querying its own `getTraceMakers()`, the Realm performs self-reflection, mapping its historical memory stack (stigmergic traces) into its active internal world model.
+
