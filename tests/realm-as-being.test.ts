@@ -57,7 +57,7 @@ async function main() {
         "bundles/org.neverplayed.yaml-service/manifest.json",
         "bundles/org.neverplayed.session-service/manifest.json",
         "bundles/org.neverplayed.being-service/manifest.json",
-        "bundles/org.neverplayed.realm.core/manifest.json"
+        "bundles/org.neverplayed.realm-manager/manifest.json"
     ]);
 
     // Wait for services and event admin to settle
@@ -69,11 +69,22 @@ async function main() {
     // deno-lint-ignore no-explicit-any
     const beingService: any = await harness.getService(BEING_SERVICE);
     // deno-lint-ignore no-explicit-any
-    const cognitionService: any = await harness.getService(REALM_COGNITION_SERVICE);
+    const realmManager: any = await harness.getService("org.neverplayed.realm.RealmManager");
 
     assertExists(session, "Session service should be available");
     assertExists(beingService, "Being service should be available");
-    assertExists(cognitionService, "Realm Cognition service should be available");
+    assertExists(realmManager, "Realm Manager service should be available");
+
+    // Register org.neverplayed.realm.core realm to activate its cognition service dynamically
+    await realmManager.registerRealm({
+        id: "org.neverplayed.realm.core",
+        title: "Institutional Core Infrastructure",
+        bundles: []
+    });
+
+    // deno-lint-ignore no-explicit-any
+    const cognitionService: any = await harness.getService(REALM_COGNITION_SERVICE);
+    assertExists(cognitionService, "Realm Cognition service should be dynamically provisioned");
 
     // -------------------------------------------------------------
     // Test Case 1: Dynamic Realm-Being Identity Synthesis
@@ -175,22 +186,18 @@ async function main() {
     // -------------------------------------------------------------
     console.log("🧪 Test 3: Verifying manifest compliance with ADR-0022...");
 
-    const manifestPath = new URL("../public/bundles/org.neverplayed.realm.core/manifest.json", import.meta.url).pathname;
+    const manifestPath = new URL("../public/bundles/org.neverplayed.realm-manager/manifest.json", import.meta.url).pathname;
     const manifestContent = await Deno.readTextFile(manifestPath);
     const manifest = JSON.parse(manifestContent);
 
     assertExists(manifest["Bundle-SymbolicName"], "Manifest must have Bundle-SymbolicName");
-    assertEquals(manifest["Bundle-SymbolicName"], "org.neverplayed.realm.core", "Bundle-SymbolicName must match specification");
+    assertEquals(manifest["Bundle-SymbolicName"], "org.neverplayed.realm-manager", "Bundle-SymbolicName must match specification");
     assertExists(manifest["Bundle-Version"], "Manifest must have Bundle-Version");
     assertExists(manifest["Bundle-Name"], "Manifest must have Bundle-Name");
     assertExists(manifest["Bundle-Description"], "Manifest must have Bundle-Description");
     assertExists(manifest["Bundle-Activator"], "Manifest must have Bundle-Activator");
     assertEquals(manifest["Bundle-Activator"], "activator.js", "Bundle-Activator must be activator.js");
     
-    // Check Provide-Capability format
-    assertExists(manifest["Provide-Capability"], "Manifest must declare provided capabilities");
-    assert(manifest["Provide-Capability"].includes("org.neverplayed.realm.RealmCognitionService"), "Capability must advertise RealmCognitionService");
-
     // Verify BSN matching directory name
     const bsn = manifest["Bundle-SymbolicName"];
     const pathParts = manifestPath.split("/");

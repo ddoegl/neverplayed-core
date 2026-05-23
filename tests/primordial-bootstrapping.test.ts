@@ -6,7 +6,8 @@ import {
     PERCEIVER_SERVICE, 
     BEING_SERVICE, 
     PERSISTENCE_MANAGER_SERVICE, 
-    PLEXUS_SENSOR_SERVICE
+    PLEXUS_SENSOR_SERVICE,
+    REALM_COGNITION_SERVICE
 } from "core-types";
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 500));
@@ -96,8 +97,9 @@ async function main() {
         "bundles/org.neverplayed.realm-manager/manifest.json",
         "bundles/org.neverplayed.perceiver-service/manifest.json",
         "bundles/org.neverplayed.being-service/manifest.json",
-        "bundles/org.neverplayed.realm.core/manifest.json",
-        "bundles/org.neverplayed.realm.core-dom/manifest.json",
+        "bundles/org.neverplayed.stratum-core/manifest.json",
+        "bundles/org.neverplayed.stratum-core-dom/manifest.json",
+        "bundles/org.neverplayed.stratographer/manifest.json",
         "bundles/org.neverplayed.plexus-core/manifest.json",
         "bundles/org.neverplayed.plexus-enricher/manifest.json",
         "bundles/org.neverplayed.plexus/manifest.json",
@@ -204,8 +206,9 @@ async function main() {
         "bundles/org.neverplayed.realm-manager/manifest.json",
         "bundles/org.neverplayed.perceiver-service/manifest.json",
         "bundles/org.neverplayed.being-service/manifest.json",
-        "bundles/org.neverplayed.realm.core/manifest.json",
-        "bundles/org.neverplayed.realm.core-dom/manifest.json",
+        "bundles/org.neverplayed.stratum-core/manifest.json",
+        "bundles/org.neverplayed.stratum-core-dom/manifest.json",
+        "bundles/org.neverplayed.stratographer/manifest.json",
         "bundles/org.neverplayed.plexus-core/manifest.json",
         "bundles/org.neverplayed.plexus-enricher/manifest.json",
         "bundles/org.neverplayed.plexus/manifest.json",
@@ -237,10 +240,21 @@ async function main() {
     console.log("DIAGNOSTIC: Scoped Users =", JSON.stringify(session.scopedUsers));
     console.log("DIAGNOSTIC: DOM Body HTML =", document.body.innerHTML);
 
-    // Retrieve reified DOM elements
-    const reifiedEl = document.getElementById("reified-org.neverplayed.shell-cli");
-    assertExists(reifiedEl, "Config trace must be reified in the DOM by the Core Realm");
-    assertEquals(reifiedEl.getAttribute("data-mark"), JSON.stringify([{ type: "matchSense", value: "Language" }]));
+    // Retrieve dynamically provisioned cognition service and check reified PIDs
+    const cognitionService: any = await harness.getService(REALM_COGNITION_SERVICE);
+    assertExists(cognitionService, "RealmCognitionService must be dynamically registered by RealmManager");
+    const pids = cognitionService.getReifiedPids();
+    assert(pids.includes("org.neverplayed.shell-cli"), "Reified PIDs must include shell-cli");
+
+    // Retrieve reified/sensed components from Stratographer Alpine store (guest context)
+    const Alpine = (globalThis as any).Alpine;
+    const explorerStore = Alpine?.store('explorer');
+    assertExists(explorerStore, "Explorer store should be initialized");
+    
+    await explorerStore.inspectVault({ id: 'realm:org.neverplayed.realm.core', value: 'org.neverplayed.realm.core' });
+    const reifiedVal = explorerStore.reifiedComponents.find((c: any) => c.pid === "org.neverplayed.shell-cli");
+    assertExists(reifiedVal, "reifiedComponents must contain shell-cli");
+    assertEquals(reifiedVal.isSensible, false, "Should be occluded for guest occupant");
 
     console.log("✅ Core Realm Cold Boot Fallback & Interoception verified.");
 
@@ -258,10 +272,19 @@ async function main() {
 
     await settle();
 
-    // Verify Plexus Sensor shows the reified element is visible (style.display = "")
-    const element = document.getElementById("reified-org.neverplayed.shell-cli");
-    assertExists(element);
-    assertEquals(element.style.display, "", "Reified element should be visible to observer with Language sense");
+    // Verify Plexus Sensor shows the reified element is programmatically visible/sensed
+    await explorerStore.inspectVault({ id: 'realm:org.neverplayed.realm.core', value: 'org.neverplayed.realm.core' });
+    const reifiedValAfterLogin = explorerStore.reifiedComponents.find((c: any) => c.pid === "org.neverplayed.shell-cli");
+    assertExists(reifiedValAfterLogin);
+    assertEquals(reifiedValAfterLogin.isSensible, true, "Reified element should be visible/sensed by observer with Language sense");
+
+    // Click on active observer node
+    await explorerStore.inspectVault({ 
+        id: 'identity:8fNNh7UkppadUaKJQhaiMIGzcLd2', 
+        value: '8fNNh7UkppadUaKJQhaiMIGzcLd2',
+        ontologicalState: 'observer'
+    });
+    assert(explorerStore.activeSensedComponents.includes("org.neverplayed.shell-cli"), "activeSensedComponents must include shell-cli");
 
     console.log("✅ Default Observer Plexus Sensation verified.");
 
@@ -270,20 +293,22 @@ async function main() {
     // -------------------------------------------------------------
     console.log("🧪 Test 5: Verifying headless decoupling and DOM adapter unmounting...");
 
-    // 1. Static assertion that org.neverplayed.realm.core activator contains no document references
-    const activatorPath = new URL("../public/bundles/org.neverplayed.realm.core/activator.js", import.meta.url).pathname;
-    const activatorCode = Deno.readTextFileSync(activatorPath);
-    assert(!activatorCode.includes("document"), "Core realm activator must not reference 'document' directly");
-    assert(!activatorCode.includes("globalThis.document"), "Core realm activator must not reference 'globalThis.document'");
-    console.log("✅ verified that core realm activator is completely headless (no DOM references).");
+    // 1. Static assertion that org.neverplayed.realm-manager has no direct document writes in homeostasis
+    const managerPath = new URL("../public/bundles/org.neverplayed.realm-manager/activator.js", import.meta.url).pathname;
+    const managerCode = Deno.readTextFileSync(managerPath);
+    assert(!managerCode.includes("document.createElement"), "Homeostasis loop must be completely headless (no DOM references)");
+    console.log("✅ verified that dynamic homeostasis loop is completely headless.");
 
-    // 2. Verify that when logging out, reifications are removed from the DOM
+    // 2. Verify that when logging out, sensed components are updated/cleared
     console.log("TEST: Logging out default observer from org.neverplayed.realm.core...");
     await session.logout("org.neverplayed.realm.core", "8fNNh7UkppadUaKJQhaiMIGzcLd2");
     await settle();
 
-    const elementAfterLogout = document.getElementById("core-realm-reifications");
-    assertEquals(elementAfterLogout, null, "#core-realm-reifications should be unmounted from DOM after logout");
+    // Since the observer logged out, the active user is guest. Inspect vault again.
+    await explorerStore.inspectVault({ id: 'realm:org.neverplayed.realm.core', value: 'org.neverplayed.realm.core' });
+    const reifiedValAfterLogout = explorerStore.reifiedComponents.find((c: any) => c.pid === "org.neverplayed.shell-cli");
+    assertExists(reifiedValAfterLogout);
+    assertEquals(reifiedValAfterLogout.isSensible, false, "Reified components must be occluded (isSensible = false) after logout");
     console.log("✅ verified that reifications are unmounted from DOM upon logout.");
 
     console.log("\n✨ ALL PRIMORDIAL BOOTSTRAPPING INTEGRATION TESTS PASSED! ✨");

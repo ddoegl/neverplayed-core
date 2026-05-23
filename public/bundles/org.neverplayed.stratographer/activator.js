@@ -157,6 +157,18 @@ export default class Activator {
             }
         })();
 
+        // Listen to homeostasis completed events to refresh topology and active selection
+        this._homeostasisListener = (e) => {
+            const store = Alpine.store('explorer');
+            if (store) {
+                store.refreshTopology();
+                if (store.activeNode) {
+                    store.inspectVault(store.activeNode);
+                }
+            }
+        };
+        globalThis.addEventListener("realm-homeostasis-completed", this._homeostasisListener);
+
         // 10. Register Alpine HUD Component
         this._setupAlpineHUD();
 
@@ -187,6 +199,7 @@ export default class Activator {
             perceptualTrace: null,
             activeNodeTraceMakers: [],
             realmCognition: null,
+            activeSensedComponents: [],
             _lastValueHash: "",
             visible: false,
             _grounding: self._perceiver?.getContext().observerMode || "idealist",
@@ -442,6 +455,7 @@ export default class Activator {
                 store.vaultKeys = [];
                 store.perceptualTrace = null;
                 store.activeNodeTraceMakers = [];
+                store.activeSensedComponents = [];
 
                 if (node.id === 'realm' || node.id.startsWith('realm:')) {
                     const rId = node.realmId || node.value;
@@ -449,18 +463,52 @@ export default class Activator {
                     store.realmCognition = {
                         predictionError: service ? service.getPredictionError() : 0.0,
                         activeSurrogate: 'sovereign-guard',
-                        lightCone: 'Session (Lazy Horizon) / Spatial Bedrock'
+                        lightCone: 'Session (Lazy Horizon) / Spatial Bedrock',
+                        sensedComponents: []
                     };
                     const reified = [];
-                    if (globalThis.document) {
-                        const elements = globalThis.document.querySelectorAll("#core-realm-reifications [data-mark]");
-                        elements.forEach(el => {
-                            const pid = el.id.replace("reified-", "");
-                            const isSensible = el.style.display !== "none";
+                    const sensed = [];
+                    if (service && self._sensor) {
+                        const pids = service.getReifiedPids() || [];
+                        for (const pid of pids) {
+                            const entity = {
+                                id: `reified-${pid}`,
+                                mark: {
+                                    matchers: [{ type: "matchSense", value: "Language" }]
+                                }
+                            };
+                            const isSensible = self._sensor.sense(entity);
                             reified.push({ pid, isSensible });
-                        });
+                            if (isSensible) {
+                                sensed.push(pid);
+                            }
+                        }
                     }
+                    store.realmCognition.sensedComponents = sensed;
                     store.reifiedComponents = reified;
+                } else if (node.ontologicalState === 'observer' || node.id === 'identity') {
+                    store.realmCognition = null;
+                    store.reifiedComponents = [];
+                    
+                    const currentRealmId = self._stratum?.realmId;
+                    const service = self._cognitionServices?.get(currentRealmId);
+                    const sensed = [];
+                    if (service && self._sensor) {
+                        const pids = service.getReifiedPids() || [];
+                        for (const pid of pids) {
+                            const entity = {
+                                id: `reified-${pid}`,
+                                mark: {
+                                    matchers: [{ type: "matchSense", value: "Language" }]
+                                }
+                            };
+                            const isSensible = self._sensor.sense(entity);
+                            if (isSensible) {
+                                sensed.push(pid);
+                            }
+                        }
+                    }
+                    store.activeSensedComponents = sensed;
                 } else {
                     store.realmCognition = null;
                     store.reifiedComponents = [];
@@ -822,6 +870,9 @@ export default class Activator {
         }
         if (this._dashboardSyncUI) {
             globalThis.removeEventListener('stratum-changed', this._dashboardSyncUI);
+        }
+        if (this._homeostasisListener) {
+            globalThis.removeEventListener("realm-homeostasis-completed", this._homeostasisListener);
         }
         if (this._renderListener) globalThis.removeEventListener('explorer-render-request', this._renderListener);
         this._logger.info("Stratographer: Stopped.");

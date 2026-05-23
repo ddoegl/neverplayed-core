@@ -365,6 +365,27 @@
             </div>
           </template>
 
+          <!-- Active Observer details card -->
+          <template x-if="$store.explorer.activeNode?.ontologicalState === 'observer' || $store.explorer.activeNode?.id === 'identity'">
+            <div class="bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-4 mb-4 shadow-lg shadow-emerald-500/5">
+              <div class="flex items-center space-x-2 mb-3">
+                <i class="fas fa-eye text-emerald-400 text-xs"></i>
+                <span class="text-[9px] uppercase tracking-[0.2em] font-black text-emerald-300">Active Observer Sensed Components</span>
+              </div>
+              <div class="space-y-2.5">
+                <div class="text-[8px] uppercase text-emerald-400/60 font-black mb-1">Sensed components in active realm</div>
+                <div class="flex flex-wrap gap-1">
+                  <template x-for="comp in ($store.explorer.activeSensedComponents || [])" :key="comp">
+                    <span class="bg-emerald-500/20 text-emerald-300 text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold font-mono" x-text="comp.split('.').pop()"></span>
+                  </template>
+                  <template x-if="!$store.explorer.activeSensedComponents?.length">
+                    <span class="text-slate-650 text-[8px] italic">No components sensed in this realm.</span>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <!-- Realm Cognition Panel (TAME) -->
           <template x-if="$store.explorer.realmCognition">
             <div class="bg-purple-950/20 border border-purple-500/30 rounded-2xl p-4 mb-4 shadow-lg shadow-purple-500/5">
@@ -399,6 +420,17 @@
                 <div class="flex flex-col space-y-1 pt-2 mt-2 border-t border-purple-500/15">
                   <span class="text-[8px] uppercase text-purple-400/60 font-black">Light Cone Boundary</span>
                   <span class="text-[10px] font-mono text-slate-300" x-text="$store.explorer.realmCognition.lightCone"></span>
+                </div>
+                <div class="flex flex-col space-y-1 pt-2 mt-2 border-t border-purple-500/15">
+                  <span class="text-[8px] uppercase text-purple-400/60 font-black">Sensed Components</span>
+                  <div class="flex flex-wrap gap-1 mt-1">
+                    <template x-for="comp in ($store.explorer.realmCognition.sensedComponents || [])" :key="comp">
+                      <span class="bg-purple-500/20 text-purple-300 text-[8px] px-1.5 py-0.5 rounded border border-purple-500/20 font-mono font-bold" x-text="comp.split('.').pop()"></span>
+                    </template>
+                    <template x-if="!$store.explorer.realmCognition.sensedComponents?.length">
+                      <span class="text-slate-650 text-[8px] italic">No components sensed in this realm.</span>
+                    </template>
+                  </div>
                 </div>
               </div>
             </div>

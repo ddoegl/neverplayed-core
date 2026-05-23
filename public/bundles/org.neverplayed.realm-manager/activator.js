@@ -19,7 +19,10 @@ import {
     AUTH_SHIELD_SERVICE,
     FLOW_SERVICE,
     LIMES_SERVICE,
-    TRANSITION_PARTICIPANT_INTERFACE
+    TRANSITION_PARTICIPANT_INTERFACE,
+    PERSISTENCE_MANAGER_SERVICE,
+    EVENT_HANDLER_INTERFACE,
+    EVENT_TOPIC
 } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import { BaseActivator } from "osgi-base";
@@ -50,6 +53,12 @@ export default class Activator extends BaseActivator {
     _flows = new Map(); // Store discovered flows: id -> service
     _limes = null;
     _limesTracker = null;
+
+    // Dynamic Cognition (TAME Engine)
+    _cognitions = new Map(); // id -> cognition loop state
+    _cognitionRegs = new Map(); // id -> ServiceRegistration
+    _homeostasisScheduled = false;
+    _homeostasisHandlerReg = null;
 
     onStart(context) {
         // 1. Initialize Logger
@@ -82,10 +91,11 @@ export default class Activator extends BaseActivator {
         // 1.3 Launch Discovery & Recovery (Moved to step 3 for serialization)
 
         // 1.4 Persistence Tracker (Vital for recovery)
-        this._persistenceTracker = context.trackService(`(objectClass=${PM_INTERFACE_KEY})`, {
+        this._persistenceTracker = context.trackService(`(|(objectClass=${PM_INTERFACE_KEY})(objectClass=${PERSISTENCE_MANAGER_SERVICE}))`, {
             addingService: (ref) => {
                 this._persistence = context.getService(ref);
                 this.logger?.info("Realm Manager: Persistence connected.");
+                this._scheduleHomeostasis();
                 return this._persistence;
             },
             removedService: () => { this._persistence = null; }
@@ -268,6 +278,21 @@ export default class Activator extends BaseActivator {
             getHierarchy: (id) => this._resolveHierarchy(id || this._activeRealmId)
         });
 
+        // 1.11 Register EventHandler for homeostasis (TAME Engine)
+        const topics = [
+            "org/neverplayed/session/CHANGED",
+            "org/neverplayed/realm/CHANGED",
+            "org/neverplayed/persistence/CONTEXT_CHANGED",
+            "org/neverplayed/persistence/CHANGED",
+            "org/neverplayed/stratum/CHANGED"
+        ];
+
+        this._homeostasisHandlerReg = context.registerService(EVENT_HANDLER_INTERFACE, {
+            handleEvent: (_event) => {
+                this._scheduleHomeostasis();
+            }
+        }, { [EVENT_TOPIC]: topics });
+
         this._discoveryPromise = this._discoverRealms();
         this._recoveryPromise = this._recoverState(context);
         
@@ -287,6 +312,18 @@ export default class Activator extends BaseActivator {
         if (this._flowTracker) this._flowTracker.close();
         if (this._limesTracker) this._limesTracker.close();
         if (this._participantTracker) this._participantTracker.close();
+
+        // Dynamic Cognition Cleanups
+        if (this._homeostasisHandlerReg) {
+            try { this._homeostasisHandlerReg.unregister(); } catch (_e) {}
+            this._homeostasisHandlerReg = null;
+        }
+        for (const reg of this._cognitionRegs.values()) {
+            try { reg.unregister(); } catch (_e) {}
+        }
+        this._cognitionRegs.clear();
+        this._cognitions.clear();
+
         if (this.logger) this.logger.info("Realm Manager: Stopped.");
     }
 
@@ -643,6 +680,26 @@ export default class Activator extends BaseActivator {
             
             this._realmRegs.set(manifest.id, registration);
 
+            // Dynamically register RealmCognitionService (TAME Engine)
+            const oldCognitionReg = this._cognitionRegs.get(manifest.id);
+            if (oldCognitionReg) {
+                try { oldCognitionReg.unregister(); } catch (_e) {}
+            }
+
+            const cognition = {
+                predictionError: 0.0,
+                reifiedPids: [],
+                getPredictionError() { return this.predictionError; },
+                getReifiedPids() { return this.reifiedPids; }
+            };
+            this._cognitions.set(manifest.id, cognition);
+
+            const cognitionReg = this.context.registerService("org.neverplayed.realm.RealmCognitionService", cognition, {
+                "realm.id": manifest.id
+            });
+            this._cognitionRegs.set(manifest.id, cognitionReg);
+            this._scheduleHomeostasis();
+
             // Broadcast discovery (Step 1)
             if (this._eventAdmin && this._eventFactory) {
                 this.logger?.info(`Realm Manager: Broadcasting realm registration for '${manifest.id}'`);
@@ -687,6 +744,14 @@ export default class Activator extends BaseActivator {
             try { registration.unregister(); } catch (_e) { /* ignore */ }
             this._realmRegs.delete(id);
         }
+
+        // Clean up dynamic cognition
+        const cognitionReg = this._cognitionRegs.get(id);
+        if (cognitionReg) {
+            try { cognitionReg.unregister(); } catch (_e) {}
+            this._cognitionRegs.delete(id);
+        }
+        this._cognitions.delete(id);
 
         this.logger?.info(`Realm Manager: Unregistered universe '${id}'`);
 
@@ -1223,5 +1288,70 @@ export default class Activator extends BaseActivator {
             await new Promise(r => setTimeout(r, 100));
         }
         return null;
+    }
+
+    _scheduleHomeostasis() {
+        if (this._homeostasisScheduled) return;
+        this._homeostasisScheduled = true;
+        queueMicrotask(() => this.homeostasisStep());
+    }
+
+    async homeostasisStep() {
+        this._homeostasisScheduled = false;
+
+        for (const [realmId, cognition] of this._cognitions.entries()) {
+            // 1. Epistemic Config Scan
+            if (this._persistence && typeof this._persistence.listKeys === 'function') {
+                try {
+                    const configKeys = (await this._persistence.listKeys("config.")) || [];
+                    cognition.reifiedPids = configKeys.map(key => key.substring(7));
+                } catch (err) {
+                    this.logger?.error(`Realm Manager: Failed sensing config traces for ${realmId}`, err);
+                }
+            }
+
+            // 2. Exteroceptive Homeostasis & Active Inference
+            if (this.session && this.session.activeRealmId === realmId) {
+                const stack = this.session.scopedUsers?.[realmId] || {};
+                let error = 0.0;
+                const staleUsers = [];
+                const now = Date.now();
+
+                for (const [userId, user] of Object.entries(stack)) {
+                    if (userId === '__activeId__' || userId === 'guest') continue;
+                    if (user && user.loggedIn) {
+                        const lastActive = user.lastActiveTime || 0;
+                        if (now - lastActive > 30000) {
+                            error += 0.5;
+                            staleUsers.push(userId);
+                        }
+                    }
+                }
+
+                cognition.predictionError = error;
+
+                if (cognition.predictionError > 0) {
+                    this.logger?.info(`Homeostasis [${realmId}]: Prediction error is ${cognition.predictionError}. Executing active inference for stale occupants: ${JSON.stringify(staleUsers)}`);
+                    for (const userId of staleUsers) {
+                        try {
+                            this.session.logout(realmId, userId);
+                        } catch (err) {
+                            this.logger?.error(`Failed logging out stale user ${userId} in ${realmId}`, err);
+                        }
+                    }
+                    // Reset prediction error to 0 after inference (cleanup)
+                    cognition.predictionError = 0.0;
+                }
+            }
+
+            // 3. Broadcast Completion via custom event
+            const detail = { realmId, reifiedPids: cognition.reifiedPids };
+            const event = new CustomEvent("realm-homeostasis-completed", { 
+                detail,
+                bubbles: true,
+                cancelable: true
+            });
+            globalThis.dispatchEvent(event);
+        }
     }
 }
