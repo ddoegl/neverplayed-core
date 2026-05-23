@@ -97,6 +97,7 @@ async function main() {
         "bundles/org.neverplayed.perceiver-service/manifest.json",
         "bundles/org.neverplayed.being-service/manifest.json",
         "bundles/org.neverplayed.realm.core/manifest.json",
+        "bundles/org.neverplayed.realm.core-dom/manifest.json",
         "bundles/org.neverplayed.plexus-core/manifest.json",
         "bundles/org.neverplayed.plexus-enricher/manifest.json",
         "bundles/org.neverplayed.plexus/manifest.json",
@@ -204,6 +205,7 @@ async function main() {
         "bundles/org.neverplayed.perceiver-service/manifest.json",
         "bundles/org.neverplayed.being-service/manifest.json",
         "bundles/org.neverplayed.realm.core/manifest.json",
+        "bundles/org.neverplayed.realm.core-dom/manifest.json",
         "bundles/org.neverplayed.plexus-core/manifest.json",
         "bundles/org.neverplayed.plexus-enricher/manifest.json",
         "bundles/org.neverplayed.plexus/manifest.json",
@@ -229,6 +231,11 @@ async function main() {
     // Switch to core realm manually to ensure everything is set up
     await realmManager.switchRealm("org.neverplayed.realm.core");
     assertEquals(realmManager.getActiveRealm(), "org.neverplayed.realm.core", "Active realm must default back/recover to core realm");
+
+    console.log("DIAGNOSTIC: Active Realm =", realmManager.getActiveRealm());
+    console.log("DIAGNOSTIC: Current User =", session.currentUser);
+    console.log("DIAGNOSTIC: Scoped Users =", JSON.stringify(session.scopedUsers));
+    console.log("DIAGNOSTIC: DOM Body HTML =", document.body.innerHTML);
 
     // Retrieve reified DOM elements
     const reifiedEl = document.getElementById("reified-org.neverplayed.shell-cli");
@@ -257,6 +264,27 @@ async function main() {
     assertEquals(element.style.display, "", "Reified element should be visible to observer with Language sense");
 
     console.log("✅ Default Observer Plexus Sensation verified.");
+
+    // -------------------------------------------------------------
+    // Test Case 5: Headless Decoupling and DOM Adapter Lifecycle
+    // -------------------------------------------------------------
+    console.log("🧪 Test 5: Verifying headless decoupling and DOM adapter unmounting...");
+
+    // 1. Static assertion that org.neverplayed.realm.core activator contains no document references
+    const activatorPath = new URL("../public/bundles/org.neverplayed.realm.core/activator.js", import.meta.url).pathname;
+    const activatorCode = Deno.readTextFileSync(activatorPath);
+    assert(!activatorCode.includes("document"), "Core realm activator must not reference 'document' directly");
+    assert(!activatorCode.includes("globalThis.document"), "Core realm activator must not reference 'globalThis.document'");
+    console.log("✅ verified that core realm activator is completely headless (no DOM references).");
+
+    // 2. Verify that when logging out, reifications are removed from the DOM
+    console.log("TEST: Logging out default observer from org.neverplayed.realm.core...");
+    await session.logout("org.neverplayed.realm.core", "8fNNh7UkppadUaKJQhaiMIGzcLd2");
+    await settle();
+
+    const elementAfterLogout = document.getElementById("core-realm-reifications");
+    assertEquals(elementAfterLogout, null, "#core-realm-reifications should be unmounted from DOM after logout");
+    console.log("✅ verified that reifications are unmounted from DOM upon logout.");
 
     console.log("\n✨ ALL PRIMORDIAL BOOTSTRAPPING INTEGRATION TESTS PASSED! ✨");
     

@@ -1,0 +1,12 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.realm.core-dom",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Realm Core DOM Adapter",
+    "Bundle-Description": "Decoupled UI Adapter that handles DOM reifications of configuration traces for the Core Realm.",
+    "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.realm.RealmDOMAdapter\"",
+    "Import-Service": [
+        "org.neverplayed.realm.RealmCognitionService",
+        "org.neverplayed.auth.Session"
+    ]
+}

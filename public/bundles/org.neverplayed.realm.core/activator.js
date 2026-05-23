@@ -17,6 +17,7 @@ export default class Activator extends BaseActivator {
     _stratum = null;
     _predictionError = 0.0;
     _homeostasisScheduled = false;
+    _reifiedPids = [];
 
     async onStart(context) {
         // 1. Track Session Service
@@ -44,7 +45,8 @@ export default class Activator extends BaseActivator {
 
         // 3. Register RealmCognitionService
         context.registerService(REALM_COGNITION_SERVICE, {
-            getPredictionError: () => this.getPredictionError()
+            getPredictionError: () => this.getPredictionError(),
+            getReifiedPids: () => this._reifiedPids
         }, { "realm.id": "org.neverplayed.realm.core" });
 
         // 4. Register Event Handler for Session, Realm, Persistence and Stratum changes
@@ -82,31 +84,13 @@ export default class Activator extends BaseActivator {
         if (this.persistence && typeof this.persistence.listKeys === 'function') {
             try {
                 const configKeys = (await this.persistence.listKeys("config.")) || [];
-                if (globalThis.document && globalThis.document.body) {
-                    let container = globalThis.document.getElementById("core-realm-reifications");
-                    if (!container) {
-                        container = globalThis.document.createElement("div");
-                        container.id = "core-realm-reifications";
-                        container.style.position = "absolute";
-                        container.style.zIndex = "-1000";
-                        container.style.opacity = "0";
-                        container.style.pointerEvents = "none";
-                        globalThis.document.body.appendChild(container);
-                    }
-                    container.innerHTML = "";
-                    for (const key of configKeys) {
-                        const pid = key.substring(7); // Remove "config."
-                        const el = globalThis.document.createElement("div");
-                        el.id = `reified-${pid}`;
-                        el.setAttribute("data-mark", JSON.stringify([{ type: "matchSense", value: "Language" }]));
-                        el.innerText = `Reified Component: ${pid}`;
-                        container.appendChild(el);
-                    }
-                }
+                this._reifiedPids = configKeys.map(key => key.substring(7));
             } catch (err) {
                 this.logger.error("Realm Core: Failed sensing config traces", err);
             }
         }
+
+        this.dispatch("core-realm-homeostasis-completed", { reifiedPids: this._reifiedPids });
 
         if (!this._session) return;
 

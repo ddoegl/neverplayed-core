@@ -19,6 +19,7 @@
         "./bundles/org.neverplayed.yaml-service/manifest.json",
         "./bundles/org.neverplayed.session-service/manifest.json",
         "./bundles/org.neverplayed.realm.core/manifest.json",
+        "./bundles/org.neverplayed.realm.core-dom/manifest.json",
         "./bundles/org.neverplayed.session-service-dom/manifest.json",
         "./bundles/org.neverplayed.realm-manager-dom/manifest.json",
         "./bundles/org.neverplayed.perceiver-service/manifest.json",
