@@ -194,37 +194,35 @@ The visual interface is not the system itself, but a set of **apertures** (viewp
 2.  **`shell-sidebar` (Control Aperture):** Renders navigation controls, compass indicators, and tool drawers.
 3.  **`shell-header` (Sovereignty Aperture):** Renders identity states, active grounding perspective buttons, and tenant tags.
 
-### Headless vs. DOM Separation
-*   **The Headless Realm (Symbolic Layer):** Core Realm bundles (such as `org.neverplayed.realm.core`) operate strictly as headless entities. They track configuration traces, monitor homeostasis, and declare which components are active, but they **never** manipulate the browser document (`globalThis.document`) or append HTML.
-*   **The DOM Adapter (Sensory Layer):** Environment-specific DOM bundles (such as `org.neverplayed.realm.core-dom` or `org.neverplayed.shell-cli-dom`) bridge the symbolic layer to the browser runtime. They track the headless services and *mount* the reified components into the designated DOM apertures.
+### Headless vs. DOM Separation & Programmatic Sensation
+*   **Platform-Provisioned Cognition (The Headless Layer):** Realms are defined declaratively via configuration (e.g., `core.json`, `habitat.json`). Rather than writing custom code bundles for each realm, the platform (e.g., `RealmManager`) dynamically provisions a `RealmCognitionService` for *every* registered realm. This service tracks config PIDs, monitors occupants, and registers active reified components symbolically (without document/DOM references).
+*   **The Stratographer Visual Aperture (The Sensory Layer):** The dashboard interface acts as the central observer. The Stratographer queries the dynamic `RealmCognitionService` instances and programmatically filters active reified components using the `PlexusSensor.sense()` API. Sensed components are rendered visually in the graph HUD panels and observer inspect cards. No physical mock elements are ever injected into the browser DOM body.
 
 ```mermaid
-graph LR
+graph TD
     subgraph Headless ["Headless Layer (Sovereign State)"]
-        Realm["Core Realm (L2 Being)"]
-        Flow["Flow Service (Symbolic Flow)"]
+        Manager["Realm Manager (Platform)"]
+        Cognition["Dynamic RealmCognitionService"]
     end
 
-    subgraph DOMAdapter ["DOM Adapter Layer (Sensory Bridge)"]
-        Adapter["Core Realm DOM Adapter"]
+    subgraph Perceptual ["Perceptual Layer (Programmatic Filter)"]
+        Sensor["Plexus Sensor (sense API)"]
     end
 
-    subgraph Browser ["Browser Runtime (Apertures)"]
-        Sidebar["#shell-sidebar"]
-        Header["#shell-header"]
-        Host["#shell-host"]
+    subgraph HUD ["Visual Aperture (The Stratographer)"]
+        Graph["D3 Topology Graph Node"]
+        Widget["HUD Realm Cognition Panel"]
     end
 
-    Realm -->|Declares Reification| Flow
-    Flow -->|Tracked by| Adapter
-    Adapter -->|Mounts flow template into| Sidebar
-    Adapter -->|Mounts flow template into| Header
-    Adapter -->|Mounts flow template into| Host
+    Manager -->|Dynamically registers| Cognition
+    Cognition -->|Provides reified PIDs| Sensor
+    Sensor -->|Validates senses against data-mark| Widget
+    Widget -->|Renders visible components to Observer| HUD
 ```
 
 ### The DOM Sense Requirement
 A Being can only perceive the UI apertures if its surrogate possesses a **DOM Sense** (e.g., `DOMVision` or the implicit capability to evaluate DOM marks). 
-*   If the Being runs in a headless environment (like a Deno CLI or remote terminal client), it lacks the DOM Sense; it interacts with the *same* flows and configurations, but through a text-based stream or console aperture.
-*   If the Being runs in the browser, its DOM Sense matches the reified elements' `data-mark` configs, projecting the visual interface onto the screen.
+*   If the Being runs in a headless environment (like a Deno CLI or remote terminal client), it lacks the DOM Sense; it interacts with the *same* flows and configurations programmatically, but through a text-based stream or console aperture.
+*   If the Being runs in the browser, the Stratographer HUD projects these reified components onto the screen only if the observer's surrogate senses match the requirements.
 
 
