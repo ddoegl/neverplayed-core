@@ -31,7 +31,13 @@ export default class Activator extends BaseActivator {
     _realms = new Map();
     _activeRealmId = null;
     _isTransitioning = false;
-    _persistence = null;
+    _persistenceVal = null;
+    get _persistence() {
+        return this._persistenceTracker ? (this._persistenceTracker.getService() || this._persistenceVal) : this._persistenceVal;
+    }
+    set _persistence(val) {
+        this._persistenceVal = val;
+    }
     _registry = null;
     _eventAdmin = null;
     _eventFactory = null;
@@ -93,19 +99,34 @@ export default class Activator extends BaseActivator {
         // 1.4 Persistence Tracker (Vital for recovery)
         this._persistenceTracker = context.trackService(`(|(objectClass=${PM_INTERFACE_KEY})(objectClass=${PERSISTENCE_MANAGER_SERVICE}))`, {
             addingService: (ref) => {
-                this._persistence = context.getService(ref);
+                const svc = context.getService(ref);
+                this._persistence = svc;
                 this.logger?.info("Realm Manager: Persistence connected.");
                 this._scheduleHomeostasis();
-                return this._persistence;
+                return svc;
             },
-            removedService: () => { this._persistence = null; }
+            removedService: (ref) => {
+                const svc = context.getService(ref);
+                if (this._persistenceVal === svc) {
+                    this._persistenceVal = null;
+                }
+            }
         });
         this._persistenceTracker.open();
 
         // 1.5 Track Registry for Ontological Intersection
         this._registryTracker = context.trackService(`(objectClass=${DOMAIN_OBJECT_REGISTRY_SERVICE})`, {
-            addingService: (ref) => { this._registry = context.getService(ref); return this._registry; },
-            removedService: () => { this._registry = null; }
+            addingService: (ref) => {
+                const svc = context.getService(ref);
+                this._registry = svc;
+                return svc;
+            },
+            removedService: (ref) => {
+                const svc = context.getService(ref);
+                if (this._registry === svc) {
+                    this._registry = null;
+                }
+            }
         });
         this._registryTracker.open();
 
@@ -1301,9 +1322,13 @@ export default class Activator extends BaseActivator {
 
         for (const [realmId, cognition] of this._cognitions.entries()) {
             // 1. Epistemic Config Scan
-            if (this._persistence && typeof this._persistence.listKeys === 'function') {
+            const pm = this._persistence;
+            if (pm && typeof pm.listKeys === 'function') {
                 try {
-                    const configKeys = (await this._persistence.listKeys("config.")) || [];
+                    if (typeof pm.waitReady === 'function') {
+                        try { await pm.waitReady(); } catch (_e) {}
+                    }
+                    const configKeys = (await pm.listKeys("config.")) || [];
                     cognition.reifiedPids = configKeys.map(key => key.substring(7));
                 } catch (err) {
                     this.logger?.error(`Realm Manager: Failed sensing config traces for ${realmId}`, err);
