@@ -177,9 +177,54 @@ When the Core Realm awakens, its first act is self-sensing (interoception) to di
     - Until these receptors bind (service resolution), the Realm remains blind to those specific sensory dimensions of its own body.
 
 ### Reification & The Mutual Sensation Loop
-*   **Materialization:** The bundles reified by the Realm materialize their structural forms (bodies) in the DOM, embedded with `data-mark` attributes containing their sensory requirements.
+*   **Materialization:** The active bundles reified by the Realm materialize their functional streams (flows). If the runtime environment supports visual rendering, these flows are fed into the sensible boundaries of the client interface.
 *   **The Double-Loop of Exteroception:**
-    1.  **Observer -> Realm:** The human observer logs in under the default `observer` surrogate. The `PlexusSensor` inspects the DOM, matching the observer's active senses against the reified `data-mark` tags, rendering the UI elements visible. The observer now senses the Realm's body.
+    1.  **Observer -> Realm:** The human observer logs in under the default `observer` surrogate. The observer's sensory apparatus (e.g. `PlexusSensor`) inspects the UI representation, matching the observer's active senses against the reified `data-mark` tags, rendering the elements visible.
     2.  **Realm -> Observer:** The observer's registration in the occupant stack (`session.scopedUsers[realmId]`) acts as a sensory stimulus across the Realm's Markov Blanket. The Realm's homeostasis engine senses the observer, computes the prediction error, and maintains active rendering of the environment.
+
+---
+
+## 8. Decoupled UI Apertures & DOM Senses (Headless Sovereignty)
+
+To preserve the **Headless Decoupled Stratum** principle, we establish a strict separation between the symbolic, environment-agnostic state of the Realm and its physical representation in the browser DOM.
+
+### UI Apertures
+The visual interface is not the system itself, but a set of **apertures** (viewports) through which Beings perceive and interact with the underlying state. In the browser runtime, the system exposes three primary apertures:
+1.  **`shell-host` (Workspace Aperture):** Renders the central workspace flows, maps, and canvas views.
+2.  **`shell-sidebar` (Control Aperture):** Renders navigation controls, compass indicators, and tool drawers.
+3.  **`shell-header` (Sovereignty Aperture):** Renders identity states, active grounding perspective buttons, and tenant tags.
+
+### Headless vs. DOM Separation
+*   **The Headless Realm (Symbolic Layer):** Core Realm bundles (such as `org.neverplayed.realm.core`) operate strictly as headless entities. They track configuration traces, monitor homeostasis, and declare which components are active, but they **never** manipulate the browser document (`globalThis.document`) or append HTML.
+*   **The DOM Adapter (Sensory Layer):** Environment-specific DOM bundles (such as `org.neverplayed.realm.core-dom` or `org.neverplayed.shell-cli-dom`) bridge the symbolic layer to the browser runtime. They track the headless services and *mount* the reified components into the designated DOM apertures.
+
+```mermaid
+graph LR
+    subgraph Headless ["Headless Layer (Sovereign State)"]
+        Realm["Core Realm (L2 Being)"]
+        Flow["Flow Service (Symbolic Flow)"]
+    end
+
+    subgraph DOMAdapter ["DOM Adapter Layer (Sensory Bridge)"]
+        Adapter["Core Realm DOM Adapter"]
+    end
+
+    subgraph Browser ["Browser Runtime (Apertures)"]
+        Sidebar["#shell-sidebar"]
+        Header["#shell-header"]
+        Host["#shell-host"]
+    end
+
+    Realm -->|Declares Reification| Flow
+    Flow -->|Tracked by| Adapter
+    Adapter -->|Mounts flow template into| Sidebar
+    Adapter -->|Mounts flow template into| Header
+    Adapter -->|Mounts flow template into| Host
+```
+
+### The DOM Sense Requirement
+A Being can only perceive the UI apertures if its surrogate possesses a **DOM Sense** (e.g., `DOMVision` or the implicit capability to evaluate DOM marks). 
+*   If the Being runs in a headless environment (like a Deno CLI or remote terminal client), it lacks the DOM Sense; it interacts with the *same* flows and configurations, but through a text-based stream or console aperture.
+*   If the Being runs in the browser, its DOM Sense matches the reified elements' `data-mark` configs, projecting the visual interface onto the screen.
 
 

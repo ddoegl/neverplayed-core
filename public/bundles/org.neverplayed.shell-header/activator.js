@@ -31,6 +31,9 @@ export default class Activator extends AlpineActivator {
         this.pm = null;
         const UI_STORAGE_PID = SHELL_UI_CONTEXT_PID;
 
+        const mountPoint = this.config.mountPoint || "#shell-header";
+
+
         // 1. Initialize Global UI Context Store
         const store = this.initStore('shell_context', {
             activeRealm: { id: 'loading', title: 'Loading...', icon: 'fas fa-circle-notch fa-spin' },
@@ -104,7 +107,7 @@ export default class Activator extends AlpineActivator {
 
         // 4. Render UI (Atomic & Guarded)
         const self = this;
-        await this.render('#shell-header', 'templates/header.html', () => ({
+        await this.render(mountPoint, 'templates/header.html', () => ({
             get shell() { return globalThis.Alpine.store('shell_context') || { realms: [], activeRealm: {}, user: { alias: 'Guest', avatar: '?' } }; },
             get activeFlow() { return globalThis.backofficeState?.activeFlow || globalThis.businessPortalState?.activeFlow; },
             

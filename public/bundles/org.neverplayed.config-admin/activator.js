@@ -76,7 +76,7 @@ export default class Activator extends CoreAlpineActivator {
                             pm.store(`config.${pid}`, stored);
                         }
                     };
-                    if (primingData.flowType || primingData.channels) processPriming(bsn, primingData);
+                    if (primingData.flowType || primingData.channels || primingData.mountPoint) processPriming(bsn, primingData);
                     else for (const [pid, defaults] of Object.entries(primingData)) if (typeof defaults === 'object') processPriming(pid, defaults);
                 } catch (e) { logger.error(`Failed priming: ${bundle.getSymbolicName()}`, e); }
             }
