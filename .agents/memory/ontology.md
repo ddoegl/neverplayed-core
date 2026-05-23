@@ -227,25 +227,25 @@ A Being can only perceive the UI apertures if its surrogate possesses a **DOM Se
 
 ---
 
-## 9. The Primordial Lobby & Global Observer Fallback (Limbo to Genesis)
+## 9. The Platonic Staging Lobby & Observer Fallback (Morphospace to Ingression)
 
-To cleanly separate **Authentication** (identity verification) from **Inhabitation** (realm residency), the bootstrap and shutdown cycles are structured around a central staging lobby.
+To cleanly separate **Authentication** (identity verification) from **Inhabitation** (realm residency), the bootstrap and shutdown cycles are structured around a central staging lobby operating as a Platonic morphospace of potential forms.
 
-### The Primordial Staging Lobby
+### The Platonic Staging Lobby
 The staging lobby is a virtual context *outside* the spatial realms:
-*   **Virtual Scope:** Activated when `activeRealmId = null` or set to a virtual `"global"` string scope. No custom realm bundles or stratum layers are active.
+*   **Virtual Scope:** Activated when `activeRealmId = "platonic"` (a virtual string scope). No custom realm bundles or stratum layers are active.
 *   **Visceral Infrastructure:** Only the platform's root bundles (e.g., `auth-shield`, `session-service`, `persistence-manager`, and the basic layout shell) run in this state. They serve as the nervous system that renders the lobby's visual interface.
-*   **Global Address Coordinates:** Mapped via the root subjective coordinate URI:
-    $$\text{Global URI} = \text{np://} + \text{tenantId} + \text{/} + \text{userId} + \text{/}$$
+*   **Platonic Address Coordinates:** Mapped via the root subjective coordinate URI:
+    $$\text{Platonic URI} = \text{np://} + \text{tenantId} + \text{/platonic/} + \text{userId} + \text{/}$$
 
 ### The Idealist Observer Fallback
 Because sensation requires an observer (*esse est percipi*), a Being must always possess a sensory lens to perceive the universe:
 *   **Default Surrogate:** Upon successful authentication, any Being is provisioned with the default **`observer`** surrogate.
-*   **The Logout Fallback:** When a user logs out of a specific realm (departing its Markov blanket), they are not deleted from the session or disconnected from the universe. Instead, they fall back to the Primordial Lobby as a global Being wearing the `observer` surrogate, positioned outside the realm gates.
+*   **The Logout Fallback:** When a user logs out of a specific realm (departing its Markov blanket), they are not deleted from the session or disconnected from the universe. Instead, they fall back to the Platonic Staging Lobby as a global Being wearing the `observer` surrogate, awaiting their next **ingression** into a spatial realm.
 
 ### Unfolding & Bootstrapping Shortcuts
-*   **Prime Boot (The Chooser):** By default, when the system awakens, the `auth-shield` authenticates the user and places them in the Primordial Lobby, rendering a realm chooser in the sidebar/host aperture.
-*   **Landing Shortcut:** As a convenience shortcut, the system can be configured to auto-login the user into a specific landing realm (e.g., `org.neverplayed.realm.core` or `habitat`), bypassing the lobby on cold startup. However, the underlying lifecycle remains decoupled: a manual logout from that landing realm will still drop them back into the Primordial Lobby.
+*   **Prime Boot (The Chooser):** By default, when the system awakens, the `auth-shield` authenticates the user and places them in the Platonic Lobby, rendering a realm chooser in the sidebar/host aperture.
+*   **Landing Shortcut:** As a convenience shortcut, the system can be configured to auto-login the user into a specific landing realm (e.g., `org.neverplayed.realm.core` or `habitat`), bypassing the lobby on cold startup. However, the underlying lifecycle remains decoupled: a manual logout from that landing realm will still drop them back into the Platonic Lobby.
 
 
 
