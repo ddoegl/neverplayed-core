@@ -588,15 +588,15 @@ export default class Activator extends BaseActivator {
             if (lastRealmId && this._realms.has(lastRealmId)) {
                 this.logger.info(`Realm Manager: Recovering Context -> '${lastRealmId}'...`);
                 await this._switchRealm(context, lastRealmId);
+            } else if (this._realms.has("org.neverplayed.realm.core")) {
+                // Primordial Bootstrapping: Default to Core Realm (ADR-0165 / TAME Genesis)
+                this.logger.info(`Realm Manager: Primordial Awakening. Defaulting to 'org.neverplayed.realm.core'...`);
+                await this._switchRealm(context, "org.neverplayed.realm.core");
             } else if (this._realms.has("org.neverplayed.realm.real-life")) {
                 // Default Fallback: Real-Life Universe
                 this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to 'org.neverplayed.realm.real-life'...`);
                 await this._switchRealm(context, "org.neverplayed.realm.real-life");
-            } else if (this._realms.has("org.neverplayed.realm.core")) {
-                // Minimum fallback: Core Realm
-                this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to 'org.neverplayed.realm.core'...`);
-                await this._switchRealm(context, "org.neverplayed.realm.core");
-            } else if (this._realms.size > 0) {                // Minimum fallback: Core Realm
+            } else if (this._realms.size > 0) {
                 this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to first available realm '${this._realms.entries().next().value[0]}'...`);
                 await this._switchRealm(context, this._realms.entries().next().value[0]);
             }

@@ -451,8 +451,19 @@ export default class Activator {
                         activeSurrogate: 'sovereign-guard',
                         lightCone: 'Session (Lazy Horizon) / Spatial Bedrock'
                     };
+                    const reified = [];
+                    if (globalThis.document) {
+                        const elements = globalThis.document.querySelectorAll("#core-realm-reifications [data-mark]");
+                        elements.forEach(el => {
+                            const pid = el.id.replace("reified-", "");
+                            const isSensible = el.style.display !== "none";
+                            reified.push({ pid, isSensible });
+                        });
+                    }
+                    store.reifiedComponents = reified;
                 } else {
                     store.realmCognition = null;
+                    store.reifiedComponents = [];
                 }
 
                 if (node.id.startsWith('realm:')) {

@@ -18,8 +18,13 @@ export default class Activator extends BaseActivator {
 
         const getPhysicalKey = (key, options = {}) => {
             // Rule: Bootstrap Anchor (SDN-0165)
-            if (key.startsWith("pandino.session") || key.includes("config.admin")) {
-                return `np:v1:guest:unknown:guest:${key}`;
+            if (
+                key.startsWith("pandino.session") || 
+                key.includes("config.admin") || 
+                key.startsWith("config.") || 
+                key === "org.neverplayed.shell.ui.context"
+            ) {
+                return `np:v1:global:__global__:__shared__:${key}`;
             }
             if (options.scope === "shared") {
                 return `np:v1:${this._context.tenantId}:${this._context.realmId}:__shared__:${key}`;
@@ -69,10 +74,18 @@ export default class Activator extends BaseActivator {
                 const results = [];
                 const realmPrefix = `np:v1:${this._context.tenantId}:${this._context.realmId}:`;
                 const identityPrefix = `${realmPrefix}${this._context.identityId}:`;
+                const globalSharedPrefix = "np:v1:global:__global__:__shared__:";
 
                 for (let i = 0; i < storage.length; i++) {
                     const k = storage.key(i);
                     if (!k) continue;
+
+                    if (k.startsWith(globalSharedPrefix)) {
+                        const logicalKey = k.substring(globalSharedPrefix.length);
+                        if (logicalKey.startsWith(prefix)) {
+                            results.push(logicalKey);
+                        }
+                    }
 
                     if (this._context.showAll && k.startsWith(realmPrefix)) {
                          if (k.includes(`:${prefix}`)) {
@@ -102,10 +115,14 @@ export default class Activator extends BaseActivator {
                 const physicalPrefix = options.global ? "np:v1:" : getPhysicalKey("");
                 const protectedKeys = (options.except || []).map(k => getPhysicalKey(k));
                 const victims = [];
+                const globalSharedPrefix = "np:v1:global:__global__:__shared__:";
                 
                 for (let i = 0; i < storage.length; i++) {
                     const k = storage.key(i);
                     if (k && k.startsWith(physicalPrefix) && !protectedKeys.includes(k)) {
+                        if (k.startsWith(globalSharedPrefix)) {
+                            continue;
+                        }
                         victims.push(k);
                     }
                 }

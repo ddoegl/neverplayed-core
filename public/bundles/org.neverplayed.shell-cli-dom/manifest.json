@@ -6,8 +6,7 @@
         "org.neverplayed.shell.ShellCLI"
     ],
     "Configuration": {
-        "flowType": "service-flow",
-        "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
+        "flowType": "service-flow"
     },
     "Bundle-Name": "Shell CLI DOM",
     "Bundle-Description": "HTML-based terminal renderer for the shell ecosystem."

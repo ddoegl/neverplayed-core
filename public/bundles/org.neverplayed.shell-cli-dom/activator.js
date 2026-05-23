@@ -32,11 +32,11 @@ export default class Activator extends AlpineActivator {
                 // Register Flow Service
                 const getFlowProps = () => ({
                     "flow.id": SHELL_CLI_PID,
-                    "flow.title": this.config.title || "Shell CLI",
+                    "flow.title": this.config.title || "Shell CLI DOM",
                     "flow.icon": this.config.icon || "fas fa-terminal",
                     "flowType": this.config.flowType || BUNDLE_TYPE_SERVICE,
                     "sidebar": this.config.sidebar !== undefined ? this.config.sidebar : true,
-                    "channels": this.config.channels || ["real-life", "business-portal", "web-browser", "business-channel-web"],
+                    "channels": this.config.channels !== undefined ? this.config.channels : [],
                     "capability": "sys:cli"
                 });
 

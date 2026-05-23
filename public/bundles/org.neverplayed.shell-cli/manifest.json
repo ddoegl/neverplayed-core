@@ -6,9 +6,5 @@
   "Bundle-Version": "1.2.0",
   "Bundle-Activator": "activator.js",
   "Bundle-Assets": "templates/shell.html",
-  "Provide-Capability": "shell.cli;version=\"1.0.0\"",
-  "Configuration": {
-    "flowType": "service-flow",
-    "channels": ["real-life", "business-portal", "web-browser", "business-channel-web", "business-channel-app", "retail-channel-app"]
-  }
+  "Provide-Capability": "shell.cli;version=\"1.0.0\""
 }

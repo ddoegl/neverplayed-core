@@ -404,6 +404,35 @@
             </div>
           </template>
 
+          <!-- Realm Bedrock: Reified Components -->
+          <div
+            x-show="$store.explorer.activeNode?.id?.startsWith('realm:') && $store.explorer.reifiedComponents?.length > 0"
+            class="space-y-2 mb-4"
+          >
+            <div class="flex items-center space-x-2 px-1 mb-1">
+              <i class="fas fa-layer-group text-slate-600 text-[10px]"></i>
+              <span class="text-[9px] uppercase tracking-widest font-black text-slate-600">Realm Bedrock: Reified Components</span>
+            </div>
+            <div class="grid grid-cols-1 gap-2">
+              <template x-for="comp in $store.explorer.reifiedComponents" :key="comp.pid">
+                <div class="bg-slate-950/40 border border-slate-800/50 rounded-xl p-3 flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                    <div 
+                      class="w-2 h-2 rounded-full"
+                      :class="comp.isSensible ? 'bg-emerald-400 animate-pulse' : 'bg-slate-650'"
+                    ></div>
+                    <span class="text-xs font-mono text-slate-200" x-text="comp.pid.split('.').pop()"></span>
+                  </div>
+                  <span 
+                    class="text-[8px] font-black uppercase tracking-widest border px-2 py-0.5 rounded"
+                    :class="comp.isSensible ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-slate-500 bg-slate-950 border-slate-800/40'"
+                    x-text="comp.isSensible ? 'Sensible' : 'Occluded'"
+                  ></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
           <!-- Realm World Model: Trace-Makers -->
           <div
             x-show="$store.explorer.activeNode?.id?.startsWith('realm:') && $store.explorer.activeNodeTraceMakers?.length > 0"

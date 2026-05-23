@@ -75,8 +75,39 @@ export default class Activator extends BaseActivator {
         queueMicrotask(() => this.homeostasisStep());
     }
 
-    homeostasisStep() {
+    async homeostasisStep() {
         this._homeostasisScheduled = false;
+
+        // --- Epistemic Sensation (Config Traces) ---
+        if (this.persistence && typeof this.persistence.listKeys === 'function') {
+            try {
+                const configKeys = (await this.persistence.listKeys("config.")) || [];
+                if (globalThis.document && globalThis.document.body) {
+                    let container = globalThis.document.getElementById("core-realm-reifications");
+                    if (!container) {
+                        container = globalThis.document.createElement("div");
+                        container.id = "core-realm-reifications";
+                        container.style.position = "absolute";
+                        container.style.zIndex = "-1000";
+                        container.style.opacity = "0";
+                        container.style.pointerEvents = "none";
+                        globalThis.document.body.appendChild(container);
+                    }
+                    container.innerHTML = "";
+                    for (const key of configKeys) {
+                        const pid = key.substring(7); // Remove "config."
+                        const el = globalThis.document.createElement("div");
+                        el.id = `reified-${pid}`;
+                        el.setAttribute("data-mark", JSON.stringify([{ type: "matchSense", value: "Language" }]));
+                        el.innerText = `Reified Component: ${pid}`;
+                        container.appendChild(el);
+                    }
+                }
+            } catch (err) {
+                this.logger.error("Realm Core: Failed sensing config traces", err);
+            }
+        }
+
         if (!this._session) return;
 
         const realmId = this._session.activeRealmId;
