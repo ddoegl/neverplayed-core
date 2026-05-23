@@ -21,9 +21,10 @@ You must implement the following architectural updates:
 - [ ] Ensure that performing a Data Reset clears all user/realm specific keys but preserves/re-seeds the global bootstrap session state cleanly.
 - [ ] After reset, the default `activeRealmId` must default back to `"org.neverplayed.realm.core"`, starting the Core Realm in its primordial state.
 
-### 3. Core Realm Interoception (Config Traces Sensation)
-- [ ] Extend the Core Realm activator (`org.neverplayed.realm.core/activator.js`) or bootstrap sequence to query the persistence manager for available configurations (keys starting with `config.*` under the global/shared context).
-- [ ] Treat these configurations as active **stigmergic traces** of the bundles. Ensure the Core Realm registers and senses them to drive the dynamic reification of UI components.
+### 3. Core Realm Interoception (Proprioception & Config Traces)
+- [ ] In the Core Realm activator (`org.neverplayed.realm.core/activator.js`), implement the dual interoceptive modalities:
+  - **Epistemic Sensation (Config Traces):** Query the persistence manager for active `config.*` traces to reify bundle/UI components.
+  - **Proprioceptive Sensation (OSGi Registry):** Track dependencies and lifecycle events using OSGi `ServiceTracker` handles (e.g. for `STRATUM_SERVICE` and `SESSION_SERVICE`), establishing them as real-time sensory receptors of the Realm’s internal synaptic state.
 - [ ] Verify that the default human observer (`8fNNh7UkppadUaKJQhaiMIGzcLd2` under surrogate `'observer'`) has access to sense these reified components via the `PlexusSensor` and DOM `data-mark` matching.
 
 ### 4. Integration Verification

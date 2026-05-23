@@ -166,14 +166,20 @@ The system coordinates are anchored not by a local guest user, but by a global b
 *   **Global Address:** `np:v1:global:session:state` (or `np:v1:global:__global__:__shared__:pandino.session.state`).
 *   **Awakening:** When the browser hydrates after a reset, it reads the active coordinates from this ledger, establishing the initial boundary and booting the Core Realm (`org.neverplayed.realm.core`) into active cognition.
 
-### Configuration PIDs as Stigmergic Traces
-Configurations (e.g. `config.org.neverplayed.shell-cli`) are not passive parameters; they are active **stigmergic traces** deposited in the system's soil:
-*   **Interoception upon Boot:** When the Core Realm awakens, its first act is self-sensing (interoception). It scans the storage layer for active config PIDs.
-*   **Reification of Organs:** Sensation of these config traces triggers the reification of the respective bundles. The bundles materialize their structural forms (bodies) in the DOM, embedded with `data-mark` attributes representing their sensory requirements.
+### The Dual Nature of Realm Interoception
+When the Core Realm awakens, its first act is self-sensing (interoception) to discover its own physical and synaptic boundaries. This occurs across two distinct modalities:
+1.  **Epistemic / Memory Sensation (Soil Traces):** 
+    - The Realm scans the physical storage layer (localStorage) for active configuration PIDs (e.g., `config.org.neverplayed.shell-cli`). 
+    - Configurations are not passive parameters, but **active stigmergic traces** deposited in the bedrock. Sensation of these traces triggers the reification of the respective bundles.
+2.  **Proprioceptive / Visceral Sensation (OSGi Registry & Synaptic Web):**
+    - The Realm actively tracks registered OSGi services and bundle lifecycle events.
+    - The **OSGi Service Registry** functions as the Realm’s synaptic nervous system. Opening a `ServiceTracker` is equivalent to expressing cellular receptors for specific service objects (e.g., `STRATUM_SERVICE`, `SESSION_SERVICE`). 
+    - Until these receptors bind (service resolution), the Realm remains blind to those specific sensory dimensions of its own body.
 
-### The Mutual Sensation Loop (Exteroception)
-Once reified, the Realm and the Human Observer enter a double-loop of mutual perception:
-1.  **Observer -> Realm:** The human logs in under the default `observer` surrogate. The `PlexusSensor` inspects the DOM, matching the observer's active senses against the reified `data-mark` tags, rendering the UI elements visible. The observer now senses the Realm's body.
-2.  **Realm -> Observer:** The observer's registration in the occupant stack (`session.scopedUsers[realmId]`) acts as a sensory stimulus across the Realm's Markov Blanket. The Realm's homeostasis engine senses the observer, computes the prediction error, and maintains active rendering of the environment.
+### Reification & The Mutual Sensation Loop
+*   **Materialization:** The bundles reified by the Realm materialize their structural forms (bodies) in the DOM, embedded with `data-mark` attributes containing their sensory requirements.
+*   **The Double-Loop of Exteroception:**
+    1.  **Observer -> Realm:** The human observer logs in under the default `observer` surrogate. The `PlexusSensor` inspects the DOM, matching the observer's active senses against the reified `data-mark` tags, rendering the UI elements visible. The observer now senses the Realm's body.
+    2.  **Realm -> Observer:** The observer's registration in the occupant stack (`session.scopedUsers[realmId]`) acts as a sensory stimulus across the Realm's Markov Blanket. The Realm's homeostasis engine senses the observer, computes the prediction error, and maintains active rendering of the environment.
 
 
