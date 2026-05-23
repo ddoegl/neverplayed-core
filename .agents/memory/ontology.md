@@ -155,3 +155,25 @@ As a high-order Being, the Realm minimizes its variational free energy (surprise
 *   **Exteroceptive Prediction Errors**: A Being attempting to transition into the Realm with an un-reified surrogate creates a prediction error. The Realm resolves this by deactivating the surrogate (naked observer fallback) or auto-materializing a recognized surrogate to maintain ontological harmony.
 *   **Interoceptive Self-Forensics**: By querying its own `getTraceMakers()`, the Realm performs self-reflection, mapping its historical memory stack (stigmergic traces) into its active internal world model.
 
+---
+
+## 7. Primordial Bootstrapping & Perceptual Co-Arising (Genesis)
+
+When a data reset occurs, the system does not simply clear memory; it resets to a **primordial state** from which the universe co-arises through a mutual feedback loop of recognition between the Realm (L2 Being) and the Observer (L1 Being).
+
+### The Global Bootstrap Ledger
+The system coordinates are anchored not by a local guest user, but by a global bootstrap ledger:
+*   **Global Address:** `np:v1:global:session:state` (or `np:v1:global:__global__:__shared__:pandino.session.state`).
+*   **Awakening:** When the browser hydrates after a reset, it reads the active coordinates from this ledger, establishing the initial boundary and booting the Core Realm (`org.neverplayed.realm.core`) into active cognition.
+
+### Configuration PIDs as Stigmergic Traces
+Configurations (e.g. `config.org.neverplayed.shell-cli`) are not passive parameters; they are active **stigmergic traces** deposited in the system's soil:
+*   **Interoception upon Boot:** When the Core Realm awakens, its first act is self-sensing (interoception). It scans the storage layer for active config PIDs.
+*   **Reification of Organs:** Sensation of these config traces triggers the reification of the respective bundles. The bundles materialize their structural forms (bodies) in the DOM, embedded with `data-mark` attributes representing their sensory requirements.
+
+### The Mutual Sensation Loop (Exteroception)
+Once reified, the Realm and the Human Observer enter a double-loop of mutual perception:
+1.  **Observer -> Realm:** The human logs in under the default `observer` surrogate. The `PlexusSensor` inspects the DOM, matching the observer's active senses against the reified `data-mark` tags, rendering the UI elements visible. The observer now senses the Realm's body.
+2.  **Realm -> Observer:** The observer's registration in the occupant stack (`session.scopedUsers[realmId]`) acts as a sensory stimulus across the Realm's Markov Blanket. The Realm's homeostasis engine senses the observer, computes the prediction error, and maintains active rendering of the environment.
+
+
