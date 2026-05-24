@@ -760,7 +760,7 @@ export default class Activator {
                     self._dashboardSyncUI = syncUI;
                     globalThis.addEventListener('stratum-changed', self._dashboardSyncUI);
 
-                    this.$watch('$store.explorer.grounding', () => {
+                    this.$watch(() => Alpine.store('explorer').grounding, () => {
                         this.jumpTarget = self._stratum?.toURI();
                     });
 

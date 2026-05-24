@@ -5,7 +5,7 @@
     "Bundle-Description": "Manages flow discovery and UI mounting for the Never Played platform.",
     "Bundle-Activator": "activator.js",
     "Configuration": {
-        "bootCapability": "sys:cli",
+        "bootCapability": "sys:forensics",
         "mountPoint": "#shell-host-root"
     }
 }

@@ -61,6 +61,19 @@ export default class Activator extends AlpineActivator {
             }
         });
 
+        // Track Session Service
+        this.track(`(objectClass=${SESSION_SERVICE})`, {
+            addingService: (ref) => {
+                this._session = context.getService(ref);
+                this._syncRealms();
+                return this._session;
+            },
+            removedService: () => {
+                this._session = null;
+                this._syncRealms();
+            }
+        });
+
         // Listen for Perceiver Changes
         this.context.registerService(EVENT_HANDLER_INTERFACE, {
             handleEvent: (event) => {
@@ -217,9 +230,21 @@ export default class Activator extends AlpineActivator {
             bundleId: ref.getBundle().id
         }));
 
+        let activeRealm = realms.find(r => r.active) || realms[0] || { id: 'none', title: 'Loading...' };
+
+        const activeRealmId = this._session?.activeRealmId;
+        if (activeRealmId === 'platonic') {
+            activeRealm = {
+                id: 'platonic',
+                title: 'Platonic Lobby',
+                icon: 'fas fa-door-open',
+                active: true
+            };
+        }
+
         this.syncStore('shell_context', {
             realms: JSON.parse(JSON.stringify(realms)), // Break proxy references
-            activeRealm: realms.find(r => r.active) || realms[0] || { id: 'none', title: 'Loading...' }
+            activeRealm
         });
     }
 

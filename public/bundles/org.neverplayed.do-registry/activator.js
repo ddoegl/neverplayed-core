@@ -60,8 +60,12 @@ export default class Activator extends CoreAlpineActivator {
             try {
                 const user = this._session.currentUser;
                 if (!user) return false;
-                const scopedAttrs = this._session.scopedUsers?.["platonic"]?.attributes || {};
-                const isScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"];
+                const globalStack = this._session.scopedUsers?.["platonic"] || {};
+                const activeId = globalStack.__activeId__;
+                const activePlatonicUser = (activeId && activeId !== 'guest') ? globalStack[activeId] : null;
+                const scopedAttrs = activePlatonicUser?.attributes || {};
+                const userAttrs = user.attributes || {};
+                const isScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"] || userAttrs["realm-admin"] || userAttrs["neverplayed-admin"];
                 const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
                 const isIdentityAdmin = ['neverplayed-admin', 'realm-admin'].some(r => caps.includes(r));
                 return isIdentityAdmin || isScopedAdmin || ['dd', 'system'].includes(user.id) || user.email === 'daniel.doegl@doegl.info';
@@ -626,17 +630,21 @@ export default class Activator extends CoreAlpineActivator {
   }
 
    _isRegistryAdmin() {
-       if (!this._session) return false;
-       try {
-           const user = this._session.currentUser;
-           if (!user) return false;
-           const scopedAttrs = this._session.scopedUsers?.["platonic"]?.attributes || {};
-           const isScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"];
-           const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
-           const isIdentityAdmin = ['neverplayed-admin', 'realm-admin'].some(r => caps.includes(r));
-           return isIdentityAdmin || isScopedAdmin || ['dd', 'system', 'admin-789'].includes(user.id) || (user.email && user.email.includes('cladmin'));
-       } catch (_e) { return false; }
-   }
+        if (!this._session) return false;
+        try {
+            const user = this._session.currentUser;
+            if (!user) return false;
+            const globalStack = this._session.scopedUsers?.["platonic"] || {};
+            const activeId = globalStack.__activeId__;
+            const activePlatonicUser = (activeId && activeId !== 'guest') ? globalStack[activeId] : null;
+            const scopedAttrs = activePlatonicUser?.attributes || {};
+            const userAttrs = user.attributes || {};
+            const isScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"] || userAttrs["realm-admin"] || userAttrs["neverplayed-admin"];
+            const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
+            const isIdentityAdmin = ['neverplayed-admin', 'realm-admin'].some(r => caps.includes(r));
+            return isIdentityAdmin || isScopedAdmin || ['dd', 'system', 'admin-789'].includes(user.id) || (user.email && user.email.includes('cladmin'));
+        } catch (_e) { return false; }
+    }
 
   async refreshMaster(triggerSync = true) {
      const pm = this._pm || this.persistence;

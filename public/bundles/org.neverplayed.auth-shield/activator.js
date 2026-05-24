@@ -114,9 +114,8 @@ export default class Activator {
                     const sessionRef = ctx.getServiceReference(SESSION_SERVICE);
                     if (sessionRef) {
                         const session = ctx.getService(sessionRef);
-                        const scoped = session.scopedUsers?.["platonic"]?.attributes || {};
                         const global = session.currentUser?.attributes || {};
-                        isRealmAdmin = global['realm-admin'] === true || scoped['realm-admin'] === true;
+                        isRealmAdmin = global['realm-admin'] === true;
                     }
                     
                     log({ text: `Detected System Roles:`, color: 'cyan', bold: true });

@@ -309,18 +309,7 @@ export default class Activator {
                     }
                 }
 
-                // Rule: Platonic Anchoring (Ideation: Sovereign Beings)
-                // Ensure every identity is known to the platonic scope for carry-over lookups.
-                if (!this.scopedUsers['platonic'][identityId]) {
-                    this.scopedUsers['platonic'][identityId] = { ...this.scopedUsers[targetScope][identityId] };
-                    logger?.debug(`Session: Anchored identity '${identityId}' in platonic scope.`);
-                } else {
-                    if (!this.scopedUsers['platonic'][identityId].originRealmId) {
-                        this.scopedUsers['platonic'][identityId].originRealmId = this.scopedUsers[targetScope][identityId].originRealmId;
-                    }
-                    this.scopedUsers['platonic'][identityId].grounding = resolvedGrounding;
-                    this.scopedUsers['platonic'][identityId].lastActiveTime = Date.now();
-                }
+
 
                 // Rule: Surrogate Grafting / Deactivation
                 if (surrogate && surrogate.id) {
@@ -452,7 +441,7 @@ export default class Activator {
             },
 
             shiftGrounding(targetGrounding, scope = null) {
-                let targetScope = scope || this.activeFlowId || this.activeRealmId || 'platonic';
+                let targetScope = scope || this.activeRealmId || 'platonic';
                 if (targetScope === 'global') targetScope = 'platonic';
                 const user = this.currentUser;
                 if (!user || user.id === 'guest') {

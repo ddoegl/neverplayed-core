@@ -189,6 +189,58 @@ async function main() {
     console.log("✅ Data Reset Preservation verified.");
 
     // -------------------------------------------------------------
+    // Test Case 2.5: Platonic Lobby Sensation Verification
+    // -------------------------------------------------------------
+    console.log("🧪 Test 2.5: Verifying dynamic sensation inside Platonic Lobby...");
+
+    // 1. Fetch platonic cognition service
+    let platonicCognition: any = null;
+    const refsPlatonic = context.getServiceReferences(REALM_COGNITION_SERVICE) || [];
+    for (const ref of refsPlatonic) {
+        if (ref.getProperty("realm.id") === "platonic") {
+            platonicCognition = context.getService(ref);
+            break;
+        }
+    }
+    assertExists(platonicCognition, "RealmCognitionService must be dynamically registered for platonic lobby");
+
+    // 2. Login default observer in 'platonic' lobby scope
+    await session.login("8fNNh7UkppadUaKJQhaiMIGzcLd2", "platonic", {
+        id: "observer",
+        label: "Observer",
+        senses: ["Language"]
+    });
+    await settle();
+
+    // 3. Resolve EventAdmin and EventFactory to force homeostasis trigger
+    const eventAdminPlatonic: any = await harness.getService("@pandino/event-admin/EventAdmin");
+    const eventFactoryPlatonic: any = await harness.getService("@pandino/event-admin/EventFactory");
+
+    // 4. Force a homeostasis step to refresh reified PIDs
+    const sessionChangedEventPlatonic = eventFactoryPlatonic.build("org/neverplayed/session/CHANGED", {});
+    eventAdminPlatonic.postEvent(sessionChangedEventPlatonic);
+    await settle();
+
+    // 5. Verify the platonic lobby realm node has reified components marked as sensible/sensed
+    const AlpineStore = (globalThis as any).Alpine?.store('explorer');
+    assertExists(AlpineStore, "Explorer store should be initialized");
+
+    await AlpineStore.inspectVault({ id: 'realm:platonic', value: 'platonic', realmId: 'platonic' });
+    const shellCliReifiedPlatonic = AlpineStore.reifiedComponents.find((c: any) => c.pid === "org.neverplayed.shell-cli");
+    assertExists(shellCliReifiedPlatonic, "Platonic reified components must list shell-cli");
+    assertEquals(shellCliReifiedPlatonic.isSensible, true, "Reified component must be sensed inside platonic lobby");
+
+    // 6. Click on active observer node while in platonic lobby
+    await AlpineStore.inspectVault({ 
+        id: 'identity:8fNNh7UkppadUaKJQhaiMIGzcLd2', 
+        value: '8fNNh7UkppadUaKJQhaiMIGzcLd2',
+        ontologicalState: 'observer'
+    });
+    assert(AlpineStore.activeSensedComponents.includes("org.neverplayed.shell-cli"), "activeSensedComponents must include shell-cli while in platonic lobby");
+
+    console.log("✅ Platonic Lobby Sensation verified successfully.");
+
+    // -------------------------------------------------------------
     // Test Case 3: Core Realm Cold Boot Fallback & Interoception
     // -------------------------------------------------------------
     console.log("🧪 Test 3: Verifying Core Realm cold boot and config reification...");
@@ -243,9 +295,20 @@ async function main() {
     console.log("DIAGNOSTIC: Scoped Users =", JSON.stringify(session.scopedUsers));
     console.log("DIAGNOSTIC: DOM Body HTML =", document.body.innerHTML);
 
-    // Retrieve dynamically provisioned cognition service and check reified PIDs
-    const cognitionService: any = await harness.getService(REALM_COGNITION_SERVICE);
-    assertExists(cognitionService, "RealmCognitionService must be dynamically registered by RealmManager");
+    // Retrieve dynamically provisioned cognition service for the core realm specifically and check reified PIDs
+    let cognitionService: any = null;
+    const startFind = Date.now();
+    while (!cognitionService && Date.now() - startFind < 5000) {
+        const refs = context.getServiceReferences(REALM_COGNITION_SERVICE) || [];
+        for (const ref of refs) {
+            if (ref.getProperty("realm.id") === "org.neverplayed.realm.core") {
+                cognitionService = context.getService(ref);
+                break;
+            }
+        }
+        if (!cognitionService) await new Promise(r => setTimeout(r, 100));
+    }
+    assertExists(cognitionService, "RealmCognitionService must be dynamically registered by RealmManager for org.neverplayed.realm.core");
     const pids = cognitionService.getReifiedPids();
     assert(pids.includes("org.neverplayed.shell-cli"), "Reified PIDs must include shell-cli");
 

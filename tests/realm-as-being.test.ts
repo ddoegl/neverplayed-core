@@ -82,9 +82,20 @@ async function main() {
         bundles: []
     });
 
-    // deno-lint-ignore no-explicit-any
-    const cognitionService: any = await harness.getService(REALM_COGNITION_SERVICE);
-    assertExists(cognitionService, "Realm Cognition service should be dynamically provisioned");
+    // Retrieve dynamically provisioned cognition service for the core realm specifically
+    let cognitionService: any = null;
+    const startFind = Date.now();
+    while (!cognitionService && Date.now() - startFind < 5000) {
+        const refs = context.getServiceReferences(REALM_COGNITION_SERVICE) || [];
+        for (const ref of refs) {
+            if (ref.getProperty("realm.id") === "org.neverplayed.realm.core") {
+                cognitionService = context.getService(ref);
+                break;
+            }
+        }
+        if (!cognitionService) await new Promise(r => setTimeout(r, 100));
+    }
+    assertExists(cognitionService, "Realm Cognition service should be dynamically provisioned for core realm");
 
     // -------------------------------------------------------------
     // Test Case 1: Dynamic Realm-Being Identity Synthesis

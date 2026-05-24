@@ -421,7 +421,10 @@ export default class Activator extends BaseActivator {
         const globalUser = this.auth?.getCurrentUser ? this.auth.getCurrentUser() : null;
         
         // 2. Resolve Session User (Domain / Layer 3)
-        const sessionUser = this.session.scopedUsers?.["platonic"] || this.session.currentUser;
+        const globalStack = this.session.scopedUsers?.["platonic"] || {};
+        const activeId = globalStack.__activeId__;
+        const activePlatonicUser = (activeId && activeId !== 'guest') ? globalStack[activeId] : null;
+        const sessionUser = activePlatonicUser || this.session.currentUser;
         
         const isGlobalAdmin = globalUser && (admins.includes(globalUser.id) || (globalUser.email && admins.includes(globalUser.email)));
         const isSessionAdmin = sessionUser && (admins.includes(sessionUser.id) || (sessionUser.email && admins.includes(sessionUser.email)));
@@ -445,11 +448,43 @@ export default class Activator extends BaseActivator {
                 };
             }
 
-            this.session.scopedUsers["platonic"].attributes = this.session.scopedUsers["platonic"].attributes || {};
-            this.session.scopedUsers["platonic"].attributes["realm-admin"] = true;
+            // B. User Profile Sync: Inject directly into the active user record in the platonic stack so it propagates reactively
+            const activePlatonicId = this.session.scopedUsers["platonic"].__activeId__;
+            if (activePlatonicId && this.session.scopedUsers["platonic"][activePlatonicId]) {
+                const userAttrs = this.session.scopedUsers["platonic"][activePlatonicId].attributes || {};
+                this.session.scopedUsers["platonic"][activePlatonicId].attributes = {
+                    ...userAttrs,
+                    "realm-admin": true
+                };
+            }
+
+            // C. Spatial Realm Profile Sync: Inject directly into the active user record in the active spatial realm stack
+            if (realmId && this.session.scopedUsers[realmId]) {
+                const activeRealmId = this.session.scopedUsers[realmId].__activeId__;
+                if (activeRealmId && this.session.scopedUsers[realmId][activeRealmId]) {
+                    const realmAttrs = this.session.scopedUsers[realmId][activeRealmId].attributes || {};
+                    this.session.scopedUsers[realmId][activeRealmId].attributes = {
+                        ...realmAttrs,
+                        "realm-admin": true
+                    };
+                }
+            }
         } else {
-            if (this.session.scopedUsers?.["platonic"]?.attributes) {
-                delete this.session.scopedUsers["platonic"].attributes["realm-admin"];
+            // Cleanup B: active user record inside the stack
+            const activePlatonicId = this.session.scopedUsers?.["platonic"]?.__activeId__;
+            if (activePlatonicId && this.session.scopedUsers["platonic"][activePlatonicId]?.attributes) {
+                const attrs = { ...this.session.scopedUsers["platonic"][activePlatonicId].attributes };
+                delete attrs["realm-admin"];
+                this.session.scopedUsers["platonic"][activePlatonicId].attributes = attrs;
+            }
+            // Cleanup C: active user record inside the spatial realm stack
+            if (realmId && this.session.scopedUsers[realmId]) {
+                const activeRealmId = this.session.scopedUsers[realmId].__activeId__;
+                if (activeRealmId && this.session.scopedUsers[realmId][activeRealmId]?.attributes) {
+                    const attrs = { ...this.session.scopedUsers[realmId][activeRealmId].attributes };
+                    delete attrs["realm-admin"];
+                    this.session.scopedUsers[realmId][activeRealmId].attributes = attrs;
+                }
             }
         }
     }
@@ -654,6 +689,28 @@ export default class Activator extends BaseActivator {
             }
             this._activeRealmId = 'platonic';
             this.logger.info(`Realm Manager: Entered Platonic Staging Lobby.`);
+
+            // Dynamically register RealmCognitionService for the Platonic Staging Lobby
+            if (!this._cognitions.has('platonic')) {
+                const oldCognitionReg = this._cognitionRegs.get('platonic');
+                if (oldCognitionReg) {
+                    try { oldCognitionReg.unregister(); } catch (_e) {}
+                }
+
+                const cognition = {
+                    predictionError: 0.0,
+                    reifiedPids: [],
+                    getPredictionError() { return this.predictionError; },
+                    getReifiedPids() { return this.reifiedPids; }
+                };
+                this._cognitions.set('platonic', cognition);
+
+                const cognitionReg = context.registerService("org.neverplayed.realm.RealmCognitionService", cognition, {
+                    "realm.id": 'platonic'
+                });
+                this._cognitionRegs.set('platonic', cognitionReg);
+                this._scheduleHomeostasis();
+            }
 
             // Rule: Landing Realm Shortcut (env.json `landingRealmId`)
             // If configured, auto-switch immediately after discovery — bypasses the chooser.

@@ -226,7 +226,7 @@ export default class Activator extends BaseActivator {
         
         // Deep compare (simple JSON)
         if (JSON.stringify(old) !== JSON.stringify(this._state)) {
-            this.logger?.info("Perceiver Context Shift:", this._state);
+            this.logger?.info(`Perceiver Context Shift: ${JSON.stringify(this._state, null,2)}`);
             this.notify();
         }
     }

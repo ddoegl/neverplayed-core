@@ -157,7 +157,7 @@
           </div>
           <div
             class="text-[11px] font-mono text-blue-400/80 group-hover:text-blue-400 transition-colors"
-            x-text="(($session.scopedUsers?.global || {})[$session.scopedUsers?.global?.__activeId__])?.email || $session.scopedUsers?.global?.__activeId__ || 'N/A'"
+            x-text="(($session.scopedUsers?.platonic || {})[$session.scopedUsers?.platonic?.__activeId__])?.email || $session.scopedUsers?.platonic?.__activeId__ || 'N/A'"
           >
           </div>
         </div>
@@ -319,7 +319,7 @@
             </div>
             <div
               class="text-[10px] text-slate-300 font-mono text-center truncate"
-              x-text="$session.scopedUsers?.global?.__activeId__ || 'Anonymous'"
+              x-text="$session.scopedUsers?.platonic?.__activeId__ || 'Anonymous'"
             >
             </div>
           </div>

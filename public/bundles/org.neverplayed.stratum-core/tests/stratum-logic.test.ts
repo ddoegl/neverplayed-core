@@ -11,7 +11,7 @@ Deno.test("Stratum Service: Should aggregate facets into a canonical URI", async
     // 1. Mock Dependencies
     const mockSession = {
         currentUser: { id: "sid-123" },
-        scopedUsers: { global: { id: "tenant-456" } },
+        scopedUsers: { platonic: { id: "tenant-456" } },
         activeFlowId: "retail-flow"
     };
 
@@ -26,7 +26,7 @@ Deno.test("Stratum Service: Should aggregate facets into a canonical URI", async
     // 2. Mock Stratum Service Logic (Phase 1: Pure Logic)
     // In our real activator, this will be bound to reactive trackers.
     const aggregateStratum = (session, realm, pm) => {
-        const tenantId = session.scopedUsers?.global?.id || "guest";
+        const tenantId = session.scopedUsers?.platonic?.id || "guest";
         const identityId = session.currentUser?.id || tenantId;
         const realmId = realm.getActiveRealm() || "unknown";
         const tier = pm.getContext?.().tier || "local";
@@ -55,13 +55,13 @@ Deno.test("Stratum Service: Should aggregate facets into a canonical URI", async
 Deno.test("Stratum Service: Should handle guest fallback correctly", () => {
     const mockGuestSession = {
         currentUser: { id: "guest" },
-        scopedUsers: { global: { id: "guest" } }
+        scopedUsers: { platonic: { id: "guest" } }
     };
     const mockRealm = { getActiveRealm: () => "core" };
     const mockPM = { getContext: () => ({ tier: "local" }) };
 
     const aggregateStratum = (session, realm, pm) => {
-        const tenantId = session.scopedUsers?.global?.id || "guest";
+        const tenantId = session.scopedUsers?.platonic?.id || "guest";
         const identityId = session.currentUser?.id || tenantId;
         const realmId = realm.getActiveRealm() || "unknown";
         const flowId = session.activeFlowId || "shell";
@@ -90,7 +90,7 @@ Deno.test("Stratum Service: Should aggregate inhabitants correctly with scope is
     service._sourceSession = {
         currentUser: { id: "guest" }, // Set to guest so we isolate stack and PM probes
         scopedUsers: {
-            global: {
+            platonic: {
                 __activeId__: "alice",
                 guest: { id: "guest" },
                 alice: { id: "alice", email: "alice@cli.local" }
@@ -111,7 +111,7 @@ Deno.test("Stratum Service: Should aggregate inhabitants correctly with scope is
                 return { context: { identityId: "charles", realmId: "org.neverplayed.realm.governance" } };
             }
             if (key === "probe-david") {
-                return { context: { identityId: "david", realmId: "global" } };
+                return { context: { identityId: "david", realmId: "platonic" } };
             }
             return null;
         }
@@ -121,7 +121,7 @@ Deno.test("Stratum Service: Should aggregate inhabitants correctly with scope is
     // Inhabitants should contain:
     // - "rob" (from active session scope stack)
     // - "charles" (from PM probe in active realm)
-    // - Should exclude: "alice" (from global stack), "david" (from global PM probe), "guest"
+    // - Should exclude: "alice" (from platonic stack), "david" (from platonic PM probe), "guest"
     let inhabitants = await service.getInhabitants();
     assertEquals(inhabitants.includes("rob"), true);
     assertEquals(inhabitants.includes("charles"), true);
@@ -130,11 +130,11 @@ Deno.test("Stratum Service: Should aggregate inhabitants correctly with scope is
     assertEquals(inhabitants.includes("guest"), false);
     assertEquals(inhabitants.length, 2);
 
-    // Switch Active Realm to global
-    activeRealm = "global";
+    // Switch Active Realm to platonic
+    activeRealm = "platonic";
     // Inhabitants should contain:
-    // - "alice" (from active global session stack)
-    // - "david" (from PM probe in active global realm)
+    // - "alice" (from active platonic session stack)
+    // - "david" (from PM probe in active platonic realm)
     // - Should exclude: "rob", "charles", "guest"
     inhabitants = await service.getInhabitants();
     assertEquals(inhabitants.includes("alice"), true);

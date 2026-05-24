@@ -94,6 +94,19 @@ export default class Activator extends AlpineActivator {
                     return activeRealm === 'platonic' || !activeRealm;
                 },
 
+                get lobbyFlows() {
+                    const allowedIds = [
+                        'org.neverplayed.shell-cli',
+                        'org.neverplayed.shell.cli',
+                        'org.neverplayed.stratographer',
+                        'org.neverplayed.event-monitor',
+                        'org.neverplayed.event.monitor',
+                        'org.neverplayed.config-admin-ui',
+                        'org.neverplayed.config.UIFlow'
+                    ];
+                    return this.flows.filter(f => allowedIds.includes(f.id));
+                },
+
                 // Platonic Lobby: ordered list of all registered realms for the chooser
                 get availableRealms() {
                     return realmManagerSvc?.getOrderedRealms() || [];

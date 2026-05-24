@@ -236,7 +236,7 @@
       <div
         x-ref="graphContainer"
         class="absolute inset-0 z-10"
-        x-init="$watch('$store.explorer.nodes', () => { 
+        x-init="$watch(() => $store.explorer.nodes, () => { 
                       const container = $refs.graphContainer;
                       if (container) {
                           globalThis.dispatchEvent(new CustomEvent('explorer-render-request', { detail: { element: container } }));
