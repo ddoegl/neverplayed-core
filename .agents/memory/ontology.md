@@ -231,6 +231,11 @@ A Being can only perceive the UI apertures if its surrogate possesses a **DOM Se
 
 To cleanly separate **Authentication** (identity verification) from **Inhabitation** (realm residency), the bootstrap and shutdown cycles are structured around a central staging lobby operating as a Platonic morphospace of potential forms.
 
+### Visceral Platform Infrastructure (Sovereign Lobby Boot)
+Because the Platonic Staging Lobby exists prior to and outside of spatial realms, it does not rely on dynamic realm discovery or core realm configurations to awaken. Its visual layout and diagnostic utilities represent the **visceral platform infrastructure**:
+*   **Direct Orchestration:** The shell header, sidebar, host layout, and primordial utilities (the Stratographer, Event Monitor, CLI, and Config Admin) are loaded directly by the platform's HTML entry point (`realms-secure.html`).
+*   **Zero-Realm Boot:** If `realms/index.json` is completely empty (no spatial realms exist), the Platonic Staging Lobby boots into full operational awareness natively, ensuring a robust, sovereign diagnostic startup.
+
 ### Platonic-Global Unity (Nothingness Beyond the Morphospace)
 In the idealist framework, the Platonic staging lobby *is* the absolute primordial ground of the session. There is nothing "beyond" or "more global" than it; beyond the Platonic morphospace, there is only nothingness:
 *   **The Unified Scope:** The legacy `'global'` scope stack is a direct reactive alias of the `'platonic'` staging lobby stack. Mutations or reads of `scopedUsers['global']` execute directly against `scopedUsers['platonic']`.
