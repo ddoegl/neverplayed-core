@@ -60,7 +60,7 @@ export default class Activator extends CoreAlpineActivator {
             try {
                 const user = this._session.currentUser;
                 if (!user) return false;
-                const scopedAttrs = this._session.scopedUsers?.["global"]?.attributes || {};
+                const scopedAttrs = this._session.scopedUsers?.["platonic"]?.attributes || {};
                 const isScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"];
                 const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
                 const isIdentityAdmin = ['neverplayed-admin', 'realm-admin'].some(r => caps.includes(r));
@@ -630,7 +630,7 @@ export default class Activator extends CoreAlpineActivator {
        try {
            const user = this._session.currentUser;
            if (!user) return false;
-           const scopedAttrs = this._session.scopedUsers?.["global"]?.attributes || {};
+           const scopedAttrs = this._session.scopedUsers?.["platonic"]?.attributes || {};
            const isScopedAdmin = scopedAttrs["realm-admin"] || scopedAttrs["neverplayed-admin"];
            const caps = Array.isArray(user.capabilities) ? user.capabilities : [];
            const isIdentityAdmin = ['neverplayed-admin', 'realm-admin'].some(r => caps.includes(r));

@@ -45,7 +45,7 @@ export class StratumServiceImpl {
     }
 
     get tenantId() {
-        const globalStack = this._sourceSession?.scopedUsers?.["global"];
+        const globalStack = this._sourceSession?.scopedUsers?.["platonic"];
         if (!globalStack) return "guest";
         const activeId = globalStack.__activeId__;
         const globalUser = globalStack[activeId] || globalStack['guest'];

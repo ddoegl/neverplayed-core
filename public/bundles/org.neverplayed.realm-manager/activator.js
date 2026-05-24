@@ -421,7 +421,7 @@ export default class Activator extends BaseActivator {
         const globalUser = this.auth?.getCurrentUser ? this.auth.getCurrentUser() : null;
         
         // 2. Resolve Session User (Domain / Layer 3)
-        const sessionUser = this.session.scopedUsers?.["global"] || this.session.currentUser;
+        const sessionUser = this.session.scopedUsers?.["platonic"] || this.session.currentUser;
         
         const isGlobalAdmin = globalUser && (admins.includes(globalUser.id) || (globalUser.email && admins.includes(globalUser.email)));
         const isSessionAdmin = sessionUser && (admins.includes(sessionUser.id) || (sessionUser.email && admins.includes(sessionUser.email)));
@@ -429,27 +429,27 @@ export default class Activator extends BaseActivator {
         if (isGlobalAdmin || isSessionAdmin) {
             this.logger?.info(`Realm Manager: Elevated privileges in '${realmId}'. Injecting 'realm-admin'.`);
             
-            // Identity Guard: Ensure scopedUsers and global entry are initialized
+            // Identity Guard: Ensure scopedUsers and platonic entry are initialized
             if (!this.session.scopedUsers) this.session.scopedUsers = {};
-            if (!this.session.scopedUsers["global"]) {
-                this.session.scopedUsers["global"] = { id: 'guest' };
+            if (!this.session.scopedUsers["platonic"]) {
+                this.session.scopedUsers["platonic"] = { id: 'guest' };
             }
             
-            const target = this.session.scopedUsers["global"];
+            const target = this.session.scopedUsers["platonic"];
             
             // Sanitize Identity: If it is a guest-level auto-elevation, reset to a clean state to trigger reactivity
             if (target.id === 'guest') {
-                this.session.scopedUsers["global"] = { 
+                this.session.scopedUsers["platonic"] = { 
                     id: 'guest',
                     attributes: target.attributes || {}
                 };
             }
 
-            this.session.scopedUsers["global"].attributes = this.session.scopedUsers["global"].attributes || {};
-            this.session.scopedUsers["global"].attributes["realm-admin"] = true;
+            this.session.scopedUsers["platonic"].attributes = this.session.scopedUsers["platonic"].attributes || {};
+            this.session.scopedUsers["platonic"].attributes["realm-admin"] = true;
         } else {
-            if (this.session.scopedUsers?.["global"]?.attributes) {
-                delete this.session.scopedUsers["global"].attributes["realm-admin"];
+            if (this.session.scopedUsers?.["platonic"]?.attributes) {
+                delete this.session.scopedUsers["platonic"].attributes["realm-admin"];
             }
         }
     }
