@@ -74,7 +74,7 @@ export default class Activator extends BaseActivator {
 
                 const being = beingService.getBeing(beingId);
                 const targetSurrogate = surrogateId || being?.initial?.surrogate || 'guest';
-                const targetRealm = realmId || being?.initial?.realm || this._session.activeRealmId || 'global';
+                const targetRealm = realmId || being?.initial?.realm || this._session.activeRealmId || 'platonic';
                 const surrogateData = beingService.getSurrogate(targetSurrogate) || {};
                 
                 this.logger.info(`Being Service: Materializing ${beingId} as ${targetSurrogate} in realm ${targetRealm}`);
@@ -101,7 +101,7 @@ export default class Activator extends BaseActivator {
                 
                 // Ensure the being is logged into the current realm at least as a baseline
                 const being = beingService.getBeing(beingId);
-                const realm = this._session.activeRealmId || being?.initial?.realm || 'global';
+                const realm = this._session.activeRealmId || being?.initial?.realm || 'platonic';
                 this._session.login(beingId, realm);
             },
 
@@ -128,7 +128,7 @@ export default class Activator extends BaseActivator {
              */
             getMaterialization: (beingId, realmId = null) => {
                 if (!this._session) return null;
-                const targetRealm = realmId || this._session.activeRealmId || 'global';
+                const targetRealm = realmId || this._session.activeRealmId || 'platonic';
                 const stack = this._session.scopedUsers[targetRealm];
                 if (!stack || !stack[beingId]) return null;
 

@@ -10,6 +10,7 @@ import {
     SHELL_COMMAND_SERVICE,
     LIMES_SERVICE,
     SESSION_SERVICE,
+    REALM_MANAGER_SERVICE,
     EVENT_HANDLER_INTERFACE,
     EVENT_TOPIC,
     REALM_CHANGED_TOPIC,
@@ -50,6 +51,7 @@ export default class Activator extends AlpineActivator {
             let hostSvc = null;
             let limesSvc = null;
             let sessionSvc = null;
+            let realmManagerSvc = null;
 
             const syncFlows = () => {
                 const uniqueByFlowId = new Map();
@@ -85,6 +87,22 @@ export default class Activator extends AlpineActivator {
                 get state() { return shell.sidebarState; },
                 get flows() { return sidebarState.flows; },
                 get activeFlowId() { return sidebarState.activeFlowId; },
+
+                // Platonic Lobby: true when the user is in the staging lobby (no realm active)
+                get isInLobby() {
+                    const activeRealm = sessionSvc?.activeRealmId;
+                    return activeRealm === 'platonic' || !activeRealm;
+                },
+
+                // Platonic Lobby: ordered list of all registered realms for the chooser
+                get availableRealms() {
+                    return realmManagerSvc?.getOrderedRealms() || [];
+                },
+
+                // Platonic Lobby: switch into a chosen realm
+                switchToRealm(id) {
+                    realmManagerSvc?.switchRealm(id);
+                },
 
                 toggleCollapse() {
                     shell.sidebarState = (shell.sidebarState + 1) % 3;
@@ -131,6 +149,15 @@ export default class Activator extends AlpineActivator {
                             return sessionSvc;
                         },
                         removedService: () => { sessionSvc = null; syncFlows(); }
+                    });
+
+                    // Track Realm Manager (Lobby & Chooser)
+                    this.track(`(objectClass=${REALM_MANAGER_SERVICE})`, {
+                        addingService: (ref) => {
+                            realmManagerSvc = context.getService(ref);
+                            return realmManagerSvc;
+                        },
+                        removedService: () => { realmManagerSvc = null; }
                     });
 
                     // Track Flows

@@ -13,6 +13,7 @@
     "privileges": {
         "realm-admins": ["daniel.doegl@doegl.info"]
     },
+    "recognizedSurrogates": ["observer"],
     "bundles": [
         "./bundles/org.neverplayed.selection-service/manifest.json",
         "./bundles/org.neverplayed.global-state/manifest.json",

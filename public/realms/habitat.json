@@ -7,6 +7,7 @@
     "privileges": {
         "realm-admins": ["daniel.doegl@doegl.info", "guest"]
     },
+    "recognizedSurrogates": ["observer", "person"],
     "bundles": ["./bundles/org.neverplayed.being-service/manifest.json"],
     "domainObjects": [
         { "id": "showcase-lab", "icon": "fas fa-flask", "title": "Platform Lab" }

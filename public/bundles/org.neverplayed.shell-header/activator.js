@@ -137,12 +137,13 @@ export default class Activator extends AlpineActivator {
             },
             
             async logout(scope = null) {
+                console.log(`[ShellHeader] Logout requested for scope: ${scope}`);
                 const stratum = globalThis.Alpine?.store('stratum');
                 if (stratum) {
                     const targetScope = scope || stratum.realmId;
                     await stratum.logout(targetScope);
-                    // Only reload on global logout (Operator Dissolution)
-                    if (targetScope === 'global') {
+                    // Only reload on platonic logout (Operator Dissolution)
+                    if (targetScope === 'platonic') {
                         location.reload();
                     }
                 }

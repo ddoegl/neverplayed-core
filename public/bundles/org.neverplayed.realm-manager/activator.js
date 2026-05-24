@@ -87,6 +87,7 @@ export default class Activator extends BaseActivator {
                 // Late-Join Sync: If realm active OR pending transition, push attributes
                 const targetId = this._activeRealmId || this._pendingTransition?.id;
                 if (targetId) {
+                    this.session.activeRealmId = targetId;
                     this._syncPrivileges(targetId);
                 }
                 return this.session;
@@ -356,6 +357,8 @@ export default class Activator extends BaseActivator {
             const envConfig = envResp.ok ? await envResp.json() : {};
             const envTier = envConfig.persistencePolicy?.tier || envConfig.persistence_mode || "local";
 
+            // Store env config for later use (e.g. landingRealmId shortcut)
+            this._envConfig = envConfig;
             // 2. Fetch Discovery Index
             const resp = await fetch(new URL("./realms/index.json", root).href);
             if (!resp.ok) return;
@@ -643,20 +646,42 @@ export default class Activator extends BaseActivator {
                 ? await this._persistence.load(REALM_STORAGE_PID) 
                 : lastRealmId;
                 
-            if (lastRealmId && this._realms.has(lastRealmId)) {
-                this.logger.info(`Realm Manager: Recovering Context -> '${lastRealmId}'...`);
-                await this._switchRealm(context, lastRealmId);
-            } else if (this._realms.has("org.neverplayed.realm.core")) {
-                // Primordial Bootstrapping: Default to Core Realm (ADR-0165 / TAME Genesis)
-                this.logger.info(`Realm Manager: Primordial Awakening. Defaulting to 'org.neverplayed.realm.core'...`);
-                await this._switchRealm(context, "org.neverplayed.realm.core");
-            } else if (this._realms.has("org.neverplayed.realm.real-life")) {
-                // Default Fallback: Real-Life Universe
-                this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to 'org.neverplayed.realm.real-life'...`);
-                await this._switchRealm(context, "org.neverplayed.realm.real-life");
-            } else if (this._realms.size > 0) {
-                this.logger.info(`Realm Manager: Cold Boot detected. Defaulting to first available realm '${this._realms.entries().next().value[0]}'...`);
-                await this._switchRealm(context, this._realms.entries().next().value[0]);
+            // Rule: Platonic Lobby Boot (Decoupled Authentication)
+            // Always enter the platonic staging lobby first after discovery.
+            // The observer surrogate is already grafted by AuthShield → SessionService.
+            if (this.session) {
+                this.session.activeRealmId = 'platonic';
+            }
+            this._activeRealmId = 'platonic';
+            this.logger.info(`Realm Manager: Entered Platonic Staging Lobby.`);
+
+            // Rule: Landing Realm Shortcut (env.json `landingRealmId`)
+            // If configured, auto-switch immediately after discovery — bypasses the chooser.
+            const landingRealmId = this._envConfig?.landingRealmId;
+            if (landingRealmId && this._realms.has(landingRealmId)) {
+                this.logger.info(`Realm Manager: Landing Shortcut → auto-switching to '${landingRealmId}'...`);
+                await this._switchRealm(context, landingRealmId);
+            } else {
+                // We are staying in the Platonic Staging Lobby.
+                // To render the lobby UI (sidebar, host, auth shield, etc.), we need to install
+                // the foundation bundles. We use the core realm's hierarchy as the foundation.
+                this.logger.info(`Realm Manager: Staying in Platonic Lobby. Installing core infrastructure bundles...`);
+                const coreHierarchy = await this._resolveHierarchy("org.neverplayed.realm.core");
+                const surgePlan = await this._prepareSurgePlan(context, coreHierarchy);
+                
+                // Surge (Install & Start) core/shell bundles
+                for (const item of surgePlan.toInstall) {
+                    try {
+                        this.logger?.info(`[RealmManager] Lobby Boot Surging: ${item.bsn} from ${item.url}...`);
+                        const bundle = await context.installBundle(item.url);
+                        const state = bundle.getState();
+                        if (state < 32) {
+                            await bundle.start();
+                        }
+                    } catch (err) {
+                        this.logger?.error(`[RealmManager] Lobby Boot Failed to surge '${item.bsn}':`, err.message);
+                    }
+                }
             }
         } finally {
             this._isRecovering = false;
@@ -874,9 +899,11 @@ export default class Activator extends BaseActivator {
         this.logger?.info(`Realm Manager: Starting Phase 2 (Atomic Commit) for '${realmId}'...`);
         if (this.session) {
             const previousRealmId = this.session.activeRealmId;
-            if (previousRealmId && previousRealmId !== realmId) {
+            if (previousRealmId && previousRealmId !== realmId && previousRealmId !== 'platonic') {
                 this.logger?.info(`Realm Manager: Pruning residency stack for previous realm '${previousRealmId}' via logout.`);
                 this.session.logout(previousRealmId);
+                // Clear lobby fallback signal — we're mid-transition to a new realm, not the lobby.
+                this.session._pendingLobbyFallback = null;
             }
             this.session.activeRealmId = realmId;
             this.session.activeBeingId = identityId;
@@ -964,7 +991,7 @@ export default class Activator extends BaseActivator {
 
             try {
                 const identityId = (this.session && this.session.currentUser) ? this.session.currentUser.id : 'guest';
-                const tenantId = (this.session && this.session.scopedUsers?.["global"]) ? this.session.scopedUsers["global"].__activeId__ : 'guest';
+                const tenantId = (this.session && this.session.activeBeingId && this.session.activeBeingId !== 'guest') ? this.session.activeBeingId : 'guest';
                 return await this._executeTransition({
                     realmId: id,
                     identityId,
@@ -1360,6 +1387,17 @@ export default class Activator extends BaseActivator {
                     for (const userId of staleUsers) {
                         try {
                             this.session.logout(realmId, userId);
+                            // Rule: Lobby Fallback from Homeostasis Pruning
+                            // When homeostasis evicts a stale occupant, return them to the
+                            // platonic lobby rather than dissolving their being entirely.
+                            if (this.session._pendingLobbyFallback) {
+                                this.session._pendingLobbyFallback = null;
+                                if (this.session.activeRealmId === realmId) {
+                                    this.session.activeRealmId = 'platonic';
+                                    this._activeRealmId = 'platonic';
+                                    this.logger?.info(`Homeostasis [${realmId}]: Evicted '${userId}'. Being returned to platonic lobby.`);
+                                }
+                            }
                         } catch (err) {
                             this.logger?.error(`Failed logging out stale user ${userId} in ${realmId}`, err);
                         }

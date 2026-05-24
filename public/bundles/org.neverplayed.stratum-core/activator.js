@@ -212,7 +212,7 @@ export class StratumServiceImpl {
 
     async login(identityId, scope = null) {
         if (!this._sourceSession) return;
-        const targetScope = scope || this.realmId || 'global';
+        const targetScope = scope || this.realmId || 'platonic';
         this._logger.info(`[StratumCore] Identity LOGIN triggered: ${identityId} in scope ${targetScope}`);
         await this._sourceSession.login(identityId, targetScope);
         this.triggerUpdate();
@@ -220,7 +220,7 @@ export class StratumServiceImpl {
 
     async logout(scope = null) {
         if (!this._sourceSession) return;
-        const targetScope = scope || (this.realmId !== 'unknown' ? this.realmId : 'global');
+        const targetScope = scope || (this.realmId !== 'unknown' ? this.realmId : 'platonic');
         this._logger.info(`[StratumCore] Identity LOGOUT triggered for scope: ${targetScope}`);
         await this._sourceSession.logout(targetScope);
         this.triggerUpdate();

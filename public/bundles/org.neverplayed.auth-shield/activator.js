@@ -35,7 +35,9 @@ export default class Activator {
                 this._session = context.getService(ref);
                 this.logger.info("Auth Shield: Session Service handshaked. Identity propagation active.");
                 if (this._authenticatedUser) {
-                    this._session.login(this._authenticatedUser);
+                    // Place the authenticated user in the platonic staging lobby.
+                    // SessionService will auto-graft the observer surrogate at this scope.
+                    this._session.login(this._authenticatedUser, 'platonic');
                 }
                 return this._session;
             },
@@ -66,7 +68,7 @@ export default class Activator {
         // Automatically re-assert primary identity when a temporary session ends
         globalThis.addEventListener('session-changed', (event) => {
             const { type, scope } = event.detail || {};
-            if (type === 'logout' && scope === 'global' && this._authenticatedUser && this._session) {
+            if (type === 'logout' && scope === 'platonic' && this._authenticatedUser && this._session) {
                 this.logger.info(`Auth Shield [Security]: Temporary session ended. Re-asserting primary identity: ${this._authenticatedUser.email}`);
                 this._session.login(this._authenticatedUser);
             }
@@ -82,7 +84,9 @@ export default class Activator {
 
             // If session already exists, login immediately
             if (this._session) {
-                this._session.login(user);
+                // Place the authenticated user in the platonic staging lobby.
+                // SessionService will auto-graft the observer surrogate at this scope.
+                this._session.login(user, 'platonic');
             }
             
             context.registerService(AUTH_SHIELD_SERVICE, {
@@ -110,7 +114,7 @@ export default class Activator {
                     const sessionRef = ctx.getServiceReference(SESSION_SERVICE);
                     if (sessionRef) {
                         const session = ctx.getService(sessionRef);
-                        const scoped = session.scopedUsers?.["global"]?.attributes || {};
+                        const scoped = session.scopedUsers?.["platonic"]?.attributes || {};
                         const global = session.currentUser?.attributes || {};
                         isRealmAdmin = global['realm-admin'] === true || scoped['realm-admin'] === true;
                     }

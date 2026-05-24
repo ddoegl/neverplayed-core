@@ -97,14 +97,17 @@ export default class Activator {
         const rawState = this._pm.load(SESSION_PID) || {};
         
         // Residency Grafter: Migrate legacy single-user structure to identity stacks
-        const scopedUsers = rawState.scopedUsers || {
-            global: { 
+        const scopedUsers = rawState.scopedUsers || {};
+        
+        if (!scopedUsers.platonic) {
+            scopedUsers.platonic = {
                 guest: { id: 'guest', attributes: {} },
                 __activeId__: 'guest'
-            }
-        };
+            };
+        }
 
         Object.keys(scopedUsers).forEach(scope => {
+            if (scope === 'global') return;
             const data = scopedUsers[scope];
             // If it doesn't have an __activeId__, it's an old structure
             if (!data.__activeId__) {
@@ -143,7 +146,8 @@ export default class Activator {
             activeBeingId: persistedState.activeBeingId || null,
 
             get currentUser() {
-                const scope = this.activeFlowId || this.activeRealmId || "global";
+                let scope = this.activeFlowId || this.activeRealmId || "platonic";
+                if (scope === "global") scope = "platonic";
                 const stack = this.scopedUsers[scope] || {};
                 const activeId = stack.__activeId__;
                 
@@ -166,8 +170,8 @@ export default class Activator {
                     }
                 }
 
-                // 3. Fallback to Global Identity
-                const globalStack = this.scopedUsers["global"] || {};
+                // 3. Fallback to Global Identity (Platonic)
+                const globalStack = this.scopedUsers["platonic"] || {};
                 const globalId = globalStack.__activeId__ || 'guest';
                 identity = globalStack[globalId] || globalStack['guest'] || { id: 'guest' };
 
@@ -176,20 +180,25 @@ export default class Activator {
 
             // Helper: Find an identity profile across any scope
             _findIdentity(id, preferredScope = null) {
+                let prefScope = preferredScope;
+                if (prefScope === 'global') prefScope = 'platonic';
+                
                 // 1. Try preferred scope first (Inhabitation over Carry-over)
-                if (preferredScope && this.scopedUsers[preferredScope]?.[id]) {
-                    return { ...this.scopedUsers[preferredScope][id], scope: preferredScope };
+                if (prefScope && this.scopedUsers[prefScope]?.[id]) {
+                    return { ...this.scopedUsers[prefScope][id], scope: prefScope };
                 }
 
                 // 2. Try to find a Materialized version anywhere (Persona Carry-over)
                 for (const [scope, stack] of Object.entries(this.scopedUsers)) {
+                    if (scope === 'global') continue;
                     if (stack[id] && stack[id].activeSurrogateId && stack[id].email) {
                         return { ...stack[id], scope };
                     }
                 }
 
-                // 3. Fallback to any other scope (e.g., Global anchor)
+                // 3. Fallback to any other scope (e.g., Global/Platonic anchor)
                 for (const [scope, stack] of Object.entries(this.scopedUsers)) {
+                    if (scope === 'global') continue;
                     if (stack[id] && stack[id].email) {
                         return { ...stack[id], scope };
                     }
@@ -229,12 +238,18 @@ export default class Activator {
             },
 
             setBeingFocus(beingId) {
+                // Rule 1: Lock Grounding Soul
+                if (this.activeBeingId && this.activeBeingId !== 'guest' && this.activeBeingId !== beingId) {
+                    logger?.warn(`Session: Being focus is locked to Grounding Soul '${this.activeBeingId}' and cannot be shifted to '${beingId}'.`);
+                    return;
+                }
                 this.activeBeingId = beingId;
                 logger?.info(`Session: Being focus shifted to '${beingId}'. All realms will now inhabit this identity by default.`);
             },
 
             login(user, scope = null, surrogate = undefined) {
-                const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
+                let targetScope = scope || this.activeFlowId || this.activeRealmId || 'platonic';
+                if (targetScope === 'global') targetScope = 'platonic';
                 let identity;
                 if (typeof user === "string") {
                     // Inheritance Lookup: resolve full profile from existing scopes
@@ -250,6 +265,13 @@ export default class Activator {
                     identity = user;
                 }
                 const identityId = identity.uid || identity.id;
+
+                // Rule 2 (Primordial Exclusivity):
+                if (targetScope === 'platonic' && identityId !== 'guest') {
+                    if (this.activeBeingId && this.activeBeingId !== 'guest' && this.activeBeingId !== identityId) {
+                        throw new Error(`Ontological Violation: Only the Grounding Soul (${this.activeBeingId}) can inhabit the Platonic Staging Lobby. Other identities must be impersonated inside spatial realms.`);
+                    }
+                }
 
                 logger?.info(`Session: LOGIN requested for scope '${targetScope}' (id: ${identityId}${surrogate ? `, surrogate: ${surrogate.id}` : ''})`);
 
@@ -270,10 +292,10 @@ export default class Activator {
                         alias: identity.alias,
                         capabilities: identity.capabilities || [],
                         attributes: identity.attributes || {},
-                        originRealmId: identity.originRealmId || identity.initial?.originRealmId || identity.initial?.realm || identity.homeRealm || 'global',
+                        originRealmId: identity.originRealmId || identity.initial?.originRealmId || identity.initial?.realm || identity.homeRealm || 'platonic',
                         surrogates: {},
                         activeSurrogateId: null,
-                        isTenant: targetScope === 'global',
+                        isTenant: targetScope === 'platonic',
                         loggedIn: true,
                         grounding: resolvedGrounding,
                         lastActiveTime: Date.now()
@@ -283,21 +305,21 @@ export default class Activator {
                     this.scopedUsers[targetScope][identityId].grounding = resolvedGrounding;
                     this.scopedUsers[targetScope][identityId].lastActiveTime = Date.now();
                     if (!this.scopedUsers[targetScope][identityId].originRealmId) {
-                        this.scopedUsers[targetScope][identityId].originRealmId = identity.originRealmId || identity.initial?.originRealmId || identity.initial?.realm || identity.homeRealm || 'global';
+                        this.scopedUsers[targetScope][identityId].originRealmId = identity.originRealmId || identity.initial?.originRealmId || identity.initial?.realm || identity.homeRealm || 'platonic';
                     }
                 }
 
-                // Rule: Global Anchoring (Ideation: Sovereign Beings)
-                // Ensure every identity is known to the global scope for carry-over lookups.
-                if (!this.scopedUsers['global'][identityId]) {
-                    this.scopedUsers['global'][identityId] = { ...this.scopedUsers[targetScope][identityId] };
-                    logger?.debug(`Session: Anchored identity '${identityId}' in global scope.`);
+                // Rule: Platonic Anchoring (Ideation: Sovereign Beings)
+                // Ensure every identity is known to the platonic scope for carry-over lookups.
+                if (!this.scopedUsers['platonic'][identityId]) {
+                    this.scopedUsers['platonic'][identityId] = { ...this.scopedUsers[targetScope][identityId] };
+                    logger?.debug(`Session: Anchored identity '${identityId}' in platonic scope.`);
                 } else {
-                    if (!this.scopedUsers['global'][identityId].originRealmId) {
-                        this.scopedUsers['global'][identityId].originRealmId = this.scopedUsers[targetScope][identityId].originRealmId;
+                    if (!this.scopedUsers['platonic'][identityId].originRealmId) {
+                        this.scopedUsers['platonic'][identityId].originRealmId = this.scopedUsers[targetScope][identityId].originRealmId;
                     }
-                    this.scopedUsers['global'][identityId].grounding = resolvedGrounding;
-                    this.scopedUsers['global'][identityId].lastActiveTime = Date.now();
+                    this.scopedUsers['platonic'][identityId].grounding = resolvedGrounding;
+                    this.scopedUsers['platonic'][identityId].lastActiveTime = Date.now();
                 }
 
                 // Rule: Surrogate Grafting / Deactivation
@@ -312,14 +334,31 @@ export default class Activator {
                 } else if (surrogate === null) {
                     this.scopedUsers[targetScope][identityId].activeSurrogateId = null;
                     logger?.info(`Session: Deactivated surrogate (naked observer state) for identity '${identityId}'`);
+                } else if (targetScope === 'platonic') {
+                    // Rule: Platonic Lobby Observer Provisioning
+                    // When entering the platonic staging lobby with no explicit surrogate,
+                    // auto-graft the default observer surrogate so it is available for
+                    // subsequent realm entry checks (recognizedSurrogates matching).
+                    const existing = this.scopedUsers[targetScope][identityId];
+                    if (existing && !existing.surrogates?.['observer']) {
+                        existing.surrogates = existing.surrogates || {};
+                        existing.surrogates['observer'] = {
+                            id: 'observer',
+                            label: 'Observer',
+                            senses: ['Language'],
+                            materializedAt: new Date().toISOString()
+                        };
+                        existing.activeSurrogateId = 'observer';
+                        logger?.info(`Session: Auto-provisioned observer surrogate in platonic lobby for '${identityId}'.`);
+                    }
                 }
 
                 // Pivot Active Resident
                 this.scopedUsers[targetScope].__activeId__ = identityId;
                 
-                // Rule: Being Gravity (Ideation: Sovereign Beings)
-                // If logging into a non-global scope with a real identity, establish as Being Focus.
-                if (targetScope !== 'global' && identityId !== 'guest') {
+                // Rule: Being Gravity & locking Grounding Soul (Rule 1)
+                if (targetScope === 'platonic' && identityId !== 'guest') {
+                    this.scopedUsers['platonic'].__activeId__ = identityId;
                     if (!this.activeBeingId || this.activeBeingId !== identityId) {
                         this.setBeingFocus(identityId);
                     }
@@ -352,10 +391,31 @@ export default class Activator {
 
             logout(scope = null, userId = null) {
                 const activeScope = this.activeFlowId || this.activeRealmId;
-                const targetScope = scope || activeScope || 'global';
+                let targetScope = scope || activeScope || 'platonic';
+                if (targetScope === 'global') targetScope = 'platonic';
                 
                 logger?.info(`Session: LOGOUT (Exit Resident) requested for scope '${targetScope}'${userId ? ` for user '${userId}'` : ''}`);
                 
+                if (targetScope === 'platonic') {
+                    logger?.info("Dissolving the primordium. Triggering total system reset...");
+                    try {
+                        localStorage.clear();
+                    } catch (_e) { /* ignore */ }
+                    
+                    if (this._pm && typeof this._pm.clear === 'function') {
+                        try {
+                            this._pm.clear({ global: true });
+                        } catch (_e) { /* ignore */ }
+                    }
+                    
+                    if (typeof globalThis.location?.reload === 'function') {
+                        globalThis.location.reload();
+                        return;
+                    } else {
+                        throw new Error("GenesisInterrupt");
+                    }
+                }
+
                 if (this.scopedUsers[targetScope]) {
                     const targetUserId = userId || this.scopedUsers[targetScope].__activeId__;
                     if (targetUserId && targetUserId !== 'guest' && this.scopedUsers[targetScope][targetUserId]) {
@@ -366,11 +426,17 @@ export default class Activator {
                     }
                 }
 
-                // Rule: Being Dissolution
-                // If exiting a non-global scope, or if explicitly requested for global, clear the focus.
-                if (targetScope !== 'global' || scope === 'global') {
-                    this.activeBeingId = null;
-                    logger?.info(`Session: Being focus dissolved.`);
+                // Rule: Lobby Fallback (replaces Being Dissolution)
+                // Logging out of a spatial realm scope returns the being to the platonic lobby.
+                // Only a global logout (e.g. Firebase sign-out) fully dissolves the being focus.
+                if (targetScope !== 'platonic') {
+                    // Realm exit: strip the realm-specific active surrogate, signal lobby return.
+                    const beingId = userId || this.scopedUsers[targetScope]?.__activeId__;
+                    if (beingId && beingId !== 'guest' && this.scopedUsers[targetScope]?.[beingId]) {
+                        this.scopedUsers[targetScope][beingId].activeSurrogateId = null;
+                    }
+                    logger?.info(`Session: Realm exit from '${targetScope}'. Being '${beingId}' falls back to platonic lobby.`);
+                    this._pendingLobbyFallback = beingId !== 'guest' ? beingId : null;
                 }
 
                 logger?.info(`Session: Coordinate [${targetScope}] now inhabited by guest.`);
@@ -386,19 +452,20 @@ export default class Activator {
             },
 
             shiftGrounding(targetGrounding, scope = null) {
-                const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
+                let targetScope = scope || this.activeFlowId || this.activeRealmId || 'platonic';
+                if (targetScope === 'global') targetScope = 'platonic';
                 const user = this.currentUser;
                 if (!user || user.id === 'guest') {
                     logger?.warn("Session: Cannot shift grounding for guest or inactive user.");
                     return;
                 }
 
-                // 1. Update root grounding in target scope & global anchor
+                // 1. Update root grounding in target scope & platonic anchor
                 if (this.scopedUsers[targetScope]?.[user.id]) {
                     this.scopedUsers[targetScope][user.id].grounding = targetGrounding;
                 }
-                if (this.scopedUsers['global']?.[user.id]) {
-                    this.scopedUsers['global'][user.id].grounding = targetGrounding;
+                if (this.scopedUsers['platonic']?.[user.id]) {
+                    this.scopedUsers['platonic'][user.id].grounding = targetGrounding;
                 }
 
                 // 2. Fetch current surrogate ID to decide how to login.
@@ -435,17 +502,18 @@ export default class Activator {
 
             registerIdentities(identities) {
                 if (!Array.isArray(identities)) return;
-                if (!this.scopedUsers || !this.scopedUsers['global']) {
+                if (!this.scopedUsers || !this.scopedUsers['platonic']) {
                     logger?.warn("Session: Cannot register identities yet, residency stacks not initialized.");
                     return;
                 }
                 identities.forEach(idnt => {
                     const id = idnt.id;
-                    const homeRealm = idnt.originRealmId || idnt.initial?.originRealmId || idnt.initial?.realm || idnt.homeRealm || 'global';
+                    let homeRealm = idnt.originRealmId || idnt.initial?.originRealmId || idnt.initial?.realm || idnt.homeRealm || 'platonic';
+                    if (homeRealm === 'global') homeRealm = 'platonic';
 
-                    // 1. Global Anchoring
-                    if (!this.scopedUsers['global'][id]) {
-                        this.scopedUsers['global'][id] = {
+                    // 1. Global/Platonic Anchoring
+                    if (!this.scopedUsers['platonic'][id]) {
+                        this.scopedUsers['platonic'][id] = {
                             id,
                             email: idnt.email || `${id}@cli.local`,
                             firstname: idnt.firstname || idnt.label,
@@ -460,18 +528,18 @@ export default class Activator {
                             loggedIn: false,
                             lastActiveTime: Date.now()
                         };
-                        logger?.info(`Session: Registered identity '${id}' in global stack.`);
-                    } else if (!this.scopedUsers['global'][id].originRealmId) {
-                        this.scopedUsers['global'][id].originRealmId = homeRealm;
+                        logger?.info(`Session: Registered identity '${id}' in platonic stack.`);
+                    } else if (!this.scopedUsers['platonic'][id].originRealmId) {
+                        this.scopedUsers['platonic'][id].originRealmId = homeRealm;
                     }
 
                     // 2. Realm Inhabitation (for shell visibility)
-                    if (homeRealm !== 'global') {
+                    if (homeRealm !== 'platonic') {
                         if (!this.scopedUsers[homeRealm]) {
                             this.scopedUsers[homeRealm] = { __activeId__: 'guest', guest: { id: 'guest' } };
                         }
                         if (!this.scopedUsers[homeRealm][id]) {
-                            const userObj = { ...this.scopedUsers['global'][id], isTenant: false, loggedIn: false, lastActiveTime: Date.now() };
+                            const userObj = { ...this.scopedUsers['platonic'][id], isTenant: false, loggedIn: false, lastActiveTime: Date.now() };
                             
                             // Rule: Initial Surrogate Provisioning (L6)
                             const initialSurrogateId = idnt.initial?.surrogate || 'observer';
@@ -482,7 +550,7 @@ export default class Activator {
                                 materializedAt: new Date().toISOString()
                             };
                             userObj.activeSurrogateId = initialSurrogateId;
-                            logger?.info(`Session: Provisioned initial surrogate '${initialSurrogateId}' for identity '${id}' in realm '${homeRealm}'.`);
+                            logger?.info(`Session: Mapped initial surrogate '${initialSurrogateId}' for identity '${id}' in realm '${homeRealm}'.`);
 
                             this.scopedUsers[homeRealm][id] = userObj;
                             logger?.info(`Session: Inhabited identity '${id}' in home realm '${homeRealm}'.`);
@@ -500,7 +568,7 @@ export default class Activator {
                         lastname: "(Admin)",
                         capabilities: ["superuser", "admin"]
                     };
-                    this.scopedUsers["global"] = this.scopedUsers["backoffice-web"];
+                    this.scopedUsers["platonic"] = this.scopedUsers["backoffice-web"];
                 }
             }
         });
@@ -539,10 +607,10 @@ export default class Activator {
         // Set up Persistence Sync
         Alpine.effect(async () => {
             if (this._pm && this._session) {
-                // Resolve Tenant from Global Stack
-                const globalStack = this._session.scopedUsers?.["global"] || {};
-                const globalUser = globalStack[globalStack.__activeId__] || globalStack['guest'];
-                const tenantId = (globalUser && globalUser.id !== 'guest') ? globalUser.id : "guest";
+                // Resolve Tenant from Global Stack / Grounding Soul (Rule 3)
+                const tenantId = (this._session.activeBeingId && this._session.activeBeingId !== 'guest') 
+                    ? this._session.activeBeingId 
+                    : "guest";
                 
                 // Identity (SID) is the currently active user
                 const currentUser = this._session.currentUser;

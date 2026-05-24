@@ -156,8 +156,11 @@ async function main() {
     assertExists(uiContextVal, "UI context must be written to global/shared namespace");
     assertEquals(JSON.parse(uiContextVal).sidebarOpen, true);
 
-    const localVal = localStorage.getItem("np:v1:guest:unknown:guest:local-user-preference");
-    assertExists(localVal, "Local user preference must map to tenant/guest namespace");
+    // With the Platonic Lobby Boot, activeRealmId is 'platonic' from the moment the
+    // system initialises — so local (non-global) keys are now namespaced under 'platonic'
+    // rather than the old 'unknown' fallback.
+    const localVal = localStorage.getItem("np:v1:guest:platonic:guest:local-user-preference");
+    assertExists(localVal, "Local user preference must map to tenant/platonic namespace");
 
     console.log("✅ Global Bootstrap Anchor Mapping verified.");
 
@@ -169,8 +172,8 @@ async function main() {
     // Run persistence clear (global true)
     await pm.clear({ global: true });
 
-    // Assert local key is removed
-    const localValAfter = localStorage.getItem("np:v1:guest:unknown:guest:local-user-preference");
+    // Assert local key is removed (was written under platonic scope)
+    const localValAfter = localStorage.getItem("np:v1:guest:platonic:guest:local-user-preference");
     assertEquals(localValAfter, null, "Local user preference must be wiped by data reset");
 
     // Assert global keys are preserved

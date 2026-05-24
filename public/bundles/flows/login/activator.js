@@ -46,7 +46,7 @@ export default class Activator {
             if (id.toLowerCase() === "dd") {
               console.log("Login: Privileged access granted for 'dd'");
               if (!sessionSvc.scopedUsers) sessionSvc.scopedUsers = {};
-              sessionSvc.scopedUsers['global'] = { 
+              sessionSvc.scopedUsers['platonic'] = { 
                 id: 'dd', 
                 firstname: 'Daniel Daniela', 
                 lastname: '(Admin)',
@@ -222,7 +222,7 @@ export default class Activator {
             }
 
             // sessionSvc.currentUser = this.pendingLoginUser; // Master fallback
-            const scope = redirectId || 'global';
+            const scope = redirectId || 'platonic';
             if (!sessionSvc.scopedUsers) sessionSvc.scopedUsers = {};
             
             // Use a shallow copy to ensure session enrichment (capabilities) doesn't stain the master object
