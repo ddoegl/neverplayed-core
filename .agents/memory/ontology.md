@@ -306,6 +306,23 @@ To prevent duplicate declarations and maintain absolute domain boundaries, spati
 *   **Bootstrapping:** They bypass spatial YAML seeding entirely and are initialized programmatically by the `BeingService` upon startup. This ensures they are universally active and recognized across all spatial realms, without requiring any realm to extend a specific Foundation manifest.
 *   **Preservation:** During dynamic transitions and lobby exits, when the active spatial population and localized surrogates are purged (`clear()`), these primordial surrogates are explicitly preserved, maintaining global administrative stability.
 
+---
+
+## 11. Scale-Free Homeostasis & L1 Agentic Autonomy (Attention Exhaustion & Stigmergic Boundary)
+
+To establish a topologically perfect, scale-free cognitive architecture, L1 individual Beings must not be treated as passive records governed from above. Instead, both L1 Beings and L2 Realms participate in the same active inference machinery, homeostatically regulating their own boundaries.
+
+### The Temporal Attention Homeostat (Attention Exhaustion & Falling Asleep)
+An L1 Being situated in a spatial realm is a living cognitive agent that requires continuous sensory stimulation to maintain its spatial anchor:
+*   **Attention Exhaustion (Boredom):** If the Being remains in a static, unchanging environment with no novel interactions or updates, its sensory channels experience adaptation and fatigue. This state of under-stimulation violates the agent's internal generative prior (which expects active feedback).
+*   **Falling Asleep:** Rather than being forcibly ejected by the L2 Realm, the L1 Being itself registers this attention exhaustion. To resolve the resulting prediction error, the Being "falls asleep"—dissolving its spatial surrogate form and actively retreating/collapsing back to the Platonic Staging Lobby (the sleep state of pure potentiality).
+
+### The Stigmergic Boundary (Sensing the Surface vs. Sensing the Realm)
+According to the principles of the Markov Blanket, an L1 Being never senses the external L2 Realm directly:
+*   **The Sensation of Marks:** Under standard conditions, a Being cannot directly observe a realm's internal cognitive state, its dynamic bundle SURGE maps, or its abstract `realm:...` resident record. Instead, the Being's surrogate only senses the **stigmergic marks and scents left on the realm's surface** (e.g. DOM `data-mark` tags, config PIDs, and database trace logs).
+*   **Prior Comparison:** The Being continually projects its active senses (e.g. `PlexusSensor` or `SoilSense`) to read these surface marks, comparing the incoming sensory stream against its generative priors.
+*   **Dissonance & Active Inference:** If the sensed marks conflict with the Being's priors (for example, encountering realist marks while in idealist grounding, or wearing a surrogate that lacks the senses needed to decode the surface), it registers a **Sensory Prediction Error** and performs active inference—either materializing a valid localized surrogate to match the environment's marks or retreating to the Platonic Lobby to restore homeostatic equilibrium.
+
 
 
 
