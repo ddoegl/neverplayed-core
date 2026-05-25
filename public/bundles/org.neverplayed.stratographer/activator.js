@@ -637,6 +637,18 @@ export default class Activator {
     _renderGraph(d3, container, nodes, links, width, height) {
         d3.select(container).selectAll("svg").remove();
         const svg = d3.select(container).append("svg").attr("width", "100%").attr("height", "100%").attr("viewBox", [0, 0, width, height]).attr("style", "max-width: 100%; height: auto;");
+        
+        const triggerInteraction = () => {
+            const sess = globalThis.Alpine?.store('session');
+            if (sess && typeof sess.registerInteraction === 'function') {
+                sess.registerInteraction();
+            }
+        };
+
+        // Capture mouse up and clicks on the SVG itself (ignoring mouse move)
+        svg.on("mouseup", triggerInteraction)
+           .on("click", triggerInteraction);
+
         const simulation = d3.forceSimulation(nodes).force("link", d3.forceLink(links).id(d => d.id).distance(120)).force("charge", d3.forceManyBody().strength(-800)).force("center", d3.forceCenter(width / 2, height / 2));
         const link = svg.append("g").attr("stroke", "rgba(148, 163, 184, 0.2)").attr("stroke-width", 1.5).selectAll("line").data(links).join("line");
         const node = svg.append("g")
@@ -646,11 +658,23 @@ export default class Activator {
             .attr("class", "node-group")
             .style("cursor", "pointer")
             .style("opacity", d => d.opacity !== undefined ? d.opacity : 1)
-            .on("click", (_e, d) => { Alpine.store('explorer').inspectVault(d); })
+            .on("click", (e, d) => { 
+                triggerInteraction();
+                Alpine.store('explorer').inspectVault(d); 
+            })
             .call(d3.drag()
-                .on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-                .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
-                .on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+                .on("start", (e, d) => { 
+                    if (!e.active) simulation.alphaTarget(0.3).restart(); 
+                    d.fx = d.x; d.fy = d.y; 
+                })
+                .on("drag", (e, d) => { 
+                    d.fx = e.x; d.fy = e.y; 
+                })
+                .on("end", (e, d) => { 
+                    triggerInteraction();
+                    if (!e.active) simulation.alphaTarget(0); 
+                    d.fx = null; d.fy = null; 
+                })
             );
 
         // Double border outer ring for observer state

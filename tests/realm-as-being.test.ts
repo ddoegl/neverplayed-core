@@ -212,6 +212,82 @@ async function main() {
 
     console.log("✅ Manifest compliance with ADR-0022 verified.");
 
+    // -------------------------------------------------------------
+    // Test Case 4: Coupled Homeostasis & Attention Resonance
+    // -------------------------------------------------------------
+    console.log("🧪 Test 4: Verifying Coupled Homeostasis & Attention Resonance (Stigmergic Coupling)...");
+
+    // 1. Setup shared active spatial realm
+    session.activeRealmId = "org.neverplayed.realm.core";
+
+    // 2. Login two spatial occupants ('rob' and 'july')
+    session.login("rob", "org.neverplayed.realm.core");
+    session.login("july", "org.neverplayed.realm.core");
+
+    const robUser = session.scopedUsers["org.neverplayed.realm.core"]["rob"];
+    const julyUser = session.scopedUsers["org.neverplayed.realm.core"]["july"];
+
+    assertExists(robUser, "rob should be in the scoped stack");
+    assertExists(julyUser, "july should be in the scoped stack");
+
+    // Equip them both with compatible surrogates
+    robUser.surrogates = {
+        "person": {
+            id: "person",
+            senses: ["Language"]
+        }
+    };
+    robUser.activeSurrogateId = "person";
+
+    julyUser.surrogates = {
+        "person": {
+            id: "person",
+            senses: ["Language"]
+        }
+    };
+    julyUser.activeSurrogateId = "person";
+
+    // 3. Login a control user in the 'platonic' staging lobby stack
+    session.login("annie", "platonic");
+    const annieUser = session.scopedUsers["platonic"]["annie"];
+    assertExists(annieUser, "annie should be in the platonic stack");
+    annieUser.surrogates = {
+        "person": {
+            id: "person",
+            senses: ["Language"]
+        }
+    };
+    annieUser.activeSurrogateId = "person";
+
+    // Drain attention for july and annie to 25s elapsed (5s remaining)
+    const testNow = Date.now();
+    julyUser.lastActiveTime = testNow - 25000;
+    annieUser.lastActiveTime = testNow - 25000;
+
+    // Set the active resident focus to rob in the spatial realm
+    session.scopedUsers["org.neverplayed.realm.core"].__activeId__ = "rob";
+    assertEquals(session.currentUser.id, "rob", "rob should be the active spatial resident");
+
+    // 4. Simulate a workspace/UI interaction trigger by rob
+    session.registerInteraction();
+
+    // 5. Assertions
+    const expectedBoost = (session.attentionSpanMs || 30000) * 0.4;
+    
+    // Rob (the active user) should have their lastActiveTime reset to 100% (now)
+    assert(Math.abs(robUser.lastActiveTime - testNow) < 500, "rob's lastActiveTime should be reset to current time");
+
+    // July should be boosted
+    assert(julyUser.lastActiveTime > testNow - 25000, "july's lastActiveTime should have been pushed forward by the boost");
+    const expectedJulyTime = Math.min(testNow, testNow - 25000 + expectedBoost);
+    // Allow small delta/tolerance for Date.now() evaluations during execution
+    assert(Math.abs(julyUser.lastActiveTime - expectedJulyTime) < 500, "july's boosted time should match expected value");
+
+    // Annie (in platonic lobby) should NOT be boosted (isolated from spatial resonance)
+    assertEquals(annieUser.lastActiveTime, testNow - 25000, "annie's attention should remain untouched (insulated from spatial resonance)");
+
+    console.log("✅ Coupled Homeostasis & Attention Resonance verified.");
+
     console.log("\n✨ ALL REALM AS A BEING INTEGRATION TESTS PASSED! ✨");
     
     // Restore fetch

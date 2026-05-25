@@ -542,6 +542,49 @@ export default class Activator {
                 this.login(user.id, targetScope, surrogate);
             },
 
+            registerInteraction() {
+                const now = Date.now();
+                const currentRealm = this.activeRealmId || 'platonic';
+                const currentUserId = this.currentUser?.id;
+
+                // 0. Update the active Being's own attention span (Actor Reset to 100% in all active/source residency stacks)
+                if (currentUserId && currentUserId !== 'guest') {
+                    for (const scope of Object.keys(this.scopedUsers || {})) {
+                        const actor = this.scopedUsers[scope]?.[currentUserId];
+                        if (actor) {
+                            actor.lastActiveTime = now;
+                        }
+                    }
+                }
+
+                // 1. Stigmergic Sensation Resonance
+                if (currentRealm && currentRealm !== 'platonic') {
+                    const stack = this.scopedUsers[currentRealm] || {};
+                    
+                    for (const [userId, user] of Object.entries(stack)) {
+                        if (userId === '__activeId__' || userId === 'guest' || userId === currentUserId) continue;
+                        if (user && user.loggedIn) {
+                            // Ontological Sense Constraint: Sensed by compatible senses
+                            const activeSurrogateId = user.activeSurrogateId;
+                            const activeSurrogate = user.surrogates?.[activeSurrogateId];
+                            const senses = activeSurrogate?.senses || ['Language']; // fallback
+                            
+                            if (senses.includes('Language') || senses.includes('ToolUse')) {
+                                // Boost attention span by 40% of maximum attention span, capped at 60% of maximum remaining attention (to ensure occupants decay quicker than the active Being)
+                                const boostAmount = (this.attentionSpanMs || 30000) * 0.4;
+                                const maxCap = now - (this.attentionSpanMs || 30000) * 0.4;
+                                const potentialTime = (user.lastActiveTime || 0) + boostAmount;
+                                user.lastActiveTime = Math.max(user.lastActiveTime || 0, Math.min(maxCap, potentialTime));
+                                logger?.info(`Session: Stigmergic coupling boosted attention for occupant '${userId}' in scope '${currentRealm}' by ${boostAmount}ms (capped at 60% remaining).`);
+                            }
+                        }
+                    }
+                }
+                
+                // 2. Schedule L1 Homeostasis step
+                this._scheduleHomeostasis();
+            },
+
             _generateBootstrapCode() {
                 const genBlock = () => Math.random().toString(36).substring(2, 6).toUpperCase();
                 return `${genBlock()}-${genBlock()}-${genBlock()}-${genBlock()}`;
@@ -672,7 +715,7 @@ export default class Activator {
 
         // Add window event listeners for UI interactions
         if (typeof globalThis.addEventListener === 'function') {
-            const trigger = () => this._session?._scheduleHomeostasis();
+            const trigger = () => this._session?.registerInteraction();
             globalThis.addEventListener('click', trigger);
             globalThis.addEventListener('keydown', trigger);
             globalThis.addEventListener('mousemove', trigger);
