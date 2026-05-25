@@ -266,5 +266,22 @@ To ensure systemic stability, the Platform's core physical and sensory organs (t
 *   **Prime Boot (The Chooser):** By default, when the system awakens, the `auth-shield` authenticates the user and places them in the Platonic Lobby, rendering a realm chooser in the sidebar/host aperture.
 *   **Landing Shortcut:** As a convenience shortcut, the system can be configured to auto-login the user into a specific landing realm (e.g., `org.neverplayed.realm.core` or `habitat`), bypassing the lobby on cold startup. However, the underlying lifecycle remains decoupled: a manual logout from that landing realm will still drop them back into the Platonic Lobby as the Grounding Soul.
 
+---
+
+## 10. Dynamic Ingress Seeding & The Zero-Duplicate Identity Principle
+
+To prevent duplicate declarations and maintain absolute domain boundaries, spatial realms load their residents and surrogates dynamically as OSGi fragment resources.
+
+### Dynamic Ingress Seeding
+*   **Sovereign Fragments:** Beings and surrogates are declared in separate YAML resources packaged under sovereign realm paths (e.g. `public/realms/data/<realmId>/`).
+*   **Activation Seeding:** When a being transitions into a spatial realm, Phase 3 (Atomic Commit) triggers the `RealmManager` to fetch these fragments and dynamically register their native residents and reified surrogates in the blank `BeingService`.
+*   **Deactivation Purging:** When a being leaves a spatial realm or falls back to the Platonic Staging Lobby, the `BeingService` is wiped completely clean (`clear()`), returning it to its pristine empty state.
+
+### The Zero-Duplicate Identity Principle
+*   **Session-Tier Carrying:** A being is native to exactly one realm (`originRealmId`) and is declared in that realm's seed file *only*.
+*   **Cross-Realm Sojourning:** When a native of Realm A (e.g., `rob` native to Habitat) visits Realm B (e.g., Governance), they are carried over in the `currentUser` session state. They are **not** duplicate-declared in Realm B's seeds.
+*   **Transient Occupancy:** Realm B recognizes `rob` dynamically as a transient visitor (Sojourner/Transient) based on this carried session context, allowing them to materialize in any role (such as `person`) reified locally by Realm B. This protects domain sovereignty while enabling fluid inter-realm travel.
+
+
 
 
