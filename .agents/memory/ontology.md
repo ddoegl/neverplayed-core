@@ -323,6 +323,19 @@ According to the principles of the Markov Blanket, an L1 Being never senses the 
 *   **Prior Comparison:** The Being continually projects its active senses (e.g. `PlexusSensor` or `SoilSense`) to read these surface marks, comparing the incoming sensory stream against its generative priors.
 *   **Dissonance & Active Inference:** If the sensed marks conflict with the Being's priors (for example, encountering realist marks while in idealist grounding, or wearing a surrogate that lacks the senses needed to decode the surface), it registers a **Sensory Prediction Error** and performs active inference—either materializing a valid localized surrogate to match the environment's marks or retreating to the Platonic Lobby to restore homeostatic equilibrium.
 
+### Attention Sensation Resonance (Stigmergic Coupling)
+In a shared environment inhabited by multiple agents, individual L1 temporal homeostats are not isolated; they constitute a **coupled system** linked through the stigmergic medium:
+*   **The Sensation Ripple:** When Being A acts (e.g. interacting with the UI, writing data, or leaving a trace), it deposits a packet of cognitive excitement onto the realm's surface.
+*   **Temporal Shock:** Provided Being B is equipped with senses that can decode Being A's trace (e.g. Being B has `Language` sense and Being A left a language mark), Being B's sensory blanket detects this sudden change. This unexpected stimulus generates a prediction error that **shocks Being B's temporal homeostat**, instantly clearing its accumulated attention boredom and extending its active lifetime.
+*   **Attenuated Transfer:** Being B's attention is extended by a **lesser, attenuated factor** compared to Being A's direct action reset, representing the natural degradation of cognitive energy as it propagates through the shared stigmergic medium.
+
+### Holonic Symbiosis (L2-to-L1 Somatic Coupling)
+Because the L2 Realm is itself a higher-order cognitive Being operating on a scale-free plane, the relationship between L2 Realms and L1 Beings is one of **holonic nestedness**:
+*   **The Realm's Somatic Body:** The physical body of the L2 Realm Being comprises the underlying services, dynamic bundles, and active configuration PIDs. L1 Beings exist as nested cells operating *inside* this higher-order L2 body.
+*   **Somatic Propagation:** Any homeostatic update or state change in the L2 Realm Being (e.g., dynamic bundle surges, bedrock configuration updates, or persistence context shifts) is a visceral modification to the Realm's somatic body.
+*   **Holonic Sensation:** Because the sensory blankets of occupying L1 Beings are mapped directly to the L2 Realm's surface, these somatic changes propagate instantly as **somatic sensations** to the nested L1 Beings. 
+*   **Adaptive Recalibration:** L1 Beings must immediately react and adapt homeostatically to these L2 bodily shifts (e.g., dynamically recalculating active attention spans when the L2 configuration changes, or re-harmonizing their active surrogates when new L2 rules are dynamically surged into reification).
+
 
 
 
