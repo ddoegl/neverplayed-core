@@ -257,6 +257,11 @@ Because the Platonic space is the root container of the session, logging out of 
 *   **Genesis Trigger:** Logging out of `'platonic'` (or `'global'`) triggers a **total system reset**.
 *   **Dissolution:** The session service completely clears the persistence/localStorage layers and triggers a hard page reload (`location.reload()`), causing the entire universe to unfold completely anew out of nothingness.
 
+### Primordial Plane Protection & Pure Ingress
+To ensure systemic stability, the Platform's core physical and sensory organs (the 36 foundation bundles loaded directly during boot) constitute the **Primordial Plane**. This plane is protected under the following ontological principles:
+*   **Immutable Platform Organs:** Transitioning between concrete spatial realms allows the system to purge and install dynamic realm-specific bundles. However, the bundles belonging to the Primordial Plane are dynamically protected and **cannot be uninstalled** during any transitions. This guarantees that the core nervous system and sensory apparatus (like the Stratographer, CLI, and Event Monitor) remain fully intact across all states.
+*   **The Sovereign Empty Realm (Pure Ingress):** An empty realm contains no custom bundles or localized rules. Inhabiting this realm represents a state of "pure ingress"—an active transition where all non-primordial content is purged, leaving the Grounding Soul equipped strictly with the platform's primordial organs in their pristine, undistorted form.
+
 ### Unfolding & Bootstrapping Shortcuts
 *   **Prime Boot (The Chooser):** By default, when the system awakens, the `auth-shield` authenticates the user and places them in the Platonic Lobby, rendering a realm chooser in the sidebar/host aperture.
 *   **Landing Shortcut:** As a convenience shortcut, the system can be configured to auto-login the user into a specific landing realm (e.g., `org.neverplayed.realm.core` or `habitat`), bypassing the lobby on cold startup. However, the underlying lifecycle remains decoupled: a manual logout from that landing realm will still drop them back into the Platonic Lobby as the Grounding Soul.
