@@ -126,6 +126,9 @@ async function main() {
     assertExists(perceiver, "Perceiver Service should be registered");
     assertExists(plexusSensor, "Plexus Sensor should be registered");
 
+    // Pre-initialize and wait for the realm manager to settle
+    await realmManager.waitReady();
+
     // -------------------------------------------------------------
     // Test Case 1: Global Bootstrap Anchor Mapping
     // -------------------------------------------------------------

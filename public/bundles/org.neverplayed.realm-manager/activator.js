@@ -22,7 +22,9 @@ import {
     TRANSITION_PARTICIPANT_INTERFACE,
     PERSISTENCE_MANAGER_SERVICE,
     EVENT_HANDLER_INTERFACE,
-    EVENT_TOPIC
+    EVENT_TOPIC,
+    BEING_SERVICE,
+    YAML_SERVICE
 } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import { BaseActivator } from "osgi-base";
@@ -58,8 +60,9 @@ export default class Activator extends BaseActivator {
     _flowService = null;
     _flowTracker = null;
     _flows = new Map(); // Store discovered flows: id -> service
-    _limes = null;
     _limesTracker = null;
+    _beingService = null;
+    _yamlService = null;
 
     // Dynamic Cognition (TAME Engine)
     _cognitions = new Map(); // id -> cognition loop state
@@ -267,6 +270,32 @@ export default class Activator extends BaseActivator {
         });
         this._participantTracker.open();
 
+        // 1.11 Track Being Service (Dynamic Seeding)
+        this._beingTracker = context.trackService(`(objectClass=${BEING_SERVICE})`, {
+            addingService: (ref) => {
+                this._beingService = context.getService(ref);
+                this.logger?.info("Realm Manager: Connected to Being Service.");
+                return this._beingService;
+            },
+            removedService: () => {
+                this._beingService = null;
+            }
+        });
+        this._beingTracker.open();
+
+        // 1.12 Track YAML Service (Dynamic Seeding)
+        this._yamlTracker = context.trackService(`(objectClass=${YAML_SERVICE})`, {
+            addingService: (ref) => {
+                this._yamlService = context.getService(ref);
+                this.logger?.info("Realm Manager: Connected to YAML Service.");
+                return this._yamlService;
+            },
+            removedService: () => {
+                this._yamlService = null;
+            }
+        });
+        this._yamlTracker.open();
+
         this._registerCLI(context);
 
         // Pre-initialize promises to prevent waitReady race (Step 1)
@@ -291,7 +320,10 @@ export default class Activator extends BaseActivator {
             waitReady: async () => {
                 await this._bootReadyPromise;
                 if (this._discoveryPromise) await this._discoveryPromise;
-                if (this._recoveryPromise) await this._recoveryPromise;
+                if (!this._recoveryPromise) {
+                    this._recoveryPromise = this._recoverState(context);
+                }
+                await this._recoveryPromise;
                 // Double-check recovery actually finished
                 while (this._isRecovering) await new Promise(r => setTimeout(r, 50));
                 
@@ -324,7 +356,7 @@ export default class Activator extends BaseActivator {
         }, { [EVENT_TOPIC]: topics });
 
         this._discoveryPromise = this._discoverRealms();
-        this._recoveryPromise = this._recoverState(context);
+        this._recoveryPromise = null;
         
         // Signal readiness
         this._bootReadyResolve();
@@ -380,29 +412,6 @@ export default class Activator extends BaseActivator {
                     if (r.ok) {
                         const manifest = await r.json();
                         
-                        // 3. Provider Injection (Rule 1: Patch Core Universe)
-                        if (manifest.id === "org.neverplayed.realm.core" || manifest.id === "org.neverplayed.realm.persistence") {
-                            // Defensive Initializer: Ensure bundles array exists
-                            manifest.bundles = Array.isArray(manifest.bundles) ? manifest.bundles : [];
-                            
-                            const mode = manifest.persistencePolicy?.tier || envTier;
-                            this.logger?.info(`[RealmManager] Persistence Tier Resolved: ${mode} (Source: ${manifest.persistencePolicy?.tier ? 'Manifest' : 'Environment'})`);
-                            const isFirebase = mode === "cloud";
-                            const isLocalFs = mode === "local-fs";
-                            const isLocalBrowser = mode === "local";
-                            const isMemory = mode === "volatile";
-
-                            if (isFirebase) {
-                                manifest.bundles.push("./bundles/org.neverplayed.persistence-firebase/manifest.json");
-                            } else if (isLocalFs) {
-                                manifest.bundles.push("./bundles/org.neverplayed.persistence-localstorage/manifest.json");
-                                manifest.bundles.push("./bundles/org.neverplayed.persistence-fs-sync/manifest.json");
-                            } else if (isLocalBrowser) {
-                                manifest.bundles.push("./bundles/org.neverplayed.persistence-localstorage/manifest.json");
-                            } else if (isMemory) {
-                                this.logger?.info("Realm Manager: Persistence Phase skipped (Memory Mode). Data resides in Volatile Store.");
-                            }
-                        }
                         
                         await this._registerRealm(manifest);
                     }
@@ -698,6 +707,16 @@ export default class Activator extends BaseActivator {
             this._activeRealmId = 'platonic';
             this.logger.info(`Realm Manager: Entered Platonic Staging Lobby.`);
 
+            // Broadcast initial Lobby context shift to Perceiver/Stratographer
+            if (this._eventAdmin && this._eventFactory) {
+                const event = this._eventFactory.build(REALM_CHANGED_TOPIC, {
+                    "realm.id": 'platonic',
+                    "realm.title": 'Platonic Lobby',
+                    "realm.icon": 'fas fa-door-open'
+                });
+                this._eventAdmin.postEvent(event);
+            }
+
             // Dynamically register RealmCognitionService for the Platonic Staging Lobby
             if (!this._cognitions.has('platonic')) {
                 const oldCognitionReg = this._cognitionRegs.get('platonic');
@@ -727,26 +746,7 @@ export default class Activator extends BaseActivator {
                 this.logger.info(`Realm Manager: Landing Shortcut → auto-switching to '${landingRealmId}'...`);
                 await this._switchRealm(context, landingRealmId);
             } else {
-                // We are staying in the Platonic Staging Lobby.
-                // To render the lobby UI (sidebar, host, auth shield, etc.), we need to install
-                // the foundation bundles. We use the core realm's hierarchy as the foundation.
-                this.logger.info(`Realm Manager: Staying in Platonic Lobby. Installing core infrastructure bundles...`);
-                const coreHierarchy = await this._resolveHierarchy("org.neverplayed.realm.core");
-                const surgePlan = await this._prepareSurgePlan(context, coreHierarchy);
-                
-                // Surge (Install & Start) core/shell bundles
-                for (const item of surgePlan.toInstall) {
-                    try {
-                        this.logger?.info(`[RealmManager] Lobby Boot Surging: ${item.bsn} from ${item.url}...`);
-                        const bundle = await context.installBundle(item.url);
-                        const state = bundle.getState();
-                        if (state < 32) {
-                            await bundle.start();
-                        }
-                    } catch (err) {
-                        this.logger?.error(`[RealmManager] Lobby Boot Failed to surge '${item.bsn}':`, err.message);
-                    }
-                }
+                this.logger.info(`Realm Manager: Staying in Platonic Lobby. Core shell bundles already loaded via primordial plane.`);
             }
         } finally {
             this._isRecovering = false;
@@ -1320,6 +1320,54 @@ export default class Activator extends BaseActivator {
             if (this.session) {
                 this.session.activeRealmId = pt.id;
             }
+
+            // Dynamic Seeding & Purging (OSGi dynamic fragment seeding)
+            if (this._beingService) {
+                this._beingService.clear();
+
+                if (pt.manifest?.seedData) {
+                    this.logger?.info(`[RealmManager] Dynamic Seeding for realm '${pt.id}'...`);
+                    const yamlSvc = this._yamlService;
+                    if (yamlSvc) {
+                        try {
+                            const base = globalThis.location.origin + '/';
+                            
+                            if (pt.manifest.seedData.surrogates) {
+                                const surrogatesUrl = new URL(pt.manifest.seedData.surrogates, base).href;
+                                this.logger?.debug(`[RealmManager] Fetching surrogates fragment from ${surrogatesUrl}`);
+                                const res = await fetch(surrogatesUrl);
+                                if (res.ok) {
+                                    const text = await res.text();
+                                    const surrogates = yamlSvc.load(text) || [];
+                                    this._beingService.registerSurrogates(surrogates);
+                                    this.logger?.info(`[RealmManager] Seeded ${surrogates.length} surrogates.`);
+                                } else {
+                                    this.logger?.error(`[RealmManager] Failed to fetch surrogates fragment: HTTP ${res.status}`);
+                                }
+                            }
+                            
+                            if (pt.manifest.seedData.beings) {
+                                const beingsUrl = new URL(pt.manifest.seedData.beings, base).href;
+                                this.logger?.debug(`[RealmManager] Fetching beings fragment from ${beingsUrl}`);
+                                const res = await fetch(beingsUrl);
+                                if (res.ok) {
+                                    const text = await res.text();
+                                    const beings = yamlSvc.load(text) || [];
+                                    this._beingService.registerBeings(beings);
+                                    this.logger?.info(`[RealmManager] Seeded ${beings.length} beings.`);
+                                } else {
+                                    this.logger?.error(`[RealmManager] Failed to fetch beings fragment: HTTP ${res.status}`);
+                                }
+                            }
+                        } catch (err) {
+                            this.logger?.error(`[RealmManager] Dynamic seeding error: ${err.message}`);
+                        }
+                    } else {
+                        this.logger?.warn(`[RealmManager] YAML Service not available. Skipping dynamic seeding.`);
+                    }
+                }
+            }
+
             this.logger?.info(`Realm Manager: Context Transition Successful. Universe '${pt.id}' is now active. 🌌`);
             
             // Update Service Properties for all Realms

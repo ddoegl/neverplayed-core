@@ -263,6 +263,7 @@ In the idealist framework, the Platonic staging lobby *is* the absolute primordi
 Because the Platonic lobby represents pure potentiality, you are the **unique native resident** of this primordium. It is the anchor of the entire session:
 *   **The Grounding Soul:** The first identity to authenticate on boot resolves the ultimate observer and **Grounding Soul** (`activeBeingId` and `scopedUsers['platonic'].__activeId__`). Once established, this soul is locked and cannot change.
 *   **Platonic Exclusivity:** No other identity (such as `rob`) can log in or reside natively in the `'platonic'` lobby. Attempting to switch identities or log in as anyone else in the Platonic space results in an **Ontological Violation** boundary error.
+*   **Platonic Isolation of Spatial Beings:** Pre-provisioned dynamic spatial identities (e.g. `rob`, `july`, `anna`, `gov-gov`) reside exclusively within their respective spatial stack (`scopedUsers[homeRealm]`). They are **never** populated, registered, or mirrored in the `'platonic'` stack, ensuring the Platonic morphospace remains an exclusive clean-room environment.
 *   **Spatial Impersonations:** The Grounding Soul can still "dream" or impersonate other identities (like `rob`) within specific *spatial realms* (e.g. `habitat`). In these dreams, the persistence context is cleanly partitioned: `Tenant` remains the Grounding Soul, while `Identity` is the active persona (`rob`).
 
 ### The Idealist Observer Fallback
@@ -298,6 +299,12 @@ To prevent duplicate declarations and maintain absolute domain boundaries, spati
 *   **Session-Tier Carrying:** A being is native to exactly one realm (`originRealmId`) and is declared in that realm's seed file *only*.
 *   **Cross-Realm Sojourning:** When a native of Realm A (e.g., `rob` native to Habitat) visits Realm B (e.g., Governance), they are carried over in the `currentUser` session state. They are **not** duplicate-declared in Realm B's seeds.
 *   **Transient Occupancy:** Realm B recognizes `rob` dynamically as a transient visitor (Sojourner/Transient) based on this carried session context, allowing them to materialize in any role (such as `person`) reified locally by Realm B. This protects domain sovereignty while enabling fluid inter-realm travel.
+
+### Platform-Level / Administrative Surrogates (Primordial Surrogates)
+*   **Definition:** Surrogates that represent systemic, platform-level administrative capabilities (such as `observer`, `sovereign-guard` and `system-collector`) rather than localized realm-specific personas.
+*   **Jurisdiction:** Because these surrogates represent the core nervous system and security of the entire ecosystem, they are **primordial surrogates** reified directly by the platform core at boot time.
+*   **Bootstrapping:** They bypass spatial YAML seeding entirely and are initialized programmatically by the `BeingService` upon startup. This ensures they are universally active and recognized across all spatial realms, without requiring any realm to extend a specific Foundation manifest.
+*   **Preservation:** During dynamic transitions and lobby exits, when the active spatial population and localized surrogates are purged (`clear()`), these primordial surrogates are explicitly preserved, maintaining global administrative stability.
 
 
 

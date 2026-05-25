@@ -1,6 +1,7 @@
 [
-    "empty.json",
+    "core.json",
     "foundation.json",
+    "showcase.json",
     "habitat.json",
     "governance.json"
 ]

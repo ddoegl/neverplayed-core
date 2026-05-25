@@ -142,6 +142,8 @@
               "./bundles/org.neverplayed.limes/manifest.json",
               "./bundles/org.neverplayed.plexus-core/manifest.json",
 
+              "./bundles/org.neverplayed.persistence-firebase/manifest.json",
+
               // 4. Universe Managers
               "./bundles/org.neverplayed.realm-manager/manifest.json",
               "./bundles/org.neverplayed.realm-manager-dom/manifest.json",
@@ -177,14 +179,17 @@
               "./bundles/org.neverplayed.plexus/manifest.json",
               "./bundles/org.neverplayed.plexus-sensor/manifest.json",
               "./bundles/org.neverplayed.plexus-tracing/manifest.json",
-              "./bundles/org.neverplayed.plexus-test/manifest.json"
+              "./bundles/org.neverplayed.plexus-test/manifest.json",
             ];
 
             for (const url of coreBundles) {
               this.bootStatus = `Loading: ${url.split("/").pop()}...`;
               try {
                 const b = await context.installBundle(url);
-                if (b.state === 2 || b.state === 4 || (b.getState && b.getState() < 32)) {
+                if (
+                  b.state === 2 || b.state === 4 ||
+                  (b.getState && b.getState() < 32)
+                ) {
                   await b.start();
                 }
               } catch (err) {

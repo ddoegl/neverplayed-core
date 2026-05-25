@@ -3,23 +3,23 @@
  * @module platform/bundles/org.neverplayed.being-service
  */
 
-import { SESSION_SERVICE, LOG_SERVICE, PERSISTENCE_RESOLVER_SERVICE, BEING_SERVICE, YAML_SERVICE } from "../../core-types.js";
+import { SESSION_SERVICE, LOG_SERVICE, BEING_SERVICE } from "../../core-types.js";
 import { BaseActivator } from "osgi-base";
 
 export default class Activator extends BaseActivator {
     _session = null;
-    _resolver = null;
-    _yaml = null;
     _beingsData = [];
-    _surrogatesData = [];
-    _hydrationPromise = null;
+    _surrogatesData = [
+        { id: "observer", label: "Observer", senses: ["Language"] },
+        { id: "sovereign-guard", label: "Sovereign Guard", senses: ["Language", "ForensicVision", "ArchitectControl", "InhabitantGuardianship"] },
+        { id: "system-collector", label: "Strata Collector", senses: ["Language", "SpaceReclamation"] }
+    ];
 
     async onStart(context) {
         // 1. Track Session Service
         this.track(`(objectClass=${SESSION_SERVICE})`, {
             addingService: async (ref) => {
                 this._session = context.getService(ref);
-                if (this._hydrationPromise) await this._hydrationPromise;
                 if (this._session && this._beingsData.length > 0) {
                     const enrichedBeings = this._beingsData.map(b => {
                         if (b.initial?.surrogate) {
@@ -40,28 +40,64 @@ export default class Activator extends BaseActivator {
             removedService: () => { this._session = null; }
         });
 
-        // 2. Track Persistence Resolver (to resolve being homes)
-        this.track(`(objectClass=${PERSISTENCE_RESOLVER_SERVICE})`, {
-            addingService: (ref) => {
-                this._resolver = context.getService(ref);
-                this._hydrationPromise = this._hydrateBeings();
-                return this._resolver;
-            },
-            removedService: () => { this._resolver = null; }
-        });
-
-        // 3. Track YAML Service (for seed data)
-        this.track(`(objectClass=${YAML_SERVICE})`, {
-            addingService: (ref) => {
-                this._yaml = context.getService(ref);
-                this._hydrationPromise = this._hydrateBeings();
-                return this._yaml;
-            },
-            removedService: () => { this._yaml = null; }
-        });
-
-        // 4. Register Being Service
+        // 2. Register Being Service
         const beingService = {
+            /**
+             * Register beings dynamically.
+             */
+            registerBeings: (beingsArray) => {
+                this._beingsData = beingsArray || [];
+                this.logger?.info(`Being Service: Dynamic registration of ${this._beingsData.length} beings.`);
+                if (this._session && this._beingsData.length > 0) {
+                    const enrichedBeings = this._beingsData.map(b => {
+                        if (b.initial?.surrogate) {
+                            return { 
+                                ...b, 
+                                initial: { 
+                                    ...b.initial, 
+                                    surrogateData: this._surrogatesData.find(s => s.id === b.initial.surrogate) || {} 
+                                } 
+                            };
+                        }
+                        return b;
+                    });
+                    this._session.registerIdentities(enrichedBeings);
+                }
+            },
+
+            /**
+             * Register surrogates dynamically (merges into defaults).
+             */
+            registerSurrogates: (surrogatesArray) => {
+                const defaults = [
+                    { id: "observer", label: "Observer", senses: ["Language"] },
+                    { id: "sovereign-guard", label: "Sovereign Guard", senses: ["Language", "ForensicVision", "ArchitectControl", "InhabitantGuardianship"] },
+                    { id: "system-collector", label: "Strata Collector", senses: ["Language", "SpaceReclamation"] }
+                ];
+                const dynamic = surrogatesArray || [];
+                const merged = [...defaults];
+                for (const item of dynamic) {
+                    if (!merged.some(s => s.id === item.id)) {
+                        merged.push(item);
+                    }
+                }
+                this._surrogatesData = merged;
+                this.logger?.info(`Being Service: Surrogates dynamic catalog updated. Total surrogates: ${this._surrogatesData.length}`);
+            },
+
+            /**
+             * Clear dynamically registered beings/surrogates back to primordial baseline.
+             */
+            clear: () => {
+                this._beingsData = [];
+                this._surrogatesData = [
+                    { id: "observer", label: "Observer", senses: ["Language"] },
+                    { id: "sovereign-guard", label: "Sovereign Guard", senses: ["Language", "ForensicVision", "ArchitectControl", "InhabitantGuardianship"] },
+                    { id: "system-collector", label: "Strata Collector", senses: ["Language", "SpaceReclamation"] }
+                ];
+                this.logger?.info("Being Service: Dynamic spatial seed data cleared. Restored primordial default surrogates.");
+            },
+
             /**
              * Materialize a being as a specific surrogate.
              * @param {string} beingId - The Level 1 Identity ID (e.g., 'rob')
@@ -116,11 +152,7 @@ export default class Activator extends BaseActivator {
                     if (being.initial?.originRealmId) return being.initial.originRealmId;
                     if (being.initial?.realm) return being.initial.realm;
                 }
-
-                // 2. Legacy Type Resolution (Policy-based)
-                if (!this._resolver) return null;
-                const policy = this._resolver.getPolicy(`org.neverplayed.beings/${beingIdOrType}/`);
-                return policy ? policy.realm : null;
+                return null;
             },
 
             /**
@@ -190,52 +222,5 @@ export default class Activator extends BaseActivator {
 
         context.registerService(BEING_SERVICE, beingService);
         this.logger.info("Being Service: Registered 🧬✨");
-    }
-
-    async _hydrateBeings() {
-        if (!this._yaml) {
-            this.logger.debug("Being Service: Delaying hydration, YAML service not yet available.");
-            return;
-        }
-        
-        try {
-            // 1. Hydrate Surrogates
-            const surrogatesUrl = this.resolveResource("data/surrogates.yaml");
-            this.logger.info(`Being Service: Fetching surrogates from ${surrogatesUrl}...`);
-            const surrogatesRes = await fetch(surrogatesUrl);
-            if (!surrogatesRes.ok) throw new Error(`HTTP ${surrogatesRes.status}`);
-            this._surrogatesData = this._yaml.load(await surrogatesRes.text()) || [];
-            this.logger.info(`Being Service: Hydrated ${this._surrogatesData.length} known surrogates.`);
-
-            // 2. Hydrate Beings
-            const url = this.resolveResource("data/beings.yaml");
-            this.logger.info(`Being Service: Fetching beings from ${url}...`);
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const text = await res.text();
-            this._beingsData = this._yaml.load(text) || [];
-            this.logger.info(`Being Service: Hydrated ${this._beingsData.length} known beings.`);
-            
-            if (this._session) {
-                this.logger.info(`Being Service: Injecting ${this._beingsData.length} beings into Session Service...`);
-                const enrichedBeings = this._beingsData.map(b => {
-                    if (b.initial?.surrogate) {
-                        return { 
-                            ...b, 
-                            initial: { 
-                                ...b.initial, 
-                                surrogateData: this._surrogatesData.find(s => s.id === b.initial.surrogate) || {} 
-                            } 
-                        };
-                    }
-                    return b;
-                });
-                this._session.registerIdentities(enrichedBeings);
-            } else {
-                this.logger.warn("Being Service: Cannot inject beings, Session Service not yet available.");
-            }
-        } catch (err) {
-            this.logger.error("Being Service: Failed to hydrate beings or surrogates:", err.message);
-        }
     }
 }

@@ -1,0 +1,10 @@
+- id: person
+  label: Person
+  senses:
+    - ToolUse
+    - Language
+
+- id: maskot
+  label: Governance Mascot
+  senses:
+    - Language

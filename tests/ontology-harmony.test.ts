@@ -44,7 +44,7 @@ async function main() {
                 json: () => Promise.resolve({}),
             } as any;
         }
-        if (urlStr.includes("data/beings.yaml")) {
+        if (urlStr.includes("habitat/beings.yaml")) {
             const beingsYaml = `
 - id: rob
   label: Rob Richter
@@ -101,16 +101,59 @@ async function main() {
                 json: () => Promise.resolve(beingsYaml),
             } as any;
         }
-        if (urlStr.includes("data/surrogates.yaml")) {
+        if (urlStr.includes("governance/beings.yaml")) {
+            const govBeingsYaml = `
+- id: gov-gov
+  label: Gov Mascot
+  email: mascot@gov.local
+  originRealmId: org.neverplayed.realm.governance
+  initial:
+    realm: org.neverplayed.realm.governance
+    surrogate: maskot
+`;
+            return {
+                ok: true,
+                status: 200,
+                text: () => Promise.resolve(govBeingsYaml),
+                json: () => Promise.resolve(govBeingsYaml),
+            } as any;
+        }
+        if (urlStr.includes("habitat/surrogates.yaml")) {
             const surrogatesYaml = `
 - id: person
   label: Person
+  senses:
+    - ToolUse
+    - Language
+- id: guest
+  label: Guest
+  senses:
+    - Language
 `;
             return {
                 ok: true,
                 status: 200,
                 text: () => Promise.resolve(surrogatesYaml),
                 json: () => Promise.resolve(surrogatesYaml),
+            } as any;
+        }
+        if (urlStr.includes("governance/surrogates.yaml")) {
+            const govSurrogatesYaml = `
+- id: person
+  label: Person
+  senses:
+    - ToolUse
+    - Language
+- id: maskot
+  label: Governance Mascot
+  senses:
+    - Language
+`;
+            return {
+                ok: true,
+                status: 200,
+                text: () => Promise.resolve(govSurrogatesYaml),
+                json: () => Promise.resolve(govSurrogatesYaml),
             } as any;
         }
         
@@ -195,12 +238,20 @@ async function main() {
     realmManager.registerRealm({
         id: "org.neverplayed.realm.habitat",
         title: "Habitat",
-        bundles: mockBundles
+        bundles: mockBundles,
+        seedData: {
+            beings: "./realms/data/habitat/beings.yaml",
+            surrogates: "./realms/data/habitat/surrogates.yaml"
+        }
     });
     realmManager.registerRealm({
         id: "org.neverplayed.realm.governance",
         title: "Governance",
-        bundles: mockBundles
+        bundles: mockBundles,
+        seedData: {
+            beings: "./realms/data/governance/beings.yaml",
+            surrogates: "./realms/data/governance/surrogates.yaml"
+        }
     });
 
     await settle();

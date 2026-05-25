@@ -10,7 +10,9 @@ import {
     PERCEIVER_SERVICE,
     PERCEIVER_CHANGED_TOPIC,
     SHELL_UI_CONTEXT_PID,
-    EVENT_HANDLER_INTERFACE
+    EVENT_HANDLER_INTERFACE,
+    SESSION_CHANGED_TOPIC,
+    REALM_CHANGED_TOPIC
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
@@ -74,16 +76,18 @@ export default class Activator extends AlpineActivator {
             }
         });
 
-        // Listen for Perceiver Changes
+        // Listen for Perceiver & Session Changes
         this.context.registerService(EVENT_HANDLER_INTERFACE, {
             handleEvent: (event) => {
                 if (this._perceiver) {
                     this.syncStore('shell_context', { perceiver: this._perceiver.getContext() });
                     this.logger?.debug(`[ShellHeader] Perceiver context synchronized.`);
                 }
+                // Reactively sync realms list on any session shift or realm transition
+                this._syncRealms();
             }
         }, {
-            "event.topics": [PERCEIVER_CHANGED_TOPIC]
+            "event.topics": [PERCEIVER_CHANGED_TOPIC, SESSION_CHANGED_TOPIC, REALM_CHANGED_TOPIC]
         });
 
         // Track Persistence Manager for Gold Standard Persistence (Pattern 4)
@@ -222,22 +226,40 @@ export default class Activator extends AlpineActivator {
             if (id && !uniqueMap.has(id)) uniqueMap.set(id, ref);
         }
         
-        const realms = Array.from(uniqueMap.values()).map(ref => ({
-            id: ref.getProperty('realm.id'),
-            title: ref.getProperty('realm.title') || 'Untitled',
-            icon: ref.getProperty('realm.icon') || 'fas fa-universe',
-            active: !!ref.getProperty('realm.active'),
-            bundleId: ref.getBundle().id
-        }));
-
-        let activeRealm = realms.find(r => r.active) || realms[0] || { id: 'none', title: 'Loading...' };
-
         const activeRealmId = this._session?.activeRealmId;
+        const realms = Array.from(uniqueMap.values()).map(ref => {
+            const id = ref.getProperty('realm.id');
+            return {
+                id,
+                title: ref.getProperty('realm.title') || 'Untitled',
+                icon: ref.getProperty('realm.icon') || 'fas fa-universe',
+                active: id === activeRealmId,
+                bundleId: ref.getBundle().id
+            };
+        });
+
+        let activeRealm = null;
+
         if (activeRealmId === 'platonic') {
             activeRealm = {
                 id: 'platonic',
                 title: 'Platonic Lobby',
                 icon: 'fas fa-door-open',
+                active: true
+            };
+        } else if (!activeRealmId) {
+            // Ontologically correct: do not assume realms[0] when in the primordial plane
+            activeRealm = {
+                id: 'primordial',
+                title: 'Primordial Plane',
+                icon: 'fas fa-shield-alt',
+                active: true
+            };
+        } else {
+            activeRealm = realms.find(r => r.id === activeRealmId) || {
+                id: activeRealmId,
+                title: `Loading Realm (${activeRealmId})...`,
+                icon: 'fas fa-circle-notch fa-spin',
                 active: true
             };
         }

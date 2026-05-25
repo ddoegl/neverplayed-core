@@ -7,5 +7,6 @@
     "privileges": {
         "realm-admins": ["daniel.doegl@doegl.info"]
     },
-    "recognizedSurrogates": ["observer"]
+    "recognizedSurrogates": ["observer"],
+    "bundles": []
 }

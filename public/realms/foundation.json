@@ -8,7 +8,7 @@
         { "id": "visual-do-editor" }
     ],
     "title": "NPRF Semantic Foundation",
-    "extends": ["org.neverplayed.realm.core"],
+    "extends": ["org.neverplayed.realm.empty"],
     "description": "Layer 2: Context, State, and Registration foundations.",
     "privileges": {
         "realm-admins": ["daniel.doegl@doegl.info"]

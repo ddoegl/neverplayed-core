@@ -2,12 +2,16 @@
     "id": "org.neverplayed.realm.habitat",
     "title": "Habitat",
     "icon": "fas fa-leaf",
-    "extends": ["org.neverplayed.realm.foundation"],
+    "extends": ["org.neverplayed.realm.empty"],
     "description": "Layer 4: Inhabited by beings. Ecosystems and niches emerge here.",
     "privileges": {
         "realm-admins": ["daniel.doegl@doegl.info", "guest"]
     },
     "recognizedSurrogates": ["observer", "person"],
+    "seedData": {
+        "beings": "./realms/data/habitat/beings.yaml",
+        "surrogates": "./realms/data/habitat/surrogates.yaml"
+    },
     "bundles": ["./bundles/org.neverplayed.being-service/manifest.json"],
     "domainObjects": [
         { "id": "showcase-lab", "icon": "fas fa-flask", "title": "Platform Lab" }

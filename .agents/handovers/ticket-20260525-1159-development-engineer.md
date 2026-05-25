@@ -3,19 +3,23 @@
 - **From:** Cognitive Architect
 - **To:** Development Engineer
 - **Context:** 
-  To enforce complete domain sovereignty and emulated OSGi fragment bundling, we are decoupling the population seeds from a central global database. The being-service boots completely empty as a blank primordial engine. Beings and surrogates are loaded dynamically as spatial resource fragments by the `RealmManager` during realm ingress (Phase 3 transitions) and are completely purged upon exit.
+  To enforce complete domain sovereignty and emulated OSGi fragment bundling, we are decoupling the population seeds from a central global database. The being-service boots as a primordial engine loaded programmatically with system-level primordial default surrogates. Beings and surrogates are loaded dynamically as spatial resource fragments by the `RealmManager` during realm ingress (Phase 3 transitions) and are completely purged upon exit, preserving only the primordial defaults.
 
 ---
 
 ## Actionable Objectives
 
-### 1. Being Service Refactoring (Blank Primordial Engine)
+### 1. Being Service Refactoring (Primordial Default Surrogates & Blank Engine)
 * **File:** [activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.being-service/activator.js)
 * **Actions:**
-  - Delete `_hydrateBeings()` and remove all active watchers on `PERSISTENCE_RESOLVER_SERVICE` or `YAML_SERVICE` inside the being service's startup lifecycle. The service must boot and register completely empty.
+  - Delete `_hydrateBeings()` and remove all active watchers on `PERSISTENCE_RESOLVER_SERVICE` or `YAML_SERVICE` inside the being service's startup lifecycle.
+  - At startup, programmatically bootstrap and register the system's **primordial default surrogates**:
+    - `observer` (Senses: `Language`)
+    - `sovereign-guard` (Senses: `Language`, `ForensicVision`, `ArchitectControl`, `InhabitantGuardianship`)
+    - `system-collector` (Senses: `Language`, `SpaceReclamation`)
   - Expose a dynamic API `registerBeings(beingsArray)` to dynamically load and register beings into `_beingsData` and update active session stacks if applicable.
   - Expose a dynamic API `registerSurrogates(surrogatesArray)` to dynamically register surrogates into `_surrogatesData`.
-  - Expose a `clear()` API that completely purges `_beingsData` and `_surrogatesData` back to an empty dictionary state.
+  - Expose a `clear()` API that purges all dynamic spatial data from `_beingsData` and `_surrogatesData`, but **explicitly preserves** the three primordial default surrogates (`observer`, `sovereign-guard`, and `system-collector`).
 
 ### 2. Realm Manager Refactoring (Dynamic Seeding & Purging)
 * **File:** [activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.realm-manager/activator.js)

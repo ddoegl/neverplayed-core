@@ -2,19 +2,24 @@
     "id": "org.neverplayed.realm.governance",
     "title": "Governance",
     "icon": "fas fa-users",
-    "extends": ["org.neverplayed.realm.foundation"],
+    "extends": ["org.neverplayed.realm.empty"],
     "description": "Layer 4: Defines the governance structures and roles.",
     "privileges": {
         "realm-admins": ["daniel.doegl@doegl.info", "guest"]
     },
     "bundles": ["./bundles/org.neverplayed.person-registry/manifest.json"],
-    "recognizedSurrogates": ["person"],
-    "onAccessDenied": "Universe 'org.neverplayed.realm.governance' only recognizes Persons. Please materialize as a Person before entry.",
+    "recognizedSurrogates": ["person", "maskot"],
+    "seedData": {
+        "beings": "./realms/data/governance/beings.yaml",
+        "surrogates": "./realms/data/governance/surrogates.yaml"
+    },
+    "onAccessDenied": "Universe 'org.neverplayed.realm.governance' only recognizes Persons or Mascots. Please materialize before entry.",
     "strategies": {
         "REALM_ACCESS:org.neverplayed.realm.governance": {
-            "operator": "AND",
+            "operator": "OR",
             "matchers": [
-                { "type": "matchAttribute", "key": "surrogateId", "value": "person" }
+                { "type": "matchAttribute", "key": "surrogateId", "value": "person" },
+                { "type": "matchAttribute", "key": "surrogateId", "value": "maskot" }
             ]
         }
     },

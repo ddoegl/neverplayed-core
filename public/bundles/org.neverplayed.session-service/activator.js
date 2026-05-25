@@ -500,35 +500,49 @@ export default class Activator {
                     let homeRealm = idnt.originRealmId || idnt.initial?.originRealmId || idnt.initial?.realm || idnt.homeRealm || 'platonic';
                     if (homeRealm === 'global') homeRealm = 'platonic';
 
-                    // 1. Global/Platonic Anchoring
-                    if (!this.scopedUsers['platonic'][id]) {
-                        this.scopedUsers['platonic'][id] = {
-                            id,
-                            email: idnt.email || `${id}@cli.local`,
-                            firstname: idnt.firstname || idnt.label,
-                            lastname: idnt.lastname,
-                            alias: idnt.label || idnt.alias,
-                            attributes: idnt.attributes || {},
-                            capabilities: idnt.capabilities || [],
-                            originRealmId: homeRealm,
-                            surrogates: {},
-                            activeSurrogateId: null,
-                            isTenant: false,
-                            loggedIn: false,
-                            lastActiveTime: Date.now()
-                        };
-                        logger?.info(`Session: Registered identity '${id}' in platonic stack.`);
-                    } else if (!this.scopedUsers['platonic'][id].originRealmId) {
-                        this.scopedUsers['platonic'][id].originRealmId = homeRealm;
+                    // 1. Global/Platonic Anchoring (Only for true Platonic staging lobby residents)
+                    if (homeRealm === 'platonic') {
+                        if (!this.scopedUsers['platonic'][id]) {
+                            this.scopedUsers['platonic'][id] = {
+                                id,
+                                email: idnt.email || `${id}@cli.local`,
+                                firstname: idnt.firstname || idnt.label,
+                                lastname: idnt.lastname,
+                                alias: idnt.label || idnt.alias,
+                                attributes: idnt.attributes || {},
+                                capabilities: idnt.capabilities || [],
+                                originRealmId: homeRealm,
+                                surrogates: {},
+                                activeSurrogateId: null,
+                                isTenant: true,
+                                loggedIn: false,
+                                lastActiveTime: Date.now()
+                            };
+                            logger?.info(`Session: Registered identity '${id}' in platonic stack.`);
+                        }
                     }
 
-                    // 2. Realm Inhabitation (for shell visibility)
+                    // 2. Realm Inhabitation (for spatial worlds)
                     if (homeRealm !== 'platonic') {
                         if (!this.scopedUsers[homeRealm]) {
                             this.scopedUsers[homeRealm] = { __activeId__: 'guest', guest: { id: 'guest' } };
                         }
                         if (!this.scopedUsers[homeRealm][id]) {
-                            const userObj = { ...this.scopedUsers['platonic'][id], isTenant: false, loggedIn: false, lastActiveTime: Date.now() };
+                            const userObj = {
+                                id,
+                                email: idnt.email || `${id}@cli.local`,
+                                firstname: idnt.firstname || idnt.label,
+                                lastname: idnt.lastname,
+                                alias: idnt.label || idnt.alias,
+                                attributes: idnt.attributes || {},
+                                capabilities: idnt.capabilities || [],
+                                originRealmId: homeRealm,
+                                surrogates: {},
+                                activeSurrogateId: null,
+                                isTenant: false,
+                                loggedIn: false,
+                                lastActiveTime: Date.now()
+                            };
                             
                             // Rule: Initial Surrogate Provisioning (L6)
                             const initialSurrogateId = idnt.initial?.surrogate || 'observer';
