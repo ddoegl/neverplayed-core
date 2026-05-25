@@ -171,7 +171,29 @@
       <!-- Layer 3: Domain Session (Persona Control) -->
       <div
         class="relative"
-        x-data="{ showPersona: false }"
+        x-data="{ 
+           showPersona: false,
+           attentionSeconds: 30,
+           attentionPercent: 100,
+           init() {
+             setInterval(() => {
+               const sess = this.$session || (globalThis.Alpine && globalThis.Alpine.store('session'));
+               if (!sess) return;
+               const user = sess.currentUser;
+               const activeRealmId = sess.activeRealmId;
+               const span = sess.attentionSpanMs || 30000;
+               if (user && user.id !== 'guest' && activeRealmId && activeRealmId !== 'platonic' && user.loggedIn) {
+                 const lastActive = user.lastActiveTime || Date.now();
+                 const diff = Date.now() - lastActive;
+                 this.attentionSeconds = Math.max(0, Math.ceil((span - diff) / 1000));
+                 this.attentionPercent = Math.max(0, Math.min(100, Math.ceil(((span - diff) / span) * 100)));
+               } else {
+                 this.attentionSeconds = Math.ceil(span / 1000);
+                 this.attentionPercent = 100;
+               }
+             }, 250);
+           }
+        }"
         @click.away="showPersona = false"
       >
         <button
@@ -190,6 +212,26 @@
               x-text="$session.currentUser.email || 'Guest'"
             >
             </div>
+            
+            <!-- Dynamic Attention Span Homeostasis Indicator -->
+            <template x-if="$session.currentUser.id !== 'guest' && $session.activeRealmId && $session.activeRealmId !== 'platonic'">
+              <div 
+                class="flex items-center space-x-1.5 px-2 py-0.5 mt-1 rounded-full text-[9px] font-bold border backdrop-blur-md transition-all duration-300 shadow-sm float-right"
+                :class="attentionSeconds <= 10 ? 'bg-red-500/10 border-red-500/30 text-red-400 animate-pulse' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'"
+                :title="'Temporal Attention: ' + attentionSeconds + 's remaining before falling asleep'"
+              >
+                <i class="fas fa-eye text-[8px] animate-pulse"></i>
+                <span>Attention: <span x-text="attentionSeconds + 's'"></span></span>
+                <!-- Tiny progress bar -->
+                <div class="w-8 h-1 bg-slate-800 rounded-full overflow-hidden ml-1">
+                  <div 
+                    class="h-full transition-all duration-500 rounded-full"
+                    :class="attentionSeconds <= 10 ? 'bg-red-500' : 'bg-blue-400'"
+                    :style="'width: ' + attentionPercent + '%'"
+                  ></div>
+                </div>
+              </div>
+            </template>
           </div>
           <div
             class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold border border-slate-700 shadow-lg text-white transition-all transform group-hover:scale-110 group-hover:border-blue-500/50 relative"

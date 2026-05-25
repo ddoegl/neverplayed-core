@@ -3,7 +3,7 @@
  * @module platform/bundles/org.neverplayed.session-service
  */
 
-import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE as _LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, SESSION_CHANGED_TOPIC, TRANSITION_PARTICIPANT_INTERFACE, PERSISTENCE_CONTEXT_CHANGED_TOPIC } from "../../core-types.js";
+import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE as _LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, SESSION_CHANGED_TOPIC, TRANSITION_PARTICIPANT_INTERFACE, PERSISTENCE_CONTEXT_CHANGED_TOPIC, CONFIG_ADMIN_SERVICE, EVENT_HANDLER_INTERFACE } from "../../core-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -17,6 +17,7 @@ export default class Activator {
     _initializing = false;
     _eventAdmin = null;
     _eventFactory = null;
+    _configAdmin = null;
 
     start(context) {
         // 1. Logger Integration
@@ -79,6 +80,18 @@ export default class Activator {
                 return this._eventFactory; 
             },
             removedService: () => { this._eventFactory = null; }
+        }).open();
+
+        // 5. Track Config Admin for attention span configuration
+        context.trackService(`(objectClass=${CONFIG_ADMIN_SERVICE})`, {
+            addingService: (ref) => {
+                this._configAdmin = context.getService(ref);
+                this._updateAttentionSpan();
+                return this._configAdmin;
+            },
+            removedService: () => {
+                this._configAdmin = null;
+            }
         }).open();
     }
 
@@ -144,6 +157,39 @@ export default class Activator {
             activeFlowId: null, // Volatile
             activeRealmId: null, // Volatile (Pushed from Realm Manager)
             activeBeingId: persistedState.activeBeingId || null,
+            attentionSpanMs: 30000,
+            _homeostasisScheduled: false,
+            _scheduleHomeostasis() {
+                if (this._homeostasisScheduled) return;
+                this._homeostasisScheduled = true;
+                queueMicrotask(() => this.homeostasisStep());
+            },
+            homeostasisStep() {
+                this._homeostasisScheduled = false;
+                const now = Date.now();
+                for (const [scope, stack] of Object.entries(this.scopedUsers || {})) {
+                    if (scope === 'platonic' || scope === 'global') continue;
+                    for (const [userId, user] of Object.entries(stack)) {
+                        if (userId === '__activeId__' || userId === 'guest') continue;
+                        if (user && user.loggedIn) {
+                            const lastActive = user.lastActiveTime || 0;
+                            if (now - lastActive > (this.attentionSpanMs || 30000)) {
+                                logger?.info(`Session: Homeostasis evicting stale occupant '${userId}' in scope '${scope}' due to attention exhaustion.`);
+                                this.logout(scope, userId);
+                                if (this.activeRealmId === scope) {
+                                    this.activeRealmId = 'platonic';
+                                    logger?.info(`Session: Reverted active realm to 'platonic' for evicted user '${userId}'.`);
+                                    if (self._realm && typeof self._realm.switchRealm === 'function') {
+                                        self._realm.switchRealm('platonic').catch(err => {
+                                            logger?.error(`Session: Failed transitioning RealmManager back to platonic:`, err);
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
 
             get currentUser() {
                 let scope = this.activeFlowId || this.activeRealmId || "platonic";
@@ -240,8 +286,13 @@ export default class Activator {
             setBeingFocus(beingId) {
                 // Rule 1: Lock Grounding Soul
                 if (this.activeBeingId && this.activeBeingId !== 'guest' && this.activeBeingId !== beingId) {
-                    logger?.warn(`Session: Being focus is locked to Grounding Soul '${this.activeBeingId}' and cannot be shifted to '${beingId}'.`);
-                    return;
+                    const currentPlatonicUser = this.scopedUsers['platonic']?.[this.activeBeingId];
+                    if (currentPlatonicUser && currentPlatonicUser.isTenant) {
+                        logger?.warn(`Session: Being focus is locked to Grounding Soul '${this.activeBeingId}' and cannot be shifted to '${beingId}'.`);
+                        return;
+                    } else {
+                        logger?.info(`Session: Overriding non-tenant Grounding Soul '${this.activeBeingId}' with '${beingId}'.`);
+                    }
                 }
                 this.activeBeingId = beingId;
                 logger?.info(`Session: Being focus shifted to '${beingId}'. All realms will now inhabit this identity by default.`);
@@ -269,7 +320,14 @@ export default class Activator {
                 // Rule 2 (Primordial Exclusivity):
                 if (targetScope === 'platonic' && identityId !== 'guest') {
                     if (this.activeBeingId && this.activeBeingId !== 'guest' && this.activeBeingId !== identityId) {
-                        throw new Error(`Ontological Violation: Only the Grounding Soul (${this.activeBeingId}) can inhabit the Platonic Staging Lobby. Other identities must be impersonated inside spatial realms.`);
+                        const currentPlatonicUser = this.scopedUsers['platonic']?.[this.activeBeingId];
+                        const isCurrentTenant = currentPlatonicUser && currentPlatonicUser.isTenant;
+                        if (!isCurrentTenant) {
+                            logger?.info(`Session: Overriding stale/invalid Grounding Soul '${this.activeBeingId}' with true tenant '${identityId}'`);
+                            this.activeBeingId = identityId;
+                        } else {
+                            throw new Error(`Ontological Violation: Only the Grounding Soul (${this.activeBeingId}) can inhabit the Platonic Staging Lobby. Other identities must be impersonated inside spatial realms.`);
+                        }
                     }
                 }
 
@@ -280,7 +338,7 @@ export default class Activator {
                 }
 
                 // Resolve root grounding to preserve/upsert
-                const resolvedGrounding = identity.grounding || (this.scopedUsers[targetScope][identityId] ? this.scopedUsers[targetScope][identityId].grounding : null) || 'idealist';
+                const resolvedGrounding = (this.scopedUsers[targetScope][identityId] ? this.scopedUsers[targetScope][identityId].grounding : null) || identity.grounding || 'idealist';
 
                 // Upsert Identity into Stack
                 if (!this.scopedUsers[targetScope][identityId]) {
@@ -319,6 +377,9 @@ export default class Activator {
                         materializedAt: new Date().toISOString()
                     };
                     this.scopedUsers[targetScope][identityId].activeSurrogateId = sId;
+                    if (surrogate.grounding) {
+                        this.scopedUsers[targetScope][identityId].grounding = surrogate.grounding;
+                    }
                     logger?.info(`Session: Materialized surrogate '${sId}' for identity '${identityId}'`);
                 } else if (surrogate === null) {
                     this.scopedUsers[targetScope][identityId].activeSurrogateId = null;
@@ -364,6 +425,7 @@ export default class Activator {
                 } else {
                     logger?.warn("Session: Cannot broadcast login, EventAdmin not ready.");
                 }
+                this._scheduleHomeostasis();
             },
 
             activateSurrogate(surrogateId, scope = null) {
@@ -438,6 +500,7 @@ export default class Activator {
                 } else {
                     logger?.warn("Session: Cannot broadcast logout, EventAdmin not ready.");
                 }
+                this._scheduleHomeostasis();
             },
 
             shiftGrounding(targetGrounding, scope = null) {
@@ -590,8 +653,39 @@ export default class Activator {
             });
         });
 
+        // Register EventHandler for homeostasis (L1 TAME Engine)
+        const EVENT_TOPIC = "event.topics";
+        const topics = [
+            "org/neverplayed/session/CHANGED",
+            "org/neverplayed/realm/CHANGED",
+            "org/neverplayed/persistence/CONTEXT_CHANGED",
+            "org/neverplayed/persistence/CHANGED",
+            "org/neverplayed/stratum/CHANGED",
+            "org/neverplayed/config/UPDATED"
+        ];
+        context.registerService(EVENT_HANDLER_INTERFACE, {
+            handleEvent: (_event) => {
+                this._updateAttentionSpan();
+                this._session?._scheduleHomeostasis();
+            }
+        }, { [EVENT_TOPIC]: topics });
+
+        // Add window event listeners for UI interactions
+        if (typeof globalThis.addEventListener === 'function') {
+            const trigger = () => this._session?._scheduleHomeostasis();
+            globalThis.addEventListener('click', trigger);
+            globalThis.addEventListener('keydown', trigger);
+            globalThis.addEventListener('mousemove', trigger);
+        }
+
+        // Register the Alpine Store for global cross-component template reactivity
+        Alpine.store('session', this._session);
+
         // Register the Service
         context.registerService(SESSION_SERVICE, this._session);
+
+        // Prime the attention span from config if available
+        this._updateAttentionSpan();
         
         // Register as Transition Participant
         context.registerService(TRANSITION_PARTICIPANT_INTERFACE, {
@@ -657,6 +751,15 @@ export default class Activator {
                 this._pm.store(SESSION_PID, raw);
             }
         });
+    }
+
+    _updateAttentionSpan() {
+        if (this._session && this._configAdmin) {
+            const cfg = this._configAdmin.getConfiguration("org.neverplayed.session-service")?.getProperties() || {};
+            const secs = cfg["attention-span-seconds"] !== undefined ? Number(cfg["attention-span-seconds"]) : 30;
+            this._session.attentionSpanMs = secs * 1000;
+            this._logger?.info(`Session Service: Attention Span updated to ${secs}s (${this._session.attentionSpanMs}ms).`);
+        }
     }
 
     stop() {

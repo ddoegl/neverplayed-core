@@ -132,7 +132,11 @@ export default class Activator extends BaseActivator {
                     observerMode: grounding
                 });
             } else if (e.detail && e.detail.type === 'logout') {
-                this.setContext({ being: null, surrogate: null });
+                if (e.detail.scope === 'platonic' || !e.detail.scope) {
+                    this.setContext({ being: null, surrogate: null });
+                } else if (this._session) {
+                    this._syncFromSession(this._session);
+                }
             }
         };
         globalThis.addEventListener('session-changed', this._onSessionChanged);

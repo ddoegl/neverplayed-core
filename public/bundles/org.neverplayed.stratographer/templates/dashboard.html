@@ -162,10 +162,21 @@
                   >
                   </div>
                   <div
-                    class="text-[10px] text-slate-500 truncate font-mono text-left flex-1"
+                    class="text-[10px] text-slate-400 truncate font-mono text-left flex-1"
                     x-text="id"
                   >
                   </div>
+                  <template x-if="getOccupantAttention(id, now)">
+                    <div 
+                      x-data="{ get att() { return getOccupantAttention(id, now) || { seconds: 0, percent: 0 } } }"
+                      class="flex items-center space-x-1 px-1.5 py-0.5 rounded text-[8px] font-bold border backdrop-blur-md transition-all duration-300 shadow-sm shrink-0"
+                      :class="att.seconds <= 10 ? 'bg-red-500/10 border-red-500/30 text-red-400 animate-pulse' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'"
+                      :title="'Temporal Attention: ' + att.seconds + 's remaining'"
+                    >
+                      <i class="fas fa-eye text-[7px]" :class="att.seconds <= 10 ? 'animate-pulse' : ''"></i>
+                      <span x-text="att.seconds + 's'"></span>
+                    </div>
+                  </template>
                   <i
                     class="fas fa-redo-alt text-[7px] opacity-0 group-hover/item:opacity-100 text-emerald-500/50"
                   ></i>

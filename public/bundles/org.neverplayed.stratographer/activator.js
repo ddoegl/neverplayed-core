@@ -408,7 +408,11 @@ export default class Activator {
                     });
 
                     nodes.push({ id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' });
-                    links.push({ source: `identity:${beingId}`, target: 'tier' });
+                    if (beingId && beingId !== 'guest' && beingsToRender.has(beingId)) {
+                        links.push({ source: `identity:${beingId}`, target: 'tier' });
+                    } else {
+                        links.push({ source: activeRealmNodeId, target: 'tier' });
+                    }
 
                     store.nodes = nodes;
                     store.links = links;
@@ -719,7 +723,7 @@ export default class Activator {
             await explorerStore.refreshTopology();
         }
 
-        const templatePath = `./bundles/org.neverplayed.stratographer/templates/dashboard.html`;
+        const templatePath = `./bundles/org.neverplayed.stratographer/templates/dashboard.html?t=${Date.now()}`;
         
         try {
             const resp = await fetch(templatePath);
@@ -739,6 +743,26 @@ export default class Activator {
                 realms: [],
                 inhabitants: [],
                 activeRealm: { id: self._stratum?.realmId || "unknown" },
+                now: Date.now(),
+
+                getOccupantAttention(id, nowVal) {
+                    const sess = globalThis.Alpine?.store('session');
+                    if (!sess) return null;
+                    const scope = sess.activeRealmId || 'platonic';
+                    const stack = sess.scopedUsers?.[scope] || {};
+                    const user = stack[id];
+                    
+                    //console.log(`[Dashboard Debug] id: "${id}", scope: "${scope}", foundUser: ${!!user}, loggedIn: ${user?.loggedIn}`);
+                    
+                    if (!user || !user.loggedIn) return null;
+                    
+                    const lastActive = user.lastActiveTime || nowVal;
+                    const diff = nowVal - lastActive;
+                    const span = sess.attentionSpanMs || 30000;
+                    const seconds = Math.max(0, Math.ceil((span - diff) / 1000));
+                    const percent = Math.max(0, Math.min(100, Math.ceil(((span - diff) / span) * 100)));
+                    return { seconds, percent };
+                },
 
                 async init() {
                     if (self._realmManager) {
@@ -746,6 +770,10 @@ export default class Activator {
                         this.activeRealm = this.realms.find(r => r.id === this.realmId) || { id: this.realmId };
                     }
                     this._syncInhabitants();
+
+                    this._attentionTimer = setInterval(() => {
+                        this.now = Date.now();
+                    }, 500);
                     
                     const syncUI = () => {
                         this.identityId = self._stratum?.identityId;
@@ -820,6 +848,12 @@ export default class Activator {
                             alert(`Switch Failed: ${err.message}`);
                         }
                     }
+                },
+
+                destroy() {
+                    if (this._attentionTimer) {
+                        clearInterval(this._attentionTimer);
+                    }
                 }
             }));
 
@@ -852,7 +886,7 @@ export default class Activator {
     }
 
     async _injectHUD() {
-        const templatePath = `./bundles/org.neverplayed.stratographer/templates/stratum-hud.html`;
+        const templatePath = `./bundles/org.neverplayed.stratographer/templates/stratum-hud.html?t=${Date.now()}`;
         try {
             const resp = await fetch(templatePath);
             const _html = await resp.text();

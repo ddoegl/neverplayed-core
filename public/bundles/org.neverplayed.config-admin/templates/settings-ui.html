@@ -97,6 +97,23 @@
                       <div class="font-black text-slate-900 leading-tight text-sm tracking-tight" x-text="cfg.name"></div>
                       <div class="text-[9px] font-mono text-slate-400 mt-1" x-text="cfg.pid"></div>
                       <div class="text-[10px] text-slate-500 mt-2 max-w-sm line-clamp-1 group-hover:line-clamp-none transition-all" x-text="cfg.description"></div>
+                      
+                      <!-- Dynamic Custom Configurations -->
+                      <template x-if="Object.keys(cfg.properties || {}).filter(k => k !== 'log-level' && k !== 'sidebar' && k !== 'icon' && k !== 'title').length > 0">
+                        <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-3">
+                          <template x-for="key in Object.keys(cfg.properties || {}).filter(k => k !== 'log-level' && k !== 'sidebar' && k !== 'icon' && k !== 'title')" :key="key">
+                            <div class="flex items-center space-x-2 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                              <span class="font-mono text-[9px] font-bold text-slate-500" x-text="key"></span>
+                              <input 
+                                :type="typeof cfg.properties[key] === 'number' ? 'number' : 'text'"
+                                :value="cfg.properties[key]" 
+                                @change="updateCustomProperty(cfg.pid, key, $event.target.value)"
+                                class="bg-white border border-slate-200 rounded px-1.5 py-0.5 font-mono text-[10px] text-slate-700 focus:outline-none focus:border-blue-500 transition-all w-24 text-center"
+                              >
+                            </div>
+                          </template>
+                        </div>
+                      </template>
                     </div>
                   </div>
                 </td>

@@ -6,6 +6,7 @@
     "Bundle-Activator": "activator.js",
     "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.auth.Session\"",
     "Configuration": {
-        "log-level": "DEBUG"
+        "log-level": "INFO",
+        "attention-span-seconds": 60
     }
 }

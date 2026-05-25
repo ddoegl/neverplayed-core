@@ -128,9 +128,9 @@ async function main() {
     console.log("✅ Dynamic Realm-Being Identity Synthesis verified.");
 
     // -------------------------------------------------------------
-    // Test Case 2: Lazy Homeostasis / Stale Occupant Pruning & Prediction Error
+    // Test Case 2: L1 Being-Driven Homeostasis & Platonic Lobby Fallback
     // -------------------------------------------------------------
-    console.log("🧪 Test 2: Verifying lazy homeostasis loop and active inference...");
+    console.log("🧪 Test 2: Verifying L1 individual being homeostasis loop and self-eviction...");
 
     // Set the active realm on session
     session.activeRealmId = "org.neverplayed.realm.core";
@@ -148,49 +148,44 @@ async function main() {
     assertEquals(userInStack.loggedIn, true, "rob should be logged in");
     assertExists(userInStack.lastActiveTime, "rob should have lastActiveTime set");
 
-    // Check prediction error immediately: should be 0.0 because rob is fresh
-    let predError = cognitionService.getPredictionError();
-    assertEquals(predError, 0.0, "Prediction error should be 0.0 for a fresh occupant");
-
     // Artificially make rob stale (31 seconds inactive)
     userInStack.lastActiveTime = Date.now() - 31000;
 
-    // Track if logout is called correctly and intercept predictionError state
+    // Track if logout is called correctly and driven by SessionService
     let logoutCalledWith: [string, string] | null = null;
-    let predictionErrorCapturedAtLogout: number | null = null;
     const originalLogout = session.logout;
     session.logout = (scope: string, userId: string) => {
         logoutCalledWith = [scope, userId];
-        // Capture prediction error from cognitionService before logout resets it
-        predictionErrorCapturedAtLogout = cognitionService.getPredictionError();
         originalLogout.call(session, scope, userId);
     };
 
     // Trigger homeostasis step by sending a session changed event
-    console.log("⚡ Dispatching SESSION_CHANGED event to trigger homeostasis...");
+    console.log("⚡ Dispatching SESSION_CHANGED event to trigger L1 homeostasis...");
     const sessionChangedEvent = eventFactory.build("org/neverplayed/session/CHANGED", {});
     eventAdmin.postEvent(sessionChangedEvent);
 
     // Wait for the microtask to execute homeostasisStep()
     await new Promise(r => setTimeout(r, 100));
 
-    // Assert that active inference / logout was called
-    assertExists(logoutCalledWith, "Active inference should have triggered session.logout");
+    // Assert that active inference / logout was called by SessionService (L1)
+    assertExists(logoutCalledWith, "L1 active inference should have triggered session.logout");
     assertEquals(logoutCalledWith[0], "org.neverplayed.realm.core", "Logout should be called for active realm");
     assertEquals(logoutCalledWith[1], "rob", "Logout should prune stale user rob");
-    assertEquals(predictionErrorCapturedAtLogout, 0.5, "Prediction error should have peaked at 0.5 during active inference");
 
     // Verify rob is no longer logged in
-    assertEquals(userInStack.loggedIn, false, "rob should be pruned/logged out");
+    assertEquals(userInStack.loggedIn, false, "rob should be self-evicted/logged out");
 
-    // Verify prediction error returned to 0.0 (restored homeostasis)
-    predError = cognitionService.getPredictionError();
-    assertEquals(predError, 0.0, "Prediction error should return to 0.0 after active inference");
+    // Verify active realm fell back to 'platonic' staging lobby
+    assertEquals(session.activeRealmId, "platonic", "activeRealmId should fall back to 'platonic' after active observer eviction");
+
+    // Verify L2 prediction error remains at 0.0 (completely decoupled)
+    const predError = cognitionService.getPredictionError();
+    assertEquals(predError, 0.0, "L2 prediction error should remain 0.0 as occupant pruning is decoupled");
 
     // Restore original logout method
     session.logout = originalLogout;
 
-    console.log("✅ Lazy Homeostasis and Active Inference verified.");
+    console.log("✅ L1 Being Homeostasis and Platonic Staging Lobby Fallback verified.");
 
     // -------------------------------------------------------------
     // Test Case 3: Manifest compliance with ADR-0022

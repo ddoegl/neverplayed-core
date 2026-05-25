@@ -1047,6 +1047,24 @@ export default class Activator extends BaseActivator {
     }
 
     _switchRealm(context, id, interactive = false) {
+        if (id === 'platonic') {
+            this._activeRealmId = 'platonic';
+            if (this.session) {
+                this.session.activeRealmId = 'platonic';
+            }
+            if (this._beingService) {
+                this._beingService.clear();
+            }
+            if (this._eventAdmin && this._eventFactory) {
+                const event = this._eventFactory.build(REALM_CHANGED_TOPIC, {
+                    "realm.id": 'platonic',
+                    "realm.title": 'Platonic Lobby'
+                });
+                this._eventAdmin.postEvent(event);
+            }
+            return Promise.resolve({ status: 'COMPLETE', message: "Returned to Platonic Staging Lobby 🌌" });
+        }
+
         this._lock = this._lock.catch(() => { /* recover chain */ });
 
         return this._lock = this._lock.then(async () => {
@@ -1480,51 +1498,6 @@ export default class Activator extends BaseActivator {
                     cognition.reifiedPids = configKeys.map(key => key.substring(7));
                 } catch (err) {
                     this.logger?.error(`Realm Manager: Failed sensing config traces for ${realmId}`, err);
-                }
-            }
-
-            // 2. Exteroceptive Homeostasis & Active Inference
-            if (this.session && this.session.activeRealmId === realmId) {
-                const stack = this.session.scopedUsers?.[realmId] || {};
-                let error = 0.0;
-                const staleUsers = [];
-                const now = Date.now();
-
-                for (const [userId, user] of Object.entries(stack)) {
-                    if (userId === '__activeId__' || userId === 'guest') continue;
-                    if (user && user.loggedIn) {
-                        const lastActive = user.lastActiveTime || 0;
-                        if (now - lastActive > 30000) {
-                            error += 0.5;
-                            staleUsers.push(userId);
-                        }
-                    }
-                }
-
-                cognition.predictionError = error;
-
-                if (cognition.predictionError > 0) {
-                    this.logger?.info(`Homeostasis [${realmId}]: Prediction error is ${cognition.predictionError}. Executing active inference for stale occupants: ${JSON.stringify(staleUsers)}`);
-                    for (const userId of staleUsers) {
-                        try {
-                            this.session.logout(realmId, userId);
-                            // Rule: Lobby Fallback from Homeostasis Pruning
-                            // When homeostasis evicts a stale occupant, return them to the
-                            // platonic lobby rather than dissolving their being entirely.
-                            if (this.session._pendingLobbyFallback) {
-                                this.session._pendingLobbyFallback = null;
-                                if (this.session.activeRealmId === realmId) {
-                                    this.session.activeRealmId = 'platonic';
-                                    this._activeRealmId = 'platonic';
-                                    this.logger?.info(`Homeostasis [${realmId}]: Evicted '${userId}'. Being returned to platonic lobby.`);
-                                }
-                            }
-                        } catch (err) {
-                            this.logger?.error(`Failed logging out stale user ${userId} in ${realmId}`, err);
-                        }
-                    }
-                    // Reset prediction error to 0 after inference (cleanup)
-                    cognition.predictionError = 0.0;
                 }
             }
 

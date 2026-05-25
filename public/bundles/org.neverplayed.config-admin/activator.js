@@ -76,8 +76,18 @@ export default class Activator extends CoreAlpineActivator {
                             pm.store(`config.${pid}`, stored);
                         }
                     };
-                    if (primingData.flowType || primingData.channels || primingData.mountPoint) processPriming(bsn, primingData);
-                    else for (const [pid, defaults] of Object.entries(primingData)) if (typeof defaults === 'object') processPriming(pid, defaults);
+                    const hasPids = Object.values(primingData).some(v => typeof v === 'object' && v !== null);
+                    if (primingData.flowType || primingData.channels || primingData.mountPoint) {
+                        processPriming(bsn, primingData);
+                    } else if (hasPids) {
+                        for (const [pid, defaults] of Object.entries(primingData)) {
+                            if (typeof defaults === 'object' && defaults !== null) {
+                                processPriming(pid, defaults);
+                            }
+                        }
+                    } else {
+                        processPriming(bsn, primingData);
+                    }
                 } catch (e) { logger.error(`Failed priming: ${bundle.getSymbolicName()}`, e); }
             }
         };
@@ -217,6 +227,13 @@ export default class Activator extends CoreAlpineActivator {
                     },
                     setLogLevel(pid, level) {
                         service.getConfiguration(pid).update({ [LOG_LEVEL_PROP]: level });
+                        this.init();
+                    },
+                    updateCustomProperty(pid, key, value) {
+                        const cfg = service.getConfiguration(pid);
+                        const props = cfg.getProperties() || {};
+                        const typedVal = isNaN(value) || value.trim() === '' ? value : Number(value);
+                        cfg.update({ ...props, [key]: typedVal });
                         this.init();
                     }
                 }));
