@@ -45,6 +45,7 @@ export default class Activator extends BaseActivator {
     _realmRegs = new Map(); // id -> ServiceRegistration
     _bsnCache = new Map(); // url -> bsn
     _manualBSNs = new Set();
+    _primordialBSNs = new Set();
     _pendingTransition = null; 
     _instanceId = Math.random().toString(36).substring(7);
     _orderedRealmIds = []; // For numeric switching
@@ -293,6 +294,13 @@ export default class Activator extends BaseActivator {
                 if (this._recoveryPromise) await this._recoveryPromise;
                 // Double-check recovery actually finished
                 while (this._isRecovering) await new Promise(r => setTimeout(r, 50));
+                
+                // Capture all currently active bundles as part of the immutable primordial plane
+                this._primordialBSNs = new Set(
+                    this.context.getBundles().map(b => BaseActivator.normalizeBSN(b.getSymbolicName()))
+                );
+                this.logger?.info(`Realm Manager: Captured ${this._primordialBSNs.size} primordial plane bundles.`);
+                
                 return true;
             },
             installManualBundle: (url) => this._installManualBundle(url),
@@ -1070,6 +1078,13 @@ export default class Activator extends BaseActivator {
         const seenBsn = new Set();
         const activeBundles = context.getBundles();
 
+        // Fallback for headless environments or tests where _recoverState is bypassed
+        if (!this._primordialBSNs || this._primordialBSNs.size === 0) {
+            this._primordialBSNs = new Set(
+                activeBundles.map(b => BaseActivator.normalizeBSN(b.getSymbolicName()))
+            );
+        }
+
         // 1. Identify Target Set (Hierarchy)
         for (const layer of hierarchy) {
             if (!layer.bundles) continue;
@@ -1112,6 +1127,7 @@ export default class Activator extends BaseActivator {
             if (seenBsn.has(normalized)) continue;
             if (this._manualBSNs.has(normalized)) continue;
             if (protectedBSNs.includes(normalized)) continue;
+            if (this._primordialBSNs?.has(normalized)) continue; // Dynamic Primordial Plane Protection
 
             toPurge.push({ bsn, id: b.id, reason: 'Orphaned (Not in target hierarchy)' });
         }

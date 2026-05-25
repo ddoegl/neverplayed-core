@@ -54,7 +54,14 @@ export default class Activator {
                 if (this.logger && this.logger.info) this.logger.info(logMsg);
 
                 if (typeof svc.setContext === 'function' && this._context.tenantId !== "guest") {
-                    svc.setContext(this._context).catch(() => {});
+                    try {
+                        const result = svc.setContext(this._context);
+                        if (result instanceof Promise) {
+                            result.catch(() => {});
+                        }
+                    } catch (_e) {
+                        // ignore
+                    }
                 }
                 return svc;
             },

@@ -1,0 +1,11 @@
+{
+    "id": "org.neverplayed.realm.empty",
+    "startupFlow": "org.neverplayed.stratographer",
+    "domainObjects": [],
+    "title": "Empty",
+    "description": "An empty realm.",
+    "privileges": {
+        "realm-admins": ["daniel.doegl@doegl.info"]
+    },
+    "recognizedSurrogates": ["observer"]
+}
