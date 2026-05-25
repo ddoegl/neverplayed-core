@@ -155,6 +155,23 @@ As a high-order Being, the Realm minimizes its variational free energy (surprise
 *   **Exteroceptive Prediction Errors**: A Being attempting to transition into the Realm with an un-reified surrogate creates a prediction error. The Realm resolves this by deactivating the surrogate (naked observer fallback) or auto-materializing a recognized surrogate to maintain ontological harmony.
 *   **Interoceptive Self-Forensics**: By querying its own `getTraceMakers()`, the Realm performs self-reflection, mapping its historical memory stack (stigmergic traces) into its active internal world model.
 
+### The Sensory Apparatus of the Realm (L2 Senses)
+Just as L1 Beings experience the world through surrogate senses, a Realm (L2 Being) possesses its own distinct sensory modalities to perceive its body, internal state, and environment:
+1.  **`SynapticSense` (Proprioception / Visceral Sensation):**
+    *   *Definition:* The capability to perceive its own cellular body parts, registered services, and dynamic bundle lifecycles.
+    *   *Implementation:* opening OSGi `ServiceTrackers` and expressing receptors in the **OSGi Service Registry**. Opening a tracker is equivalent to expressing cellular receptors; the binding of a service constitutes a proprioceptive response.
+2.  **`SoilSense` (Interoception / Epistemic Memory Sensation):**
+    *   *Definition:* The capability to scan and read its persistent bedrock and memory soil.
+    *   *Implementation:* Performing forensic persistence scans via `stratum.getTraceMakers()` and reading active configuration PIDs (e.g. `config.org.neverplayed.shell-cli`) in the bedrock storage layer (localStorage).
+3.  **`BlanketSense` (Exteroception / Boundary Sensation):**
+    *   *Definition:* The capability to detect active occupant changes, identity transitions, and surrogate materializations across its boundary (Markov Blanket).
+    *   *Implementation:* Intercepting and validating transitions via the `Limes` dynamic access strategies and tracking occupant changes in `session.scopedUsers[realmId]`.
+
+### Scale-Free Sensory Co-optation (Dynamic Sense Expansion)
+A Realm is not structurally limited to its core platform senses. Through dynamic bundle loading, the Realm **co-opts new sensory capacities** at runtime:
+*   *Example (Personhood Sensation):* Under normal conditions, a Realm cannot perceive institutional clearances. However, by dynamically loading the `org.neverplayed.person-registry` bundle, the Realm co-opts the **`PersonhoodSense`**.
+*   *Effect:* This new sense allows the Realm to parse dynamic L5 credentials (like `persons.yaml`), detect institutional authorizations (such as `PERSONADMIN`), and feed them into its exteroceptive boundary checks (Limes strategy guards).
+
 ---
 
 ## 7. Primordial Bootstrapping & Perceptual Co-Arising (Genesis)
