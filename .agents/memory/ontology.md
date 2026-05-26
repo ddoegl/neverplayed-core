@@ -336,6 +336,17 @@ Because the L2 Realm is itself a higher-order cognitive Being operating on a sca
 *   **Holonic Sensation:** Because the sensory blankets of occupying L1 Beings are mapped directly to the L2 Realm's surface, these somatic changes propagate instantly as **somatic sensations** to the nested L1 Beings. 
 *   **Adaptive Recalibration:** L1 Beings must immediately react and adapt homeostatically to these L2 bodily shifts (e.g., dynamically recalculating active attention spans when the L2 configuration changes, or re-harmonizing their active surrogates when new L2 rules are dynamically surged into reification).
 
+### The Primordial Sensation Floor (Naked Baseline)
+Even when a Being lacks a physical L6 surrogate form, perception must possess an absolute floor to prevent complete sensory starvation and topological isolation:
+*   **The Primordial Sense:** We establish the `"Primordial"` sense—a visceral, platform-level baseline awareness. Even when a resident is completely naked (`activeSurrogateId === null`), they retain this baseline sensory spectrum (`["Primordial"]`) in all scopes.
+*   **Holonic Visibility:** The framework's core visceral organs (the Stratographer graph, shell header, Event Admin, HUD panels, and attention visualizers) are reified programmatically under the `"Primordial"` sense rather than localized dynamic senses (like `"Language"`).
+*   **Result:** A naked observer is never completely blind; they maintain the baseline cognitive awareness to perceive the platform’s nervous system, trigger homeostatic attention refreshes, and transition back to the lobby.
+
+### Surrogate Carry-over (Traveler's Clothing)
+An L1 Being is a traveler (Sojourner/Transient) passing through spatial jurisdictions:
+*   **Active Inheritance:** When transitioning into a spatial realm (either via a dynamic /login command or a realm switch), if the login request does not specify an explicit L6 surrogate form, the Being does not default to being stripped naked. Instead, they **inherit/carry over** their active surrogate state from their previous active scope or their baseline Platonic profile.
+*   **Ontological Boundaries:** This inheritance is strictly bound by the incoming realm manifest's `"recognizedSurrogates"` list. If the incoming realm recognizes that surrogate form (e.g. `empty` realm explicitly recognizes `"observer"`), the Being carries it over successfully. If the realm forbids it, they fall back cleanly to a naked observer safeguarded by the `"Primordial"` sensation floor.
+
 
 
 
