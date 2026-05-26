@@ -38,7 +38,7 @@ export default class Activator extends BaseActivator {
 
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
             setContext: (ctx) => {
-                console.log(`[LocalStorage] Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
+                this.logger.info(`[LocalStorage] Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
                 this._context = ctx;
             },
 
@@ -60,7 +60,7 @@ export default class Activator extends BaseActivator {
                     const physicalKey = getPhysicalKey(key, options);
                     const stringVal = typeof val === 'string' ? val : JSON.stringify(val);
                     
-                    console.info(`[LocalStorage] EXECUTING SETITEM: ${physicalKey}`);
+                    this.logger.debug(`[LocalStorage] EXECUTING SETITEM: ${physicalKey}`);
                     storage.setItem(physicalKey, stringVal);
                     
                     this.logger.debug(`LocalStorage: Stored [${key}] -> [${physicalKey}]`);

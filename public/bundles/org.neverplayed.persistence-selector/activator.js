@@ -1,5 +1,3 @@
-console.log("Persistence Selector: Evaluating Activator File...");
-
 import { 
     PERSISTENCE_MANAGER_SERVICE, 
     LOG_SERVICE, 
@@ -24,7 +22,6 @@ export default class Activator {
 
     // deno-lint-ignore require-await
     async start(context) {
-        console.log("Persistence Selector: start() called.");
         this.context = context;
         const bsn = context.getBundle().getSymbolicName();
         this.plexusSensor = null;
@@ -49,9 +46,7 @@ export default class Activator {
                 this._providers.push(entry);
                 this._providers.sort((a, b) => b.ranking - a.ranking);
                 
-                const logMsg = `Selector: Connected Provider [${impl}] Tier [${tier}] Rank [${ranking}]`;
-                console.info(logMsg);
-                if (this.logger && this.logger.info) this.logger.info(logMsg);
+                this.logger.info(`Selector: Connected Provider [${impl}] Tier [${tier}] Rank [${ranking}]`);
 
                 if (typeof svc.setContext === 'function' && this._context.tenantId !== "guest") {
                     try {
@@ -75,8 +70,7 @@ export default class Activator {
         context.trackService(`(objectClass=${PLEXUS_SENSOR_SERVICE})`, {
             addingService: (ref) => {
                 this.plexusSensor = context.getService(ref);
-                console.info("Persistence Selector: Bound to Plexus Sensor.");
-                if (this.logger && this.logger.info) this.logger.info("Persistence Selector: Bound to Plexus Sensor (Perceptual Filtering Enabled).");
+                this.logger.info("Persistence Selector: Bound to Plexus Sensor (Perceptual Filtering Enabled).");
             },
             removedService: () => { this.plexusSensor = null; }
         }).open();
@@ -87,7 +81,7 @@ export default class Activator {
             "implementation": "selector-proxy",
             "service.ranking": 1000
         });
-        console.log("Persistence Selector: Service Registered (Rank 1000).");
+        this.logger.info("Persistence Selector: Service Registered (Rank 1000).");
     }
 
     async waitReady(keyOrPrefix) {
@@ -139,8 +133,7 @@ export default class Activator {
         const providerEntry = this._providers.find(p => p.tier === tier) || this._providers.find(p => p.tier === "local");
         
         const logMsg = `Selector: Routing [${key}] to Tier [${providerEntry?.tier || 'NONE'}] via Provider [${providerEntry?.impl || 'VOLATILE'}]`;
-        console.info(logMsg);
-        if (this.logger && this.logger.info) this.logger.info(logMsg);
+        this.logger.debug(logMsg);
 
         if (providerEntry) {
             return await providerEntry.svc.store(key, val, enrichedOptions);
@@ -185,7 +178,7 @@ export default class Activator {
     }
 
     async clear(options = {}) {
-        console.info("Persistence Selector: Global Clear initiated.");
+        this.logger.info("Persistence Selector: Global Clear initiated.");
         const tasks = this._providers.map(p => {
             if (typeof p.svc.clear === 'function') return p.svc.clear(options);
             return Promise.resolve();
@@ -255,7 +248,7 @@ export default class Activator {
 
     async setContext(ctx) {
         this._context = { ...this._context, ...ctx };
-        console.info(`Selector: Context Shift -> [${ctx.tenantId}][${ctx.realmId}]`);
+        this.logger.info(`Selector: Context Shift -> [${ctx.tenantId}][${ctx.realmId}]`);
         for (const p of this._providers) {
             if (typeof p.svc.setContext === 'function') {
                 try {

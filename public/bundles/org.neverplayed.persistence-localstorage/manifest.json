@@ -9,6 +9,6 @@
         "(objectClass=org.neverplayed.LogService)"
     ],
     "Configuration": {
-        "log-level": "DEBUG"
+        "log-level": "INFO"
     }
 }
