@@ -295,6 +295,7 @@ export default class Activator {
             },
 
             setBeingFocus(beingId) {
+                this._cacheDirty = true;
                 // Rule 1: Lock Grounding Soul
                 if (this.activeBeingId && this.activeBeingId !== 'guest' && this.activeBeingId !== beingId) {
                     const currentPlatonicUser = this.scopedUsers['platonic']?.[this.activeBeingId];
@@ -310,6 +311,7 @@ export default class Activator {
             },
 
             login(user, scope = null, surrogate = undefined) {
+                this._cacheDirty = true;
                 let targetScope = scope || this.activeFlowId || this.activeRealmId || 'platonic';
                 if (targetScope === 'global') targetScope = 'platonic';
                 let identity;
@@ -440,6 +442,7 @@ export default class Activator {
             },
 
             activateSurrogate(surrogateId, scope = null) {
+                this._cacheDirty = true;
                 const targetScope = scope || this.activeFlowId || this.activeRealmId || 'global';
                 const stack = this.scopedUsers[targetScope];
                 if (!stack) return;
@@ -452,6 +455,7 @@ export default class Activator {
             },
 
             logout(scope = null, userId = null) {
+                this._cacheDirty = true;
                 const activeScope = this.activeFlowId || this.activeRealmId;
                 let targetScope = scope || activeScope || 'platonic';
                 if (targetScope === 'global') targetScope = 'platonic';
@@ -515,6 +519,7 @@ export default class Activator {
             },
 
             shiftGrounding(targetGrounding, scope = null) {
+                this._cacheDirty = true;
                 let targetScope = scope || this.activeRealmId || 'platonic';
                 if (targetScope === 'global') targetScope = 'platonic';
                 const user = this.currentUser;
@@ -615,6 +620,7 @@ export default class Activator {
             },
 
             registerIdentities(identities) {
+                this._cacheDirty = true;
                 if (!Array.isArray(identities)) return;
                 if (!this.scopedUsers || !this.scopedUsers['platonic']) {
                     logger?.warn("Session: Cannot register identities yet, residency stacks not initialized.");
