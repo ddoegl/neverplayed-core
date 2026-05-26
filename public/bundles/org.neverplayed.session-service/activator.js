@@ -161,6 +161,7 @@ export default class Activator {
             _homeostasisScheduled: false,
             _cachedUser: null,
             _cacheDirty: true,
+            _lastInteractionTime: 0,
             _scheduleHomeostasis() {
                 if (this._homeostasisScheduled) return;
                 this._homeostasisScheduled = true;
@@ -557,6 +558,12 @@ export default class Activator {
                 const currentRealm = this.activeRealmId || 'platonic';
                 const currentUserId = this.currentUser?.id;
 
+                // 1Hz Cooldown Throttle Guard at the core source of truth
+                if (now - this._lastInteractionTime < 1000) {
+                    return;
+                }
+                this._lastInteractionTime = now;
+
                 // 0. Update the active Being's own attention span (Actor Reset to 100% in all active/source residency stacks)
                 if (currentUserId && currentUserId !== 'guest') {
                     for (const scope of Object.keys(this.scopedUsers || {})) {
@@ -763,16 +770,9 @@ export default class Activator {
             }
         }, { [EVENT_TOPIC]: topics });
 
-        // Add window event listeners for UI interactions (Throttled Click & Keydown to 1Hz, removing mousemove)
+        // Add window event listeners for UI interactions
         if (typeof globalThis.addEventListener === 'function') {
-            let lastInteraction = 0;
-            const trigger = () => {
-                const now = Date.now();
-                if (now - lastInteraction >= 1000) {
-                    lastInteraction = now;
-                    this._session?.registerInteraction();
-                }
-            };
+            const trigger = () => this._session?.registerInteraction();
             globalThis.addEventListener('click', trigger);
             globalThis.addEventListener('keydown', trigger);
         }
