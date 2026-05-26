@@ -159,6 +159,8 @@ export default class Activator {
             activeBeingId: persistedState.activeBeingId || null,
             attentionSpanMs: 30000,
             _homeostasisScheduled: false,
+            _cachedUser: null,
+            _cacheDirty: true,
             _scheduleHomeostasis() {
                 if (this._homeostasisScheduled) return;
                 this._homeostasisScheduled = true;
@@ -192,23 +194,26 @@ export default class Activator {
             },
 
             get currentUser() {
+                if (typeof globalThis.Deno === 'undefined' && !this._cacheDirty && this._cachedUser) {
+                    return this._cachedUser;
+                }
+
                 let scope = this.activeFlowId || this.activeRealmId || "platonic";
                 if (scope === "global") scope = "platonic";
                 const stack = this.scopedUsers[scope] || {};
                 const activeId = stack.__activeId__;
                 
                 let identity = (activeId && activeId !== 'guest') ? stack[activeId] : null;
+                let rawUser = null;
                 
                 // 1. Explicit Scope Identity (Surrogate or Local Login)
                 if (identity) {
-                    return this._materialize(identity);
-                }
-
-                // 2. Being Carry-over (The Session Soul)
-                if (this.activeBeingId) {
+                    rawUser = this._materialize(identity);
+                } else if (this.activeBeingId) {
+                    // 2. Being Carry-over (The Session Soul)
                     const profile = this._findIdentity(this.activeBeingId, scope);
                     if (profile) {
-                        return this._materialize({ 
+                        rawUser = this._materialize({ 
                             ...profile, 
                             isCarried: true, 
                             carriedFrom: profile.scope 
@@ -216,12 +221,17 @@ export default class Activator {
                     }
                 }
 
-                // 3. Fallback to Global Identity (Platonic)
-                const globalStack = this.scopedUsers["platonic"] || {};
-                const globalId = globalStack.__activeId__ || 'guest';
-                identity = globalStack[globalId] || globalStack['guest'] || { id: 'guest' };
+                if (!rawUser) {
+                    // 3. Fallback to Global Identity (Platonic)
+                    const globalStack = this.scopedUsers["platonic"] || {};
+                    const globalId = globalStack.__activeId__ || 'guest';
+                    identity = globalStack[globalId] || globalStack['guest'] || { id: 'guest' };
+                    rawUser = this._materialize(identity);
+                }
 
-                return this._materialize(identity);
+                this._cachedUser = rawUser;
+                this._cacheDirty = false;
+                return rawUser;
             },
 
             // Helper: Find an identity profile across any scope
@@ -575,7 +585,7 @@ export default class Activator {
                                 const maxCap = now - (this.attentionSpanMs || 30000) * 0.4;
                                 const potentialTime = (user.lastActiveTime || 0) + boostAmount;
                                 user.lastActiveTime = Math.max(user.lastActiveTime || 0, Math.min(maxCap, potentialTime));
-                                logger?.info(`Session: Stigmergic coupling boosted attention for occupant '${userId}' in scope '${currentRealm}' by ${boostAmount}ms (capped at 60% remaining).`);
+                                logger?.debug(`Session: Stigmergic coupling boosted attention for occupant '${userId}' in scope '${currentRealm}' by ${boostAmount}ms (capped at 60% remaining).`);
                             }
                         }
                     }
@@ -696,6 +706,44 @@ export default class Activator {
             });
         });
 
+        // Cache Invalidator Effect
+        Alpine.effect(() => {
+            if (typeof globalThis.Deno !== 'undefined') return;
+            
+            // Read reactive dependencies for current active scope & user
+            const scope = this._session.activeFlowId || this._session.activeRealmId || 'platonic';
+            const stack = this._session.scopedUsers?.[scope] || {};
+            const activeId = stack.__activeId__;
+            const activeUser = stack[activeId];
+            
+            const _d1 = this._session.activeFlowId;
+            const _d2 = this._session.activeRealmId;
+            const _d3 = this._session.activeBeingId;
+            const _d4 = activeId;
+            const _d5 = activeUser?.loggedIn;
+            const _d6 = activeUser?.activeSurrogateId;
+            const _d7 = activeUser?.lastActiveTime;
+            const _d8 = activeUser?.grounding;
+
+            // Trace active Being's profile details across all scoped stacks
+            const beingId = this._session.activeBeingId;
+            if (beingId) {
+                for (const s of Object.keys(this._session.scopedUsers || {})) {
+                    const profile = this._session.scopedUsers[s]?.[beingId];
+                    if (profile) {
+                        const _p1 = profile.activeSurrogateId;
+                        const _p2 = profile.loggedIn;
+                        const _p3 = profile.lastActiveTime;
+                        const _p4 = profile.grounding;
+                    }
+                }
+            }
+            
+            if (this._session) {
+                this._session._cacheDirty = true;
+            }
+        });
+
         // Register EventHandler for homeostasis (L1 TAME Engine)
         const EVENT_TOPIC = "event.topics";
         const topics = [
@@ -713,12 +761,18 @@ export default class Activator {
             }
         }, { [EVENT_TOPIC]: topics });
 
-        // Add window event listeners for UI interactions
+        // Add window event listeners for UI interactions (Throttled Click & Keydown to 1Hz, removing mousemove)
         if (typeof globalThis.addEventListener === 'function') {
-            const trigger = () => this._session?.registerInteraction();
+            let lastInteraction = 0;
+            const trigger = () => {
+                const now = Date.now();
+                if (now - lastInteraction >= 1000) {
+                    lastInteraction = now;
+                    this._session?.registerInteraction();
+                }
+            };
             globalThis.addEventListener('click', trigger);
             globalThis.addEventListener('keydown', trigger);
-            globalThis.addEventListener('mousemove', trigger);
         }
 
         // Register the Alpine Store for global cross-component template reactivity
