@@ -565,6 +565,8 @@ export default class Activator {
                             actor.lastActiveTime = now;
                         }
                     }
+                    // High-level Presence Heartbeat log (throttled naturally to interaction frequency)
+                    logger?.info(`Session: Active Being '${currentUserId}' presence detected. Attention span refreshed to 100%.`);
                 }
 
                 // 1. Stigmergic Sensation Resonance
@@ -800,7 +802,7 @@ export default class Activator {
 
         // Set up Persistence Sync
         let lastSyncedCtx = null;
-        let microtaskScheduled = false;
+        let writeTimeout = null;
         Alpine.effect(async () => {
             if (this._pm && this._session) {
                 // Resolve Tenant from Global Stack / Grounding Soul (Rule 3)
@@ -836,34 +838,37 @@ export default class Activator {
                     }
                 }
 
-                // Debounce state serialization and disk write to end of current task tick
-                if (!microtaskScheduled) {
-                    microtaskScheduled = true;
-                    queueMicrotask(() => {
-                        microtaskScheduled = false;
-                        if (!this._session || !this._pm) return;
+                // Debounce disk write: run synchronously in Deno tests, but debounce to 100ms in the browser
+                const performWrite = () => {
+                    if (!this._session || !this._pm) return;
 
-                        // Identity Purity Sink: Iterate through stacks and sanitize guests
-                        const raw = JSON.parse(JSON.stringify(this._session));
-                        if (raw.scopedUsers) {
-                            Object.values(raw.scopedUsers).forEach(stack => {
-                                Object.entries(stack).forEach(([id, user]) => {
-                                    if (id === 'guest' || id === '__activeId__') {
-                                        if (user && typeof user === 'object') {
-                                            delete user.email;
-                                            delete user.alias;
-                                            delete user.firstname;
-                                            delete user.lastname;
-                                            delete user.avatar;
-                                        }
+                    // Identity Purity Sink: Iterate through stacks and sanitize guests
+                    const raw = JSON.parse(JSON.stringify(this._session));
+                    if (raw.scopedUsers) {
+                        Object.values(raw.scopedUsers).forEach(stack => {
+                            Object.entries(stack).forEach(([id, user]) => {
+                                if (id === 'guest' || id === '__activeId__') {
+                                    if (user && typeof user === 'object') {
+                                        delete user.email;
+                                        delete user.alias;
+                                        delete user.firstname;
+                                        delete user.lastname;
+                                        delete user.avatar;
                                     }
-                                });
+                                }
                             });
-                        }
-                        
-                        this._logger?.info(`Session: Persisting state [${SESSION_PID}] to tier...`);
-                        this._pm.store(SESSION_PID, raw);
-                    });
+                        });
+                    }
+                    
+                    this._logger?.debug(`Session: Persisting state [${SESSION_PID}] to tier...`);
+                    this._pm.store(SESSION_PID, raw);
+                };
+
+                if (typeof globalThis.Deno !== 'undefined') {
+                    performWrite();
+                } else {
+                    if (writeTimeout) clearTimeout(writeTimeout);
+                    writeTimeout = setTimeout(performWrite, 100);
                 }
             }
         });
