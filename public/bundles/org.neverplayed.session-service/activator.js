@@ -344,6 +344,35 @@ export default class Activator {
                     }
                 }
 
+                // Objective 1: Surrogate Carry-over (Traveler's Clothing)
+                if (surrogate === undefined && targetScope !== 'platonic' && identityId !== 'guest') {
+                    const realms = this._realm ? this._realm.getRealms() : [];
+                    const targetRealm = realms.find(r => r.id === targetScope);
+                    const recognized = targetRealm?.recognizedSurrogates || [];
+                    const userProfile = this._findIdentity(identityId);
+                    
+                    if (userProfile) {
+                        const surrogates = userProfile.surrogates || {};
+                        const currentActiveId = userProfile.activeSurrogateId;
+                        
+                        if (currentActiveId && recognized.includes(currentActiveId) && surrogates[currentActiveId]) {
+                            surrogate = surrogates[currentActiveId];
+                            logger?.info(`Session: Carry-over recognized active surrogate '${currentActiveId}' for '${identityId}'`);
+                        } else {
+                            const availableId = recognized.find(sId => surrogates[sId]);
+                            if (availableId) {
+                                surrogate = surrogates[availableId];
+                                logger?.info(`Session: Auto-materializing recognized surrogate '${availableId}' for '${identityId}'`);
+                            } else {
+                                surrogate = null;
+                                logger?.info(`Session: Being '${identityId}' will transition into scope '${targetScope}' as a naked observer (no recognized surrogates).`);
+                            }
+                        }
+                    } else {
+                        surrogate = null;
+                    }
+                }
+
                 logger?.info(`Session: LOGIN requested for scope '${targetScope}' (id: ${identityId}${surrogate ? `, surrogate: ${surrogate.id}` : ''})`);
 
                 if (!this.scopedUsers[targetScope]) {
@@ -364,7 +393,7 @@ export default class Activator {
                         capabilities: identity.capabilities || [],
                         attributes: identity.attributes || {},
                         originRealmId: identity.originRealmId || identity.initial?.originRealmId || identity.initial?.realm || identity.homeRealm || 'platonic',
-                        surrogates: {},
+                        surrogates: identity.surrogates ? { ...identity.surrogates } : {},
                         activeSurrogateId: null,
                         isTenant: targetScope === 'platonic',
                         loggedIn: true,
@@ -408,7 +437,7 @@ export default class Activator {
                         existing.surrogates['observer'] = {
                             id: 'observer',
                             label: 'Observer',
-                            senses: ['Language'],
+                            senses: ['Primordial', 'Language'],
                             materializedAt: new Date().toISOString()
                         };
                         existing.activeSurrogateId = 'observer';
@@ -591,9 +620,9 @@ export default class Activator {
                             // Ontological Sense Constraint: Sensed by compatible senses
                             const activeSurrogateId = user.activeSurrogateId;
                             const activeSurrogate = user.surrogates?.[activeSurrogateId];
-                            const senses = activeSurrogate?.senses || ['Language']; // fallback
+                            const senses = activeSurrogate?.senses || ['Primordial', 'Language']; // fallback
                             
-                            if (senses.includes('Language') || senses.includes('ToolUse')) {
+                            if (senses.includes('Language') || senses.includes('ToolUse') || senses.includes('Primordial')) {
                                 // Boost attention span by 40% of maximum attention span, capped at 60% of maximum remaining attention (to ensure occupants decay quicker than the active Being)
                                 const boostAmount = (this.attentionSpanMs || 30000) * 0.4;
                                 const maxCap = now - (this.attentionSpanMs || 30000) * 0.4;

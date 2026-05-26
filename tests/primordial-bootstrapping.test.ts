@@ -67,6 +67,7 @@ async function main() {
 - id: observer
   label: Observer
   senses:
+    - Primordial
     - Language
 `;
             return {
@@ -211,7 +212,7 @@ async function main() {
     await session.login("8fNNh7UkppadUaKJQhaiMIGzcLd2", "platonic", {
         id: "observer",
         label: "Observer",
-        senses: ["Language"]
+        senses: ["Primordial", "Language"]
     });
     await settle();
 
@@ -320,6 +321,12 @@ async function main() {
     const explorerStore = Alpine?.store('explorer');
     assertExists(explorerStore, "Explorer store should be initialized");
     
+    // Explicitly login as guest to verify guest occlusion
+    session.activeBeingId = null;
+    await session.login("guest", "platonic");
+    await session.login("guest", "org.neverplayed.realm.core");
+    await settle();
+    
     await explorerStore.inspectVault({ id: 'realm:org.neverplayed.realm.core', value: 'org.neverplayed.realm.core' });
     const reifiedVal = explorerStore.reifiedComponents.find((c: any) => c.pid === "org.neverplayed.shell-cli");
     assertExists(reifiedVal, "reifiedComponents must contain shell-cli");
@@ -336,7 +343,7 @@ async function main() {
     await session.login("8fNNh7UkppadUaKJQhaiMIGzcLd2", "org.neverplayed.realm.core", {
         id: "observer",
         label: "Observer",
-        senses: ["Language"]
+        senses: ["Primordial", "Language"]
     });
 
     await settle();

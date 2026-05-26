@@ -478,7 +478,7 @@ export default class Activator {
                             const entity = {
                                 id: `reified-${pid}`,
                                 mark: {
-                                    matchers: [{ type: "matchSense", value: "Language" }]
+                                    matchers: [{ type: "matchSense", value: "Primordial" }]
                                 }
                             };
                             const isSensible = self._sensor.sense(entity);
@@ -503,7 +503,7 @@ export default class Activator {
                             const entity = {
                                 id: `reified-${pid}`,
                                 mark: {
-                                    matchers: [{ type: "matchSense", value: "Language" }]
+                                    matchers: [{ type: "matchSense", value: "Primordial" }]
                                 }
                             };
                             const isSensible = self._sensor.sense(entity);

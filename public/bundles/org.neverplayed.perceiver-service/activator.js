@@ -124,11 +124,12 @@ export default class Activator extends BaseActivator {
             if (e.detail && e.detail.type === 'login') {
                 const user = e.detail.user;
                 const surrogate = e.detail.surrogate;
+                const isGuest = !user || user.id === 'guest';
                 const grounding = (user && user.grounding) || (surrogate && surrogate.grounding) || 'idealist';
                 const resolvedSurrogate = (user && user.activeSurrogateId) ? (surrogate || user.surrogates?.[user.activeSurrogateId] || null) : null;
                 this.setContext({ 
-                    being: user, 
-                    surrogate: resolvedSurrogate,
+                    being: isGuest ? null : user, 
+                    surrogate: isGuest ? { grounding: 'idealist', senses: [] } : resolvedSurrogate,
                     observerMode: grounding
                 });
             } else if (e.detail && e.detail.type === 'logout') {
@@ -155,6 +156,15 @@ export default class Activator extends BaseActivator {
                     surrogate: JSON.parse(JSON.stringify(this._state.surrogate || { senses: [] }))
                 };
                 if (!ctx.surrogate.senses) ctx.surrogate.senses = [];
+                // Objective 2: Enforce Primordial Sensation Floor (Naked Baseline)
+                // Strictly restricted to authenticated Beings, not the anonymous 'guest'.
+                if (this._state.being && this._state.being.id !== 'guest') {
+                    if (!this._state.surrogate || !this._state.surrogate.id) {
+                        if (!ctx.surrogate.senses.includes("Primordial")) {
+                            ctx.surrogate.senses.push("Primordial");
+                        }
+                    }
+                }
                 for (const provider of this._providers) {
                     if (typeof provider.enrich === 'function') {
                         try {

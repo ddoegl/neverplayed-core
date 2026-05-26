@@ -253,6 +253,12 @@ async function main() {
             surrogates: "./realms/data/governance/surrogates.yaml"
         }
     });
+    realmManager.registerRealm({
+        id: "org.neverplayed.realm.empty",
+        title: "Empty",
+        bundles: mockBundles,
+        recognizedSurrogates: ["observer"]
+    });
 
     await settle();
 
@@ -490,6 +496,54 @@ async function main() {
     const habitatActiveUser = session.scopedUsers["org.neverplayed.realm.habitat"]?.__activeId__;
     assertEquals(habitatActiveUser, "guest", "Habitat active user should have been pruned to guest");
     console.log("✅ verified residency pruning on previous realm upon transition");
+
+    // 14. Primordial Sensation Floor & Surrogate Carry-over Verifications
+    console.log("TEST: Verifying Naked Resident Primordial Sensory Floor...");
+    // Create a truly naked resident in the Habitat scope
+    session.login({ id: "trulyNaked", email: "naked@cli.local" }, "org.neverplayed.realm.habitat", null);
+    
+    // Simulate session-changed event
+    globalThis.dispatchEvent(new CustomEvent("session-changed", {
+        detail: {
+            type: "login",
+            user: session.currentUser,
+            surrogate: null
+        }
+    }));
+    await settle();
+    
+    // Assert trulyNaked has the Primordial sense floor
+    const nakedSenses = perceiver.getEnrichedSenses();
+    console.log("TEST: trulyNaked senses =", nakedSenses);
+    assertEquals(nakedSenses.includes("Primordial"), true, "Naked resident must possess the Primordial sense by default");
+    assertEquals(nakedSenses.includes("IdealistVision"), true, "Naked resident must possess IdealistVision under default idealist grounding");
+    console.log("✅ Verified Primordial sensory floor on naked resident");
+
+    console.log("TEST: Verifying empty realm login and surrogate carry-over...");
+    // Let's set the active Being back to 'rob' (who possesses the 'person' surrogate in Habitat realm, but not 'observer')
+    // We login 'rob' in Habitat so he is active with 'person' surrogate first
+    session.login({ id: "rob", email: "rob@cli.local" }, "org.neverplayed.realm.habitat", { id: "person", label: "Person", senses: ["Language"] });
+    session.activeRealmId = "org.neverplayed.realm.habitat";
+    session.activeBeingId = "rob";
+    await settle();
+    
+    // Now switch realm to empty.json (org.neverplayed.realm.empty) as 'rob' with no explicit surrogate parameter
+    // Switch realm via realmManager
+    await realmManager.switchRealm("org.neverplayed.realm.empty");
+    await settle();
+    
+    // Rob Richter (rob) carries no compatible/recognized surrogate (empty realm only recognizes "observer")
+    // Thus, his active surrogate should fall back cleanly to null (naked resident fallback)
+    const emptyCurrentUser = session.currentUser;
+    assertExists(emptyCurrentUser, "currentUser should exist in empty realm scope");
+    assertEquals(emptyCurrentUser.id, "rob", "Active user should remain 'rob'");
+    assertEquals(emptyCurrentUser.activeSurrogateId, null, "Active surrogate should be null (naked observer fallback)");
+    
+    // However, the Primordial sensory floor should guarantee he can still sense the bedrock
+    const robEmptySenses = perceiver.getEnrichedSenses();
+    console.log("TEST: rob senses in empty realm =", robEmptySenses);
+    assertEquals(robEmptySenses.includes("Primordial"), true, "Rob must retain the Primordial sense floor in empty realm");
+    console.log("✅ Verified empty realm login naked fallback and primordial baseline");
 
     console.log("\n✨ ALL ONTOLOGY HARMONY VERIFICATIONS PASSED! ✨");
     

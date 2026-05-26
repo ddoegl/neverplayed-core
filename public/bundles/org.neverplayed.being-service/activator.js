@@ -10,9 +10,9 @@ export default class Activator extends BaseActivator {
     _session = null;
     _beingsData = [];
     _surrogatesData = [
-        { id: "observer", label: "Observer", senses: ["Language"] },
-        { id: "sovereign-guard", label: "Sovereign Guard", senses: ["Language", "ForensicVision", "ArchitectControl", "InhabitantGuardianship"] },
-        { id: "system-collector", label: "Strata Collector", senses: ["Language", "SpaceReclamation"] }
+        { id: "observer", label: "Observer", senses: ["Primordial", "Language"] },
+        { id: "sovereign-guard", label: "Sovereign Guard", senses: ["Primordial", "Language", "ForensicVision", "ArchitectControl", "InhabitantGuardianship"] },
+        { id: "system-collector", label: "Strata Collector", senses: ["Primordial", "Language", "SpaceReclamation"] }
     ];
 
     async onStart(context) {
@@ -70,9 +70,9 @@ export default class Activator extends BaseActivator {
              */
             registerSurrogates: (surrogatesArray) => {
                 const defaults = [
-                    { id: "observer", label: "Observer", senses: ["Language"] },
-                    { id: "sovereign-guard", label: "Sovereign Guard", senses: ["Language", "ForensicVision", "ArchitectControl", "InhabitantGuardianship"] },
-                    { id: "system-collector", label: "Strata Collector", senses: ["Language", "SpaceReclamation"] }
+                    { id: "observer", label: "Observer", senses: ["Primordial", "Language"] },
+                    { id: "sovereign-guard", label: "Sovereign Guard", senses: ["Primordial", "Language", "ForensicVision", "ArchitectControl", "InhabitantGuardianship"] },
+                    { id: "system-collector", label: "Strata Collector", senses: ["Primordial", "Language", "SpaceReclamation"] }
                 ];
                 const dynamic = surrogatesArray || [];
                 const merged = [...defaults];
@@ -91,9 +91,9 @@ export default class Activator extends BaseActivator {
             clear: () => {
                 this._beingsData = [];
                 this._surrogatesData = [
-                    { id: "observer", label: "Observer", senses: ["Language"] },
-                    { id: "sovereign-guard", label: "Sovereign Guard", senses: ["Language", "ForensicVision", "ArchitectControl", "InhabitantGuardianship"] },
-                    { id: "system-collector", label: "Strata Collector", senses: ["Language", "SpaceReclamation"] }
+                    { id: "observer", label: "Observer", senses: ["Primordial", "Language"] },
+                    { id: "sovereign-guard", label: "Sovereign Guard", senses: ["Primordial", "Language", "ForensicVision", "ArchitectControl", "InhabitantGuardianship"] },
+                    { id: "system-collector", label: "Strata Collector", senses: ["Primordial", "Language", "SpaceReclamation"] }
                 ];
                 this.logger?.info("Being Service: Dynamic spatial seed data cleared. Restored primordial default surrogates.");
             },
