@@ -38,7 +38,7 @@ export default class Activator extends BaseActivator {
 
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
             setContext: (ctx) => {
-                this.logger.info(`[LocalStorage] Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
+                this.logger.debug(`[LocalStorage] Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
                 this._context = ctx;
             },
 

@@ -799,6 +799,8 @@ export default class Activator {
         this._logger.info("Session Service: Registered 🛡️✨");
 
         // Set up Persistence Sync
+        let lastSyncedCtx = null;
+        let microtaskScheduled = false;
         Alpine.effect(async () => {
             if (this._pm && this._session) {
                 // Resolve Tenant from Global Stack / Grounding Soul (Rule 3)
@@ -817,7 +819,15 @@ export default class Activator {
                     tier: "local"
                 };
                 
-                if (typeof this._pm.setContext === 'function') {
+                // Only sync context if it actually shifted
+                const contextShifted = !lastSyncedCtx ||
+                    lastSyncedCtx.tenantId !== ctx.tenantId ||
+                    lastSyncedCtx.identityId !== ctx.identityId ||
+                    lastSyncedCtx.realmId !== ctx.realmId ||
+                    lastSyncedCtx.tier !== ctx.tier;
+
+                if (contextShifted && typeof this._pm.setContext === 'function') {
+                    lastSyncedCtx = ctx;
                     this._logger?.info(`Session: Syncing Persistence Context -> Tenant: ${tenantId}, Realm: ${ctx.realmId}, Identity: ${identityId}, Tier: ${ctx.tier}`);
                     await this._pm.setContext(ctx);
                     if (self._eventAdmin && self._eventFactory) {
@@ -826,26 +836,35 @@ export default class Activator {
                     }
                 }
 
-                // Identity Purity Sink: Iterate through stacks and sanitize guests
-                const raw = JSON.parse(JSON.stringify(this._session));
-                if (raw.scopedUsers) {
-                    Object.values(raw.scopedUsers).forEach(stack => {
-                        Object.entries(stack).forEach(([id, user]) => {
-                            if (id === 'guest' || id === '__activeId__') {
-                                if (user && typeof user === 'object') {
-                                    delete user.email;
-                                    delete user.alias;
-                                    delete user.firstname;
-                                    delete user.lastname;
-                                    delete user.avatar;
-                                }
-                            }
-                        });
+                // Debounce state serialization and disk write to end of current task tick
+                if (!microtaskScheduled) {
+                    microtaskScheduled = true;
+                    queueMicrotask(() => {
+                        microtaskScheduled = false;
+                        if (!this._session || !this._pm) return;
+
+                        // Identity Purity Sink: Iterate through stacks and sanitize guests
+                        const raw = JSON.parse(JSON.stringify(this._session));
+                        if (raw.scopedUsers) {
+                            Object.values(raw.scopedUsers).forEach(stack => {
+                                Object.entries(stack).forEach(([id, user]) => {
+                                    if (id === 'guest' || id === '__activeId__') {
+                                        if (user && typeof user === 'object') {
+                                            delete user.email;
+                                            delete user.alias;
+                                            delete user.firstname;
+                                            delete user.lastname;
+                                            delete user.avatar;
+                                        }
+                                    }
+                                });
+                            });
+                        }
+                        
+                        this._logger?.info(`Session: Persisting state [${SESSION_PID}] to tier...`);
+                        this._pm.store(SESSION_PID, raw);
                     });
                 }
-                
-                this._logger?.info(`Session: Persisting state [${SESSION_PID}] to tier...`);
-                this._pm.store(SESSION_PID, raw);
             }
         });
     }
@@ -854,8 +873,11 @@ export default class Activator {
         if (this._session && this._configAdmin) {
             const cfg = this._configAdmin.getConfiguration("org.neverplayed.session-service")?.getProperties() || {};
             const secs = cfg["attention-span-seconds"] !== undefined ? Number(cfg["attention-span-seconds"]) : 30;
-            this._session.attentionSpanMs = secs * 1000;
-            this._logger?.info(`Session Service: Attention Span updated to ${secs}s (${this._session.attentionSpanMs}ms).`);
+            const targetMs = secs * 1000;
+            if (this._session.attentionSpanMs !== targetMs) {
+                this._session.attentionSpanMs = targetMs;
+                this._logger?.info(`Session Service: Attention Span updated to ${secs}s (${this._session.attentionSpanMs}ms).`);
+            }
         }
     }
 

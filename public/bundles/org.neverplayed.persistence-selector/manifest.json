@@ -6,6 +6,6 @@
     "Bundle-Activator": "activator.js",
     "Provide-Capability": "osgi.service; objectClass=\"@pandino/persistence-manager/PersistenceManager\", osgi.service; objectClass=\"org.neverplayed.shell.Command\"",
     "Configuration": {
-        "log-level": "DEBUG"
+        "log-level": "INFO"
     }
 }

@@ -324,7 +324,7 @@ export default class Activator extends BaseActivator {
     _registerService(context) {
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {
             setContext: (ctx) => {
-                this.logger.info(`[DIAGNOSTICS] Firebase: Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
+                this.logger.debug(`[DIAGNOSTICS] Firebase: Context Shift -> [${ctx.tenantId}][${ctx.identityId}]`);
                 if (ctx.tenantId && ctx.tenantId !== "guest") {
                     this._activeUid = ctx.tenantId;
                 }

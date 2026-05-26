@@ -247,6 +247,12 @@ export default class Activator {
     }
 
     async setContext(ctx) {
+        const changed = ctx.tenantId !== this._context.tenantId ||
+                        ctx.realmId !== this._context.realmId ||
+                        ctx.identityId !== this._context.identityId ||
+                        ctx.tier !== this._context.tier;
+        if (!changed) return;
+
         this._context = { ...this._context, ...ctx };
         this.logger.info(`Selector: Context Shift -> [${ctx.tenantId}][${ctx.realmId}]`);
         for (const p of this._providers) {
