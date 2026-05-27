@@ -346,7 +346,7 @@ export default class Activator {
 
                 // Objective 1: Surrogate Carry-over (Traveler's Clothing)
                 if (surrogate === undefined && targetScope !== 'platonic' && identityId !== 'guest') {
-                    const realms = this._realm ? this._realm.getRealms() : [];
+                    const realms = self._realm ? self._realm.getRealms() : [];
                     const targetRealm = realms.find(r => r.id === targetScope);
                     const recognized = targetRealm?.recognizedSurrogates || [];
                     const userProfile = this._findIdentity(identityId);
@@ -512,26 +512,37 @@ export default class Activator {
                 }
 
                 if (this.scopedUsers[targetScope]) {
-                    const targetUserId = userId || this.scopedUsers[targetScope].__activeId__;
-                    if (targetUserId && targetUserId !== 'guest' && this.scopedUsers[targetScope][targetUserId]) {
-                        this.scopedUsers[targetScope][targetUserId].loggedIn = false;
+                    const stack = this.scopedUsers[targetScope];
+                    const resolvedUserId = userId || stack.__activeId__;
+                    
+                    if (resolvedUserId && resolvedUserId !== 'guest' && stack[resolvedUserId]) {
+                        stack[resolvedUserId].loggedIn = false;
                     }
-                    if (this.scopedUsers[targetScope].__activeId__ === targetUserId) {
-                        this.scopedUsers[targetScope].__activeId__ = 'guest';
+                    if (stack.__activeId__ === resolvedUserId) {
+                        stack.__activeId__ = 'guest';
                     }
-                }
 
-                // Rule: Lobby Fallback (replaces Being Dissolution)
-                // Logging out of a spatial realm scope returns the being to the platonic lobby.
-                // Only a global logout (e.g. Firebase sign-out) fully dissolves the being focus.
-                if (targetScope !== 'platonic') {
-                    // Realm exit: strip the realm-specific active surrogate, signal lobby return.
-                    const beingId = userId || this.scopedUsers[targetScope]?.__activeId__;
-                    if (beingId && beingId !== 'guest' && this.scopedUsers[targetScope]?.[beingId]) {
-                        this.scopedUsers[targetScope][beingId].activeSurrogateId = null;
+                    // Rule: Lobby Fallback (replaces Being Dissolution)
+                    // Logging out of a spatial realm scope returns the being to the platonic lobby.
+                    // Only a global logout (e.g. Firebase sign-out) fully dissolves the being focus.
+                    if (targetScope !== 'platonic') {
+                        if (resolvedUserId && resolvedUserId !== 'guest' && stack[resolvedUserId]) {
+                            stack[resolvedUserId].activeSurrogateId = null;
+                        }
+                        logger?.info(`Session: Realm exit from '${targetScope}'. Being '${resolvedUserId}' falls back to platonic lobby.`);
+                        this._pendingLobbyFallback = (resolvedUserId && resolvedUserId !== 'guest') ? resolvedUserId : null;
+                        
+                        // Revert active spatial realm scope to Platonic Staging Lobby
+                        if (targetScope === this.activeRealmId) {
+                            this.activeRealmId = 'platonic';
+                            logger?.info(`Session: Reverted active realm to 'platonic' for user '${resolvedUserId}'.`);
+                            if (self._realm && typeof self._realm.switchRealm === 'function') {
+                                self._realm.switchRealm('platonic').catch(err => {
+                                    logger?.error(`Session: Failed transitioning RealmManager back to platonic:`, err);
+                                });
+                            }
+                        }
                     }
-                    logger?.info(`Session: Realm exit from '${targetScope}'. Being '${beingId}' falls back to platonic lobby.`);
-                    this._pendingLobbyFallback = beingId !== 'guest' ? beingId : null;
                 }
 
                 logger?.info(`Session: Coordinate [${targetScope}] now inhabited by guest.`);

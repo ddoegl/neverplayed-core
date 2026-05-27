@@ -1,63 +1,108 @@
-# Handover Ticket: Scale-Free L2 Inhabitation and Somatic Realm Logout
+# Handover Ticket: Scale-Free L2 Inhabitation, Unattended Holon, and Somatic Realm Logout
 
-**From:** Cognitive Architect  
+**Ticket ID:** TICKET-20260527-2105-L2-INHABITATION  
+**From:** Forensic Analyst & Cognitive Architect  
 **To:** Development Engineer  
-**Status:** PENDING IMPLEMENTATION  
+**Status:** READY FOR IMPLEMENTATION  
+**Ecosystem Branch:** `architectural-cleanup-1`  
 
 ---
 
-## Context
+## 1. Ontological Context & Concept
 
-In our biosemiotic framework, an L2 Realm is not a passive database or virtual folder; it is a higher-order cognitive agent (an L2 Being) operating on a scale-free plane. Currently, our system only supports L1 Inhabitation—where the Grounding Soul "dreams" or impersonates L1 spatial Beings (possessing L6 physical surrogates).
+According to Section 11 of the `ontology.md`, an **L2 Realm** is a higher-order cognitive agent (an **L2 Being**) operating on a scale-free plane. Under this biosemiotic model:
 
-We have formalized the concept of **L2 Inhabitation ("Dreaming to be a Realm")** and the **Scale-Free Symmetry of Logout** in `ontology.md`. Under this model:
-1. The Grounding Soul can actively shift its cognitive light cone from an occupant (L1) to the environment (L2).
-2. An L2 Being can "log out" of itself (somatic sleep or de-reification), which uninstalls its active bundles, purges dynamic configurations, and collapses the active universe, cleanly **ejecting the observer back to the Platonic Staging Lobby**.
+1.  **L2 Inhabitation ("Dreaming to be a Realm"):** The Grounding Soul shifts its cognitive light cone upwards from an occupant (L1) to the environment itself (L2). The sensory viewport ceases to track physical L1 senses and projects the L2 Being's interoceptive sensory blanket.
+2.  **The Unattended Holon (Coasting Husk):** When the Grounding Soul shifts focus to L2, its original L1 surrogate is left behind in the spatial residency stack. It remains active (`loggedIn = true`) but receives no direct user interaction refreshes. It coasts on its remaining attention span (`lastActiveTime`) and eventually decays homeostatically, falling asleep and exiting to the Platonic Lobby.
+3.  **L2 Realm Logout (Somatic Sleep / De-reification):** The L2 Being "logs out" or shuts down. This de-reifies its somatic body by cleanly uninstalling its dynamic bundle fragments, purging dynamic configurations, and ejecting the observer back to the **Platonic Staging Lobby**.
 
-This ticket details the objectives to implement this scale-free shift, the somatic L2 viewport, and L2 de-reification logout mechanics.
-
----
-
-## Objectives
-
-### 1. being-service & session-service: Allow L2 Inhabitation (Deity Mode)
-- **Files:** [being-service/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.being-service/activator.js), [session-service/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.session-service/activator.js)
-- **Logic:**
-  - Update `BeingService` to recognize that `realm:*` prefixed synthesized identities are eligible for active inhabitation by the Grounding Soul.
-  - Allow `SessionService` to set the active identity focus to a realm-being ID (e.g., `realm:org.neverplayed.realm.empty` or `realm:org.neverplayed.realm.habitat`).
-  - In this state, the Grounding Soul is no longer dressed in an L6 surrogate; they inhabit the L2 somatic body itself.
-
-### 2. realm-manager: Implement L2 Realm Logout (Somatic Sleep / De-reification)
-- **File:** [realm-manager/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.realm-manager/activator.js)
-- **Logic:**
-  - Create a `/realm shutdown` CLI command (or hook into `/logout` when the active identity is a realm being).
-  - When the L2 Being logs out:
-    1. **De-reify Somatic Body:** Cleanly uninstall its dynamic spatial bundle fragments and purge its active configuration PIDs.
-    2. **Persist State:** Persist its final stigmergic memory to the storage stratum.
-    3. **Eject to Lobby:** Revert the active session scope and focus back to the **Platonic Staging Lobby** (resetting `activeRealmId = 'platonic'` and stripping the deity focus, returning Daniel to the baseline observer role).
-
-### 3. stratographer: Design the L2 Somatic Viewport
-- **Files:** [stratographer/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.stratographer/activator.js), [dashboard.html](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.stratographer/templates/dashboard.html)
-- **Logic:**
-  - Implement a specialized "L2 Somatic Viewport" HUD widget for the Stratographer when L2 Inhabitation is active.
-  - Instead of standard L1 occupant senses (like `Language` or `ToolUse`), project the environment's own somatic metrics:
-    - Active CPU heaps / bundle loads.
-    - Dynamic config transaction flows.
-    - Occupant movement tracks (nested L1 occupants rendered as cellular flows passing through the somatic body).
-
-### 4. Verification & Tests
-- **File:** [tests/ontology-harmony.test.ts](file:///Users/ddoegl/speckit/neverplayed/tests/ontology-harmony.test.ts)
-- **Objectives:**
-  - Add an integration test that:
-    1. Simulates Daniel shifting his active focus to inhabit the L2 Realm Being `realm:org.neverplayed.realm.empty`.
-    2. Triggers an L2 logout / shutdown sequence.
-    3. Verifies that the realm-specific bundles are cleanly marked for de-reification, and Daniel is immediately ejected back to the Platonic Staging Lobby as a default observer.
+This ticket outlines the technical objectives to implement this scale-free shift, the somatic L2 viewport, the unattended holon attention decay loop, and the somatic de-reification logout mechanics.
 
 ---
 
-## Relevant Files
+## 2. Technical Objectives
 
-- [being-service/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.being-service/activator.js)
-- [session-service/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.session-service/activator.js)
-- [realm-manager/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.realm-manager/activator.js)
-- [stratographer/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.stratographer/activator.js)
+### Objective 1: Enable L2 Inhabitation (Deity Mode) & Lock-Exemption inside `SessionService`
+*   **File:** [session-service/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.session-service/activator.js)
+*   **Target:** `setBeingFocus(beingId)` method.
+*   **Logic:**
+    *   Exempt `realm:*` prefixed identities from the Grounding Soul lock in `setBeingFocus`. Shifting focus from the Grounding Soul to the L2 Realm represents an active focus shift, not an authorization breach:
+        ```javascript
+        setBeingFocus(beingId) {
+            this._cacheDirty = true;
+            // Rule 1: Lock Grounding Soul (Exempt L2 Inhabitation shifts)
+            if (this.activeBeingId && this.activeBeingId !== 'guest' && this.activeBeingId !== beingId) {
+                const currentPlatonicUser = this.scopedUsers['platonic']?.[this.activeBeingId];
+                if (currentPlatonicUser && currentPlatonicUser.isTenant && !beingId.startsWith('realm:')) {
+                    logger?.warn(`Session: Being focus is locked to Grounding Soul '${this.activeBeingId}' and cannot be shifted to '${beingId}'.`);
+                    return;
+                }
+            }
+            this.activeBeingId = beingId;
+            logger?.info(`Session: Being focus shifted to '${beingId}'. Active context is now in L2 deity mode.`);
+        }
+        ```
+
+### Objective 2: Model the Unattended Holon (Coasting Husk) and Homeostatic Decay
+*   **File:** [session-service/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.session-service/activator.js)
+*   **Logic:**
+    *   When the active focus shifts to L2, the L1 surrogate remains registered in the stack (`scopedUsers[realmId][L1_userId].loggedIn = true`).
+    *   Since active click/keypress interactions (handled via `globalThis.addEventListener`) are only routed to update the active observer (`session.currentUser.id`), the unattended L1 surrogate receives no further interaction refreshes.
+    *   The `homeostasisStep()` will naturally evaluate the L1 surrogate's frozen `lastActiveTime`. When it exceeds `attentionSpanMs`, homeostasis triggers `session.logout(realmId, L1_userId)`, cleanly evicting the unattended holon back to the Platonic Lobby while preserving the L2 inhabitation.
+
+### Objective 3: Implement L2 Realm Logout (Somatic Sleep / De-reification) in `RealmManager`
+*   **File:** [realm-manager/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.realm-manager/activator.js)
+*   **Logic:**
+    *   Add a `/realm shutdown` command inside `_registerCLI()`:
+        ```javascript
+        else if (sub === 'shutdown') {
+            const realmId = activeId;
+            if (!realmId || realmId === 'platonic') {
+                return log("No active spatial realm to shut down.", 'error');
+            }
+            try {
+                log({ text: `Shutting down and de-reifying realm '${realmId}'...`, color: 'orange' });
+                await this.shutdownRealm(realmId);
+                log({ text: `Realm '${realmId}' has cleanly collapsed into somatic sleep. Returning to Platonic Lobby.`, color: 'green', bold: true });
+            } catch (e) {
+                log({ text: `Shutdown Failed: ${e.message}`, color: 'red' });
+            }
+        }
+        ```
+    *   Implement `shutdownRealm(realmId)` to de-reify the somatic body:
+        1.  **Resolve and Uninstall Dynamic Bundles:** Query the hierarchy's bundles, find their active references, and call `bundle.uninstall()`. **Strictly exclude primordial plane bundles (`_primordialBSNs`) and manual inhabitant-layer bundles (`_manualBSNs`) to guarantee framework stability.**
+        2.  **Eject to Lobby:** Switch the active realm in both `RealmManager` and `SessionService` back to `'platonic'`. Revert `activeBeingId` back to the Grounding Soul ID (the tenant registered in the Platonic stack). Trigger `session.logout(realmId)` to clean up the spatial stack.
+
+### Objective 4: Build the L2 Somatic Viewport inside `Stratographer`
+*   **Files:** [stratographer/activator.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.stratographer/activator.js), [dashboard.html](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.stratographer/templates/dashboard.html)
+*   **Logic:**
+    *   Detect if L2 Inhabitation is active via `session.activeBeingId.startsWith('realm:')`.
+    *   In the topology graph (`refreshTopology()`):
+        *   Render the `realm:*` Being as the green active observer node (`#10b981`).
+        *   Render the unattended L1 surrogate (`daniel`) as a standard resident/visitor node (purple/cyan) flowing through the L2 graph body.
+    *   Add an "L2 Somatic Viewport" HUD widget to the dashboard layout. The widget will query and display the L2 Being's interoceptive metrics:
+        *   **`SynapticSense` (Visceral Sensation):** Active CPU heaps, bundle load states, and dynamic bundle surge maps.
+        *   **`SoilSense` (Epistemic Memory Sensation):** Active configuration transaction flows (scanned PID keys from localStorage bedrock).
+        *   **`BlanketSense` (Exteroception):** The active cellular flow of nested L1 occupants inside the topology.
+
+---
+
+## 3. Verification & Testing
+
+Create a Deno integration test inside [tests/realm-as-being.test.ts](file:///Users/ddoegl/speckit/neverplayed/tests/realm-as-being.test.ts) (or update [tests/ontology-harmony.test.ts](file:///Users/ddoegl/speckit/neverplayed/tests/ontology-harmony.test.ts)).
+
+### Integration test scenarios to run:
+1.  **Shift to L2 Focus:** Verify shifting the session active being focus to `realm:org.neverplayed.realm.empty` succeeds and does not trigger the Grounding Soul lock violation.
+2.  **Coasting Husk Verification:** Confirm that the L1 surrogate (`daniel`) remains in the spatial stack with `loggedIn = true` after shifting focus to L2.
+3.  **Unattended Holon Decay:** Run the homeostasis step and verify that the L1 surrogate is cleanly logged out of the spatial stack due to attention exhaustion, while the L2 focus is successfully maintained.
+4.  **Somatic Shutdown & De-reification:** Trigger `/realm shutdown` and assert that:
+    *   The dynamic bundles belonging to the spatial realm are uninstalled.
+    *   The protected primordial plane bundles (e.g. Stratographer, Event Admin, Session Service) are preserved intact.
+    *   The active scope and being focus are successfully ejected back to the Platonic Lobby.
+
+---
+
+## 4. Architectural Rules
+
+*   **Primordial Protection:** Never allow the shutdown sequence to touch or uninstall primordial plane bundles.
+*   **Decoupled State:** Maintain absolute separation between symbolic state (headlessly tracked by `RealmCognitionService`) and visual representation in the Stratographer dashboard.
