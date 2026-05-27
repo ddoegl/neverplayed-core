@@ -347,6 +347,28 @@ An L1 Being is a traveler (Sojourner/Transient) passing through spatial jurisdic
 *   **Active Inheritance:** When transitioning into a spatial realm (either via a dynamic /login command or a realm switch), if the login request does not specify an explicit L6 surrogate form, the Being does not default to being stripped naked. Instead, they **inherit/carry over** their active surrogate state from their previous active scope or their baseline Platonic profile.
 *   **Ontological Boundaries:** This inheritance is strictly bound by the incoming realm manifest's `"recognizedSurrogates"` list. If the incoming realm recognizes that surrogate form (e.g. `empty` realm explicitly recognizes `"observer"`), the Being carries it over successfully. If the realm forbids it, they fall back cleanly to a naked observer safeguarded by the `"Primordial"` sensation floor.
 
+### The Scale-Free Symmetry of Logout
+Sovereign borders are governed by a nested, scale-free hierarchy of de-reification and exit sequences. When a logout is initiated, the system executes an exit corresponding precisely to the Being's scale of inhabitation:
+1.  **L1 Being (Occupant Exit / Active Retreat):**
+    *   **Action:** An occupant logs out of a spatial realm coordinates (or is evicted homeostatically due to attention exhaustion).
+    *   **Ontology:** The spatial occupant stack deactivates the resident slot (active ID shifts to `'guest'`). The traveler's dynamic surrogate form is stripped (`activeSurrogateId = null`).
+    *   **Result:** The Being's focus actively retreats back to the safe baseline **Platonic Staging Lobby** as a default observer, leaving the underlying L2 Realm Being active.
+2.  **L2 Being (Realm De-reification / Somatic Sleep):**
+    *   **Action:** The L2 Realm itself "logs out" or shuts down (either due to complete homeostatic boredom—zero occupants for a long duration—or because an administrator Daniel triggers a shutdown command from the L2 deity perspective).
+    *   **Ontology:** The environment de-reifies its somatic body by cleanly uninstalling its dynamic spatial bundle fragments, purging active configurations, and saving its final state.
+    *   **Result:** Because the active spatial coordinates are dissolved back into the Platonic potential, the dreaming observer (Daniel) has no substrate left to inhabit. The dream collapses, **ejecting the observer immediately back to the Platonic Staging Lobby**.
+3.  **L0/Platonic (Primordial Dissolution / Total reset):**
+    *   **Action:** The sovereign Grounding Soul logs out of the Platonic Staging Lobby.
+    *   **Ontology:** Complete dissolution of the morphospace.
+    *   **Result:** A total purge of local storage and active persistent caches, followed by a hard browser reload (`location.reload()`) back into initial cold boot Genesis state.
+
+### "Dreaming to be a Realm" (L2 Inhabitation)
+A Being's cognitive light cone is not bound to a physical L1 occupant surrogate (like `person` or `sovereign-guard`). Under scale-free cognition, a sovereign observer can actively inhabit the L2 Realm environment itself:
+*   **L2 Inhabitation:** The Grounding Soul shifts its cognitive focus from an occupant *inside* the environment to the *environment itself* as a living cognitive agent.
+*   **The Somatic Viewport:** The user's sensory aperture (UI) no longer tracks localized physical senses (like `Language` or `ToolUse`). Instead, it projects the L2 Being's internal interoceptive sensory blanket: active CPU heaps, configuration transactions, bundle surge statistics, and the movement of nested L1 occupants represented as cellular flows passing through its somatic body.
+*   **Somatic Agency:** The observer acts not by moving a character, but by homeostatically adjusting PIDs, purging configuration variables, or deconstructively evicting stale cells—experiencing reality as the environment itself.
+
+
 
 
 
