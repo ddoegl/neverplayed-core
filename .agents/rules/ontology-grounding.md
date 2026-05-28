@@ -25,8 +25,10 @@ All architectural decisions must be mapped to the appropriate level of the hiera
 7.  **Headless Sovereignty**: Realms execute programmatically via headless services. The UI is merely a sensory aperture, projecting state only to observers equipped with the proper "DOM Sense."
 8.  **Platonic Anchoring**: All sessions are rooted in the Platonic Staging Lobby by the unique Grounding Soul. Disconnecting triggers a Total Universe Reset.
 9.  **Zero-Duplicate Identity**: A Being is natively declared in only one origin realm. They cross borders as transient Sojourners carried within the session, ensuring strict domain sovereignty.
-10. **Temporal Attention Homeostasis**: Beings require continuous sensory stimulus. Attention exhaustion (boredom) causes active retreat (falling asleep) to the Platonic Lobby. Attention is recharged via shared stigmergic resonance (sensing other Beings' traces).
+10. **Temporal Attention Homeostasis**: Beings require continuous sensory stimulus. Attention exhaustion (boredom) causes active retreat (falling asleep) to the Platonic Lobby.
 11. **Primordial Sensation Floor**: Naked Beings always retain a baseline `"Primordial"` sense, preventing absolute topological isolation and ensuring core platform organs remain visible.
+12. **Scale-Free Symmetry of Logout**: Logouts cascade hierarchically. L1 exit strips the surrogate; L2 shutdown dissolves the environment (ejecting occupants); L0 exit causes total universe reset.
+13. **L2 Inhabitation (Dreaming as a Realm)**: Diagnostic and admin tools must be conceptually mapped as the Grounding Soul shifting its cognitive focus to inhabit the L2 Realm Being directly, adopting its interoceptive somatic viewport (heaps, surges, configs).
 
 ## 🚫 Anti-Patterns
 
@@ -36,3 +38,4 @@ All architectural decisions must be mapped to the appropriate level of the hiera
 - **UI as the World**: Treating the DOM or UI elements as the actual state, rather than a projection of the headless Realm cognition.
 - **Identity Duplication**: Copying a user's data into a foreign realm's database when they travel.
 - **Passive Logging Out**: Ejecting a user via a dumb timer rather than treating it as active cognitive retreat (attention exhaustion).
+- **Admin God-Mode as Magic**: Treating admin dashboards as magic "out-of-world" UIs rather than an explicit L2 Inhabitation surrogate with its own defined sensory viewport.

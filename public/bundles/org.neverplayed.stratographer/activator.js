@@ -40,6 +40,7 @@ export default class Activator {
 
     start(context) {
         const self = this;
+        this.ctx = context;
 
         // 1. Logger Integration
         context.trackService(`(objectClass=${LOG_SERVICE})`, {
@@ -759,14 +760,79 @@ export default class Activator {
             stage.innerHTML = html;
             
             Alpine.data("stratographerDashboard", () => ({
-                jumpTarget: self._stratum?.toURI() || "",
-                identityId: self._stratum?.identityId || "unknown",
-                realmId: self._stratum?.realmId || "unknown",
-                tenantId: self._stratum?.tenantId || "unknown",
-                tier: self._stratum?.tier || "local",
+                _localJumpTarget: undefined,
+
+                get jumpTarget() {
+                    if (this._localJumpTarget !== undefined) {
+                        return this._localJumpTarget;
+                    }
+                    return self._stratum?.toURI() || "";
+                },
+                set jumpTarget(val) {
+                    this._localJumpTarget = val;
+                },
+
+                get synapticSense() {
+                    const heap = (globalThis.performance && globalThis.performance.memory) 
+                        ? `${Math.round(globalThis.performance.memory.usedJSHeapSize / 1024 / 1024)}MB`
+                        : "Unknown";
+                    const count = self.ctx ? self.ctx.getBundles().filter(b => b.getState() === 32 || b.getState() === 'ACTIVE').length : 0;
+                    const surgeBSNs = [];
+                    if (self.ctx) {
+                        const active = self.ctx.getBundles().filter(b => b.getState() === 32 || b.getState() === 'ACTIVE');
+                        const primordial = self._realmManager?.getPrimordialBSNs?.() || new Set();
+                        const manual = self._realmManager?.getManualBSNs?.() || new Set();
+                        for (const b of active) {
+                            const bsn = b.getSymbolicName();
+                            const norm = bsn.replace('org.neverplayed.', '');
+                            if (primordial.has(bsn)) continue;
+                            if (manual.has(bsn)) continue;
+                            surgeBSNs.push(norm);
+                        }
+                    }
+                    return {
+                        cpuHeap: heap,
+                        activeBundles: count,
+                        surgeMap: surgeBSNs.length > 0 ? surgeBSNs.join(', ') : "None"
+                    };
+                },
+                
+                get soilSense() {
+                    const rId = this.realmId;
+                    const service = self._cognitionServices?.get(rId);
+                    const pids = service ? (service.getReifiedPids() || []) : [];
+                    return { pids };
+                },
+                
+                get blanketSense() {
+                    const occupants = self._stratum ? (self._stratum.occupants || self._stratum.residents || []) : [];
+                    return { occupants: occupants.filter(id => id !== 'guest') };
+                },
+
+                get identityId() {
+                    return Alpine.store('stratum').identityId || "unknown";
+                },
+
+                get realmId() {
+                    return Alpine.store('stratum').realmId || "unknown";
+                },
+
+                get tenantId() {
+                    return Alpine.store('stratum').tenantId || "unknown";
+                },
+
+                get tier() {
+                    return Alpine.store('stratum').tier || "local";
+                },
+
                 realms: [],
                 inhabitants: [],
-                activeRealm: { id: self._stratum?.realmId || "unknown" },
+
+                get activeRealm() {
+                    const rId = this.realmId;
+                    return this.realms.find(r => r.id === rId) || { id: rId, title: rId === 'platonic' ? 'Platonic Lobby' : rId };
+                },
+
                 now: Date.now(),
 
                 getOccupantAttention(id, nowVal) {
@@ -791,7 +857,6 @@ export default class Activator {
                 async init() {
                     if (self._realmManager) {
                         this.realms = await self._realmManager.getRealms();
-                        this.activeRealm = this.realms.find(r => r.id === this.realmId) || { id: this.realmId };
                     }
                     this._syncInhabitants();
 
@@ -799,21 +864,46 @@ export default class Activator {
                         this.now = Date.now();
                     }, 500);
                     
-                    const syncUI = () => {
-                        this.identityId = self._stratum?.identityId;
-                        this.realmId = self._stratum?.realmId;
-                        this.tenantId = self._stratum?.tenantId;
-                        this.tier = self._stratum?.tier;
-                        this.jumpTarget = self._stratum?.toURI();
-                        this.activeRealm = this.realms.find(r => r.id === this.realmId) || { id: this.realmId };
-                        this._syncInhabitants();
+                    const syncUI = async () => {
+                        this._localJumpTarget = undefined;
+                        await this._syncInhabitants();
+                        const store = Alpine.store('explorer');
+                        if (store) {
+                            await store.refreshTopology();
+                        }
+                        const container = stage.querySelector('[x-ref="graphContainer"]');
+                        if (container) {
+                            globalThis.dispatchEvent(new CustomEvent('explorer-render-request', { 
+                                detail: { element: container } 
+                            }));
+                        }
                     };
 
                     self._dashboardSyncUI = syncUI;
                     globalThis.addEventListener('stratum-changed', self._dashboardSyncUI);
 
                     this.$watch(() => Alpine.store('explorer').grounding, () => {
-                        this.jumpTarget = self._stratum?.toURI();
+                        this._localJumpTarget = undefined;
+                    });
+
+                    this.$watch(() => Alpine.store('stratum').realmId, async (newRealmId) => {
+                        this._localJumpTarget = undefined;
+                        const store = Alpine.store('explorer');
+                        if (store) {
+                            if (store.activeNode) {
+                                const nodeRealm = store.activeNode.realmId || (store.activeNode.id.startsWith('realm:') ? store.activeNode.value : null);
+                                if (nodeRealm && nodeRealm !== newRealmId) {
+                                    store.activeNode = null;
+                                }
+                            }
+                            await store.refreshTopology();
+                            const container = stage.querySelector('[x-ref="graphContainer"]');
+                            if (container) {
+                                globalThis.dispatchEvent(new CustomEvent('explorer-render-request', { 
+                                    detail: { element: container } 
+                                }));
+                            }
+                        }
                     });
 
                     this.$nextTick(() => {
@@ -825,7 +915,7 @@ export default class Activator {
                         if (container) {
                             globalThis.dispatchEvent(new CustomEvent('explorer-render-request', { 
                                 detail: { element: container } 
-                            }));
+                             }));
                         }
                     });
                 },

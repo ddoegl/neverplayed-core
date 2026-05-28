@@ -11,6 +11,7 @@
 - Validated the Primordial Bootstrapping, Platonic Staging Lobby, and the Double-Loop of Exteroception mechanisms.
 - Validated the Headless Decoupled Stratum mapping (UI as Sensory Apertures) and the Zero-Duplicate Identity principle.
 - Validated Section 11: Scale-Free Homeostasis, Temporal Attention, Stigmergic Coupling, and the Primordial Sensation Floor.
+- Validated the additions of "Scale-Free Symmetry of Logout" and "Dreaming to be a Realm" (L2 Inhabitation).
 - Updated `.agents/rules/ontology-grounding.md` to formally encode these validated principles.
 
 ## Pending Items
@@ -19,9 +20,9 @@
 ## Key Decisions & Context
 - Operating strictly within the Cognitive Architect cognitive layer as the "source of truth" guardian.
 - The Realm is formally recognized as a cognitive agent (L2 Being) in somatic symbiosis with L1 Beings. 
+- Logouts are scale-free symmetric events: L1 Exit (retreats occupant), L2 Shutdown (dissolves environment, evicts occupants), L0 Exit (universe reset).
+- Administrative capabilities are no longer "magic admin out-of-world dashboards." They are formalized as **L2 Inhabitation**, where the Grounding Soul equips a somatic surrogate to perceive the Realm's interoceptive body (memory heaps, config transactions).
 - L1 Beings actively manage their temporal homeostasis. "Logging out due to inactivity" is cognitively reframed as active retreat due to attention exhaustion.
 - Stigmergic coupling is validated: L1 Beings resonate with each other by sensing marks left in the environment, which shocks their temporal homeostats.
-- The concept of a Primordial sensory floor guarantees no Being is ever completely isolated from the system's core viscera, even when naked.
 - UI is strictly a sensory aperture; the true system state is headless.
-- Total session isolation is guaranteed by the Platonic morphospace; exiting it triggers a hard universe reset.
-- Memory/identity duplication is prevented by transient session carrying (Sojourners).
+- Total session isolation is guaranteed by the Platonic morphospace; memory/identity duplication is prevented by transient session carrying (Sojourners).

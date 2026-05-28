@@ -186,6 +186,8 @@
           </template>
         </div>
 
+        <!-- L2 Somatic Viewport has been elevated to the Forensic tab panel. -->
+
         <div
           class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-sm group hover:border-purple-500/30 transition-all"
         >
@@ -247,7 +249,7 @@
       <div
         x-ref="graphContainer"
         class="absolute inset-0 z-10"
-        x-init="$watch(() => $store.explorer.nodes, () => { 
+        x-init="$watch('$store.explorer.nodes', () => { 
                       const container = $refs.graphContainer;
                       if (container) {
                           globalThis.dispatchEvent(new CustomEvent('explorer-render-request', { detail: { element: container } }));
@@ -292,10 +294,123 @@
     <!-- Right: Forensic Vault -->
     <div
       class="w-1/4 border-l border-slate-800/50 flex flex-col bg-slate-900/40 relative"
+      x-data="{ activeTab: identityId.startsWith('realm:') ? 'somatic' : 'trace' }"
+      x-init="$watch('$store.explorer.activeNode', val => { if (val) activeTab = 'trace' }); $watch('identityId', val => { activeTab = val.startsWith('realm:') ? 'somatic' : 'trace' })"
     >
-      <!-- Toggle for Vault -->
+      <!-- Tab Header for L2 Beings -->
+      <template x-if="identityId.startsWith('realm:')">
+        <div class="flex border-b border-slate-800/60 bg-slate-950/20 p-2 gap-1">
+          <button 
+            @click="activeTab = 'somatic'"
+            :class="activeTab === 'somatic' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-sm' : 'text-slate-500 hover:text-slate-300'"
+            class="flex-1 py-1.5 px-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5"
+          >
+            <i class="fas fa-brain text-[9px]"></i>
+            <span>Somatic HUD</span>
+          </button>
+          <button 
+            @click="activeTab = 'trace'"
+            :class="activeTab === 'trace' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm' : 'text-slate-500 hover:text-slate-300'"
+            class="flex-1 py-1.5 px-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5"
+          >
+            <i class="fas fa-microscope text-[9px]"></i>
+            <span>Trace Vault</span>
+          </button>
+        </div>
+      </template>
+
+      <!-- Somatic Viewport Tab Panel -->
       <div
-        x-show="!$store.explorer.activeNode"
+        x-show="activeTab === 'somatic'"
+        class="flex flex-col h-full"
+        x-transition
+        x-cloak
+      >
+        <!-- Header -->
+        <div class="p-6 border-b border-slate-800/50 bg-slate-900/60">
+          <div class="flex items-center justify-between mb-2">
+            <span
+              class="text-[9px] font-black text-cyan-500 uppercase tracking-[0.2em]"
+            >Somatic HUD</span>
+            <i class="fas fa-brain text-[10px] text-cyan-500/50"></i>
+          </div>
+          <h3
+            class="text-sm font-bold text-slate-100 truncate"
+            x-text="activeRealm.title"
+          ></h3>
+          <div
+            class="mt-2 text-[9px] font-mono text-slate-500 truncate"
+            x-text="'realmId: ' + realmId"
+          ></div>
+        </div>
+
+        <!-- Senses Scroll Area -->
+        <div class="flex-grow overflow-y-auto p-4 space-y-4 custom-scrollbar">
+          <!-- Synaptic Sense (Visceral) -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-[8px] uppercase font-black text-cyan-400">
+              <span>Synaptic Sense</span>
+              <span class="text-slate-500">Visceral</span>
+            </div>
+            <div class="bg-slate-950/40 border border-slate-850 rounded-2xl p-3.5 space-y-2 text-[10px] font-mono leading-relaxed">
+              <div class="flex justify-between">
+                <span class="text-slate-500 text-[9px]">Heap size:</span>
+                <span class="text-slate-300 text-[9px]" x-text="synapticSense.cpuHeap"></span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-500 text-[9px]">Active Bundles:</span>
+                <span class="text-slate-300 text-[9px]" x-text="synapticSense.activeBundles"></span>
+              </div>
+              <div class="flex flex-col pt-1.5 mt-1 border-t border-slate-800/30">
+                <span class="text-slate-500 text-[9px] uppercase">Surge Map:</span>
+                <span class="text-cyan-500/80 truncate text-[9px]" x-text="synapticSense.surgeMap"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Soil Sense (Epistemic) -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-[8px] uppercase font-black text-purple-400">
+              <span>Soil Sense</span>
+              <span class="text-slate-500">Epistemic</span>
+            </div>
+            <div class="bg-slate-950/40 border border-slate-850 rounded-2xl p-3.5 space-y-2 text-[10px] font-mono leading-relaxed">
+              <div class="text-slate-500 text-[9px] uppercase mb-1">Configuration Bedrock:</div>
+              <div class="flex flex-wrap gap-1">
+                <template x-for="pid in soilSense.pids" :key="pid">
+                  <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[8px] px-1.5 py-0.5 rounded font-bold" x-text="pid"></span>
+                </template>
+                <template x-if="!soilSense.pids || soilSense.pids.length === 0">
+                  <span class="text-slate-600 text-[8px] italic">No active bedrock keys.</span>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Blanket Sense (Exteroception) -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-[8px] uppercase font-black text-emerald-400">
+              <span>Blanket Sense</span>
+              <span class="text-slate-500">Exteroception</span>
+            </div>
+            <div class="bg-slate-950/40 border border-slate-850 rounded-2xl p-3.5 space-y-2 text-[10px] font-mono leading-relaxed">
+              <div class="text-slate-500 text-[9px] uppercase mb-1">Cellular Flows:</div>
+              <div class="flex flex-wrap gap-1">
+                <template x-for="occ in blanketSense.occupants" :key="occ">
+                  <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] px-1.5 py-0.5 rounded font-bold font-mono" x-text="occ"></span>
+                </template>
+                <template x-if="!blanketSense.occupants || blanketSense.occupants.length === 0">
+                  <span class="text-slate-600 text-[8px] italic">No active occupants.</span>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toggle for Vault (only when activeTab === 'trace') -->
+      <div
+        x-show="activeTab === 'trace' && !$store.explorer.activeNode"
         class="flex-grow flex flex-col items-center justify-center p-8 text-center opacity-20"
       >
         <i class="fas fa-microscope text-4xl mb-4"></i>
@@ -308,8 +423,9 @@
         </p>
       </div>
 
+      <!-- Trace Inspection Tab Panel -->
       <div
-        x-show="$store.explorer.activeNode"
+        x-show="activeTab === 'trace' && $store.explorer.activeNode"
         class="flex flex-col h-full"
         x-transition
         x-cloak

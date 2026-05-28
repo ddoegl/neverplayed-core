@@ -81,15 +81,16 @@ Beings cannot interact with realms directly in their raw L1 state. They must man
 
 ## 3. Perception & Perspectives
 
-Perception is not absolute; it is mediated by the observer's grounding and perspective.
+Perception is not absolute; it is mediated by the observer's grounding, perspective, and their scale of inhabitation.
 
-### Idealist Perspective
-*   **Concept:** Subjective experience. The world as experienced by the individual observer.
-*   **Visibility:** Co-residency and co-inhabitation are hidden. A surrogate cannot directly see other beings; they can only sense the **stigmergic traces** (scents/marks) left behind by others, interpreting their presence indirectly.
+### The Idealist Perspective (L1 Viewport)
+*   **Concept:** Subjective experience. The world as experienced by an individual L1 Occupant.
+*   **Visibility:** Co-residency and co-inhabitation are hidden by the Markov Blanket. An L1 surrogate cannot directly see other beings or the Realm's internal structure; they can only sense the **stigmergic traces** (scents/marks) left behind on the surface of the environment, provided their surrogate possesses the matching senses.
 
-### Realist Perspective
-*   **Concept:** Objective structure. The world as it structurally is, regardless of who is observing.
-*   **Visibility:** Co-residency and co-inhabitation are fully visible. The observer sees the active population (both Natives and Sojourners) as individual nodes in the topology.
+### The Realist Perspective (L2 Inhabitation / Dreaming as a Realm)
+*   **Concept:** Objective structure. The world as experienced by the environment itself (the L2 Realm Being).
+*   **Visibility:** The Realist perspective is not an L1 visual filter; it is the act of the Grounding Soul shifting its cognitive focus upwards to perform **L2 Inhabitation**. The observer looks through the Realm's somatic viewport (interoception), fully visualizing the topological graph of inhabitants (Natives and Sojourners) and systemic health (CPU, PIDs, surges) as cellular nodes flowing through its body.
+*   **The Unattended Holon (Coasting Husk):** When the Grounding Soul shifts into this L2 perspective, its original L1 surrogate is left behind in the spatial environment. It does not instantly dissolve. Instead, it becomes an unattended holon "coasting" on its remaining attention span. From the new L2 Realist viewport, the observer perceives their own unattended L1 surrogate exactly as they perceive all other active occupants—as a living node that will eventually fall asleep when its own homeostatic boredom threshold is reached.
 
 ---
 

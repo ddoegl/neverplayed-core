@@ -288,6 +288,51 @@ async function main() {
 
     console.log("✅ Coupled Homeostasis & Attention Resonance verified.");
 
+    // -------------------------------------------------------------
+    // Test Case 5: Scale-Free L2 Inhabitation, Unattended Holon, and Somatic Realm Shutdown
+    // -------------------------------------------------------------
+    console.log("🧪 Test 5: Verifying L2 Inhabitation, Coasting Holon, and Somatic Realm Shutdown...");
+
+    // 1. Setup active realm
+    session.activeRealmId = "org.neverplayed.realm.core";
+
+    // 2. Login L1 occupant ('rob')
+    session.login("rob", "org.neverplayed.realm.core");
+    const spatialRob = session.scopedUsers["org.neverplayed.realm.core"]["rob"];
+    assertExists(spatialRob, "rob should be logged in spatial core");
+    assertEquals(spatialRob.loggedIn, true);
+
+    // 3. Shift Active Being Focus to L2 Being (realm:org.neverplayed.realm.core)
+    session.setBeingFocus("realm:org.neverplayed.realm.core");
+    assertEquals(session.activeBeingId, "realm:org.neverplayed.realm.core", "activeBeingId should be shifted to L2 Being");
+
+    // 4. Verify Unattended Holon (Coasting Husk): L1 Rob remains loggedIn
+    assertEquals(spatialRob.loggedIn, true, "Unattended L1 occupant ('rob') should remain active inside spatial stack");
+
+    // 5. Make rob stale and run homeostasis
+    spatialRob.lastActiveTime = Date.now() - 31000;
+    
+    console.log("⚡ Dispatching SESSION_CHANGED event to trigger unattended holon decay...");
+    const homeostasisEvent = eventFactory.build("org/neverplayed/session/CHANGED", {});
+    eventAdmin.postEvent(homeostasisEvent);
+    await new Promise(r => setTimeout(r, 100));
+
+    // Verify rob has decayed and self-evicted (loggedIn = false)
+    assertEquals(spatialRob.loggedIn, false, "Unattended holon rob should decay and fall asleep");
+    
+    // Verify L2 Inhabitation focus is fully maintained (not fell back to platonic because L2 activeBeingId starts with realm:)
+    assertEquals(session.activeBeingId, "realm:org.neverplayed.realm.core", "L2 focus should be preserved after unattended L1 occupant decay");
+
+    // 6. Test Somatic Realm Shutdown
+    console.log("⚡ Triggering Somatic Shutdown for org.neverplayed.realm.core...");
+    await realmManager.shutdownRealm("org.neverplayed.realm.core");
+
+    // Verify eject back to Platonic Lobby
+    assertEquals(session.activeRealmId, "platonic", "activeRealmId should revert to 'platonic'");
+    assertEquals(session.activeBeingId, "annie", "activeBeingId should revert to Grounding Soul");
+    
+    console.log("✅ L2 Inhabitation, Coasting Holon, and Somatic Realm Shutdown verified.");
+
     console.log("\n✨ ALL REALM AS A BEING INTEGRATION TESTS PASSED! ✨");
     
     // Restore fetch

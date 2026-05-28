@@ -309,6 +309,7 @@ export default class Activator extends BaseActivator {
                 const targetId = isNaN(id) ? id : this._orderedRealmIds[parseInt(id) - 1];
                 return this._switchRealm(this.context, targetId, interactive);
             },
+            shutdownRealm: (realmId) => this.shutdownRealm(realmId),
             coordinateTransition: (proposed) => this._coordinateTransition(proposed),
             nextStep: () => this._nextStep(),
             abort: () => { this._pendingTransition = null; },
@@ -337,7 +338,9 @@ export default class Activator extends BaseActivator {
             },
             installManualBundle: (url) => this._installManualBundle(url),
             uninstallManualBundle: (target) => this._uninstallManualBundle(target),
-            getHierarchy: (id) => this._resolveHierarchy(id || this._activeRealmId)
+            getHierarchy: (id) => this._resolveHierarchy(id || this._activeRealmId),
+            getPrimordialBSNs: () => this._primordialBSNs,
+            getManualBSNs: () => this._manualBSNs
         });
 
         // 1.11 Register EventHandler for homeostasis (TAME Engine)
@@ -579,6 +582,18 @@ export default class Activator extends BaseActivator {
                         }
                     } catch (e) {
                         log({ text: `Step Failed: ${e.message}`, color: "red" });
+                    }
+                } else if (sub === 'shutdown') {
+                    const realmId = activeId;
+                    if (!realmId || realmId === 'platonic') {
+                        return log("No active spatial realm to shut down.", 'error');
+                    }
+                    try {
+                        log({ text: `Shutting down and de-reifying realm '${realmId}'...`, color: 'orange' });
+                        await this.shutdownRealm(realmId);
+                        log({ text: `Realm '${realmId}' has cleanly collapsed into somatic sleep. Returning to Platonic Lobby.`, color: 'green', bold: true });
+                    } catch (e) {
+                        log({ text: `Shutdown Failed: ${e.message}`, color: 'red' });
                     }
                 } else if (sub === 'abort') {
                     if (!this._pendingTransition) return log("No pending transition to abort.");
@@ -1055,6 +1070,11 @@ export default class Activator extends BaseActivator {
             if (this._beingService) {
                 this._beingService.clear();
             }
+            if (this._persistence) {
+                Promise.resolve(this._persistence.store(REALM_STORAGE_PID, 'platonic')).catch(err => {
+                    this.logger?.warn(`Failed to persist platonic realm: ${err.message}`);
+                });
+            }
             if (this._eventAdmin && this._eventFactory) {
                 const event = this._eventFactory.build(REALM_CHANGED_TOPIC, {
                     "realm.id": 'platonic',
@@ -1087,6 +1107,87 @@ export default class Activator extends BaseActivator {
                 throw err;
             }
         });
+    }
+
+    async shutdownRealm(realmId) {
+        this.logger?.info(`[RealmManager] Somatic Shutdown: De-reifying realm '${realmId}'...`);
+        
+        // 1. Resolve Dynamic Bundles to Uninstall
+        const hierarchy = await this._resolveHierarchy(realmId);
+        const toUninstall = [];
+        const activeBundles = this.context.getBundles();
+        
+        for (const layer of hierarchy) {
+            if (!layer.bundles) continue;
+            for (const bundleUrl of layer.bundles) {
+                const bsn = await this._getBsn(bundleUrl);
+                const normalized = BaseActivator.normalizeBSN(bsn);
+                
+                // Protected: strictly exclude primordial and manual/inhabitant layer bundles
+                if (this._primordialBSNs?.has(normalized)) continue;
+                if (this._manualBSNs?.has(normalized)) continue;
+                
+                const bundle = activeBundles.find(b => {
+                    const obsn = b.getSymbolicName();
+                    return BaseActivator.normalizeBSN(obsn) === normalized || b.getLocation().includes(bsn);
+                });
+                if (bundle && !toUninstall.some(b => b.id === bundle.id)) {
+                    toUninstall.push(bundle);
+                }
+            }
+        }
+        
+        // 2. Uninstall Dynamic Bundles
+        if (toUninstall.length > 0) {
+            this.logger?.info(`[RealmManager] Shutting down: Uninstalling ${toUninstall.length} dynamic bundles...`);
+            for (const bundle of toUninstall) {
+                try {
+                    this.logger?.debug(`[RealmManager] Stopping & Uninstalling bundle: ${bundle.getSymbolicName()}`);
+                    const state = bundle.getState();
+                    if (state > 1) { // Not UNINSTALLED
+                        if (state > 2) { // Installed, Resolved, or Active
+                            try { await bundle.stop(); } catch (_e) {}
+                        }
+                        await bundle.uninstall();
+                    }
+                } catch (err) {
+                    this.logger?.error(`[RealmManager] Failed to uninstall bundle '${bundle.getSymbolicName()}':`, err.message);
+                }
+            }
+        }
+        
+        // 3. Eject to Platonic Lobby
+        this._activeRealmId = 'platonic';
+        if (this.session) {
+            this.session.activeRealmId = 'platonic';
+            
+            // Revert activeBeingId to the Grounding Soul ID (tenant in the Platonic stack)
+            const globalStack = this.session.scopedUsers?.["platonic"] || {};
+            const activeId = globalStack.__activeId__ || 'guest';
+            this.session.activeBeingId = activeId;
+            
+            // Clean up the spatial stack via logout
+            this.session.logout(realmId);
+            this.session._pendingLobbyFallback = null;
+        }
+        
+        if (this._beingService) {
+            this._beingService.clear();
+        }
+        
+        if (this._persistence) {
+            await this._persistence.store(REALM_STORAGE_PID, 'platonic');
+        }
+        
+        // Broadcast Realm Change
+        if (this._eventAdmin && this._eventFactory) {
+            const event = this._eventFactory.build(REALM_CHANGED_TOPIC, {
+                "realm.id": 'platonic',
+                "realm.title": 'Platonic Lobby',
+                "realm.icon": 'fas fa-door-open'
+            });
+            this._eventAdmin.postEvent(event);
+        }
     }
 
     async _prepareSurgePlan(context, hierarchy) {

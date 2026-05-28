@@ -299,7 +299,7 @@ export default class Activator {
                 // Rule 1: Lock Grounding Soul
                 if (this.activeBeingId && this.activeBeingId !== 'guest' && this.activeBeingId !== beingId) {
                     const currentPlatonicUser = this.scopedUsers['platonic']?.[this.activeBeingId];
-                    if (currentPlatonicUser && currentPlatonicUser.isTenant) {
+                    if (currentPlatonicUser && currentPlatonicUser.isTenant && !beingId.startsWith('realm:')) {
                         logger?.warn(`Session: Being focus is locked to Grounding Soul '${this.activeBeingId}' and cannot be shifted to '${beingId}'.`);
                         return;
                     } else {
