@@ -29,6 +29,159 @@ import {
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import { BaseActivator } from "osgi-base";
 
+class VirtualRealmsMap extends Map {
+    _manager = null;
+    constructor(manager) {
+        super();
+        this._manager = manager;
+    }
+    
+    has(key) {
+        if (super.has(key)) return true;
+        if (typeof key === 'string' && (key.startsWith('being:') || key.startsWith('tenant:'))) {
+            return this._isValidVirtualRealm(key);
+        }
+        return false;
+    }
+    
+    get(key) {
+        if (super.has(key)) return super.get(key);
+        if (typeof key === 'string' && (key.startsWith('being:') || key.startsWith('tenant:'))) {
+            if (this._isValidVirtualRealm(key)) {
+                return this._synthesizeVirtualRealm(key);
+            }
+        }
+        return undefined;
+    }
+    
+    get size() {
+        return Array.from(this.values()).length;
+    }
+
+    values() {
+        const list = Array.from(super.values());
+        const virtuals = this._getVirtualRealms();
+        return [...list, ...virtuals].values();
+    }
+    
+    entries() {
+        const list = Array.from(super.entries());
+        const virtuals = this._getVirtualRealms().map(vr => [vr.id, vr]);
+        return [...list, ...virtuals].values();
+    }
+
+    [Symbol.iterator]() {
+        return this.entries();
+    }
+
+    _isValidVirtualRealm(key) {
+        if (key === 'tenant:global') return true;
+        
+        let beingId = '';
+        if (key.startsWith('being:')) {
+            beingId = key.substring(6);
+        } else if (key.startsWith('tenant:')) {
+            beingId = key.substring(7);
+        }
+        
+        if (beingId === 'guest' || !beingId) return false;
+        
+        // 1. Check Session platonic stack (robust user presence check)
+        const session = this._manager.session;
+        if (session?.scopedUsers?.["platonic"]?.[beingId]) {
+            return true;
+        }
+        
+        // 2. Check Being Service
+        const beingSvc = this._manager._beingService;
+        if (beingSvc) {
+            const being = beingSvc.getBeing(beingId);
+            return !!being;
+        }
+        return false;
+    }
+
+    _synthesizeVirtualRealm(key) {
+        if (key === 'tenant:global') {
+            return {
+                id: 'tenant:global',
+                title: 'Tenant Cosmic Envelope',
+                recognizedSurrogates: ["observer", "sovereign-guard", "system-collector"],
+                bundles: []
+            };
+        }
+        if (key.startsWith('being:')) {
+            const beingId = key.substring(6);
+            return {
+                id: key,
+                title: `Being Mind (${beingId})`,
+                recognizedSurrogates: ["observer", "sovereign-guard", "system-collector"],
+                bundles: []
+            };
+        }
+        if (key.startsWith('tenant:')) {
+            const tenantId = key.substring(7);
+            return {
+                id: key,
+                title: `Tenant Cosmic Envelope (${tenantId})`,
+                recognizedSurrogates: ["observer", "sovereign-guard", "system-collector"],
+                bundles: []
+            };
+        }
+        return undefined;
+    }
+
+    _getVirtualRealms() {
+        const virtuals = [];
+        virtuals.push({
+            id: 'tenant:global',
+            title: 'Tenant Cosmic Envelope',
+            recognizedSurrogates: ["observer", "sovereign-guard", "system-collector"],
+            bundles: []
+        });
+        
+        const knownBeings = new Map();
+        
+        // 1. Collect from Being Service
+        const beingSvc = this._manager._beingService;
+        if (beingSvc) {
+            const known = beingSvc.getKnownBeings() || [];
+            known.forEach(b => {
+                if (b.id) knownBeings.set(b.id, b);
+            });
+        }
+        
+        // 2. Collect from session platonic stack
+        const session = this._manager.session;
+        if (session?.scopedUsers?.["platonic"]) {
+            for (const [userId, user] of Object.entries(session.scopedUsers["platonic"])) {
+                if (userId && userId !== '__activeId__' && userId !== 'guest' && user) {
+                    knownBeings.set(userId, user);
+                }
+            }
+        }
+
+        knownBeings.forEach((b, id) => {
+            if (id && id !== 'guest' && !id.includes(':')) {
+                virtuals.push({
+                    id: `being:${id}`,
+                    title: `Being Mind (${id})`,
+                    recognizedSurrogates: ["observer", "sovereign-guard", "system-collector"],
+                    bundles: []
+                });
+                virtuals.push({
+                    id: `tenant:${id}`,
+                    title: `Tenant Cosmic Envelope (${id})`,
+                    recognizedSurrogates: ["observer", "sovereign-guard", "system-collector"],
+                    bundles: []
+                });
+            }
+        });
+        
+        return virtuals;
+    }
+}
+
 export default class Activator extends BaseActivator {
     _realms = new Map();
     _activeRealmId = null;
@@ -71,6 +224,7 @@ export default class Activator extends BaseActivator {
     _homeostasisHandlerReg = null;
 
     onStart(context) {
+        this._realms = new VirtualRealmsMap(this);
         // 1. Initialize Logger
         this._logTracker = context.trackService(`(objectClass=${LOG_SERVICE})`, {
             addingService: (ref) => {
@@ -895,8 +1049,10 @@ export default class Activator extends BaseActivator {
         
         // 1. Resolve Hierarchy and Manifest early
         const hierarchy = await this._resolveHierarchy(realmId);
-        if (hierarchy.length === 0) throw new Error(`Realm '${realmId}' not found.`);
         const manifest = this._realms.get(realmId);
+        if (hierarchy.length === 0 && !manifest) {
+            throw new Error(`Realm '${realmId}' not found.`);
+        }
 
         // 2. Resolve Active Surrogate (Sensing / Fallback Rules)
         let activeSurrogate = null;
@@ -979,6 +1135,9 @@ export default class Activator extends BaseActivator {
         this.logger?.info(`Realm Manager: Starting Phase 2 (Atomic Commit) for '${realmId}'...`);
         if (this.session) {
             const previousRealmId = this.session.activeRealmId;
+            if (previousRealmId && previousRealmId !== realmId) {
+                this._cleanupVirtualRealmServices(previousRealmId);
+            }
             if (previousRealmId && previousRealmId !== realmId && previousRealmId !== 'platonic') {
                 this.logger?.info(`Realm Manager: Pruning residency stack for previous realm '${previousRealmId}' via logout.`);
                 this.session.logout(previousRealmId);
@@ -1063,6 +1222,10 @@ export default class Activator extends BaseActivator {
 
     _switchRealm(context, id, interactive = false) {
         if (id === 'platonic') {
+            const previousRealmId = this._activeRealmId;
+            if (previousRealmId && previousRealmId !== 'platonic') {
+                this._cleanupVirtualRealmServices(previousRealmId);
+            }
             this._activeRealmId = 'platonic';
             if (this.session) {
                 this.session.activeRealmId = 'platonic';
@@ -1109,8 +1272,25 @@ export default class Activator extends BaseActivator {
         });
     }
 
+    _cleanupVirtualRealmServices(realmId) {
+        if (realmId && (realmId.startsWith('being:') || realmId.startsWith('tenant:'))) {
+            const reg = this._realmRegs.get(realmId);
+            if (reg) {
+                try { reg.unregister(); } catch (_e) {}
+                this._realmRegs.delete(realmId);
+            }
+            const cognitionReg = this._cognitionRegs.get(realmId);
+            if (cognitionReg) {
+                try { cognitionReg.unregister(); } catch (_e) {}
+                this._cognitionRegs.delete(realmId);
+            }
+            this._cognitions.delete(realmId);
+        }
+    }
+
     async shutdownRealm(realmId) {
         this.logger?.info(`[RealmManager] Somatic Shutdown: De-reifying realm '${realmId}'...`);
+        this._cleanupVirtualRealmServices(realmId);
         
         // 1. Resolve Dynamic Bundles to Uninstall
         const hierarchy = await this._resolveHierarchy(realmId);
@@ -1440,6 +1620,105 @@ export default class Activator extends BaseActivator {
                 this.session.activeRealmId = pt.id;
             }
 
+            // Dynamically register Realm service for virtual realms if not already registered
+            const REALM_SERVICE_NAME = "org.neverplayed.realm.Realm";
+            if (pt.id && (pt.id.startsWith('being:') || pt.id.startsWith('tenant:'))) {
+                if (!this._realmRegs.has(pt.id)) {
+                    const reg = this.context.registerService(REALM_SERVICE_NAME, {
+                        getId: () => pt.id,
+                        getManifest: () => ({ ...pt.manifest }),
+                        switch: (interactive = false) => this._switchRealm(this.context, pt.id, interactive)
+                    }, {
+                        "realm.id": pt.id,
+                        "realm.title": pt.manifest?.title || pt.id,
+                        "realm.icon": pt.id.startsWith('being:') ? "fas fa-brain" : "fas fa-globe",
+                        "realm.active": true
+                    });
+                    this._realmRegs.set(pt.id, reg);
+                }
+            }
+
+            // Dynamically provision and register BeingCognitionService / TenantCognitionService
+            if (pt.id && pt.id.startsWith('being:')) {
+                const beingId = pt.id.substring(6);
+                const identity = this.session?.getResolvedIdentity(beingId) || {};
+                
+                const beingCognition = {
+                    predictionError: 0.0,
+                    getPredictionError: () => 0.0,
+                    getReifiedPids: () => [
+                        `being.${beingId}.surrogates`,
+                        `being.${beingId}.attributes`,
+                        `being.${beingId}.grounding`
+                    ],
+                    getSurrogates: () => identity.surrogates || {},
+                    getAttributes: () => identity.attributes || {},
+                    getGrounding: () => identity.grounding || 'idealist'
+                };
+                
+                this._cognitions.set(pt.id, beingCognition);
+                
+                // Clean up previous registration for this ID
+                const oldReg = this._cognitionRegs.get(pt.id);
+                if (oldReg) {
+                    try { oldReg.unregister(); } catch (_e) {}
+                }
+                
+                const cognitionReg = this.context.registerService("org.neverplayed.realm.BeingCognitionService", beingCognition, {
+                    "realm.id": pt.id
+                });
+                this._cognitionRegs.set(pt.id, cognitionReg);
+                this._scheduleHomeostasis();
+            } else if (pt.id && pt.id.startsWith('tenant:')) {
+                const tenantId = pt.id.substring(7);
+                const self = this;
+                
+                const tenantCognition = {
+                    predictionError: 0.0,
+                    getPredictionError: () => 0.0,
+                    getReifiedPids: () => [
+                        `tenant.${tenantId}.realms`,
+                        `tenant.${tenantId}.telemetry`
+                    ],
+                    getRegisteredRealms: () => self.getRealms(),
+                    getGlobalTelemetry: () => {
+                        const activeBundles = self.context.getBundles().filter(b => b.getState() === 32 || b.getState() === 'ACTIVE').length;
+                        const realmsCount = self._realms.size;
+                        let usersCount = 0;
+                        if (self.session?.scopedUsers) {
+                            for (const scope of Object.keys(self.session.scopedUsers)) {
+                                if (scope === 'global') continue;
+                                const stack = self.session.scopedUsers[scope];
+                                for (const [userId, user] of Object.entries(stack)) {
+                                    if (userId !== '__activeId__' && userId !== 'guest' && user && user.loggedIn) {
+                                        usersCount++;
+                                    }
+                                }
+                            }
+                        }
+                        return {
+                            activeBundles,
+                            registeredRealms: realmsCount,
+                            activeUsers: usersCount
+                        };
+                    }
+                };
+                
+                this._cognitions.set(pt.id, tenantCognition);
+                
+                // Clean up previous registration
+                const oldReg = this._cognitionRegs.get(pt.id);
+                if (oldReg) {
+                    try { oldReg.unregister(); } catch (_e) {}
+                }
+                
+                const cognitionReg = this.context.registerService("org.neverplayed.realm.TenantCognitionService", tenantCognition, {
+                    "realm.id": pt.id
+                });
+                this._cognitionRegs.set(pt.id, cognitionReg);
+                this._scheduleHomeostasis();
+            }
+
             // Dynamic Seeding & Purging (OSGi dynamic fragment seeding)
             if (this._beingService) {
                 this._beingService.clear();
@@ -1492,12 +1771,14 @@ export default class Activator extends BaseActivator {
             // Update Service Properties for all Realms
             for (const [id, reg] of this._realmRegs.entries()) {
                 const manifest = this._realms.get(id);
-                reg.setProperties({ 
-                    "realm.id": id,
-                    "realm.title": manifest.title,
-                    "realm.icon": manifest.icon || "fas fa-universe",
-                    "realm.active": id === pt.id 
-                });
+                if (manifest) {
+                    reg.setProperties({ 
+                        "realm.id": id,
+                        "realm.title": manifest.title,
+                        "realm.icon": manifest.icon || "fas fa-universe",
+                        "realm.active": id === pt.id 
+                    });
+                }
             }
 
             // OSGi EventAdmin Broadcast
@@ -1505,8 +1786,8 @@ export default class Activator extends BaseActivator {
                 this.logger?.info(`[RealmManager] Broadcasting Universe Change: ${pt.id} on topic ${REALM_CHANGED_TOPIC}`);
                 const event = this._eventFactory.build(REALM_CHANGED_TOPIC, {
                     "realm.id": pt.id,
-                    "realm.title": pt.manifest.title,
-                    "realm.icon": pt.manifest.icon || "fas fa-universe"
+                    "realm.title": pt.manifest?.title || pt.id,
+                    "realm.icon": pt.manifest?.icon || "fas fa-universe"
                 });
                 this._eventAdmin.postEvent(event);
             } else {
@@ -1536,6 +1817,9 @@ export default class Activator extends BaseActivator {
     }
 
     async _resolveHierarchy(id, visited = new Set()) {
+        if (id && (id.startsWith('being:') || id.startsWith('tenant:'))) {
+            return [];
+        }
         const manifest = this._realms.get(id);
         if (!manifest) return [];
         if (visited.has(id)) throw new Error(`Circular dependency detected in realm inheritance: ${id}`);

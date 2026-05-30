@@ -17,6 +17,7 @@ const tests = [
   "perceiver-carryover-sync.test.ts",
   "ontology-harmony.test.ts",
   "realm-as-being.test.ts",
+  "being-realms.test.ts",
   "primordial-bootstrapping.test.ts",
   "platonic-lobby.test.ts",
   "grounding-soul.test.ts"

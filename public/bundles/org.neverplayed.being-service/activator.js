@@ -193,7 +193,41 @@ export default class Activator extends BaseActivator {
                     isRealmBeing: true,
                     surrogates: ['system-collector', 'sovereign-guard']
                 }));
-                return [...this._beingsData, ...synthesizedRealms];
+                
+                // Synthesize virtual being and tenant minds for all loaded beings
+                const virtuals = [];
+                this._beingsData.forEach(b => {
+                    if (b.id && b.id !== 'guest' && !b.id.includes(':')) {
+                        virtuals.push({
+                            id: `being:${b.id}`,
+                            label: `Being Mind (${b.id})`,
+                            email: `${b.id}@neverplayed.being`,
+                            originRealmId: `being:${b.id}`,
+                            isBeingRealm: true,
+                            surrogates: ['observer', 'sovereign-guard', 'system-collector']
+                        });
+                        virtuals.push({
+                            id: `tenant:${b.id}`,
+                            label: `Tenant Cosmic Envelope (${b.id})`,
+                            email: `${b.id}@neverplayed.tenant`,
+                            originRealmId: `tenant:${b.id}`,
+                            isTenantRealm: true,
+                            surrogates: ['observer', 'sovereign-guard', 'system-collector']
+                        });
+                    }
+                });
+                
+                // Add global tenant
+                virtuals.push({
+                    id: "tenant:global",
+                    label: "Tenant Cosmic Envelope",
+                    email: "global@neverplayed.tenant",
+                    originRealmId: "tenant:global",
+                    isTenantRealm: true,
+                    surrogates: ['observer', 'sovereign-guard', 'system-collector']
+                });
+
+                return [...this._beingsData, ...synthesizedRealms, ...virtuals];
             },
 
             /**
@@ -209,6 +243,28 @@ export default class Activator extends BaseActivator {
                         originRealmId: realmId,
                         isRealmBeing: true,
                         surrogates: ['system-collector', 'sovereign-guard']
+                    };
+                }
+                if (id && id.startsWith('being:')) {
+                    const identityId = id.substring(6);
+                    return {
+                        id: id,
+                        label: `Being Mind (${identityId})`,
+                        email: `${identityId}@neverplayed.being`,
+                        originRealmId: `being:${identityId}`,
+                        isBeingRealm: true,
+                        surrogates: ['observer', 'sovereign-guard', 'system-collector']
+                    };
+                }
+                if (id && id.startsWith('tenant:')) {
+                    const tenantId = id.substring(7);
+                    return {
+                        id: id,
+                        label: `Tenant Cosmic Envelope (${tenantId})`,
+                        email: `${tenantId}@neverplayed.tenant`,
+                        originRealmId: `tenant:${tenantId}`,
+                        isTenantRealm: true,
+                        surrogates: ['observer', 'sovereign-guard', 'system-collector']
                     };
                 }
                 return this._beingsData.find(b => b.id === id);
