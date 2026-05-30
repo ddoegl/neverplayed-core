@@ -13,6 +13,9 @@
 - Validated Section 11: Scale-Free Homeostasis, Temporal Attention, Stigmergic Coupling, and the Primordial Sensation Floor.
 - Validated the additions of "Scale-Free Symmetry of Logout" and "Dreaming to be a Realm" (L2 Inhabitation).
 - Updated `.agents/rules/ontology-grounding.md` to formally encode these validated principles.
+- Validated the introduction of `ontological-investigation.md` as the phenomenological/hermeneutical counterpart to the structural ontology.
+- Validated Section 12 (Scale-Free Indra's Net): Formalizing Being-as-a-Realm and Tenant-as-a-Realm for dynamic virtual provisioning.
+- Validated the Triad of Presence, the 4 States of Consciousness Matrix, and the Principle of Singular Spatial Occupancy to resolve ontological bilocation.
 
 ## Pending Items
 - Await further instructions from the user for conceptual refinement, architectural validation, or ontological mapping within the defined Markov Blanket.

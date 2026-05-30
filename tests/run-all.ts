@@ -20,7 +20,8 @@ const tests = [
   "being-realms.test.ts",
   "primordial-bootstrapping.test.ts",
   "platonic-lobby.test.ts",
-  "grounding-soul.test.ts"
+  "grounding-soul.test.ts",
+  "singular-occupancy.test.ts"
 ];
 
 console.log("🏛️  Never Played: Strategic Regression Suite Starting...");

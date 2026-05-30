@@ -29,6 +29,7 @@ All architectural decisions must be mapped to the appropriate level of the hiera
 11. **Primordial Sensation Floor**: Naked Beings always retain a baseline `"Primordial"` sense, preventing absolute topological isolation and ensuring core platform organs remain visible.
 12. **Scale-Free Symmetry of Logout**: Logouts cascade hierarchically. L1 exit strips the surrogate; L2 shutdown dissolves the environment (ejecting occupants); L0 exit causes total universe reset.
 13. **L2 Inhabitation (Dreaming as a Realm)**: Diagnostic and admin tools must be conceptually mapped as the Grounding Soul shifting its cognitive focus to inhabit the L2 Realm Being directly, adopting its interoceptive somatic viewport (heaps, surges, configs).
+14. **Singular Spatial Occupancy (No Bilocation)**: A Being has exactly one native physical presence logged in a given spatial realm (the un-prefixed `<id>`). Coordinate modifiers (`being:` and `realm:`) function as perspectival shunts (viewports) that alter the cognitive lens without registering duplicate ghost occupants in the physical topology.
 
 ## 🚫 Anti-Patterns
 

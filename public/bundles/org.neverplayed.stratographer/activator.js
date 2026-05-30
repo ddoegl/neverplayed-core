@@ -227,7 +227,7 @@ export default class Activator {
                 const perceiver = self._perceiver?.getContext();
                 if (!stratum || !perceiver) return;
                 
-                const beingId = perceiver.being?.id || 'guest';
+                const beingId = stratum.identityId || 'guest';
                 const realmId = (typeof perceiver.realm === 'object' && perceiver.realm !== null) ? perceiver.realm.id : perceiver.realm;
                 
                 const occupants = stratum.occupants || stratum.residents || [];
@@ -240,7 +240,7 @@ export default class Activator {
                 
                 self._logger.debug(`Stratographer: Topology Shift (${perceiver.observerMode}) -> ${currentHash}`);
                 store._lastValueHash = currentHash;
-
+ 
                 if (perceiver.observerMode === 'realist') {
                     const hierarchy = await stratum.getHierarchy();
                     const knownBeings = self._beingService ? self._beingService.getKnownBeings() : [];
@@ -253,18 +253,18 @@ export default class Activator {
                         
                         const isOccupant = occupants.includes(being.id);
                         const isTraceMaker = traceMakers.includes(being.id);
-                        const isActiveObserver = being.id === beingId;
+                        const isActiveObserver = being.id === beingId || `being:${being.id}` === beingId || `realm:${being.id}` === beingId;
                         
                         if (isActiveObserver) {
                             const hasTraces = traceMakers.includes(being.id);
-                            beingsToRender.set(being.id, {
+                            beingsToRender.set(beingId, {
                                 state: 'observer',
-                                color: '#10b981',
-                                label: hasTraces ? 'Observer (with traces)' : 'Observer',
+                                color: beingId.startsWith('being:') ? '#a855f7' : (beingId.startsWith('realm:') ? '#f59e0b' : '#10b981'),
+                                label: beingId.startsWith('being:') ? 'Being' : (beingId.startsWith('realm:') ? 'Realm' : 'Primordial'),
                                 opacity: 1.0,
                                 strokeStyle: 'solid',
                                 borderType: hasTraces ? 'double-trace' : 'double',
-                                value: being.id
+                                value: beingId
                             });
                         } else if (isOccupant) {
                             if (isHome) {
@@ -357,21 +357,22 @@ export default class Activator {
 
                     // Active observer fallback
                     if (!beingsToRender.has(beingId) && beingId !== 'guest') {
-                        const hasTraces = traceMakers.includes(beingId);
+                        const baseId = beingId.startsWith('being:') || beingId.startsWith('realm:') ? beingId.substring(beingId.indexOf(':') + 1) : beingId;
+                        const hasTracesBase = traceMakers.includes(baseId) || traceMakers.includes(beingId);
                         beingsToRender.set(beingId, {
                             state: 'observer',
-                            color: '#10b981',
-                            label: hasTraces ? 'Observer (with traces)' : 'Observer',
+                            color: beingId.startsWith('being:') ? '#a855f7' : (beingId.startsWith('realm:') ? '#f59e0b' : '#10b981'),
+                            label: beingId.startsWith('being:') ? 'Being' : (beingId.startsWith('realm:') ? 'Realm' : 'Primordial'),
                             opacity: 1.0,
                             strokeStyle: 'solid',
-                            borderType: hasTraces ? 'double-trace' : 'double',
+                            borderType: hasTracesBase ? 'double-trace' : 'double',
                             value: beingId
                         });
                     }
-
+ 
                     const nodes = [];
                     const links = [];
-
+ 
                     nodes.push({ id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' });
                     let lastRealmNodeId = 'tenant';
                     let foundActiveRealm = false;
@@ -383,13 +384,13 @@ export default class Activator {
                          links.push({ source: lastRealmNodeId, target: nodeId });
                          lastRealmNodeId = nodeId;
                     });
-
+ 
                     if (!foundActiveRealm) {
                          const nodeId = `realm:${realmId}`;
                          nodes.push({ id: nodeId, label: 'Active Realm', value: realmId, type: 'WHERE', color: '#a855f7', realmId: realmId });
                          links.push({ source: lastRealmNodeId, target: nodeId });
                     }
-
+ 
                     const activeRealmNodeId = `realm:${realmId}`;
                     beingsToRender.forEach((props, identId) => {
                          const nodeId = `identity:${identId}`;
@@ -407,27 +408,28 @@ export default class Activator {
                          });
                          links.push({ source: activeRealmNodeId, target: nodeId });
                     });
-
+ 
                     nodes.push({ id: 'tier', label: 'Tier', value: stratum.tier, type: 'HOW', color: stratum.tier === 'cloud' ? '#f59e0b' : '#38bdf8' });
                     if (beingId && beingId !== 'guest' && beingsToRender.has(beingId)) {
                         links.push({ source: `identity:${beingId}`, target: 'tier' });
                     } else {
                         links.push({ source: activeRealmNodeId, target: 'tier' });
                     }
-
+ 
                     store.nodes = nodes;
                     store.links = links;
                 } else {
-                    const hasTraces = traceMakers.includes(beingId);
+                    const baseId = beingId.startsWith('being:') || beingId.startsWith('realm:') ? beingId.substring(beingId.indexOf(':') + 1) : beingId;
+                    const hasTraces = traceMakers.includes(baseId) || traceMakers.includes(beingId);
                     const strata = [
                         { id: 'tenant', label: 'Tenant', value: stratum.tenantId, type: 'WHO', color: '#2dd4bf' },
                         { id: 'realm', label: 'Realm', value: realmId, type: 'WHERE', color: '#a855f7', realmId: realmId },
                         { 
                             id: 'identity', 
-                            label: hasTraces ? 'Observer (with traces)' : 'Observer', 
+                            label: beingId.startsWith('being:') ? 'Being' : (beingId.startsWith('realm:') ? 'Realm' : 'Primordial'), 
                             value: beingId, 
                             type: 'WHO', 
-                            color: '#10b981', 
+                            color: beingId.startsWith('being:') ? '#a855f7' : (beingId.startsWith('realm:') ? '#f59e0b' : '#10b981'), 
                             identityId: beingId, 
                             ontologicalState: 'observer',
                             opacity: 1.0,
@@ -766,6 +768,19 @@ export default class Activator {
                     if (this._localJumpTarget !== undefined) {
                         return this._localJumpTarget;
                     }
+                    // Access reactive properties so Alpine tracks this getter reactively
+                    const stratStore = globalThis.Alpine?.store('stratum');
+                    if (stratStore) {
+                        const _p = stratStore.perspective;
+                        const _t = stratStore.tenantId;
+                        const _i = stratStore.identityId;
+                        const _r = stratStore.realmId;
+                        const _tr = stratStore.tier;
+                    }
+                    const explStore = globalThis.Alpine?.store('explorer');
+                    if (explStore) {
+                        const _g = explStore.grounding;
+                    }
                     return self._stratum?.toURI() || "";
                 },
                 set jumpTarget(val) {
@@ -852,6 +867,37 @@ export default class Activator {
                     const seconds = Math.max(0, Math.ceil((span - diff) / 1000));
                     const percent = Math.max(0, Math.min(100, Math.ceil(((span - diff) / span) * 100)));
                     return { seconds, percent };
+                },
+
+                get activeShunt() {
+                    const sess = globalThis.Alpine?.store('session');
+                    const activeBeing = sess?.activeBeingId || "";
+                    if (activeBeing.startsWith('being:')) return 'being';
+                    if (activeBeing.startsWith('realm:')) return 'realm';
+                    return 'baseline';
+                },
+
+                setShunt(type) {
+                    const sess = globalThis.Alpine?.store('session');
+                    if (!sess) return;
+                    const baseId = sess.currentUser?.id;
+                    if (!baseId || baseId === 'guest') return;
+                    const scope = sess.activeRealmId || 'platonic';
+                    
+                    if (type === 'baseline') {
+                        // Reset to naked physical presence via setBeingFocus
+                        sess.setBeingFocus(baseId);
+                        sess.login(baseId, scope);
+                    } else if (type === 'being') {
+                        sess.login(`being:${baseId}`, scope);
+                    } else if (type === 'realm') {
+                        sess.login(`realm:${baseId}`, scope);
+                    }
+                    
+                    // Trigger stratum update so URI and graph reflect the shunt
+                    if (self._stratum && typeof self._stratum.triggerUpdate === 'function') {
+                        self._stratum.triggerUpdate();
+                    }
                 },
 
                 async init() {

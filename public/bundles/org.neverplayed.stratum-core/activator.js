@@ -53,6 +53,10 @@ export class StratumServiceImpl {
     }
 
     get identityId() {
+        const activeBeingId = this._sourceSession?.activeBeingId;
+        if (activeBeingId && activeBeingId !== 'guest' && (activeBeingId.startsWith('being:') || activeBeingId.startsWith('realm:'))) {
+            return activeBeingId;
+        }
         const user = this._sourceSession?.currentUser;
         return (user && user.id !== 'guest') ? user.id : this.tenantId;
     }

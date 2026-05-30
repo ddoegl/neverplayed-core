@@ -240,24 +240,29 @@ export default class Activator {
                 let prefScope = preferredScope;
                 if (prefScope === 'global') prefScope = 'platonic';
                 
+                let lookupId = id;
+                if (id && (id.startsWith('being:') || id.startsWith('realm:'))) {
+                    lookupId = id.substring(id.indexOf(':') + 1);
+                }
+
                 // 1. Try preferred scope first (Inhabitation over Carry-over)
-                if (prefScope && this.scopedUsers[prefScope]?.[id]) {
-                    return { ...this.scopedUsers[prefScope][id], scope: prefScope };
+                if (prefScope && this.scopedUsers[prefScope]?.[lookupId]) {
+                    return { ...this.scopedUsers[prefScope][lookupId], scope: prefScope };
                 }
 
                 // 2. Try to find a Materialized version anywhere (Persona Carry-over)
                 for (const [scope, stack] of Object.entries(this.scopedUsers)) {
                     if (scope === 'global') continue;
-                    if (stack[id] && stack[id].activeSurrogateId && stack[id].email) {
-                        return { ...stack[id], scope };
+                    if (stack[lookupId] && stack[lookupId].activeSurrogateId && stack[lookupId].email) {
+                        return { ...stack[lookupId], scope };
                     }
                 }
 
                 // 3. Fallback to any other scope (e.g., Global/Platonic anchor)
                 for (const [scope, stack] of Object.entries(this.scopedUsers)) {
                     if (scope === 'global') continue;
-                    if (stack[id] && stack[id].email) {
-                        return { ...stack[id], scope };
+                    if (stack[lookupId] && stack[lookupId].email) {
+                        return { ...stack[lookupId], scope };
                     }
                 }
                 return null;
@@ -297,15 +302,22 @@ export default class Activator {
             setBeingFocus(beingId) {
                 this._cacheDirty = true;
                 // Rule 1: Lock Grounding Soul
-                if (this.activeBeingId && this.activeBeingId !== 'guest' && this.activeBeingId !== beingId) {
-                    const currentPlatonicUser = this.scopedUsers['platonic']?.[this.activeBeingId];
+                const baseBeingId = beingId && (beingId.startsWith('being:') || beingId.startsWith('realm:')) ? beingId.substring(beingId.indexOf(':') + 1) : beingId;
+                const baseActiveBeingId = this.activeBeingId && (this.activeBeingId.startsWith('being:') || this.activeBeingId.startsWith('realm:')) ? this.activeBeingId.substring(this.activeBeingId.indexOf(':') + 1) : this.activeBeingId;
+
+                let shouldBlock = false;
+                if (this.activeBeingId && this.activeBeingId !== 'guest' && baseActiveBeingId !== baseBeingId) {
+                    const currentPlatonicUser = this.scopedUsers['platonic']?.[baseActiveBeingId];
                     if (currentPlatonicUser && currentPlatonicUser.isTenant && !beingId.startsWith('realm:')) {
-                        logger?.warn(`Session: Being focus is locked to Grounding Soul '${this.activeBeingId}' and cannot be shifted to '${beingId}'.`);
-                        return;
-                    } else {
-                        logger?.info(`Session: Overriding non-tenant Grounding Soul '${this.activeBeingId}' with '${beingId}'.`);
+                        shouldBlock = true;
                     }
                 }
+
+                if (shouldBlock) {
+                    logger?.warn(`Session: Being focus is locked to Grounding Soul '${this.activeBeingId}' and cannot be shifted to '${beingId}'.`);
+                    return;
+                }
+
                 this.activeBeingId = beingId;
                 logger?.info(`Session: Being focus shifted to '${beingId}'. All realms will now inhabit this identity by default.`);
             },
@@ -314,21 +326,33 @@ export default class Activator {
                 this._cacheDirty = true;
                 let targetScope = scope || this.activeFlowId || this.activeRealmId || 'platonic';
                 if (targetScope === 'global') targetScope = 'platonic';
+
+                const originalIdentityId = (typeof user === "string") ? user : (user.uid || user.id);
+                let resolvedIdentityId = originalIdentityId;
+                let isShunt = false;
+
+                if (targetScope !== 'platonic' && (originalIdentityId.startsWith('being:') || originalIdentityId.startsWith('realm:'))) {
+                    isShunt = true;
+                    resolvedIdentityId = originalIdentityId.substring(originalIdentityId.indexOf(':') + 1);
+                }
+
                 let identity;
                 if (typeof user === "string") {
-                    // Inheritance Lookup: resolve full profile from existing scopes
+                    // Inheritance Lookup: resolve full profile from existing scopes using resolvedIdentityId
                     let existing = null;
                     for (const stack of Object.values(this.scopedUsers || {})) {
-                        if (stack[user] && stack[user].email) {
-                            existing = stack[user];
+                        if (stack[resolvedIdentityId] && stack[resolvedIdentityId].email) {
+                            existing = stack[resolvedIdentityId];
                             break;
                         }
                     }
-                    identity = existing ? { ...existing } : { id: user, email: `${user}@cli.local` };
+                    identity = existing ? { ...existing } : { id: resolvedIdentityId, email: `${resolvedIdentityId}@cli.local` };
                 } else {
-                    identity = user;
+                    identity = { ...user, id: resolvedIdentityId };
                 }
                 const identityId = identity.uid || identity.id;
+                this._isShunt = isShunt;
+                this._originalIdentityId = originalIdentityId;
 
                 // Rule 2 (Primordial Exclusivity):
                 if (targetScope === 'platonic' && identityId !== 'guest') {
@@ -442,6 +466,12 @@ export default class Activator {
                         };
                         existing.activeSurrogateId = 'observer';
                         logger?.info(`Session: Auto-provisioned observer surrogate in platonic lobby for '${identityId}'.`);
+                    }
+                }
+
+                if (targetScope !== 'platonic' && identityId !== 'guest') {
+                    if (this._isShunt) {
+                        this.setBeingFocus(this._originalIdentityId);
                     }
                 }
 
@@ -568,12 +598,11 @@ export default class Activator {
                     return;
                 }
 
-                // 1. Update root grounding in target scope & platonic anchor
-                if (this.scopedUsers[targetScope]?.[user.id]) {
-                    this.scopedUsers[targetScope][user.id].grounding = targetGrounding;
-                }
-                if (this.scopedUsers['platonic']?.[user.id]) {
-                    this.scopedUsers['platonic'][user.id].grounding = targetGrounding;
+                // 1. Update root grounding globally in all scopes for this user
+                for (const sc of Object.keys(this.scopedUsers)) {
+                    if (this.scopedUsers[sc]?.[user.id]) {
+                        this.scopedUsers[sc][user.id].grounding = targetGrounding;
+                    }
                 }
 
                 // 2. Fetch current surrogate ID to decide how to login.
