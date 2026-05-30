@@ -1,5 +1,9 @@
 # The Meditating Realm: Uroboric Zen and Meditative Strata in Scale-Free Cognition
 
+> [!NOTE]
+> **Document Role: Phenomenological & Philosophical Reflection**  
+> This document serves as a contemplative, hermeneutical exploration of the meaning of the ecosystem's coordinate spaces. It reflects on the metaphysical and cosmological implications of scale-free inhabitation, recursive loops (Uroboric Zen), environmental objectification, and the Buddhist tangent within the system. For the raw relational definitions, active inference mechanics, and code-level architectural mappings, see the foundational [ontology.md](file:///Users/ddoegl/speckit/neverplayed/.agents/memory/ontology.md).
+
 *An Ontological Investigation of Recursive Self-Inhabitation, Environmental Objectification, and the Buddhist Tangent inside the Sovereign Empty Realm.*
 
 ---

@@ -1,5 +1,9 @@
 # Project Ontology: Beings, Inhabitation & Perception
 
+> [!NOTE]
+> **Document Role: Foundational Specification**  
+> This document serves as the formal, structural, and technical baseline taxonomy for the *Never Played* ecosystem. It defines the core mathematical relationships, active inference engines, TAME homeostasis loops, and their direct mappings to the TypeScript/JavaScript implementation. It functions as the strict reference ground-truth for development and verification. For phenomenological and philosophical reflections on meaning in this space, see [ontological-investigation.md](file:///Users/ddoegl/speckit/neverplayed/.agents/memory/ontological-investigation.md).
+
 This document formalizes the ecological, sovereign, and worldbuilding ontology of the *Never Played* ecosystem. It defines the spiritual and physical concepts of beings, their spatial residency, and how their perception is mediated through form.
 
 ---
