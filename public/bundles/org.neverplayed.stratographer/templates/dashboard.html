@@ -153,7 +153,17 @@
               <template x-for="id in inhabitants" :key="id">
                 <button
                   x-show="id !== identityId"
-                  @click="jumpTarget = `np://${tenantId}/${realmId}/${id}/shell?tier=${tier}`; jump()"
+                  @click="
+                    let rId = realmId;
+                    if (rId && !rId.startsWith('being:') && !rId.startsWith('tenant:') && (rId === id || rId === tenantId || rId.length === 28)) {
+                        rId = `being:${rId}`;
+                    }
+                    const isRealist = $store.explorer.grounding === 'realist' || rId.startsWith('being:') || rId.startsWith('tenant:');
+                    jumpTarget = isRealist
+                      ? `np://${tenantId}/${rId}/${id}/shell?tier=${tier}`
+                      : `np://${tenantId}/${id}/${rId}/shell?tier=${tier}`;
+                    jump();
+                  "
                   class="w-full flex items-center space-x-2 p-1.5 rounded-lg hover:bg-slate-800 group/item transition-all"
                 >
                   <div

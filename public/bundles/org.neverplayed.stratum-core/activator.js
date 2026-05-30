@@ -165,7 +165,7 @@ export class StratumServiceImpl {
         const segments = url.pathname.split('/').filter(s => s);
         const tier = url.searchParams.get("tier");
         let identity, realm, perspective;
-        if (segments[0]?.startsWith(`${NEVERPLAYED_PREFIX}realm`)) {
+        if (segments[0]?.startsWith(`${NEVERPLAYED_PREFIX}realm`) || segments[0]?.startsWith('being:') || segments[0]?.startsWith('tenant:')) {
             realm = segments[0];
             identity = segments[1];
             perspective = 'realist';

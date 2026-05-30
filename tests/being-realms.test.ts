@@ -196,6 +196,35 @@ async function main() {
 
     console.log("✅ Context exit and dynamic service cleanup verified.");
 
+    // -------------------------------------------------------------
+    // Test Case 6: Perspectival Symmetry URI Parsing & Jump Coordinates
+    // -------------------------------------------------------------
+    console.log("🧪 Test 6: Verifying Perspectival Symmetry URI parsing & jump coordinates...");
+
+    await harness.installBundles([
+        "bundles/org.neverplayed.stratum-core/manifest.json"
+    ]);
+
+    // Wait for services to settle
+    await new Promise<void>(r => setTimeout(r, 200));
+
+    const stratum: any = await harness.getService("org.neverplayed.stratum.StratumService");
+    assertExists(stratum, "Stratum service should be available");
+
+    // Test parser for being: prefix (realist)
+    const resultBeing = await stratum.jump("np://daniel/being:daniel/rob/shell?tier=local");
+    assertEquals(resultBeing.perspective, "realist");
+    assertEquals(resultBeing.realm, "being:daniel");
+    assertEquals(resultBeing.identity, "rob");
+
+    // Test parser for tenant: prefix (realist)
+    const resultTenant = await stratum.jump("np://daniel/tenant:daniel/rob/shell?tier=local");
+    assertEquals(resultTenant.perspective, "realist");
+    assertEquals(resultTenant.realm, "tenant:daniel");
+    assertEquals(resultTenant.identity, "rob");
+
+    console.log("✅ Parser perspectival symmetry verified.");
+
     console.log("\n✨ ALL BEING & TENANT REALM INTEGRATION TESTS PASSED! ✨");
     
     // Restore fetch
