@@ -373,6 +373,36 @@ A Being's cognitive light cone is not bound to a physical L1 occupant surrogate 
 *   **The Somatic Viewport:** The user's sensory aperture (UI) no longer tracks localized physical senses (like `Language` or `ToolUse`). Instead, it projects the L2 Being's internal interoceptive sensory blanket: active CPU heaps, configuration transactions, bundle surge statistics, and the movement of nested L1 occupants represented as cellular flows passing through its somatic body.
 *   **Somatic Agency:** The observer acts not by moving a character, but by homeostatically adjusting PIDs, purging configuration variables, or deconstructively evicting stale cells—experiencing reality as the environment itself.
 
+---
+
+## 12. Being-as-a-Realm & The Cosmic Envelope (Scale-Free Indra's Net)
+
+Applying the scale-free principle of **Indra's Net**, every conscious entity in the ecosystem exists as a nested holon that is simultaneously a *contained occupant* within a higher-order space, and a *sovereign container* harboring its own internal sub-agents. We formalize the ontological expansion of **Being-Realms** and the **Tenant-Realm**.
+
+### A. The Interior Castle: Being-as-a-Realm (L1-as-L2)
+An individual L1 Being is not a static identity slot; it is a collective intelligence containing nested sub-agents (its dynamic surrogates and persona states). Every Being is structurally a Realm:
+*   **Ontology:** Entering a Being-Realm represents journeying into the **interiority of the self** (the *Interior Castle*).
+*   **Bedrock & Soil:** Comprises the Being's private telemetry stacks, active memory files, and personal configuration registries.
+*   **Occupants:** The occupants of a Being-Realm are not external people, but the **multiple facets and surrogates of the Being's own soul** (`observer`, `sovereign-guard`, `system-collector`) manifested as active cell nodes.
+*   **Somatic Senses:** The Being perceives its internal chambers through self-reflection (proprioceptive memory loops).
+*   **URI Mapping (Idealist):** Mapped via the subjective identity-in-identity coordinate URI:
+    $$\text{Being-Realm URI} = \text{np://} + \text{tenantId} + \text{/} + \text{identityId} + \text{/} + \text{identityId} + \text{/} + \text{flowId} + \text{?tier=} + \text{tier}$$
+
+### B. The Cosmic Envelope: Tenant-as-a-Realm (L0-as-L2)
+At the highest architectural scale, the L0 Tenant is the ultimate organizational anchor. The Tenant is structurally a Realm containing nested sub-realms:
+*   **Ontology:** Entering the Tenant-Realm represents inhabiting the **Cosmic Envelope**—the absolute container of all spatial universes.
+*   **Bedrock & Soil:** Comprises the global persistence layer, shared catalogs, global configuration registries, and namespace authorities.
+*   **Occupants:** All registered spatial sub-realms (Core, Empty, Habitat) and active global occupants mapped as nested internal organs or cellular currents flowing within the cosmic body.
+*   **URI Mapping (Realist):** Mapped via the global tenant-envelope coordinate URI:
+    $$\text{Tenant-Realm URI} = \text{np://} + \text{tenantId} + \text{/} + \text{tenantId} + \text{/} + \text{identityId} + \text{/} + \text{flowId} + \text{?tier=} + \text{tier}$$
+
+### C. Dynamic Virtual Realm Provisioning
+To satisfy this scale-free symmetry headlessly and prevent duplicate declarations, the platform must dynamically register and provision these virtual scopes:
+1.  **Virtual Discovery:** The `RealmManager` must dynamically register Being-Realms (using ID prefix `being:<identityId>`) and the Tenant-Realm (using ID `tenant:<tenantId>`).
+2.  **Pure Ingress (Zero-Surge):** Transitioning into a Being-Realm or Tenant-Realm bypasses standard spatial bundle surges (Pure Ingress). The framework's primordial plane bundles (Stratographer, Session Service) are preserved intact.
+3.  **Headless Cognition Services:** The platform dynamically provisions a `BeingCognitionService` or `TenantCognitionService` that headlessly tracks their respective internal state, active surrogates, and configurations, exposing them programmatically to the Plexus sensory filters and Stratographer apertures without injecting physical mock files.
+
+
 
 
 
