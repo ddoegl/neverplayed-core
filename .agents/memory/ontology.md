@@ -97,11 +97,24 @@ Perception is not absolute; it is mediated by the observer's grounding, perspect
 *   **The Unattended Holon (Coasting Husk):** When the Grounding Soul shifts into this L2 perspective, its original L1 surrogate is left behind in the spatial environment. It does not instantly dissolve. Instead, it becomes an unattended holon "coasting" on its remaining attention span. From the new L2 Realist viewport, the observer perceives their own unattended L1 surrogate exactly as they perceive all other active occupants—as a living node that will eventually fall asleep when its own homeostatic boredom threshold is reached.
 
 ### The Triad of Presence
-When mapping a Being's coordinate in the Stratum under Idealist Grounding, the identity segment resolves into three distinct phenomenological presence states:
-
 1.  **Sovereign Awareness (`being:<id>`):** The Mind/Soul focus. The observer sits at the **hub** of the Wheel of Awareness, looking down the spoke of attention as a silent meta-cognitive observer.
 2.  **Somatic Experience (`realm:<id>`):** The Body/Markov Blanket focus. The observer sits on the **rim** of the Wheel of Awareness, physically embedded in the spatial environment, experiencing direct exteroceptive contact and cellular sensations.
 3.  **Primordial Ground State (`<id>` raw):** The Naked Actor. Rob as a totipotent cell. An un-prefixed database entry carrying uncollapsed morphic potential, representing the baseline integration of both.
+
+### The Principle of Singular Spatial Occupancy (Path B)
+To prevent **Ontological Bilocation Violations** (where a single being registers concurrent disassociated occupant sessions in the same space):
+*   **Singular Visitor Node:** A Being has exactly **one native physical presence** logged in a given spatial realm (the un-prefixed `<id>`, e.g., `rob`).
+*   **Viewport Shunts:** The coordinate modifiers `being:` and `realm:` do not register as separate spatial occupants. Instead, they function as perspectival shunts (navigable viewports) that refractionally alter the observer's cognitive lens without split-billing their physical presence.
+
+### The 4 States of Consciousness Matrix
+By crossing the independent axes of **Grounding** (Direction of the vector) and **Viewport** (active lens), the system formalizes four integrated states of awareness and experience:
+
+| Grounding (Vector) | Viewport (Lens) | Ontological Mapped State |
+| :--- | :--- | :--- |
+| **Idealist** (Subject $\rightarrow$ Object) | `being:<id>` | **Pure Idealist Awareness:** Subjective mind observing a spatial room. |
+| **Idealist** (Subject $\rightarrow$ Object) | `realm:<id>` | **Somatic Inhabitation:** Subjective body experiencing spatial contact. |
+| **Realist** (Object $\rightarrow$ Subject) | `being:<id>` | **Mind-Objectification:** Objective mind observed as a spatial room. |
+| **Realist** (Object $\rightarrow$ Subject) | `realm:<id>` | **Body-Objectification:** Objective body observed as a spatial room. |
 
 ---
 

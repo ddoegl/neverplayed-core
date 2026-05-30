@@ -199,6 +199,32 @@ Our forensic exploration of virtual coordinate transitions in realist and ideali
 *   **The Uncollapsed Morphic Potential:** This is Rob's un-prefixed, raw Being database ID. 
 *   **Cognitive Stance:** **Presence.** The un-shunted, naked actor. It is Rob as a totipotent cell—fully alive and present, but before he has donned a specialized role, chosen a sensory spoke, or collapsed his potential into active somatic *experience* or silent meta-cognitive *awareness*. It represents the pure baseline integration of both.
 
+---
+
+## 9. The Resolution of Bilocation: Sovereign Shunts vs. Somatic Dissociation
+
+When we permit the concurrent logging in of `rob` (naked), `being:rob` (awareness), and `realm:rob` (experience) as separate occupants within a single spatial realm (like `habitat`), the realist topology populates with three distinct visitor nodes. From a biosemiotic and psychiatric perspective, this is an **Ontological Bilocation Anomaly**—representing a state of **extreme somatic dissociation**. Rob's ghost mind is sitting in one corner, his hollow somatic shell is walking in another, and his primordial actor stands uncollapsed.
+
+To restore absolute ontological sanity, the system resolves this through **Path B: Sovereign Shunts (Perspectival Viewports)**:
+
+### A. The Principle of Singular Spatial Occupancy
+In a physical or virtual spatial room, a Being has exactly **one native presence**. 
+*   When Rob logs in, only `rob` is added as a visitor node in the realm's active occupant registry.
+*   `being:rob` and `realm:rob` do not log in as separate spatial occupants. There are no disembodied ghosts in the room.
+
+### B. The 4 States of Consciousness Matrix
+Instead of independent spatial occupants, `being:rob` and `realm:rob` function as **Somatic Shunts**—angle viewports that the observer toggles to shift the direction and lens of the cognitive light cone. By crossing the independent axes of **Grounding** (Direction of the vector) and **Viewport** (active coordinate lens), we map four distinct, integrated states of consciousness:
+
+1.  **Pure Idealist Awareness (Idealist + `being:rob`):** The observer (`being:rob`) subjectively contemplates the spatial room of `habitat` from the mind's hub.
+2.  **Somatic Inhabitation (Idealist + `realm:rob`):** The observer experiences the room subjectively through the exteroceptive eyes/senses of Rob's body (`realm:rob`).
+3.  **Mind-Objectification (Realist + `being:rob`):** Rob's mind is treated objectively as the spatial room itself, allowing the system to measure its internal cognitive currents.
+4.  **Body-Objectification (Realist + `realm:rob`):** Rob's somatic container is treated objectively as the spatial room, allowing the system to measure its physical biology and telemetry.
+
+### C. Meditative Sanity (Samadhi & Pratyahara)
+This singular occupancy rule naturally preserves our meditative states:
+*   **Samadhi (`np://.../empty/realm:empty/shell`):** The singular Realm Mind `realm:org.neverplayed.realm.empty` is the sole occupant inhabiting its own spatial coordinates. There are no competing ghosts, allowing the void to meditate on the void in absolute, integrated presence.
+
+
 
 
 
