@@ -1,0 +1,27 @@
+# Tasks: Somatic Gym Experiment
+
+- `[x]` Declarative Configurations
+  - `[x]` Somatic Body realm config (`public/realms/somatic-body.json`)
+  - `[x]` Somatic Body beings/surrogates YAML (`public/realms/data/somatic-body/beings.yaml`, `surrogates.yaml`)
+  - `[x]` Gym realm config (`public/realms/gym.json`)
+  - `[x]` Gym beings/surrogates YAML (`public/realms/data/gym/beings.yaml`, `surrogates.yaml`)
+  - `[x]` Register realms in the main index (`public/realms/index-full.json` or `index.json` if needed)
+- `[x]` OSGi Bundle Implementations
+  - `[x]` Somatic Body bundle (`public/bundles/org.neverplayed.somatic-body`)
+    - `[x]` `manifest.json`
+    - `[x]` `activator.js` (Muscle registry, tension, fatigue, and EventAdmin listeners)
+  - `[x]` Gym bundle (`public/bundles/org.neverplayed.gym`)
+    - `[x]` `manifest.json`
+    - `[x]` `activator.js` (Kieser Training machines, weight adjustments, biomechanical feedback loop, TAME prediction error)
+- `[x]` Stratographer Dashboard Telemetry HUD
+  - `[x]` Add biomechanical reactive UI states in `stratographer/activator.js`
+  - `[x]` Modify `templates/dashboard.html` with exact realm check safeguards (`x-show`) and high-fidelity styling for live tension/load gauges
+- `[x]` Verification and Test Suites
+  - `[x]` Create `tests/somatic-gym.test.ts` integration test
+  - `[x]` Verify all 17/17 tests pass successfully
+- `[x]` Biomechanical Telemetry HUD Reactivity & Homeostasis Fix
+  - `[x]` Increment and track `somaticUpdateCounter` in interactive handlers (flex/rest muscles, change weights, select machines) for zero-latency UI updates
+  - `[x]` Increment `somaticUpdateCounter` inside `syncUI()` on `'stratum-changed'` events to catch asynchronous reflex/fatigue transitions
+  - `[x]` Add dynamic `predictionError` and `sensedComponents` rehydration to the Explorer store's `refreshTopology` loop to keep the TAME panel updated in real time
+  - `[x]` Invalidate the topology cache in `refreshTopology` by appending the current realm's `predictionError` to the cache hash key
+  - `[x]` Declare the `somatic-body` bundle in `public/realms/gym.json` so the `MuscleRegistry` remains active during weight training

@@ -233,7 +233,11 @@ export default class Activator {
                 const occupants = stratum.occupants || stratum.residents || [];
                 const traceMakers = (typeof stratum.getTraceMakers === 'function') ? await stratum.getTraceMakers() : [];
                 
-                const currentHash = `${stratum.tenantId}|${realmId}|${beingId}|${stratum.tier}|${perceiver.observerMode}|${JSON.stringify(perceiver.surrogate)}|${occupants.join(',')}|${traceMakers.join(',')}`;
+                const currentRealmId = realmId;
+                const cognitionSvc = self._cognitionServices?.get(currentRealmId);
+                const predErr = cognitionSvc ? cognitionSvc.getPredictionError() : 0.0;
+                
+                const currentHash = `${stratum.tenantId}|${realmId}|${beingId}|${stratum.tier}|${perceiver.observerMode}|${JSON.stringify(perceiver.surrogate)}|${occupants.join(',')}|${traceMakers.join(',')}|${predErr}`;
                 
                 const store = Alpine.store('explorer');
                 if (store._lastValueHash === currentHash && store.nodes.length > 0) return;
@@ -453,6 +457,32 @@ export default class Activator {
                         node.predictionError = 0.0;
                     }
                 });
+
+                // Dynamically update the selected realm's active cognition model if present
+                if (store.realmCognition) {
+                    const activeRId = store.activeNode?.realmId || (store.activeNode?.id === 'realm' ? realmId : (store.activeNode?.id.startsWith('realm:') ? store.activeNode.value : realmId));
+                    if (activeRId) {
+                        const service = self._cognitionServices?.get(activeRId);
+                        store.realmCognition.predictionError = service ? service.getPredictionError() : 0.0;
+                        if (service && self._sensor) {
+                            const pids = service.getReifiedPids() || [];
+                            const sensed = [];
+                            for (const pid of pids) {
+                                const entity = {
+                                    id: `reified-${pid}`,
+                                    mark: {
+                                        matchers: [{ type: "matchSense", value: "Primordial" }]
+                                    }
+                                };
+                                const isSensible = self._sensor.sense(entity);
+                                if (isSensible) {
+                                    sensed.push(pid);
+                                }
+                            }
+                            store.realmCognition.sensedComponents = sensed;
+                        }
+                    }
+                }
             },
 
             inspectVault: async (node) => {
@@ -824,6 +854,69 @@ export default class Activator {
                     return { occupants: occupants.filter(id => id !== 'guest') };
                 },
 
+                get muscleRegistry() {
+                    if (!self.ctx) return null;
+                    try {
+                        const ref = self.ctx.getServiceReference("org.neverplayed.somatic.MuscleRegistry");
+                        return ref ? self.ctx.getService(ref) : null;
+                    } catch (e) {
+                        return null;
+                    }
+                },
+                get gymRegistry() {
+                    if (!self.ctx) return null;
+                    try {
+                        const ref = self.ctx.getServiceReference("org.neverplayed.gym.MachineRegistry");
+                        return ref ? self.ctx.getService(ref) : null;
+                    } catch (e) {
+                        return null;
+                    }
+                },
+                get somaticMuscles() {
+                    const _cnt = this.somaticUpdateCounter;
+                    const reg = this.muscleRegistry;
+                    return reg ? reg.getMuscles().map(m => ({ ...m })) : [];
+                },
+                get gymMachines() {
+                    const _cnt = this.somaticUpdateCounter;
+                    const reg = this.gymRegistry;
+                    return reg ? reg.getMachines().map(m => ({ ...m })) : [];
+                },
+                get activeMachine() {
+                    const _cnt = this.somaticUpdateCounter;
+                    const reg = this.gymRegistry;
+                    const activeId = reg ? reg.getActiveMachineId() : null;
+                    return activeId ? this.gymMachines.find(m => m.id === activeId) : null;
+                },
+                selectGymMachine(id) {
+                    const reg = this.gymRegistry;
+                    if (reg) {
+                        reg.selectMachine(id);
+                        this.somaticUpdateCounter++;
+                    }
+                },
+                setGymWeight(id, weight) {
+                    const reg = this.gymRegistry;
+                    if (reg) {
+                        reg.setWeight(id, weight);
+                        this.somaticUpdateCounter++;
+                    }
+                },
+                exertMuscleForce(id, force) {
+                    const reg = this.muscleRegistry;
+                    if (reg) {
+                        reg.exertForce(id, force);
+                        this.somaticUpdateCounter++;
+                    }
+                },
+                restMuscle(id) {
+                    const reg = this.muscleRegistry;
+                    if (reg) {
+                        reg.rest(id);
+                        this.somaticUpdateCounter++;
+                    }
+                },
+
                 get identityId() {
                     return Alpine.store('stratum').identityId || "unknown";
                 },
@@ -840,6 +933,7 @@ export default class Activator {
                     return Alpine.store('stratum').tier || "local";
                 },
 
+                somaticUpdateCounter: 0,
                 realms: [],
                 inhabitants: [],
 
@@ -913,6 +1007,7 @@ export default class Activator {
                     const syncUI = async () => {
                         this._localJumpTarget = undefined;
                         await this._syncInhabitants();
+                        this.somaticUpdateCounter++;
                         const store = Alpine.store('explorer');
                         if (store) {
                             await store.refreshTopology();

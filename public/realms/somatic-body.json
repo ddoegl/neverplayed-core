@@ -1,0 +1,31 @@
+{
+    "id": "org.neverplayed.realm.somatic-body",
+    "title": "Somatic Body",
+    "icon": "fas fa-running",
+    "extends": ["org.neverplayed.realm.empty"],
+    "description": "Layer 4.1: Anatomical Muscle Systems and Proprioception.",
+    "privileges": {
+        "realm-admins": ["daniel.doegl@doegl.info", "dd@cli.local", "guest", "rob"]
+    },
+    "recognizedSurrogates": ["observer", "muscle-nervous-system"],
+    "seedData": {
+        "beings": "./realms/data/somatic-body/beings.yaml",
+        "surrogates": "./realms/data/somatic-body/surrogates.yaml"
+    },
+    "bundles": [
+        "./bundles/org.neverplayed.being-service/manifest.json",
+        "./bundles/org.neverplayed.somatic-body/manifest.json"
+    ],
+    "domainObjects": [
+        { "id": "beckenboden", "icon": "fas fa-shield-heart", "title": "Pelvic Floor (A5)" },
+        { "id": "gluteus-medius", "icon": "fas fa-street-view", "title": "Gluteus Medius (A3)" },
+        { "id": "quadriceps", "icon": "fas fa-child", "title": "Quadriceps (B1/B6)" },
+        { "id": "ischiocrurale", "icon": "fas fa-accessibility", "title": "Ischiocrurale (B7)" },
+        { "id": "deltoideus", "icon": "fas fa-male", "title": "Deltoideus (E1/D6)" },
+        { "id": "pectoralis", "icon": "fas fa-user-shield", "title": "Pectoralis Major (D6)" },
+        { "id": "latissimus", "icon": "fas fa-expand-arrows-alt", "title": "Latissimus Dorsi (C3)" },
+        { "id": "rhomboiden", "icon": "fas fa-vector-square", "title": "Rhomboids (C7)" },
+        { "id": "abdominalis", "icon": "fas fa-circle-nodes", "title": "Rectus Abdominis (F2.1)" },
+        { "id": "erector-spinae", "icon": "fas fa-arrows-up-to-line", "title": "Erector Spinae (F3.1)" }
+    ]
+}

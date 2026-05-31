@@ -1,0 +1,111 @@
+- id: dd
+  label: Daniel Doegl
+  email: dd@cli.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: gym-goer
+
+- id: rob
+  label: Rob Richter
+  email: rob@cli.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: gym-goer
+
+- id: machine-a5
+  label: Pelvic Floor (A5)
+  email: a5@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-a3
+  label: Abduktion (A3)
+  email: a3@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-b6
+  label: Beinpresse (B6)
+  email: b6@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-b1
+  label: Beinstrecker (B1)
+  email: b1@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-b7
+  label: Beinbeuger (B7)
+  email: b7@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-e1
+  label: Schulterpresse (E1)
+  email: e1@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-d6
+  label: Brustpresse (D6)
+  email: d6@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-c3
+  label: Überzug (C3)
+  email: c3@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-c7
+  label: Rudermaschine (C7)
+  email: c7@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-f2.1
+  label: Bauchmaschine (F2.1)
+  email: f2.1@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-f3.1
+  label: Rückenstrecker (F3.1)
+  email: f3.1@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer
+
+- id: machine-j9
+  label: Kabelzug (J9)
+  email: j9@kieser.local
+  originRealmId: org.neverplayed.realm.gym
+  initial:
+    realm: org.neverplayed.realm.gym
+    surrogate: observer

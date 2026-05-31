@@ -1,0 +1,12 @@
+- id: muscle-nervous-system
+  label: Muscle Nervous System
+  senses:
+    - SomaticSensation
+    - ToolUse
+    - Language
+
+- id: observer
+  label: Observer
+  senses:
+    - SomaticSensation
+    - Language

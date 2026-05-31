@@ -3,5 +3,7 @@
     "foundation.json",
     "showcase.json",
     "habitat.json",
-    "governance.json"
+    "governance.json",
+    "somatic-body.json",
+    "gym.json"
 ]
