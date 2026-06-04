@@ -4,5 +4,6 @@
     "habitat.json",
     "governance.json",
     "somatic-body.json",
-    "gym.json"
+    "gym.json",
+    "gemma.json"
 ]

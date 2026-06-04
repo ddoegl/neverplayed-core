@@ -335,11 +335,11 @@
     <!-- Right: Forensic Vault -->
     <div
       class="w-1/4 border-l border-slate-800/50 flex flex-col bg-slate-900/40 relative"
-      x-data="{ activeTab: identityId.startsWith('realm:') ? 'somatic' : 'trace' }"
-      x-init="$watch('$store.explorer.activeNode', val => { if (val) activeTab = 'trace' }); $watch('identityId', val => { activeTab = val.startsWith('realm:') ? 'somatic' : 'trace' })"
+      x-data="{ activeTab: (identityId.startsWith('realm:') || realmId === 'org.neverplayed.realm.gemma') ? 'somatic' : 'trace' }"
+      x-init="$watch('$store.explorer.activeNode', val => { if (val) activeTab = 'trace' }); $watch('identityId', val => { activeTab = (val.startsWith('realm:') || realmId === 'org.neverplayed.realm.gemma') ? 'somatic' : 'trace' }); $watch('realmId', val => { activeTab = (identityId.startsWith('realm:') || val === 'org.neverplayed.realm.gemma') ? 'somatic' : 'trace' })"
     >
-      <!-- Tab Header for L2 Beings -->
-      <template x-if="identityId.startsWith('realm:')">
+      <!-- Tab Header for L2 Beings or Gemma Realm -->
+      <template x-if="identityId.startsWith('realm:') || realmId === 'org.neverplayed.realm.gemma'">
         <div class="flex border-b border-slate-800/60 bg-slate-950/20 p-2 gap-1">
           <button 
             @click="activeTab = 'somatic'"
@@ -541,6 +541,125 @@
           <!-- ========================================== -->
           <template x-if="realmId !== 'org.neverplayed.realm.somatic-body' && realmId !== 'org.neverplayed.realm.gym'">
             <div class="space-y-4">
+              <!-- GEMMA 4 LOCAL LLM CONSOLE -->
+              <template x-if="realmId === 'org.neverplayed.realm.gemma'">
+                <div class="space-y-1.5">
+                  <div class="flex items-center justify-between text-[8px] uppercase font-black text-cyan-400">
+                    <span>Local LLM Interface</span>
+                    <span class="text-slate-500">Ollama Gemma 4</span>
+                  </div>
+                  <div class="bg-slate-950/60 border border-cyan-500/20 rounded-2xl p-4 space-y-4 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
+                    <!-- Status / Service indicator -->
+                    <div class="flex items-center justify-between text-[9px] font-mono border-b border-slate-800/30 pb-2">
+                      <span class="text-slate-500 uppercase">Service:</span>
+                      <template x-if="llmService">
+                        <span class="text-emerald-400 font-bold uppercase tracking-widest flex items-center space-x-1.5">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                          <span>Active</span>
+                        </span>
+                      </template>
+                      <template x-if="!llmService">
+                        <span class="text-red-400 font-bold uppercase tracking-widest flex items-center space-x-1.5">
+                          <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                          <span>Offline</span>
+                        </span>
+                      </template>
+                    </div>
+
+                    <!-- Prompt Input -->
+                    <div class="space-y-1.5">
+                      <label class="text-[8px] uppercase font-black text-slate-500 block">Enter Prompt</label>
+                      <textarea 
+                        x-model="llmPrompt"
+                        placeholder="Ask Gemma 4 anything..."
+                        rows="3"
+                        @keydown.enter.prevent="askGemma()"
+                        class="w-full bg-slate-900 border border-slate-800 text-[10px] text-slate-200 rounded-lg p-2 font-mono focus:border-cyan-500/50 outline-none resize-none placeholder-slate-600"
+                      ></textarea>
+                    </div>
+
+                    <!-- Temperature & Controls -->
+                    <div class="space-y-2 text-[9px] font-mono">
+                      <div class="flex justify-between items-center">
+                        <span class="text-slate-500 uppercase">Temperature:</span>
+                        <span class="text-cyan-400 font-bold" x-text="llmTemperature"></span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0.1" 
+                        max="1.5" 
+                        step="0.1" 
+                        x-model="llmTemperature"
+                        class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                      />
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex space-x-2 pt-1">
+                      <button 
+                        @click="askGemma()"
+                        :disabled="llmThinking || !llmPrompt.trim()"
+                        class="flex-1 bg-cyan-600/80 hover:bg-cyan-600 active:scale-95 text-white font-bold py-1.5 px-3 rounded-lg text-[9px] uppercase tracking-wider transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center space-x-1.5 shadow-lg shadow-cyan-600/10"
+                      >
+                        <template x-if="llmThinking">
+                          <span class="w-3.5 h-3.5 border border-white/20 border-t-white rounded-full animate-spin"></span>
+                        </template>
+                        <template x-if="!llmThinking">
+                          <i class="fas fa-paper-plane"></i>
+                        </template>
+                        <span x-text="llmThinking ? 'Thinking...' : 'Send Prompt'"></span>
+                      </button>
+                      <button 
+                        @click="clearLlmHistory()"
+                        x-show="llmHistory.length > 0 || llmResponse"
+                        class="bg-slate-900 hover:bg-slate-850 border border-slate-850 hover:border-slate-750 text-slate-400 py-1.5 px-2.5 rounded-lg text-[9px] uppercase tracking-wider transition-all"
+                      >
+                        Clear
+                      </button>
+                    </div>
+
+                    <!-- Current Response display -->
+                    <template x-if="llmResponse || llmThinking">
+                      <div class="pt-3 border-t border-slate-800/30 space-y-1.5">
+                        <div class="flex items-center justify-between text-[8px] uppercase font-black text-cyan-400">
+                          <span>Latest Response</span>
+                          <template x-if="llmThinking">
+                            <span class="animate-pulse">Thinking...</span>
+                          </template>
+                        </div>
+                        <div class="bg-slate-900/40 border border-slate-850/50 rounded-xl p-3 text-[10px] font-mono leading-relaxed text-slate-300 max-h-48 overflow-y-auto custom-scrollbar select-text">
+                          <template x-if="llmThinking && !llmResponse">
+                            <div class="flex space-x-1 items-center justify-center py-2 text-slate-500 italic">
+                              <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+                              <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                              <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style="animation-delay: 0.3s"></span>
+                            </div>
+                          </template>
+                          <div class="whitespace-pre-wrap" x-text="llmResponse"></div>
+                        </div>
+                      </div>
+                    </template>
+
+                    <!-- History -->
+                    <template x-if="llmHistory.length > 0">
+                      <div class="pt-3 border-t border-slate-800/30 space-y-2">
+                        <div class="text-[8px] uppercase font-black text-slate-500">History</div>
+                        <div class="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                          <template x-for="(item, idx) in llmHistory" :key="idx">
+                            <div class="p-2 bg-slate-900/20 border border-slate-850/30 rounded-lg text-[9px] font-mono space-y-1 select-text">
+                              <div class="text-slate-500 truncate" :title="item.prompt">
+                                <span class="text-cyan-500 font-bold">Q:</span> <span x-text="item.prompt"></span>
+                              </div>
+                              <div class="text-slate-350 line-clamp-2 hover:line-clamp-none transition-all leading-normal whitespace-pre-wrap" x-text="item.response"></div>
+                            </div>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
               <!-- Synaptic Sense (Visceral) -->
               <div class="space-y-1.5">
                 <div class="flex items-center justify-between text-[8px] uppercase font-black text-cyan-400">

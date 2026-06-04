@@ -792,7 +792,51 @@ export default class Activator {
             stage.innerHTML = html;
             
             Alpine.data("stratographerDashboard", () => ({
-                _localJumpTarget: undefined,
+                 _localJumpTarget: undefined,
+
+                 get llmService() {
+                     if (!self.ctx) return null;
+                     try {
+                         const ref = self.ctx.getServiceReference("com.roleplay.service.LLMService");
+                         return ref ? self.ctx.getService(ref) : null;
+                     } catch (e) {
+                         return null;
+                     }
+                 },
+
+                 llmPrompt: "",
+                 llmResponse: "",
+                 llmThinking: false,
+                 llmTemperature: 0.8,
+                 llmHistory: [],
+                 async askGemma() {
+                     if (!this.llmPrompt.trim()) return;
+                     const service = this.llmService;
+                     if (!service) {
+                         alert("Gemma LLM Service not available! Is the provider bundle active?");
+                         return;
+                     }
+                     this.llmThinking = true;
+                     this.llmResponse = "";
+                     const promptText = this.llmPrompt;
+                     this.llmPrompt = "";
+                     
+                     try {
+                         const response = await service.generate(promptText, { temperature: parseFloat(this.llmTemperature) });
+                         this.llmResponse = response;
+                         this.llmHistory.unshift({ prompt: promptText, response });
+                     } catch (e) {
+                         this.llmResponse = `Error interacting with Gemma: ${e.message}`;
+                     } finally {
+                         this.llmThinking = false;
+                         this.somaticUpdateCounter++;
+                     }
+                 },
+                 clearLlmHistory() {
+                     this.llmHistory = [];
+                     this.llmResponse = "";
+                 },
+
 
                 get jumpTarget() {
                     if (this._localJumpTarget !== undefined) {

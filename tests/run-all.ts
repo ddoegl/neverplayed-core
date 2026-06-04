@@ -22,7 +22,8 @@ const tests = [
   "platonic-lobby.test.ts",
   "grounding-soul.test.ts",
   "singular-occupancy.test.ts",
-  "somatic-gym.test.ts"
+  "somatic-gym.test.ts",
+  "gemma-llm.test.ts"
 ];
 
 console.log("🏛️  Never Played: Strategic Regression Suite Starting...");
