@@ -37,6 +37,7 @@ export const ENV_SERVICE = "org.neverplayed.system.EnvService";
 export const PERSISTENCE_RESOLVER_SERVICE = "org.neverplayed.persistence.Resolver";
 export const PERCEIVER_SERVICE = "org.neverplayed.perceiver.PerceiverService";
 export const PLEXUS_ENRICHER_SERVICE = "org.neverplayed.plexus.EnrichmentService";
+export const INNER_VOICE_SERVICE = "org.neverplayed.llm.InnerVoiceService";
 
 // 4. Persistence & PIDs
 export const SHELL_CONFIG_PID = "org.neverplayed.shell.cli";

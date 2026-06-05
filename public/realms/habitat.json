@@ -12,7 +12,11 @@
         "beings": "./realms/data/habitat/beings.yaml",
         "surrogates": "./realms/data/habitat/surrogates.yaml"
     },
-    "bundles": ["./bundles/org.neverplayed.being-service/manifest.json"],
+    "bundles": [
+        "./bundles/org.neverplayed.being-service/manifest.json",
+        "./bundles/org.neverplayed.llm.gemma-provider/manifest.json",
+        "./bundles/org.neverplayed.llm.inner-voice/manifest.json"
+    ],
     "domainObjects": [
         { "id": "showcase-lab", "icon": "fas fa-flask", "title": "Platform Lab" }
     ]

@@ -32,8 +32,9 @@ export default class Activator extends BaseActivator {
             if (options.scope === "global") {
                 return `np:v1:${this._context.tenantId}:__global__:__shared__:${key}`;
             }
+            const realmId = options.realmId || this._context.realmId;
             const identityId = options.identityId || this._context.identityId;
-            return `np:v1:${this._context.tenantId}:${this._context.realmId}:${identityId}:${key}`;
+            return `np:v1:${this._context.tenantId}:${realmId}:${identityId}:${key}`;
         };
 
         context.registerService(PERSISTENCE_MANAGER_SERVICE, {

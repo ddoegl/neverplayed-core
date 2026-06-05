@@ -100,6 +100,29 @@ export class StratumServiceImpl {
         return await this._sourceRealm.getHierarchy(this.realmId);
     }
 
+    async getMarks(realmId) {
+        if (!this._sourcePM) return [];
+        const prefix = `realm.mark:${realmId}:`;
+        try {
+            const allKeys = await this._sourcePM.listKeys(prefix);
+            const marks = [];
+            for (const key of allKeys) {
+                if (key.startsWith(prefix)) {
+                    try {
+                        const mark = await this._sourcePM.load(key);
+                        if (mark) marks.push(mark);
+                    } catch (e) {
+                        this._logger?.error(`Failed loading mark key: ${key}`, e.message);
+                    }
+                }
+            }
+            return marks;
+        } catch (e) {
+            this._logger?.error(`Failed listing marks for realm: ${realmId}`, e.message);
+            return [];
+        }
+    }
+
     async getTraceMakers() {
         if (!this._sourcePM) return [];
         const currentRealm = this.realmId;

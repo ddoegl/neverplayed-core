@@ -324,6 +324,7 @@ export default class Activator {
 
             login(user, scope = null, surrogate = undefined) {
                 this._cacheDirty = true;
+                this._pendingLobbyFallback = null;
                 let targetScope = scope || this.activeFlowId || this.activeRealmId || 'platonic';
                 if (targetScope === 'global') targetScope = 'platonic';
 
@@ -450,6 +451,25 @@ export default class Activator {
                 } else if (surrogate === null) {
                     this.scopedUsers[targetScope][identityId].activeSurrogateId = null;
                     logger?.info(`Session: Deactivated surrogate (naked observer state) for identity '${identityId}'`);
+                    if (targetScope !== 'platonic' && identityId !== 'guest') {
+                        const existing = this.scopedUsers[targetScope]?.[identityId];
+                        if (existing && (!existing.surrogates || Object.keys(existing.surrogates).length === 0)) {
+                            const realms = self._realm ? self._realm.getRealms() : [];
+                            const targetRealm = realms.find(r => r.id === targetScope);
+                            const recognized = targetRealm?.recognizedSurrogates || [];
+                            if (recognized.includes('observer')) {
+                                existing.surrogates = existing.surrogates || {};
+                                existing.surrogates['observer'] = {
+                                    id: 'observer',
+                                    label: 'Observer',
+                                    senses: ['Primordial', 'Language'],
+                                    materializedAt: new Date().toISOString()
+                                };
+                                existing.activeSurrogateId = 'observer';
+                                logger?.info(`Session: Auto-provisioned fallback observer surrogate for dynamic identity '${identityId}' in scope '${targetScope}' during naked observer transition.`);
+                            }
+                        }
+                    }
                 } else if (targetScope === 'platonic') {
                     // Rule: Platonic Lobby Observer Provisioning
                     // When entering the platonic staging lobby with no explicit surrogate,
@@ -466,6 +486,24 @@ export default class Activator {
                         };
                         existing.activeSurrogateId = 'observer';
                         logger?.info(`Session: Auto-provisioned observer surrogate in platonic lobby for '${identityId}'.`);
+                    }
+                } else if (targetScope !== 'platonic' && identityId !== 'guest') {
+                    const existing = this.scopedUsers[targetScope]?.[identityId];
+                    if (existing && (!existing.surrogates || Object.keys(existing.surrogates).length === 0)) {
+                        const realms = self._realm ? self._realm.getRealms() : [];
+                        const targetRealm = realms.find(r => r.id === targetScope);
+                        const recognized = targetRealm?.recognizedSurrogates || [];
+                        if (recognized.includes('observer')) {
+                            existing.surrogates = existing.surrogates || {};
+                            existing.surrogates['observer'] = {
+                                id: 'observer',
+                                label: 'Observer',
+                                senses: ['Primordial', 'Language'],
+                                materializedAt: new Date().toISOString()
+                            };
+                            existing.activeSurrogateId = 'observer';
+                            logger?.info(`Session: Auto-provisioned fallback observer surrogate for dynamic identity '${identityId}' in scope '${targetScope}'.`);
+                        }
                     }
                 }
 
@@ -560,7 +598,9 @@ export default class Activator {
                             stack[resolvedUserId].activeSurrogateId = null;
                         }
                         logger?.info(`Session: Realm exit from '${targetScope}'. Being '${resolvedUserId}' falls back to platonic lobby.`);
-                        this._pendingLobbyFallback = (resolvedUserId && resolvedUserId !== 'guest') ? resolvedUserId : null;
+                        if (resolvedUserId && resolvedUserId !== 'guest') {
+                            this._pendingLobbyFallback = resolvedUserId;
+                        }
                         
                         // Revert active spatial realm scope to Platonic Staging Lobby
                         if (targetScope === this.activeRealmId) {

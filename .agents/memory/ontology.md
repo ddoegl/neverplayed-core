@@ -116,6 +116,18 @@ By crossing the independent axes of **Grounding** (Direction of the vector) and 
 | **Realist** (Object $\rightarrow$ Subject) | `being:<id>` | **Mind-Objectification:** Objective mind observed as a spatial room. |
 | **Realist** (Object $\rightarrow$ Subject) | `realm:<id>` | **Body-Objectification:** Objective body observed as a spatial room. |
 
+### The Sensory Apparatus of Beings (L1 Senses)
+Just as L2 Realms possess interoceptive and exteroceptive senses, L1 Beings experience their environments through surrogate-mediated sensory modalities:
+1.  **`Primordial` (Visceral Baseline Sensation):**
+    *   *Definition:* The baseline platform-level awareness. Ensures that even a naked observer is never completely blind and can perceive the platform's visceral components (Stratographer, CLI, header widgets).
+2.  **`Language` (Linguistic Sensation):**
+    *   *Definition:* The capability to identify and decode textual data-marks, written logs, and verbal messages left on the soil. Also allows the Being to write/utter language traces.
+3.  **`ForensicVision` (Historical Footprint Sensation):**
+    *   *Definition:* The capability to perceive historical trace-makers and chronological footprints (amber ghosts) left in the database stratum.
+4.  **`SelfAwareness` (Proprioceptive Self-Sensation):**
+    *   *Definition:* The capability of the Being's inner voice to identify exteroceptive sensations and traces referencing its own ID, translating them into direct first-person proprioceptive statements.
+    *   *Ontological Impact:* Resolves self-objectification by shifting third-person observations (*"Occupant Node 'rob' is present"*) into unified, subjective first-person proprioception (*"I am present in this space"*).
+
 ---
 
 ## 4. Architectural Mapping (Code vs. Ideal)

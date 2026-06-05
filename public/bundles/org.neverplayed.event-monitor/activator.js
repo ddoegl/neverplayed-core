@@ -40,7 +40,7 @@ export default class Activator extends AlpineActivator {
                 if (verbosity === "DEBUG") this.logger.debug(logMsg);
                 else this.logger.info(logMsg);
             }
-        }, { [EVENT_TOPIC]: ["backoffice/invitations/*", "backoffice/cases/*", "org/neverplayed/config/*", "org/neverplayed/realm/*", "org/neverplayed/session/*", "org/neverplayed/perceiver/*"] });
+        }, { [EVENT_TOPIC]: ["backoffice/invitations/*", "backoffice/cases/*", "org/neverplayed/config/*", "org/neverplayed/realm/*", "org/neverplayed/session/*", "org/neverplayed/perceiver/*", "org/neverplayed/world/*"] });
 
         // 3. Register Flow UI
         const getFlowProps = () => ({

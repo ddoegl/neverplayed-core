@@ -1145,10 +1145,11 @@ export default class Activator extends BaseActivator {
                 this.session._pendingLobbyFallback = null;
             }
             this.session.activeRealmId = realmId;
-            this.session.activeBeingId = identityId;
+            this.session.activeBeingId = tenantId || identityId;
             
             // Call session.login to construct the resident stack and activate the surrogate if materialized
-            await this.session.login(identityId, realmId, activeSurrogate);
+            const loginIdentityId = realmId === 'platonic' ? (tenantId || identityId) : identityId;
+            await this.session.login(loginIdentityId, realmId, activeSurrogate);
         }
         this.logger?.info(`Realm Manager: Phase 2 (Atomic Commit) SUCCESS.`);
 
@@ -1220,12 +1221,37 @@ export default class Activator extends BaseActivator {
         });
     }
 
-    _switchRealm(context, id, interactive = false) {
+    async _switchRealm(context, id, interactive = false) {
         if (id === 'platonic') {
             const previousRealmId = this._activeRealmId;
-            if (previousRealmId && previousRealmId !== 'platonic') {
-                this._cleanupVirtualRealmServices(previousRealmId);
+            const identityId = (this.session && this.session.currentUser) ? this.session.currentUser.id : 'guest';
+            const tenantId = (this.session && this.session.activeBeingId && this.session.activeBeingId !== 'guest') ? this.session.activeBeingId : 'guest';
+            
+            const proposed = {
+                realmId: 'platonic',
+                identityId,
+                tenantId,
+                interactive
+            };
+
+            // 1. Prepare transition for participants
+            for (const participant of this._participants) {
+                try {
+                    await participant.onPrepareTransition(proposed);
+                } catch (e) {
+                    this.logger?.error(`Error during onPrepareTransition for platonic participant:`, e);
+                }
             }
+
+            // 2. Shut down the previous realm (de-reify dynamic bundles)
+            if (previousRealmId && previousRealmId !== 'platonic') {
+                try {
+                    await this.shutdownRealm(previousRealmId);
+                } catch (err) {
+                    this.logger?.warn(`Failed to shutdown previous realm '${previousRealmId}': ${err.message}`);
+                }
+            }
+
             this._activeRealmId = 'platonic';
             if (this.session) {
                 this.session.activeRealmId = 'platonic';
@@ -1234,9 +1260,11 @@ export default class Activator extends BaseActivator {
                 this._beingService.clear();
             }
             if (this._persistence) {
-                Promise.resolve(this._persistence.store(REALM_STORAGE_PID, 'platonic')).catch(err => {
+                try {
+                    await this._persistence.store(REALM_STORAGE_PID, 'platonic');
+                } catch (err) {
                     this.logger?.warn(`Failed to persist platonic realm: ${err.message}`);
-                });
+                }
             }
             if (this._eventAdmin && this._eventFactory) {
                 const event = this._eventFactory.build(REALM_CHANGED_TOPIC, {
@@ -1245,7 +1273,25 @@ export default class Activator extends BaseActivator {
                 });
                 this._eventAdmin.postEvent(event);
             }
-            return Promise.resolve({ status: 'COMPLETE', message: "Returned to Platonic Staging Lobby 🌌" });
+
+            // 3. Commit transition for remaining platform participants
+            const committed = {
+                realmId: 'platonic',
+                identityId,
+                tenantId,
+                perspective: 'idealist',
+                aperture: 'shell',
+                grounding: 'idealist'
+            };
+            for (const participant of this._participants) {
+                try {
+                    await participant.onCommitTransition(committed);
+                } catch (e) {
+                    this.logger?.error(`Error during onCommitTransition for platonic participant:`, e);
+                }
+            }
+
+            return { status: 'COMPLETE', message: "Returned to Platonic Staging Lobby 🌌" };
         }
 
         this._lock = this._lock.catch(() => { /* recover chain */ });
@@ -1348,7 +1394,6 @@ export default class Activator extends BaseActivator {
             
             // Clean up the spatial stack via logout
             this.session.logout(realmId);
-            this.session._pendingLobbyFallback = null;
         }
         
         if (this._beingService) {

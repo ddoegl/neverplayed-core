@@ -128,11 +128,12 @@ export default class Activator {
 
         // 6. Register as EventHandler for Perceiver and Stratum Changes
         this._eventRegistration = context.registerService(EVENT_HANDLER_INTERFACE, {
-            handleEvent: (event) => {
+            handleEvent: async (event) => {
                 const store = Alpine.store('explorer');
                 if (store) {
                     store._grounding = self._perceiver?.getContext().observerMode || "idealist";
                     store.senses = self._perceiver?.getEnrichedSenses?.() || [];
+                    await self._updateSensoryEnvelope(store);
                     store.refreshTopology();
                 }
                 if (typeof globalThis.dispatchEvent === 'function') {
@@ -140,7 +141,20 @@ export default class Activator {
                 }
             }
         }, {
-            [EVENT_TOPIC]: [PERCEIVER_CHANGED_TOPIC, STRATUM_CHANGED_TOPIC, SESSION_CHANGED_TOPIC]
+            [EVENT_TOPIC]: [PERCEIVER_CHANGED_TOPIC, STRATUM_CHANGED_TOPIC, SESSION_CHANGED_TOPIC, "org/neverplayed/world/mark-deposited"]
+        });
+
+        // 7. Track inner-voice thought monologue updates
+        this._innerVoiceThoughtReg = context.registerService(EVENT_HANDLER_INTERFACE, {
+            handleEvent: (event) => {
+                const store = Alpine.store('explorer');
+                if (store) {
+                    const thought = event.getProperty("thought");
+                    store.lastThought = thought || "";
+                }
+            }
+        }, {
+            [EVENT_TOPIC]: ["org/neverplayed/llm/inner-voice/thought"]
         });
 
         // 8. Register Reactive Store
@@ -189,6 +203,28 @@ export default class Activator {
         this._logger.info("Stratographer: Registered 🪐🛡️🔍");
     }
 
+    async _updateSensoryEnvelope(store) {
+        const innerVoiceRef = this.ctx.getServiceReference("org.neverplayed.llm.InnerVoiceService");
+        const innerVoice = innerVoiceRef ? this.ctx.getService(innerVoiceRef) : null;
+        if (innerVoice) {
+            const sess = globalThis.Alpine?.store('session');
+            const activeBeing = sess?.activeBeingId || "";
+            const baseBeing = activeBeing.replace(/^(being|realm):/, "");
+            const realmId = sess?.activeRealmId;
+            if (baseBeing && baseBeing !== "guest" && realmId && realmId !== "platonic") {
+                try {
+                    store.sensoryEnvelope = await innerVoice.getSensoryEnvelope(baseBeing, realmId);
+                } catch (e) {
+                    store.sensoryEnvelope = [];
+                }
+            } else {
+                store.sensoryEnvelope = [];
+            }
+        } else {
+            store.sensoryEnvelope = [];
+        }
+    }
+
     _setupExplorerStore(context) {
         const self = this;
         Alpine.store('explorer', {
@@ -201,6 +237,8 @@ export default class Activator {
             activeNodeTraceMakers: [],
             realmCognition: null,
             activeSensedComponents: [],
+            sensoryEnvelope: [],
+            lastThought: "",
             _lastValueHash: "",
             visible: false,
             _grounding: self._perceiver?.getContext().observerMode || "idealist",
@@ -1200,6 +1238,9 @@ export default class Activator {
     stop() {
         if (this._eventRegistration) {
             try { this._eventRegistration.unregister(); } catch(e) {}
+        }
+        if (this._innerVoiceThoughtReg) {
+            try { this._innerVoiceThoughtReg.unregister(); } catch(e) {}
         }
         if (this._dashboardSyncUI) {
             globalThis.removeEventListener('stratum-changed', this._dashboardSyncUI);

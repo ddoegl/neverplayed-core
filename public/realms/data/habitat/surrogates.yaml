@@ -3,6 +3,8 @@
   senses:
     - ToolUse
     - Language
+    - Primordial
+    - SelfAwareness
 
 - id: guest
   label: Guest
