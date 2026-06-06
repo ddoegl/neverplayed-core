@@ -4,7 +4,8 @@ import {
   UI_COMPONENTS_SERVICE, 
   UI_REGISTRY_SERVICE,
   ACTION_SERVICE, 
-  LOG_SERVICE
+  LOG_SERVICE,
+  INTERACTOR_SERVICE
 } from "core-types";
 
 // Side effects: ensure components are loaded
@@ -38,7 +39,20 @@ export default class Activator {
    */
   start(context) {
     let logger = console; // Fallback
-    
+    this._interactor = null;
+
+    // Track Interactor for standardized actions (ADR-0029)
+    // NOTE: shared-ui is a *consumer* of INTERACTOR_SERVICE (for ui:alert / ui:confirm actions).
+    // The *provider* lives in org.neverplayed.toast.
+    context.trackService(`(objectClass=${INTERACTOR_SERVICE})`, {
+        addingService: (ref) => {
+            this._interactor = context.getService(ref);
+            if (logger.info) logger.info("Shared UI: Interactor discovered. Platform safety-nets active.");
+            return this._interactor;
+        },
+        removedService: () => { this._interactor = null; }
+    }).open();
+
     // Resilient Logger Tracking
     context.trackService(`(objectClass=${LOG_SERVICE})`, {
         addingService: (ref) => {
