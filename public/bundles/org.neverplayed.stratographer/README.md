@@ -54,3 +54,7 @@ Adheres to the platform design patterns:
 - `SOMATIC_MUSCLE_REGISTRY_SERVICE`
 - `GYM_MACHINE_REGISTRY_SERVICE`
 - `LLM_SERVICE`
+
+
+### Referenced Constants:
+- `INTERACTOR_SERVICE`

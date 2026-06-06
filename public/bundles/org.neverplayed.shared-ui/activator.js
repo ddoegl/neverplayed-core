@@ -4,8 +4,7 @@ import {
   UI_COMPONENTS_SERVICE, 
   UI_REGISTRY_SERVICE,
   ACTION_SERVICE, 
-  LOG_SERVICE,
-  INTERACTOR_SERVICE
+  LOG_SERVICE
 } from "core-types";
 
 // Side effects: ensure components are loaded
@@ -39,17 +38,6 @@ export default class Activator {
    */
   start(context) {
     let logger = console; // Fallback
-    this._interactor = null;
-    
-    // Track Interactor for standardized actions (ADR-0029)
-    context.trackService(`(objectClass=${INTERACTOR_SERVICE})`, {
-        addingService: (ref) => {
-            this._interactor = context.getService(ref);
-            if (logger.info) logger.info("Shared UI: Interactor discovered. Platform safety-nets active.");
-            return this._interactor;
-        },
-        removedService: () => { this._interactor = null; }
-    }).open();
     
     // Resilient Logger Tracking
     context.trackService(`(objectClass=${LOG_SERVICE})`, {
@@ -124,16 +112,6 @@ export default class Activator {
      * Provides an authoritative map of all active UI Factory state objects for orchestration.
      */
     context.registerService(UI_REGISTRY_SERVICE, globalThis.__UI_FACTORY_REGISTRY);
-
-    /**
-     * INTERACTOR_SERVICE
-     * Provides universal interaction patterns (confirm, prompt, alert).
-     */
-    context.registerService(INTERACTOR_SERVICE, {
-        confirm: (message) => Promise.resolve(globalThis.confirm(message)),
-        prompt: (message, defaultValue) => Promise.resolve(globalThis.prompt(message, defaultValue)),
-        alert: (message) => Promise.resolve(globalThis.alert(message))
-    });
 
     const existingFactories = document.querySelectorAll("ui-factory");
     if (existingFactories.length > 0) {

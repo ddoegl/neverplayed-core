@@ -29,7 +29,8 @@ import {
     REALM_GEMMA,
     REALM_SOMATIC_BODY,
     REALM_GYM,
-    LLM_SERVICE
+    LLM_SERVICE,
+    INTERACTOR_SERVICE
 } from "../../core-types.js";
 import _Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -1065,21 +1066,35 @@ export default class Activator {
                     return 'baseline';
                 },
 
-                setShunt(type) {
+                async setShunt(type) {
                     const sess = globalThis.Alpine?.store('session');
                     if (!sess) return;
                     const baseId = sess.currentUser?.id;
                     if (!baseId || baseId === 'guest') return;
                     const scope = sess.activeRealmId || 'platonic';
                     
-                    if (type === 'baseline') {
-                        // Reset to naked physical presence via setBeingFocus
-                        sess.setBeingFocus(baseId);
-                        sess.login(baseId, scope);
-                    } else if (type === 'being') {
-                        sess.login(`being:${baseId}`, scope);
-                    } else if (type === 'realm') {
-                        sess.login(`realm:${baseId}`, scope);
+                    try {
+                        if (type === 'baseline') {
+                            // Reset to naked physical presence via setBeingFocus
+                            await sess.setBeingFocus(baseId);
+                            await sess.login(baseId, scope);
+                        } else if (type === 'being') {
+                            await sess.login(`being:${baseId}`, scope);
+                        } else if (type === 'realm') {
+                            await sess.login(`realm:${baseId}`, scope);
+                        }
+                    } catch (err) {
+                        const ref = self.ctx.getServiceReference(INTERACTOR_SERVICE);
+                        if (ref) {
+                            const interactor = self.ctx.getService(ref);
+                            if (interactor && typeof interactor.notify === 'function') {
+                                await interactor.notify(err.message || String(err), 'error');
+                            } else {
+                                console.error(err);
+                            }
+                        } else {
+                            console.error(err);
+                        }
                     }
                     
                     // Trigger stratum update so URI and graph reflect the shunt

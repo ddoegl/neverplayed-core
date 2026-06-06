@@ -42,14 +42,16 @@ export default class Activator {
 
             login(id, scope = null) {
                 if (this._stratumSvc) {
-                    this._stratumSvc.login(id, scope);
+                    return this._stratumSvc.login(id, scope);
                 }
+                return Promise.resolve();
             },
 
             logout(scope = null) {
                 if (this._stratumSvc) {
-                    this._stratumSvc.logout(scope);
+                    return this._stratumSvc.logout(scope);
                 }
+                return Promise.resolve();
             },
 
             jump(uri) {

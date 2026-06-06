@@ -12,7 +12,8 @@ import {
     SHELL_UI_CONTEXT_PID,
     EVENT_HANDLER_INTERFACE,
     SESSION_CHANGED_TOPIC,
-    REALM_CHANGED_TOPIC
+    REALM_CHANGED_TOPIC,
+    INTERACTOR_SERVICE
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
@@ -169,7 +170,21 @@ export default class Activator extends AlpineActivator {
             async login(id) {
                 const stratum = globalThis.Alpine?.store('stratum');
                 if (id && stratum) {
-                    await stratum.login(id);
+                    try {
+                        await stratum.login(id);
+                    } catch (err) {
+                        const ref = context.getServiceReference(INTERACTOR_SERVICE);
+                        if (ref) {
+                            const interactor = context.getService(ref);
+                            if (interactor && typeof interactor.notify === 'function') {
+                                await interactor.notify(err.message || String(err), 'error');
+                            } else {
+                                console.error(err);
+                            }
+                        } else {
+                            console.error(err);
+                        }
+                    }
                 }
             },
 
@@ -177,7 +192,21 @@ export default class Activator extends AlpineActivator {
                 const identity = prompt("Enter Identity ID (e.g. daniela-dev):");
                 const stratum = globalThis.Alpine?.store('stratum');
                 if (identity && stratum) {
-                    await stratum.login(identity);
+                    try {
+                        await stratum.login(identity);
+                    } catch (err) {
+                        const ref = context.getServiceReference(INTERACTOR_SERVICE);
+                        if (ref) {
+                            const interactor = context.getService(ref);
+                            if (interactor && typeof interactor.notify === 'function') {
+                                await interactor.notify(err.message || String(err), 'error');
+                            } else {
+                                console.error(err);
+                            }
+                        } else {
+                            console.error(err);
+                        }
+                    }
                 }
             },
 

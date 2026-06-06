@@ -1,0 +1,11 @@
+{
+    "Bundle-SymbolicName": "org.neverplayed.toast",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Name": "Toast Notification System",
+    "Bundle-Description": "Glassmorphic toast notification HUD and INTERACTOR_SERVICE provider for the NeverPlayed platform.",
+    "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.ui.Interactor\"",
+    "Bundle-Configuration": {
+        "mountPoint": "#toast-mount-point"
+    }
+}

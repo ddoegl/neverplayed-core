@@ -41,3 +41,7 @@ Top-level UI navigation and status bar, providing centralized access to identity
 - `PERCEIVER_SERVICE`
 - `SHELL_UI_CONTEXT_PID`
 - `UI_STORAGE_PID`
+
+
+### Referenced Constants:
+- `INTERACTOR_SERVICE`
