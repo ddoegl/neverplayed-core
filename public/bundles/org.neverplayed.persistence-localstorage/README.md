@@ -23,5 +23,12 @@ The **Institutional LocalStorage Provider** provides a standard-compliant implem
 
 ### 🏺 Institutional ADRs
 
+- [ADR-0025](../../docs/adr/0025-identity-injection-id-tokens.md) - Identity Injection & ID Tokens.
+- [ADR-0026](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Reactive Non-Destructive Variable Resolution.
 - [ADR-0151](../../docs/adr/0151-resilient-persistence-sovereignty.md) - Resilient Persistence Sovereignty.
 - [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic Versioning.
+
+
+### Referenced Constants:
+- `PERSISTENCE_MANAGER_SERVICE`
+- `SHELL_UI_CONTEXT_PID`

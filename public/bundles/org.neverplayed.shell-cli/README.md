@@ -42,3 +42,10 @@ context.registerService(SHELL_COMMAND_SERVICE, {
 - [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
 - [ADR-0140](../../docs/adr/0140-sovereign-shield.md) - Sovereign Shield (Persistence Routing). 🛡️👤
 - [ADR-0165](../../docs/adr/0165-sovereign-identity-scoping.md) - Sovereign Identity Scoping (Hierarchical Sharding). 🛡️🪐
+
+
+### Referenced Constants:
+- `SHELL_CLI_SERVICE`
+- `FLOW_SERVICE`
+- `SESSION_SERVICE`
+- `REALM_MANAGER_SERVICE`

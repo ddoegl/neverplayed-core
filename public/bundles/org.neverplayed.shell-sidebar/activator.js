@@ -16,7 +16,12 @@ import {
     REALM_CHANGED_TOPIC,
     SESSION_CHANGED_TOPIC,
     CONFIG_UPDATED_TOPIC,
-    STRATUM_CHANGED_TOPIC
+    STRATUM_CHANGED_TOPIC,
+    SHELL_CLI_PID,
+    STRATOGRAPHER_FLOW,
+    EVENT_MONITOR_PID,
+    CONFIG_ADMIN_UI_FLOW,
+    NEVERPLAYED_PREFIX
 } from "core-types";
 import { AlpineActivator } from "alpine-base";
 
@@ -96,13 +101,13 @@ export default class Activator extends AlpineActivator {
 
                 get lobbyFlows() {
                     const allowedIds = [
-                        'org.neverplayed.shell-cli',
-                        'org.neverplayed.shell.cli',
-                        'org.neverplayed.stratographer',
-                        'org.neverplayed.event-monitor',
-                        'org.neverplayed.event.monitor',
-                        'org.neverplayed.config-admin-ui',
-                        'org.neverplayed.config.UIFlow'
+                        `${NEVERPLAYED_PREFIX}shell-cli`,
+                        SHELL_CLI_PID,
+                        STRATOGRAPHER_FLOW,
+                        `${NEVERPLAYED_PREFIX}event-monitor`,
+                        EVENT_MONITOR_PID,
+                        `${NEVERPLAYED_PREFIX}config-admin-ui`,
+                        CONFIG_ADMIN_UI_FLOW
                     ];
                     return this.flows.filter(f => allowedIds.includes(f.id));
                 },

@@ -6,7 +6,8 @@ import {
     LIMES_STRATEGIES_PID,
     PLEXUS_EVALUATOR_SERVICE,
     PERCEIVER_SERVICE,
-    PLEXUS_ENRICHER_SERVICE
+    PLEXUS_ENRICHER_SERVICE,
+    REALM_CORE
 } from "core-types";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 
@@ -166,7 +167,7 @@ export default class Activator {
                 const userCap = (typeof userOverride === 'object' && userOverride !== null) ? userOverride : getEvaluatedData(userOverride);
                 const perceiverContext = this.perceiver?.getContext() || { 
                     being: userCap || { id: userOverride }, 
-                    realm: "org.neverplayed.realm.core" 
+                    realm: REALM_CORE 
                 };
 
                 let strategy = strategyRegistry.get(strategyId);

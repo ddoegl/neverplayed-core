@@ -32,3 +32,9 @@ When the Firebase SDK is unavailable (e.g. `ERR_WS_UPGRADED_FAILED`), the bundle
 - [ADR-0026](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](../../docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+
+
+### Referenced Constants:
+- `PERSISTENCE_MANAGER_SERVICE`
+- `AUTH_SHIELD_SERVICE`
+- `LOG_SERVICE`

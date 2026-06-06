@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.plexus-tracing
+ * @module platform/bundles/org.neverplayed.plexus-tracing
+ */
+
 import { 
     FLOW_SERVICE, 
     CONFIG_ADMIN_SERVICE, 

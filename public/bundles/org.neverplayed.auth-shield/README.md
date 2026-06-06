@@ -42,3 +42,9 @@ sequenceDiagram
 
 - **Pluggable Providers**: Abstract the Firebase specific logic into a `CREDENTIAL_PROVIDER` service to allow local-only login or OIDC integration.
 - **MFA Support**: Integrated multi-factor authentication flows within the Shell UI.
+
+
+### Referenced Constants:
+- `LOG_SERVICE`
+- `SHELL_COMMAND_SERVICE`
+- `SESSION_SERVICE`

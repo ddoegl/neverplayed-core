@@ -20,7 +20,16 @@ import {
     STRATUM_CHANGED_TOPIC,
     BEING_SERVICE,
     REALM_COGNITION_SERVICE,
-    SESSION_CHANGED_TOPIC
+    SESSION_CHANGED_TOPIC,
+    STRATOGRAPHER_FLOW,
+    INNER_VOICE_SERVICE,
+    SOMATIC_MUSCLE_REGISTRY_SERVICE,
+    GYM_MACHINE_REGISTRY_SERVICE,
+    NEVERPLAYED_PREFIX,
+    REALM_GEMMA,
+    REALM_SOMATIC_BODY,
+    REALM_GYM,
+    LLM_SERVICE
 } from "../../core-types.js";
 import _Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -189,7 +198,7 @@ export default class Activator {
 
         // 11. Register Flow Service
         context.registerService(FLOW_SERVICE, this, {
-            "flow.id": "org.neverplayed.stratographer",
+            "flow.id": STRATOGRAPHER_FLOW,
             "flow.title": "Stratographer",
             "flow.icon": "fas fa-map-marked-alt",
             "flowType": BUNDLE_TYPE_ADMIN,
@@ -204,7 +213,7 @@ export default class Activator {
     }
 
     async _updateSensoryEnvelope(store) {
-        const innerVoiceRef = this.ctx.getServiceReference("org.neverplayed.llm.InnerVoiceService");
+        const innerVoiceRef = this.ctx.getServiceReference(INNER_VOICE_SERVICE);
         const innerVoice = innerVoiceRef ? this.ctx.getService(innerVoiceRef) : null;
         if (innerVoice) {
             const sess = globalThis.Alpine?.store('session');
@@ -243,6 +252,9 @@ export default class Activator {
             visible: false,
             _grounding: self._perceiver?.getContext().observerMode || "idealist",
             senses: self._perceiver?.getEnrichedSenses?.() || [],
+            REALM_GEMMA,
+            REALM_SOMATIC_BODY,
+            REALM_GYM,
             
             get grounding() {
                 return this._grounding;
@@ -818,7 +830,7 @@ export default class Activator {
             await explorerStore.refreshTopology();
         }
 
-        const templatePath = `./bundles/org.neverplayed.stratographer/templates/dashboard.html?t=${Date.now()}`;
+        const templatePath = `./bundles/${NEVERPLAYED_PREFIX}stratographer/templates/dashboard.html?t=${Date.now()}`;
         
         try {
             const resp = await fetch(templatePath);
@@ -830,12 +842,12 @@ export default class Activator {
             stage.innerHTML = html;
             
             Alpine.data("stratographerDashboard", () => ({
-                 _localJumpTarget: undefined,
+                  _localJumpTarget: undefined,
 
                  get llmService() {
                      if (!self.ctx) return null;
                      try {
-                         const ref = self.ctx.getServiceReference("com.roleplay.service.LLMService");
+                         const ref = self.ctx.getServiceReference(LLM_SERVICE);
                          return ref ? self.ctx.getService(ref) : null;
                      } catch (e) {
                          return null;
@@ -911,7 +923,7 @@ export default class Activator {
                         const manual = self._realmManager?.getManualBSNs?.() || new Set();
                         for (const b of active) {
                             const bsn = b.getSymbolicName();
-                            const norm = bsn.replace('org.neverplayed.', '');
+                            const norm = bsn.replace(NEVERPLAYED_PREFIX, '');
                             if (primordial.has(bsn)) continue;
                             if (manual.has(bsn)) continue;
                             surgeBSNs.push(norm);
@@ -939,7 +951,7 @@ export default class Activator {
                 get muscleRegistry() {
                     if (!self.ctx) return null;
                     try {
-                        const ref = self.ctx.getServiceReference("org.neverplayed.somatic.MuscleRegistry");
+                        const ref = self.ctx.getServiceReference(SOMATIC_MUSCLE_REGISTRY_SERVICE);
                         return ref ? self.ctx.getService(ref) : null;
                     } catch (e) {
                         return null;
@@ -948,7 +960,7 @@ export default class Activator {
                 get gymRegistry() {
                     if (!self.ctx) return null;
                     try {
-                        const ref = self.ctx.getServiceReference("org.neverplayed.gym.MachineRegistry");
+                        const ref = self.ctx.getServiceReference(GYM_MACHINE_REGISTRY_SERVICE);
                         return ref ? self.ctx.getService(ref) : null;
                     } catch (e) {
                         return null;
@@ -1217,13 +1229,13 @@ export default class Activator {
 
             openDashboard() {
                 self._logger?.info("Igniting Stratographer Flow...");
-                globalThis.dispatchEvent(new CustomEvent("shell-launch-flow", { detail: { id: "org.neverplayed.stratographer" } }));
+                globalThis.dispatchEvent(new CustomEvent("shell-launch-flow", { detail: { id: STRATOGRAPHER_FLOW } }));
             }
         }));
     }
 
     async _injectHUD() {
-        const templatePath = `./bundles/org.neverplayed.stratographer/templates/stratum-hud.html?t=${Date.now()}`;
+        const templatePath = `./bundles/${NEVERPLAYED_PREFIX}stratographer/templates/stratum-hud.html?t=${Date.now()}`;
         try {
             const resp = await fetch(templatePath);
             const _html = await resp.text();

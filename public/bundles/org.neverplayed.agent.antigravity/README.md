@@ -31,3 +31,10 @@ The agent operates as a first-class OSGi resident. It performs periodic (5-minut
 - [ ] Implement "Heuristic Recovery" for complex service circular dependencies.
 - [ ] Add "Digital Twin" real-time websocket bridge.
 - [ ] Multi-agent coordination (Overseer vs Librarian).
+
+
+### Referenced Constants:
+- `AGENT_SERVICE`
+- `PERSISTENCE_MANAGER_SERVICE`
+- `EVENT_ADMIN_SERVICE`
+- `EVENT_FACTORY_SERVICE`

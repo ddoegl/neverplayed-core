@@ -1,5 +1,18 @@
-// type.ts (Exported by your api-bundle)
-export const LLM_SERVICE = "com.roleplay.service.LLMService";
+/**
+ * @file Activator for org.neverplayed.llm.gemma-provider
+ * @module domain/bundles/org.neverplayed.llm.gemma-provider
+ *
+ * Implements the OSGi Activator for the Gemma LLM provider, exposing
+ * the LLM Service and responding asynchronously to game world events.
+ */
+
+import { 
+    LLM_SERVICE,
+    EVENT_HANDLER_INTERFACE,
+    EVENT_ADMIN_SERVICE,
+    EVENT_FACTORY_SERVICE,
+    EVENT_TOPIC
+} from "core-types";
 
 
 class Gemma2Provider {
@@ -37,7 +50,7 @@ export default class Activator {
 
     // 2. Consume OSGi EventAdmin style topics (e.g., via Pandino Event Admin bundle)
     // Here we register a whiteboard listener for game events
-    context.registerService(["org.osgi.service.event.EventHandler", "@pandino/event-admin/EventHandler"], {
+    context.registerService(EVENT_HANDLER_INTERFACE, {
       handleEvent(event) {
         if (event.topic === "game/world/event") {
           const payload = event.properties;
@@ -45,10 +58,8 @@ export default class Activator {
           
           // Trigger generation off the back of the event asynchronously
           gemmaService.generate(payload.prompt).then(response => {
-            const eaRef = context.getServiceReferences("@pandino/event-admin/EventAdmin")?.[0]
-              || context.getServiceReferences("org.osgi.service.event.EventAdmin")?.[0];
-            const efRef = context.getServiceReferences("@pandino/event-admin/EventFactory")?.[0]
-              || context.getServiceReferences("org.osgi.service.event.EventFactory")?.[0];
+            const eaRef = context.getServiceReferences(EVENT_ADMIN_SERVICE)?.[0];
+            const efRef = context.getServiceReferences(EVENT_FACTORY_SERVICE)?.[0];
             if (eaRef && efRef) {
               const ea = context.getService(eaRef);
               const ef = context.getService(efRef);
@@ -62,7 +73,7 @@ export default class Activator {
         }
       }
     }, {
-      "event.topics": ["game/world/event"]
+      [EVENT_TOPIC]: ["game/world/event"]
     });
   }
 

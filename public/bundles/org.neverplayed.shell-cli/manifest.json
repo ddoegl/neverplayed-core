@@ -1,10 +1,10 @@
 {
-  "Bundle-ManifestVersion": "1",
-  "Bundle-SymbolicName": "org.neverplayed.shell-cli",
-  "Bundle-Name": "Shell CLI Core",
-  "Bundle-Description": "Central command-line interface for the Never Played ecosystem. Supported: Sovereign Navigation (ADR-0165).",
-  "Bundle-Version": "1.2.0",
-  "Bundle-Activator": "activator.js",
-  "Bundle-Assets": "templates/shell.html",
-  "Provide-Capability": "shell.cli;version=\"1.0.0\""
+    "Bundle-ManifestVersion": "1",
+    "Bundle-SymbolicName": "org.neverplayed.shell-cli",
+    "Bundle-Name": "Shell CLI Core",
+    "Bundle-Description": "Central command-line interface for the Never Played ecosystem. Supported: Sovereign Navigation (ADR-0165).",
+    "Bundle-Version": "1.2.0",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Assets": "templates/shell.html",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.shell.ShellCLI\""
 }

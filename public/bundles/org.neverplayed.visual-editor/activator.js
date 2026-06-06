@@ -1,3 +1,11 @@
+/**
+ * @file Activator for org.neverplayed.visual-editor
+ * @module platform/bundles/org.neverplayed.visual-editor
+ *
+ * Implements the OSGi Activator for the Visual DO Editor, registering
+ * the 'visual-editor' component strategy into the Component Registry.
+ */
+
 import { ATOMIC_COMPONENT_REGISTRY_SERVICE } from "core-types";
 import { BaseActivator } from "osgi-base";
 import "./components/atomic-visual-editor.js";

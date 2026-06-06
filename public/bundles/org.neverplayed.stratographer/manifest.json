@@ -9,7 +9,7 @@
         "templates/dashboard.html"
     ],
     "Require-Bundle": "org.neverplayed.stratum-core",
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.flow.FlowService\"",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.flow.FlowService\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\"",
     "Configuration": {
         "log-level": "INFO",
         "mountPoint": "#shell-host-root",

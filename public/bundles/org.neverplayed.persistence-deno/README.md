@@ -25,3 +25,7 @@ The **Persistence Deno** bundle is the server-side implementation of the `Persis
 
 - [ADR-0151](../../docs/adr/0151-resilient-persistence-sovereignty.md) - Resilient Persistence Sovereignty.
 - [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic Versioning.
+
+
+### Referenced Constants:
+- `PERSISTENCE_MANAGER_SERVICE`

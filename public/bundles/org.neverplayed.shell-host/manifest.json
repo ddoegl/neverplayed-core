@@ -4,6 +4,7 @@
     "Bundle-Name": "Shell Host Orchestrator",
     "Bundle-Description": "Manages flow discovery and UI mounting for the Never Played platform.",
     "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.shell.ShellHost\"",
     "Configuration": {
         "bootCapability": "sys:forensics",
         "mountPoint": "#shell-host-root"

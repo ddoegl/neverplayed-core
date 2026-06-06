@@ -2,5 +2,6 @@
     "Bundle-SymbolicName": "org.neverplayed.global-state",
     "Bundle-Version": "1.0.0",
     "Bundle-Description": "Lightweight platform-level state container for cross-bundle synchronization.",
-    "Bundle-Activator": "activator.js"
+    "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.global-state.ContributionService\""
 }

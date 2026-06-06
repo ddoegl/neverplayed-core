@@ -6,5 +6,6 @@
     "Bundle-Activator": "activator.js",
     "Require-Bundle": "org.neverplayed.limes",
     "Import-Service": "org.neverplayed.limes.LimesService, org.neverplayed.yaml.Editor",
-    "Export-Package": ""
+    "Export-Package": "",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.backoffice/extension\""
 }

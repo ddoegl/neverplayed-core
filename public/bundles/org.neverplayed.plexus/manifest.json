@@ -4,5 +4,6 @@
   "Bundle-Name": "Plexus Matcher Engine",
   "Bundle-Description": "Core Ontological Matcher Engine for Rules and Capabilities",
   "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "activator.js"
+  "Bundle-Activator": "activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.plexus.Engine\""
 }

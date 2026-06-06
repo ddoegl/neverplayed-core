@@ -4,5 +4,6 @@
   "Bundle-Name": "Plexus Tracing UI",
   "Bundle-Description": "Diagnostic UI for Plexus Matcher Engine",
   "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "./activator.js"
+  "Bundle-Activator": "./activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.flow.FlowService\""
 }

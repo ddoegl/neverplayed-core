@@ -24,3 +24,12 @@ Lightweight platform-level state container for shared cross-bundle synchronizati
 - [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+
+
+### Referenced Constants:
+- `LICENSES_PID`
+- `TENANTS_PID`
+- `BO_SESSION_PID`
+- `BUSINESS_SESSION_PID`
+- `RETAIL_SESSION_PID`
+- `CONTRIBUTION_SERVICE`

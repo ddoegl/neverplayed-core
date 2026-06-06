@@ -1,9 +1,19 @@
+/**
+ * @file Activator for org.neverplayed.somatic-body
+ * @module domain/bundles/org.neverplayed.somatic-body
+ *
+ * Implements the OSGi Activator for the Somatic Body service, registering
+ * the Muscle Registry and handling efferent/afferent feedback loops.
+ */
+
 import { 
     LOG_SERVICE,
     EVENT_ADMIN_SERVICE,
     EVENT_FACTORY_SERVICE,
     EVENT_HANDLER_INTERFACE,
-    EVENT_TOPIC
+    EVENT_TOPIC,
+    SOMATIC_MUSCLE_REGISTRY_SERVICE,
+    STRATUM_SERVICE
 } from "core-types";
 
 export default class Activator {
@@ -54,7 +64,7 @@ export default class Activator {
         ]);
 
         // Register MuscleRegistry Service
-        context.registerService("org.neverplayed.somatic.MuscleRegistry", {
+        context.registerService(SOMATIC_MUSCLE_REGISTRY_SERVICE, {
             getMuscles: () => Array.from(this.muscles.values()),
             getMuscle: (id) => this.muscles.get(id) || null,
             exertForce: (id, tension) => this.exertForce(id, tension),
@@ -130,8 +140,7 @@ export default class Activator {
     }
 
     _triggerStratumUpdate() {
-        this.context.getServiceReference("org.neverplayed.stratum.StratumService");
-        const ref = this.context.getServiceReference("org.neverplayed.stratum.StratumService");
+        const ref = this.context.getServiceReference(STRATUM_SERVICE);
         if (ref) {
             const stratum = this.context.getService(ref);
             if (stratum && typeof stratum.triggerUpdate === 'function') {

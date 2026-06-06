@@ -6,7 +6,8 @@
 import { 
     STRATUM_SERVICE, 
     LOG_SERVICE,
-    PERCEIVER_SERVICE
+    PERCEIVER_SERVICE,
+    NEVERPLAYED_PREFIX
 } from "../../core-types.js";
 import _Alpine from "https://esm.sh/alpinejs@3.13.5";
 const Alpine = globalThis.Alpine || _Alpine;
@@ -81,7 +82,7 @@ export default class Activator {
     }
 
     async _injectHUD() {
-        const templatePath = `./bundles/org.neverplayed.stratum-hud/templates/stratum-hud.html`;
+        const templatePath = `./bundles/${NEVERPLAYED_PREFIX}stratum-hud/templates/stratum-hud.html`;
         try {
             const resp = await fetch(templatePath);
             const html = await resp.text();

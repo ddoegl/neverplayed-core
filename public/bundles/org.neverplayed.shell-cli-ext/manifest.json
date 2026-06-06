@@ -2,5 +2,6 @@
     "Bundle-SymbolicName": "org.neverplayed.shell-cli-ext",
     "Bundle-Name": "Shell CLI Extensions",
     "Bundle-Version": "1.0.0",
-    "Bundle-Activator": "activator.js"
+    "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.shell.Command\""
 }

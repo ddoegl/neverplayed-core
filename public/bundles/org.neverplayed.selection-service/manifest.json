@@ -2,5 +2,6 @@
   "Bundle-SymbolicName": "org.neverplayed.selection-service",
   "Bundle-Version": "1.0.0",
   "Bundle-Activator": "activator.js",
-  "Bundle-Description": "Context-aware selection service for domain objects and shell interactions."
+  "Bundle-Description": "Context-aware selection service for domain objects and shell interactions.",
+  "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.selection.SelectionService\""
 }

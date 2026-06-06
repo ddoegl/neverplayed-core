@@ -8,5 +8,6 @@
     "Bundle-Category": "system-service",
     "Configuration": {
         "log-level": "DEBUG"
-    }
+    },
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.realm.RealmManager\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\", osgi.service; objectClass=\"org.neverplayed.realm.RealmService\""
 }

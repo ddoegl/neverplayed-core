@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.test.persistence
+ * @module platform/bundles/org.neverplayed.test.persistence
+ */
+
 import { PERSISTENCE_MANAGER_SERVICE } from "../../core-types.js";
 import { BaseActivator } from "../../osgi-base.js";
 

@@ -1,10 +1,13 @@
 {
-  "Bundle-SymbolicName": "org.neverplayed.realm.real-life",
-  "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "activator.js",
-  "Bundle-Assets": "templates/dashboard.html, templates/persona.html, templates/settings.html, templates/company-home.html",
-  "Configuration": {
-    "flowType": "system-flow",
-    "channels": ["real-life"]
-  }
+    "Bundle-SymbolicName": "org.neverplayed.realm.real-life",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Bundle-Assets": "templates/dashboard.html, templates/persona.html, templates/settings.html, templates/company-home.html",
+    "Configuration": {
+        "flowType": "system-flow",
+        "channels": [
+            "real-life"
+        ]
+    },
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.flow.FlowService\""
 }

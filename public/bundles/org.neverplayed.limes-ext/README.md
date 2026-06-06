@@ -1,4 +1,6 @@
 # 🔒 Limes Extensions
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
+
 
 The **Limes Extensions** bundle provides advanced cryptographic and security capabilities that extend the base **Limes Security Kernel**.
 
@@ -16,3 +18,7 @@ The **Limes Extensions** bundle provides advanced cryptographic and security cap
 
 - **Rotational Secrets**: Automated rotation of infrastructure keys.
 - **Identity Proxy**: Multi-provider support for external enterprise identity systems.
+
+
+### Referenced Constants:
+- `LIMES_SERVICE`

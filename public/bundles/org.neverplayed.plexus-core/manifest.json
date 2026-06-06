@@ -6,5 +6,6 @@
     "Bundle-Description": "Stateless matching engine for stigmergic perception.",
     "Import-Package": [
         "core-types"
-    ]
+    ],
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.plexus.Evaluator\""
 }

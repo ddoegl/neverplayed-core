@@ -1,4 +1,4 @@
-import { PERSISTENCE_MANAGER_SERVICE } from "../../core-types.js";
+import { PERSISTENCE_MANAGER_SERVICE, SHELL_UI_CONTEXT_PID } from "../../core-types.js";
 import { BaseActivator } from "../../osgi-base.js";
 
 /**
@@ -22,7 +22,7 @@ export default class Activator extends BaseActivator {
                 key.startsWith("pandino.session") || 
                 key.includes("config.admin") || 
                 key.startsWith("config.") || 
-                key === "org.neverplayed.shell.ui.context"
+                key === SHELL_UI_CONTEXT_PID
             ) {
                 return `np:v1:global:__global__:__shared__:${key}`;
             }

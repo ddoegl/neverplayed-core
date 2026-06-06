@@ -4,5 +4,6 @@
   "Bundle-Name": "Plexus Sensor",
   "Bundle-Description": "High-level Sensing Layer for Beings and Surrogates",
   "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "activator.js"
+  "Bundle-Activator": "activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.plexus.Sensor\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\""
 }

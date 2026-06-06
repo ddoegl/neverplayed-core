@@ -2,5 +2,6 @@
     "Bundle-SymbolicName": "org.neverplayed.action-registry",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "activator.js",
-    "Bundle-Description": "Central registry for OSGi actions and their metadata."
+    "Bundle-Description": "Central registry for OSGi actions and their metadata.",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.action.ActionRegistry\""
 }

@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.plexus
+ * @module platform/bundles/org.neverplayed.plexus
+ */
+
 import { 
     CONFIG_ADMIN_SERVICE, 
     PLEXUS_ENGINE_SERVICE, 

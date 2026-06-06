@@ -24,3 +24,33 @@ The dashboard utilizes a spatial handshake via `ResizeObserver` to ensure the D3
 
 ## Operational Commands
 The dashboard dispatches `shell-execute` and `explorer-render-request` events to coordinate with the underlying OS layers.
+
+
+## 🏛️ Architecture & Implementation
+
+This bundle implements capabilities for the Never Played platform.
+
+## 🏛️ The Patterns
+
+Adheres to the platform design patterns:
+- [Platform Patterns](../../docs/platform-patterns.md)
+- [ADR Docs](../../docs/adr/)
+- [ADR-0025](../../docs/adr/000025-...)
+- [ADR-0026](../../docs/adr/000026-...)
+- [ADR-0027](../../docs/adr/000027-...)
+
+### Referenced Constants:
+- `STRATUM_SERVICE`
+- `FLOW_SERVICE`
+- `REALM_MANAGER_SERVICE`
+- `LOG_SERVICE`
+- `PERSISTENCE_MANAGER_SERVICE`
+- `PLEXUS_SENSOR_SERVICE`
+- `PERCEIVER_SERVICE`
+- `SESSION_SERVICE`
+- `BEING_SERVICE`
+- `REALM_COGNITION_SERVICE`
+- `INNER_VOICE_SERVICE`
+- `SOMATIC_MUSCLE_REGISTRY_SERVICE`
+- `GYM_MACHINE_REGISTRY_SERVICE`
+- `LLM_SERVICE`

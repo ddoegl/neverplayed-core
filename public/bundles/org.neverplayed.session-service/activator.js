@@ -3,7 +3,7 @@
  * @module platform/bundles/org.neverplayed.session-service
  */
 
-import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE as _LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, SESSION_CHANGED_TOPIC, TRANSITION_PARTICIPANT_INTERFACE, PERSISTENCE_CONTEXT_CHANGED_TOPIC, CONFIG_ADMIN_SERVICE, EVENT_HANDLER_INTERFACE } from "../../core-types.js";
+import { SESSION_SERVICE, LOG_SERVICE, LICENSE_DATA_SERVICE as _LICENSE_DATA_SERVICE, REALM_MANAGER_SERVICE, EVENT_ADMIN_SERVICE, EVENT_FACTORY_SERVICE, SESSION_CHANGED_TOPIC, TRANSITION_PARTICIPANT_INTERFACE, PERSISTENCE_CONTEXT_CHANGED_TOPIC, CONFIG_ADMIN_SERVICE, EVENT_HANDLER_INTERFACE, SESSION_SERVICE_PID } from "../../core-types.js";
 import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
 import Alpine from "https://esm.sh/alpinejs@3.13.5";
 
@@ -991,7 +991,7 @@ export default class Activator {
 
     _updateAttentionSpan() {
         if (this._session && this._configAdmin) {
-            const cfg = this._configAdmin.getConfiguration("org.neverplayed.session-service")?.getProperties() || {};
+            const cfg = this._configAdmin.getConfiguration(SESSION_SERVICE_PID)?.getProperties() || {};
             const secs = cfg["attention-span-seconds"] !== undefined ? Number(cfg["attention-span-seconds"]) : 30;
             const targetMs = secs * 1000;
             if (this._session.attentionSpanMs !== targetMs) {

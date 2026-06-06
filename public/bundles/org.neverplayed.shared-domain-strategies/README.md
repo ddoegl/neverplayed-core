@@ -28,3 +28,11 @@ Global repository for domain-specific business logic patterns and strategy servi
 - [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](../../docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
 - [ADR-0140](../../docs/adr/0140-sovereign-shield.md) - Sovereign Shield (Identity Injection). 🛡️👤
+
+
+### Referenced Constants:
+- `DOMAIN_OBJECT_REGISTRY_SERVICE`
+- `DOMAIN_STRATEGY_SERVICE`
+- `PERSISTENCE_RESOLVER_SERVICE`
+- `LIMES_SERVICE`
+- `SESSION_SERVICE`

@@ -45,6 +45,7 @@ export const SHELL_CLI_PID = "org.neverplayed.shell.cli";
 export const SYSTEM_LOGGER_PID = "org.neverplayed.system.logger";
 export const REALM_STORAGE_PID = "org.neverplayed.realm.storage";
 export const SHELL_UI_CONTEXT_PID = "org.neverplayed.shell.ui.context";
+export const SESSION_SERVICE_PID = "org.neverplayed.session-service";
 export const EVENT_MONITOR_PID = "org.neverplayed.event.monitor";
 export const DO_INSTANCES_PID = "realm.do.instances";
 export const DO_INSTANCES_LEGACY_PID = "org.neverplayed.do.instances";
@@ -124,6 +125,7 @@ export const BUNDLE_TYPE_REGISTRY = {
 export const PLATFORM_SHOWCASE_FLOW = "platform-showcase";
 export const DOMAIN_OBJECTS_FLOW = "domain-objects";
 export const WEB_SPRINGBOARD_FLOW = "web-springboard";
+export const STRATOGRAPHER_FLOW = "org.neverplayed.stratographer";
 
 export const NEVERPLAYED_PREFIX = "org.neverplayed.";
 export const ATOMIC_MARKER_HEADER = "X-Atomic-Bundle";

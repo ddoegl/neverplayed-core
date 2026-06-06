@@ -2,5 +2,6 @@
     "Bundle-SymbolicName": "org.neverplayed.persistence-resolver",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "activator.js",
-    "Bundle-Description": "Orchestrates the 5-layer persistence resolution hierarchy."
+    "Bundle-Description": "Orchestrates the 5-layer persistence resolution hierarchy.",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.persistence.Resolver\""
 }

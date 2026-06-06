@@ -7,5 +7,5 @@
     "Import-Package": [
         "core-types"
     ],
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.perceiver.PerceiverService\""
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.perceiver.PerceiverService\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\", osgi.service; objectClass=\"org.neverplayed.plexus.KnowledgeProviderService\""
 }

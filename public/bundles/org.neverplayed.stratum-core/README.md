@@ -29,3 +29,12 @@ The **Contextual Hub** that aggregates disparate system facets (WHO, WHERE, WHAT
 - [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0165](../../docs/adr/0165-sovereign-identity-scoping.md) - Sovereign Identity Scoping (Hierarchical Sharding). 🛡️🪐
 - [ADR-0170](../../docs/adr/0170-multi-persona-residency.md) - Multi-Persona Identity Residency (Portfolios & Shunting). 🪐🛡️
+
+
+### Referenced Constants:
+- `SESSION_SERVICE`
+- `REALM_MANAGER_SERVICE`
+- `PERSISTENCE_MANAGER_SERVICE`
+- `LOG_SERVICE`
+- `EVENT_ADMIN_SERVICE`
+- `EVENT_FACTORY_SERVICE`

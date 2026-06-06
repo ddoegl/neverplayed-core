@@ -1,12 +1,19 @@
+/**
+ * @file Activator for org.neverplayed.llm.gemma-showcase
+ * @module domain/bundles/org.neverplayed.llm.gemma-showcase
+ *
+ * Demonstrates synchronous service consumption and asynchronous event-driven
+ * whiteboard patterns using the local Gemma 4 model.
+ */
+
 import { 
     SHELL_COMMAND_SERVICE,
     EVENT_ADMIN_SERVICE,
     EVENT_FACTORY_SERVICE,
     EVENT_HANDLER_INTERFACE,
-    EVENT_TOPIC 
+    EVENT_TOPIC,
+    LLM_SERVICE
 } from "core-types";
-
-const LLM_SERVICE = "com.roleplay.service.LLMService";
 
 export default class Activator {
     start(context) {
@@ -50,7 +57,7 @@ export default class Activator {
                     
                     const llmRef = context.getServiceReference(LLM_SERVICE);
                     if (!llmRef) {
-                        return log("Error: Gemma LLM Service (com.roleplay.service.LLMService) is not active in this realm.", "red");
+                        return log(`Error: Gemma LLM Service (${LLM_SERVICE}) is not active in this realm.`, "red");
                     }
                     
                     const llm = context.getService(llmRef);

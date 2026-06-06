@@ -1,10 +1,12 @@
+import { PERCEIVER_SERVICE } from "../../core-types.js";
+
 export class SensoryEnvelopeCompiler {
     constructor(context) {
         this.context = context;
     }
 
     compile(beingId, realmId, rawEnvironment) {
-        const perceiverRef = this.context.getServiceReference("org.neverplayed.perceiver.PerceiverService");
+        const perceiverRef = this.context.getServiceReference(PERCEIVER_SERVICE);
         const perceiver = perceiverRef ? this.context.getService(perceiverRef) : null;
         const activeSenses = perceiver ? perceiver.getEnrichedSenses() : [];
         const selfAware = activeSenses.includes("SelfAwareness");

@@ -1,3 +1,11 @@
+/**
+ * @file Activator for org.neverplayed.llm.inner-voice
+ * @module domain/bundles/org.neverplayed.llm.inner-voice
+ *
+ * Implements the OSGi Activator for the Inner Voice service, orchestrating
+ * Being subjective thought generation and morphic seed compactions.
+ */
+
 import { 
     INNER_VOICE_SERVICE, 
     LOG_SERVICE, 
@@ -8,7 +16,9 @@ import {
     SESSION_SERVICE,
     STRATUM_SERVICE,
     PERSISTENCE_MANAGER_SERVICE,
-    TRANSITION_PARTICIPANT_INTERFACE
+    TRANSITION_PARTICIPANT_INTERFACE,
+    PERCEIVER_SERVICE,
+    LLM_SERVICE
 } from "../../core-types.js";
 import { SensoryEnvelopeCompiler } from "./compiler.js";
 
@@ -51,7 +61,7 @@ export default class Activator {
         this.logTracker.open();
 
         // 2. Track LLM Service
-        this.llmTracker = context.trackService("(objectClass=com.roleplay.service.LLMService)", {
+        this.llmTracker = context.trackService(`(objectClass=${LLM_SERVICE})`, {
             addingService: (ref) => {
                 this.llmService = context.getService(ref);
                 this.logger.info("Inner Voice: Bound to LLM Service.");
@@ -90,7 +100,7 @@ export default class Activator {
         });
 
         // 5. Register EventHandler for mark deposition and session shifts
-        context.registerService([EVENT_HANDLER_INTERFACE, "@pandino/event-admin/EventHandler"], this, {
+        context.registerService(EVENT_HANDLER_INTERFACE, this, {
             [EVENT_TOPIC]: [
                 "org/neverplayed/world/mark-deposited",
                 "org/neverplayed/session/CHANGED"
@@ -120,7 +130,7 @@ export default class Activator {
                 const activeBeingId = this._cleanBeingId(rawBeingId);
 
                 if (activeBeingId && activeBeingId !== "guest") {
-                    const perceiverRef = this.context.getServiceReference("org.neverplayed.perceiver.PerceiverService");
+                    const perceiverRef = this.context.getServiceReference(PERCEIVER_SERVICE);
                     const perceiver = perceiverRef ? this.context.getService(perceiverRef) : null;
                     const activeSenses = perceiver ? perceiver.getEnrichedSenses() : [];
 
@@ -199,7 +209,7 @@ export default class Activator {
         const history = this.thoughtHistory.get(beingId) || [];
         const historyContext = history.slice(-3).map(h => `Thought: "${h}"`).join("\n");
 
-        const perceiverRef = this.context.getServiceReference("org.neverplayed.perceiver.PerceiverService");
+        const perceiverRef = this.context.getServiceReference(PERCEIVER_SERVICE);
         const perceiver = perceiverRef ? this.context.getService(perceiverRef) : null;
         const ctx = perceiver ? perceiver.getContext() : {};
         const grounding = ctx.surrogate?.grounding || "idealist";
@@ -231,8 +241,8 @@ Generate your next brief internal thought:
 
             this.logger.info(`[InnerVoice] Sensed Envelope:\n${compiledEnvelope}\nThought Generated: "${thought}"`);
 
-            const eaRef = this.context.getServiceReferences("@pandino/event-admin/EventAdmin")?.[0];
-            const efRef = this.context.getServiceReferences("@pandino/event-admin/EventFactory")?.[0];
+            const eaRef = this.context.getServiceReferences(EVENT_ADMIN_SERVICE)?.[0];
+            const efRef = this.context.getServiceReferences(EVENT_FACTORY_SERVICE)?.[0];
             if (eaRef && efRef) {
                 const ea = this.context.getService(eaRef);
                 const ef = this.context.getService(efRef);
@@ -340,8 +350,8 @@ Generate your next brief internal thought:
                 
                 this.thoughtHistory.set(beingId, [`[Morphic Seed Memory] ${seedData.seed}`]);
 
-                const eaRef = this.context.getServiceReferences("@pandino/event-admin/EventAdmin")?.[0];
-                const efRef = this.context.getServiceReferences("@pandino/event-admin/EventFactory")?.[0];
+                const eaRef = this.context.getServiceReferences(EVENT_ADMIN_SERVICE)?.[0];
+                const efRef = this.context.getServiceReferences(EVENT_FACTORY_SERVICE)?.[0];
                 if (eaRef && efRef) {
                     const ea = this.context.getService(eaRef);
                     const ef = this.context.getService(efRef);

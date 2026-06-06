@@ -1,10 +1,21 @@
+/**
+ * @file Activator for org.neverplayed.gym
+ * @module domain/bundles/org.neverplayed.gym
+ *
+ * Implements the OSGi Activator for the Gym machinery service, registering
+ * the Machine Registry and Realm Cognition services.
+ */
+
 import { 
     LOG_SERVICE,
     EVENT_ADMIN_SERVICE,
     EVENT_FACTORY_SERVICE,
     EVENT_HANDLER_INTERFACE,
     EVENT_TOPIC,
-    REALM_COGNITION_SERVICE
+    REALM_COGNITION_SERVICE,
+    REALM_GYM,
+    GYM_MACHINE_REGISTRY_SERVICE,
+    STRATUM_SERVICE
 } from "core-types";
 
 export default class Activator {
@@ -61,7 +72,7 @@ export default class Activator {
         this.predictionError = 0.0;
 
         // Register GymMachineService
-        context.registerService("org.neverplayed.gym.MachineRegistry", {
+        context.registerService(GYM_MACHINE_REGISTRY_SERVICE, {
             getMachines: () => Array.from(this.machines.values()),
             getMachine: (id) => this.machines.get(id) || null,
             getActiveMachineId: () => this.activeMachineId,
@@ -98,7 +109,7 @@ export default class Activator {
             getReifiedPids: () => ["gym.active-machine", "gym.weight-stack", "gym.lever-carriage"],
             getHomeostaticStatus: () => this.predictionError < 0.2 ? "STABLE" : "UNSTABLE"
         }, {
-            "realm.id": "org.neverplayed.realm.gym"
+            "realm.id": REALM_GYM
         });
 
         // Register EventHandler for muscle contraction (Efferent Feedback Loop)
@@ -160,7 +171,7 @@ export default class Activator {
     }
 
     _triggerStratumUpdate() {
-        const ref = this.context.getServiceReference("org.neverplayed.stratum.StratumService");
+        const ref = this.context.getServiceReference(STRATUM_SERVICE);
         if (ref) {
             const stratum = this.context.getService(ref);
             if (stratum && typeof stratum.triggerUpdate === 'function') {

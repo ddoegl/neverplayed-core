@@ -34,8 +34,8 @@ Deno.test("Gemma LLM Sandbox: Service and Showcase Event Flow", async () => {
         await new Promise(r => setTimeout(r, 100));
 
         // 3. Verify Direct OSGi Service registration
-        const llmService = await harness.getService("com.roleplay.service.LLMService");
-        assertExists(llmService, "com.roleplay.service.LLMService must be registered.");
+        const llmService = await harness.getService("org.neverplayed.LLMService");
+        assertExists(llmService, "org.neverplayed.LLMService must be registered.");
 
         // deno-lint-ignore no-explicit-any
         const response = await (llmService as any).generate("Identify yourself");

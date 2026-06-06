@@ -9,7 +9,8 @@ import {
     REALM_CHANGED_TOPIC,
     SESSION_SERVICE,
     REALM_MANAGER_SERVICE,
-    KNOWLEDGE_PROVIDER_SERVICE
+    KNOWLEDGE_PROVIDER_SERVICE,
+    REALM_CORE
 } from "core-types";
 import { BaseActivator } from "osgi-base";
 
@@ -24,7 +25,7 @@ export default class Activator extends BaseActivator {
     _state = {
         being: null,
         surrogate: { grounding: "idealist", senses: [] },
-        realm: "org.neverplayed.realm.core",
+        realm: REALM_CORE,
         observerMode: "idealist" 
     };
 

@@ -28,3 +28,9 @@ The **Materialization Engine** that manages the lifecycle of Sovereign Beings an
 - [ADR-0033](../../docs/adr/0033-agentic-inhabitation-and-institutional-oversight.md) - Agentic Inhabitation & Institutional Oversight. 🛡️👤
 - [ADR-0165](../../docs/adr/0165-sovereign-identity-scoping.md) - Sovereign Identity Scoping. 🛡️🪐
 - [ADR-0175](../../docs/adr/0175-sovereign-being-lifecycle-gravity.md) - Sovereign Being Lifecycle & Focus Gravity. 🧬✨
+
+
+### Referenced Constants:
+- `SESSION_SERVICE`
+- `LOG_SERVICE`
+- `BEING_SERVICE`

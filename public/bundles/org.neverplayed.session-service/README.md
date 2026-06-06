@@ -34,3 +34,15 @@ The **Identity Purity Guardian** that manages reactive user state, scoped author
 - [ADR-0165](../../docs/adr/0165-sovereign-identity-scoping.md) - Sovereign Identity Scoping (Hierarchical Sharding). 🛡️🪐
 - [ADR-0170](../../docs/adr/0170-multi-persona-residency.md) - Multi-Persona Identity Residency (Portfolios & Shunting). 🪐🛡️
 - [ADR-0175](../../docs/adr/0175-sovereign-being-lifecycle-gravity.md) - Sovereign Being Lifecycle & Focus Gravity. 🧬✨
+
+
+### Referenced Constants:
+- `SESSION_SERVICE`
+- `LOG_SERVICE`
+- `LICENSE_DATA_SERVICE`
+- `_LICENSE_DATA_SERVICE`
+- `REALM_MANAGER_SERVICE`
+- `EVENT_ADMIN_SERVICE`
+- `EVENT_FACTORY_SERVICE`
+- `CONFIG_ADMIN_SERVICE`
+- `SESSION_PID`

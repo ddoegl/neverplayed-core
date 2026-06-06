@@ -27,3 +27,14 @@ Left-hand side navigation panel for switching between flows, managing realms, an
 - [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+
+
+### Referenced Constants:
+- `CONFIG_ADMIN_SERVICE`
+- `SHELL_HOST_SERVICE`
+- `SHELL_COMMAND_SERVICE`
+- `LIMES_SERVICE`
+- `SESSION_SERVICE`
+- `REALM_MANAGER_SERVICE`
+- `SHELL_CLI_PID`
+- `EVENT_MONITOR_PID`

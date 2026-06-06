@@ -1,14 +1,16 @@
 {
-  "Bundle-SymbolicName": "org.neverplayed.config-admin",
-  "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "activator.js",
-  "Configuration": {
-    "flowType": "system-flow",
-    "channels": [
-      "business-channel-web", "retail-channel-app"
-    ],
-    "sidebar": true
-  },
-  "Bundle-Name": "Universe Settings UI",
-  "Bundle-Description": "Core ConfigAdmin UI for managing system properties and realms."
+    "Bundle-SymbolicName": "org.neverplayed.config-admin",
+    "Bundle-Version": "1.0.0",
+    "Bundle-Activator": "activator.js",
+    "Configuration": {
+        "flowType": "system-flow",
+        "channels": [
+            "business-channel-web",
+            "retail-channel-app"
+        ],
+        "sidebar": true
+    },
+    "Bundle-Name": "Universe Settings UI",
+    "Bundle-Description": "Core ConfigAdmin UI for managing system properties and realms.",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.config.Admin\", osgi.service; objectClass=\"org.neverplayed.flow.FlowService\", osgi.service; objectClass=\"org.neverplayed.shell.Command\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\""
 }

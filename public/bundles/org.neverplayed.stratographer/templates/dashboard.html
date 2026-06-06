@@ -343,12 +343,12 @@
     <!-- Right: Forensic Vault -->
     <div
       class="w-1/4 border-l border-slate-800/50 flex flex-col bg-slate-900/40 relative"
-      x-data="{ activeTab: (identityId.startsWith('being:') || identityId.startsWith('realm:') || realmId === 'org.neverplayed.realm.gemma' || realmId === 'org.neverplayed.realm.somatic-body' || realmId === 'org.neverplayed.realm.gym') ? 'somatic' : 'trace' }"
-      x-init="$watch('$store.explorer.activeNode', val => { if (val) activeTab = 'trace' }); $watch('identityId', val => { activeTab = (val.startsWith('being:') || val.startsWith('realm:') || realmId === 'org.neverplayed.realm.gemma' || realmId === 'org.neverplayed.realm.somatic-body' || realmId === 'org.neverplayed.realm.gym') ? 'somatic' : 'trace' }); $watch('realmId', val => { activeTab = (identityId.startsWith('being:') || identityId.startsWith('realm:') || val === 'org.neverplayed.realm.gemma' || val === 'org.neverplayed.realm.somatic-body' || val === 'org.neverplayed.realm.gym') ? 'somatic' : 'trace' })"
+      x-data="{ activeTab: (identityId.startsWith('being:') || identityId.startsWith('realm:') || realmId === $store.explorer.REALM_GEMMA || realmId === $store.explorer.REALM_SOMATIC_BODY || realmId === $store.explorer.REALM_GYM) ? 'somatic' : 'trace' }"
+      x-init="$watch('$store.explorer.activeNode', val => { if (val) activeTab = 'trace' }); $watch('identityId', val => { activeTab = (val.startsWith('being:') || val.startsWith('realm:') || realmId === $store.explorer.REALM_GEMMA || realmId === $store.explorer.REALM_SOMATIC_BODY || realmId === $store.explorer.REALM_GYM) ? 'somatic' : 'trace' }); $watch('realmId', val => { activeTab = (identityId.startsWith('being:') || identityId.startsWith('realm:') || val === $store.explorer.REALM_GEMMA || val === $store.explorer.REALM_SOMATIC_BODY || val === $store.explorer.REALM_GYM) ? 'somatic' : 'trace' })"
     >
       <!-- Tab Header for Beings or Gemma/Somatic/Gym Realms -->
       <template
-        x-if="identityId.startsWith('being:') || identityId.startsWith('realm:') || realmId === 'org.neverplayed.realm.gemma' || realmId === 'org.neverplayed.realm.somatic-body' || realmId === 'org.neverplayed.realm.gym'"
+        x-if="identityId.startsWith('being:') || identityId.startsWith('realm:') || realmId === $store.explorer.REALM_GEMMA || realmId === $store.explorer.REALM_SOMATIC_BODY || realmId === $store.explorer.REALM_GYM"
       >
         <div
           class="flex border-b border-slate-800/60 bg-slate-950/20 p-2 gap-1"
@@ -405,7 +405,7 @@
           <!-- BIOMECHANICAL TELEMETRY HUD (Active Gym/Body Realms) -->
           <!-- ========================================== -->
           <template
-            x-if="realmId === 'org.neverplayed.realm.somatic-body' || realmId === 'org.neverplayed.realm.gym'"
+            x-if="realmId === $store.explorer.REALM_SOMATIC_BODY || realmId === $store.explorer.REALM_GYM"
           >
             <div class="space-y-4">
               <!-- Kieser Machine Interface -->
@@ -621,7 +621,7 @@
           <!-- STANDARD OSGI MONITORS (Other Realms) -->
           <!-- ========================================== -->
           <template
-            x-if="realmId !== 'org.neverplayed.realm.somatic-body' && realmId !== 'org.neverplayed.realm.gym'"
+            x-if="realmId !== $store.explorer.REALM_SOMATIC_BODY && realmId !== $store.explorer.REALM_GYM"
           >
             <div class="space-y-4">
               <!-- INNER VOICE MONITOR -->
@@ -689,7 +689,7 @@
               </div>
 
               <!-- GEMMA 4 LOCAL LLM CONSOLE -->
-              <template x-if="realmId === 'org.neverplayed.realm.gemma'">
+              <template x-if="realmId === $store.explorer.REALM_GEMMA">
                 <div class="space-y-1.5">
                   <div
                     class="flex items-center justify-between text-[8px] uppercase font-black text-cyan-400"

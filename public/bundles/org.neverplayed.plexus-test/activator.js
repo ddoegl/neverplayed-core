@@ -1,3 +1,8 @@
+/**
+ * @file Activator for org.neverplayed.plexus-test
+ * @module platform/bundles/org.neverplayed.plexus-test
+ */
+
 import { PLEXUS_ENGINE_SERVICE, PLEXUS_SENSOR_SERVICE, PLEXUS_KNOWLEDGE_PROVIDER } from "core-types";
 import { BaseActivator } from "../../osgi-base.js";
 

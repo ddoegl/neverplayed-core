@@ -4,5 +4,6 @@
   "Bundle-Name": "System Logger",
   "Bundle-Description": "Platform-wide logging service with reactive level filtering and console integration (Gold Standard).",
   "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "activator.js"
+  "Bundle-Activator": "activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.LogService\""
 }

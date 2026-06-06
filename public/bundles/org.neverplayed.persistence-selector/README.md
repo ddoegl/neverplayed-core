@@ -27,4 +27,12 @@ This bundle acts as a virtual `PersistenceManager` service with a high `service.
 
 - [ADR-0003](../../docs/adr/0003-tiered-persistence-strategy.md) - Tiered Persistence Strategy.
 - [ADR-0021](../../docs/adr/0021-defensive-tier-fallback.md) - Defensive Tier Fallback.
+- [ADR-0025](../../docs/adr/0025-identity-injection-id-tokens.md) - Identity Injection & ID Tokens.
+- [ADR-0026](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Reactive Non-Destructive Variable Resolution.
 - [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic Versioning.
+
+
+### Referenced Constants:
+- `PERSISTENCE_MANAGER_SERVICE`
+- `LOG_SERVICE`
+- `PLEXUS_SENSOR_SERVICE`

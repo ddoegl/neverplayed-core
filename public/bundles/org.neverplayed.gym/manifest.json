@@ -4,5 +4,5 @@
     "Bundle-Name": "Gym Machinery Service",
     "Bundle-Description": "Manages weight stacks, lever mechanisms, and somatic-coupling loops for the Kieser Training machines (Layer 4.2).",
     "Bundle-Activator": "activator.js",
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.gym.MachineRegistry\""
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.gym.MachineRegistry\", osgi.service; objectClass=\"org.neverplayed.realm.RealmCognitionService\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\""
 }

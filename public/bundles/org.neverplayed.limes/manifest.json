@@ -4,6 +4,7 @@
     "Bundle-Description": "High-performance capability guarding and privilege elevation engine (Gold Standard).",
     "Bundle-Version": "1.0.0",
     "Bundle-Activator": "activator.js",
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.limes.LimesService\"",
     "Configuration": {
         "log-level": "WARN"
     }

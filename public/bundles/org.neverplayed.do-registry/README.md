@@ -67,3 +67,17 @@ access point for metadata, schemas, and semantic types.
 - **Schema Mirroring**: Automatic UI generation based on JSON Schemas.
 - **Cross-Realm Replication**: Support for shared domain objects between realm
   clusters.
+
+
+### Referenced Constants:
+- `YAML_SERVICE`
+- `DOMAIN_STRATEGY_SERVICE`
+- `DO_INSTANCES_PID`
+- `_DO_INSTANCES_PID`
+- `FLOW_SERVICE`
+- `ACTION_REGISTRY_SERVICE`
+- `YAML_EDITOR_SERVICE`
+- `_YAML_EDITOR_SERVICE`
+- `LOG_SERVICE`
+- `_LOG_SERVICE`
+- `PERSISTENCE_RESOLVER_SERVICE`

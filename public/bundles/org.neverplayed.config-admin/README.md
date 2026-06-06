@@ -37,3 +37,12 @@ launch: (async (targetElement) => {
 - [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+
+
+### Referenced Constants:
+- `EVENT_ADMIN_SERVICE`
+- `EVENT_FACTORY_SERVICE`
+- `CONFIG_ADMIN_SERVICE`
+- `FLOW_SERVICE`
+- `SYSTEM_RESET_SERVICE`
+- `SHELL_COMMAND_SERVICE`

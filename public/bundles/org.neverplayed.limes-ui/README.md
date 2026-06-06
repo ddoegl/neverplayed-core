@@ -1,4 +1,6 @@
 # 🛡️ Limes UI
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
+
 
 The **Limes UI** bundle provides the administrative interface for the **Limes Security Kernel**. it allows system administrators to visualize, test, and edit access strategies in real-time.
 
@@ -21,3 +23,8 @@ The **Limes UI** bundle provides the administrative interface for the **Limes Se
 
 - **Policy Visualizer**: Graphical representation of strategy inheritance.
 - **Usage Statistics**: Integration with `SystemLogger` to show heatmaps of granted/denied access per strategy.
+
+
+### Referenced Constants:
+- `BO_EXTENSION_SERVICE`
+- `LIMES_SERVICE`

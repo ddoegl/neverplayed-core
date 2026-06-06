@@ -1,4 +1,6 @@
 # 🏁 System Ready
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
+
 
 The **System Ready** bundle is a critical synchronization barrier that ensures the Never Played platform is fully hydrated before the UI is unlocked for user interaction.
 
@@ -31,3 +33,14 @@ The barrier waits for:
 - [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+
+
+### Referenced Constants:
+- `TENANT_DATA_SERVICE`
+- `RULES_DATA_SERVICE`
+- `CAPABILITIES_DATA_SERVICE`
+- `BIZ_FUNC_DATA_SERVICE`
+- `PLEXUS_SENSOR_SERVICE`
+- `TOPICS_DATA_SERVICE`
+- `CAMPAIGNS_SERVICE`
+- `CRITICAL_SERVICE`

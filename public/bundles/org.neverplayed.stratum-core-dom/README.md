@@ -27,3 +27,7 @@ The **DOM/UI Reactivity Bridge** that maps the headless `Stratum Core` state to 
 
 - **State Validation**: Add validation controls for UI-triggered login/logout state changes.
 - **Micro-Animations**: Trigger transition events in the DOM when the perspective switches.
+
+
+### Referenced Constants:
+- `LOG_SERVICE`

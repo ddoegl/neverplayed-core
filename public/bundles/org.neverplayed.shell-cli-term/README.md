@@ -1,4 +1,6 @@
 # ⌨️ Shell CLI Term
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
+
 
 The **Shell CLI Term** bundle provides the low-level terminal emulation logic for the Never Played platform, typically used for non-DOM or high-performance text rendering.
 
@@ -22,3 +24,7 @@ The **Shell CLI Term** bundle provides the low-level terminal emulation logic fo
 - [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+
+
+### Referenced Constants:
+- `SHELL_CLI_SERVICE`

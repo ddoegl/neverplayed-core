@@ -25,3 +25,15 @@ The **Institutional Identity Hub** that manages the registration of physical Per
 - [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic Versioning. 🛡️
 - [ADR-0165](../../docs/adr/0165-sovereign-identity-scoping.md) - Sovereign Identity Scoping. 🛡️🪐
 - [ADR-0175](../../docs/adr/0175-sovereign-being-lifecycle-gravity.md) - Sovereign Being Lifecycle & Focus Gravity. 🧬✨
+
+
+### Referenced Constants:
+- `FLOW_SERVICE`
+- `PERSONS_SERVICE`
+- `PERSISTENCE_RESOLVER_SERVICE`
+- `PERSISTENCE_MANAGER_SERVICE`
+- `YAML_SERVICE`
+- `YAML_EDITOR_SERVICE`
+- `SESSION_SERVICE`
+- `KNOWLEDGE_PROVIDER_SERVICE`
+- `PERSONS_PID`

@@ -34,3 +34,9 @@ registry.register('my-special-widget', 'org-neverplayed-widget');
 - **Theming Engine**: Dynamic HSL color token injection for all registered atomic components.
 - **Visual Spec Editor**: Integration with the `YAML_EDITOR_SERVICE` to build UI specs visually.
 - **Automatic Part Sharding**: Logic to split large UI specs into lazily-loaded chunks.
+
+
+### Referenced Constants:
+- `UI_COMPONENTS_SERVICE`
+- `UI_REGISTRY_SERVICE`
+- `LOG_SERVICE`

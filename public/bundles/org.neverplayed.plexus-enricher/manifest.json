@@ -7,5 +7,5 @@
     "Import-Package": [
         "core-types"
     ],
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.plexus.PlexusEnricherService\""
+    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.plexus.PlexusEnricherService\", osgi.service; objectClass=\"org.neverplayed.plexus.EnrichmentService\""
 }

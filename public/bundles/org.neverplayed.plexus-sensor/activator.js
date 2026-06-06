@@ -1,9 +1,15 @@
+/**
+ * @file Activator for org.neverplayed.plexus-sensor
+ * @module platform/bundles/org.neverplayed.plexus-sensor
+ */
+
 import { 
     PLEXUS_ENGINE_SERVICE, 
     PERCEIVER_SERVICE, 
     PERCEIVER_CHANGED_TOPIC,
     PLEXUS_SENSOR_SERVICE,
-    LOG_SERVICE
+    LOG_SERVICE,
+    EVENT_HANDLER_INTERFACE
 } from "core-types";
 
 export default class Activator {
@@ -44,7 +50,7 @@ export default class Activator {
         }).open();
 
         // 4. Reactive Listeners for Perceiver Shift
-        context.registerService("@pandino/event-admin/EventHandler", {
+        context.registerService(EVENT_HANDLER_INTERFACE, {
             handleEvent: () => this._probeNow(true)
         }, {
             "event.topics": [PERCEIVER_CHANGED_TOPIC]

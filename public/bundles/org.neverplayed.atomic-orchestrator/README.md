@@ -39,3 +39,19 @@ Computational engine for evaluating **Atomic Rules**, managing semantic flows, a
 - [ADR-0026](../../docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](../../docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](../../docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+
+
+### Referenced Constants:
+- `FLOW_SERVICE`
+- `YAML_SERVICE`
+- `DOMAIN_OBJECT_REGISTRY_SERVICE`
+- `BO_EXTENSION_SERVICE`
+- `LIMES_SERVICE`
+- `SIGNING_DATA_SERVICE`
+- `LOG_SERVICE`
+- `_LOG_SERVICE`
+- `UI_FACTORY_SERVICE`
+- `DOMAIN_STRATEGY_SERVICE`
+- `ACTION_SERVICE`
+- `PERSISTENCE_MANAGER_SERVICE`
+- `INTERACTOR_SERVICE`

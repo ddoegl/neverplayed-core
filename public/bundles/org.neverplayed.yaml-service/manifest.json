@@ -3,5 +3,6 @@
   "Bundle-Version": "1.0.0",
   "Bundle-Name": "YAML Parser Service",
   "Bundle-Description": "High-performance YAML/JSON translation layer for declarative universe specs.",
-  "Bundle-Activator": "activator.js"
+  "Bundle-Activator": "activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.yaml.YamlService\""
 }

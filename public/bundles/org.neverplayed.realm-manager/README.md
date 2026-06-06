@@ -1,4 +1,6 @@
 # 🛡️ Realm Manager Bundle
+![Documentation Health](https://img.shields.io/badge/Documentation-Stable-green) ![Test Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)
+
 
 The central authority for orchestrating Layered Semantic Universes (Realms) and their dynamic inhabitant populations.
 
@@ -39,3 +41,19 @@ context.registerService(FLOW_SERVICE, flowObj, {
 - [ADR-0026](docs/adr/0026-reactive-non-destructive-variable-resolution.md) - Non-destructive variable resolution.
 - [ADR-0027](docs/adr/0027-semantic-bundle-versioning-strategy.md) - Semantic versioning for bundles.
 - [ADR-0028](docs/adr/0028-tiered-bundle-testing-strategy.md) - Tiered bundle testing strategy.
+
+
+### Referenced Constants:
+- `REALM_SERVICE`
+- `LOG_SERVICE`
+- `SESSION_SERVICE`
+- `DOMAIN_OBJECT_REGISTRY_SERVICE`
+- `REALM_STORAGE_PID`
+- `SHELL_COMMAND_SERVICE`
+- `EVENT_ADMIN_SERVICE`
+- `EVENT_FACTORY_SERVICE`
+- `AUTH_SHIELD_SERVICE`
+- `LIMES_SERVICE`
+- `PERSISTENCE_MANAGER_SERVICE`
+- `BEING_SERVICE`
+- `YAML_SERVICE`

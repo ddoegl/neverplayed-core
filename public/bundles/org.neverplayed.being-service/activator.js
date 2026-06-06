@@ -3,7 +3,7 @@
  * @module platform/bundles/org.neverplayed.being-service
  */
 
-import { SESSION_SERVICE, LOG_SERVICE, BEING_SERVICE } from "../../core-types.js";
+import { SESSION_SERVICE, LOG_SERVICE, BEING_SERVICE, REALM_CORE, REALM_FOUNDATION, REALM_SHOWCASE, REALM_HABITAT, REALM_GOVERNANCE } from "../../core-types.js";
 import { BaseActivator } from "osgi-base";
 
 export default class Activator extends BaseActivator {
@@ -179,11 +179,11 @@ export default class Activator extends BaseActivator {
              */
             getKnownBeings: () => {
                 const standardRealms = [
-                    "org.neverplayed.realm.core",
-                    "org.neverplayed.realm.foundation",
-                    "org.neverplayed.realm.showcase",
-                    "org.neverplayed.realm.habitat",
-                    "org.neverplayed.realm.governance"
+                    REALM_CORE,
+                    REALM_FOUNDATION,
+                    REALM_SHOWCASE,
+                    REALM_HABITAT,
+                    REALM_GOVERNANCE
                 ];
                 const synthesizedRealms = standardRealms.map(realmId => ({
                     id: `realm:${realmId}`,

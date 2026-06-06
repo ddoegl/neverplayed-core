@@ -47,3 +47,10 @@ export const BOOTSTRAP_LICENSE_FLOW = "bootstrap-license";
 
 // 4. Placeholder for Domain-specific Logic
 // Only purely application-specific constants should remain here.
+export const GYM_MACHINE_REGISTRY_SERVICE = "org.neverplayed.gym.MachineRegistry";
+export const SOMATIC_MUSCLE_REGISTRY_SERVICE = "org.neverplayed.somatic.MuscleRegistry";
+export const REALM_GEMMA = "org.neverplayed.realm.gemma";
+export const REALM_SOMATIC_BODY = "org.neverplayed.realm.somatic-body";
+export const REALM_GYM = "org.neverplayed.realm.gym";
+export const LLM_SERVICE = "org.neverplayed.LLMService";
+

@@ -4,6 +4,7 @@
   "Bundle-Name": "Event Monitor",
   "Bundle-Description": "Real-time observer for OSGi EventAdmin and platform signaling.",
   "Bundle-Activator": "activator.js",
+  "Provide-Capability": "osgi.service; objectClass=\"@pandino/event-admin/EventHandler\", osgi.service; objectClass=\"org.neverplayed.flow.FlowService\"",
   "Configuration": {
     "flowType": "system-flow",
     "channels": [
