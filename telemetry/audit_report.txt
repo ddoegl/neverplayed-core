@@ -1,31 +1,119 @@
-# Forensic Audit Report
+================================================================================
+🏛️ SYSTEM INTEROCEPTIVE AUDIT REPORT: PANDINO BUNDLE DEVIATIONS
+================================================================================
+Generated: 2026-06-06
+Role: Forensic Analyst
+Target: Pandino Bundles vs. Architecture Decision Records (ADRs)
 
-**Date/Time:** 2026-05-20T21:08:00+02:00
-**Execution Mode:** Auto (Forensic scanning and read-only telemetry)
+SUMMARY OF FINDINGS:
+--------------------------------------------------------------------------------
+- CORE Layer: FAILED (161 errors, 14 warnings)
+- FOUNDATION Layer: FAILED (64 errors, 1 warnings)
+- DOMAIN Layer: FAILED (88 errors, 12 warnings)
+- IDENTIFIER Audit (Magic Strings): FAILED (22 Core violations, 17 Domain violations)
 
----
+================================================================================
+1. CORE LAYER VIOLATIONS (Platform Primitives)
+================================================================================
+A. Service Registrations Not Advertised in manifest.json (ADR-0022 Compliance):
+   The following bundles register OSGi services programmatically in activator.js but fail to declare them in their manifest.json "services.provides" array:
+   - org.neverplayed.plexus-sensor: missing 'org.neverplayed.plexus.Sensor' (PLEXUS_SENSOR_SERVICE)
+   - org.neverplayed.persistence-resolver: missing 'org.neverplayed.persistence.Resolver' (PERSISTENCE_RESOLVER_SERVICE)
+   - org.neverplayed.system-logger: missing 'org.neverplayed.LogService' (LOG_SERVICE)
+   - org.neverplayed.shell-host: missing 'org.neverplayed.shell.ShellHost' (SHELL_HOST_SERVICE)
+   - org.neverplayed.limes: missing 'org.neverplayed.limes.LimesService' (LIMES_SERVICE)
+   - org.neverplayed.yaml-service: missing 'org.neverplayed.yaml.YamlService' (YAML_SERVICE)
+   - org.neverplayed.system-reset: missing 'org.neverplayed.system.Reset' (SYSTEM_RESET_SERVICE)
+   - org.neverplayed.event-monitor: missing '@pandino/event-admin/EventHandler' and 'org.neverplayed.flow.FlowService'
+   - org.neverplayed.alpine-inspector: missing 'org.neverplayed.shell.Command'
+   - org.neverplayed.shell-cli-dom: missing 'org.neverplayed.flow.FlowService'
 
-## 1. Active Role & Read-Only Constraints
-- **Role:** Forensic Analyst (Interoceptive system auditor and forensic investigator).
-- **Constraints:**
-  1. Strictly forbidden from writing, generating, or proposing source code.
-  2. Strictly forbidden from writing or modifying any source or configuration files in the workspace, with write access limited exclusively to this telemetry file (`/telemetry/audit_report.txt`) and handovers (`.agents/handovers/*`).
+B. Missing Documentation (ADR-0023 Compliance):
+   - org.neverplayed.session-service-dom: README.md MISSING
+   - org.neverplayed.plexus: README.md MISSING
+   - org.neverplayed.plexus-enricher: README.md MISSING
+   - org.neverplayed.plexus-tracing: README.md MISSING
 
----
+C. Missing Tests (ADR-0028 Compliance):
+   The following core bundles do not have a dedicated 'tests/' directory:
+   - org.neverplayed.plexus-sensor
+   - org.neverplayed.session-service-dom
+   - org.neverplayed.plexus
+   - org.neverplayed.plexus-enricher
+   - org.neverplayed.plexus-tracing
+   - org.neverplayed.persistence-localstorage
 
-## 2. Final Compliance Validation
-Following the remediation of the final minor issues, all target components are now **100% Compliant** with all relevant ADRs and architectural patterns:
-- **`org.neverplayed.stratum-core-dom`**: Compliant. (README.md, tests/ directory, and capability mappings are present and correct).
-- **`org.neverplayed.stratum-core`**: Compliant. (README links verified, magic strings eliminated).
-- **`org.neverplayed.shell-sidebar`**: Compliant. (Capabilities fully aligned under Provide-Capability).
-- **`org.neverplayed.shell-header`**: Compliant. (Constant imports aligned, magic strings eliminated, capabilities fully registered).
-- **`org.neverplayed.person-registry`**: Compliant. (Regression tests added, all service capabilities aligned, magic string resolved).
+D. Missing ADR Links in READMEs (Documentation Drift):
+   - org.neverplayed.persistence-selector: README missing links to ADR-0025, ADR-0026
+   - org.neverplayed.stratum-cli: README missing links to platform-patterns.md, ADR-0025, ADR-0026
+   - org.neverplayed.persistence-localstorage: README missing links to ADR-0025, ADR-0026
 
----
+E. Magic String Drift (Identifier Audit):
+   The following files reference raw string values for service names, templates, or system constants instead of utilizing exports from public/core-types.js:
+   - public/bundles/org.neverplayed.perceiver-service/activator.js:27 ("org.neverplayed.realm.core")
+   - public/bundles/org.neverplayed.stratum-hud/activator.js:84 (template path literal)
+   - public/bundles/org.neverplayed.session-service/activator.js:994 ("org.neverplayed.session-service")
+   - public/bundles/org.neverplayed.stratographer/activator.js:192, 207, 821, 914, 942, 951, 1220, 1226 (various service and template literal paths)
+   - public/bundles/org.neverplayed.plexus-sensor/activator.js:47 ("@pandino/event-admin/EventHandler")
+   - public/bundles/org.neverplayed.limes/activator.js:169 ("org.neverplayed.realm.core")
+   - public/bundles/org.neverplayed.shell-sidebar/activator.js:99, 101, 103, 105 (various flow ID literals)
+   - public/bundles/org.neverplayed.persistence-localstorage/activator.js:25 ("org.neverplayed.shell.ui.context")
 
-## 3. Global Diagnostics
-- **Regression Suite:** All 8/8 test suites pass cleanly.
-- **Architectural Linter:** Clear of all errors, warnings, or magic string violations for the audited bundles.
+================================================================================
+2. FOUNDATION LAYER VIOLATIONS (Infrastructure Services)
+================================================================================
+A. Service Registrations Not Advertised in manifest.json (ADR-0022 Compliance):
+   - org.neverplayed.shared-ui: missing 'org.neverplayed.atomic.ComponentRegistry', 'org.neverplayed.ui.Components', 'org.neverplayed.ui.Registry', and 'org.neverplayed.ui.Interactor'
+   - org.neverplayed.action-registry: missing 'org.neverplayed.action.ActionRegistry'
+   - org.neverplayed.global-state: missing 'org.neverplayed.global-state.ContributionService'
+   - org.neverplayed.do-registry: missing 'org.neverplayed.flow.FlowService'
+   - org.neverplayed.atomic-orchestrator: missing 'org.neverplayed.atomic.SpecIngestion', 'org.neverplayed.flow.FlowService', 'org.neverplayed.backoffice/extension', and 'org.neverplayed.action.ActionService'
+   - org.neverplayed.persistence-resolver: missing 'org.neverplayed.persistence.Resolver'
+   - org.neverplayed.selection-service: missing 'org.neverplayed.selection.SelectionService'
+   - org.neverplayed.yaml-editor: missing 'org.neverplayed.yaml.Editor'
+   - org.neverplayed.outreach: missing 'org.neverplayed.action.ActionService'
 
----
-*All findings mapped and logged under read-only forensic analyst constraints.*
+B. Missing Documentation (ADR-0023 Compliance):
+   - org.neverplayed.visual-editor: activator.js missing JSDoc technical documentation
+
+================================================================================
+3. DOMAIN LAYER VIOLATIONS (Business Logic & Realizations)
+================================================================================
+A. Service Registrations Not Advertised in manifest.json (ADR-0022 Compliance):
+   - org.neverplayed.gym: missing 'org.neverplayed.realm.RealmCognitionService' and '@pandino/event-admin/EventHandler'
+   - org.neverplayed.llm.gemma-showcase: missing 'org.neverplayed.shell.Command' and '@pandino/event-admin/EventHandler'
+   - org.neverplayed.llm.inner-voice: missing 'org.neverplayed.TransitionParticipant'
+   - org.neverplayed.somatic-body: missing '@pandino/event-admin/EventHandler'
+
+B. Missing Documentation (ADR-0023 Compliance):
+   - org.neverplayed.gym: README.md MISSING & activator.js missing JSDoc
+   - org.neverplayed.llm.gemma-showcase: README.md MISSING & activator.js missing JSDoc
+   - org.neverplayed.llm.inner-voice: README.md MISSING & activator.js missing JSDoc
+   - org.neverplayed.somatic-body: README.md MISSING & activator.js missing JSDoc
+   - org.neverplayed.llm.gemma-provider: README.md MISSING & activator.js missing JSDoc
+
+C. Missing Tests (ADR-0028 Compliance):
+   The following domain bundles do not have a dedicated 'tests/' directory:
+   - org.neverplayed.being-service
+   - org.neverplayed.gym
+   - org.neverplayed.llm.gemma-showcase
+   - org.neverplayed.llm.inner-voice
+   - org.neverplayed.somatic-body
+   - org.neverplayed.llm.gemma-provider
+
+D. Magic String Drift (Identifier Audit):
+   - public/bundles/org.neverplayed.being-service/activator.js:182, 184, 186 ("org.neverplayed.realm.core", "org.neverplayed.realm.showcase", "org.neverplayed.realm.governance")
+   - public/bundles/org.neverplayed.gym/activator.js:64, 101, 163 (MachineRegistry, Gym realm literal, StratumService literal)
+   - public/bundles/org.neverplayed.llm.inner-voice/activator.js:93, 123, 202, 234, 343 (EventAdmin, PerceiverService literals)
+   - public/bundles/org.neverplayed.llm.inner-voice/compiler.js:7 (PerceiverService literal)
+   - public/bundles/org.neverplayed.somatic-body/activator.js:57, 133 (MuscleRegistry, StratumService literals)
+   - public/bundles/org.neverplayed.llm.gemma-provider/activator.js:40, 48, 50 (EventHandler, EventAdmin, EventFactory literals)
+
+================================================================================
+4. RECOMMENDATIONS & STEPS FOR COMPLIANCE
+================================================================================
+1. Manifest Alignment: For each VIOLATION involving missing service advertisements, add the matching service implementation name to the bundle's `manifest.json` under the `"services.provides"` array.
+2. Documentation Recovery: Scaffold standard-compliant `README.md` files for all missing bundles. Add JSDoc headers to the corresponding `activator.js` files.
+3. Test Coverage: Create mandatory `tests/` directories containing basic integration assertions for all bundles flagged by the linter.
+4. Magic String Migration: Replace all flagged magic string literals with import constants resolved from `public/core-types.js` (e.g. replacing `"org.neverplayed.perceiver.PerceiverService"` with `PERCEIVER_SERVICE`).
+================================================================================
