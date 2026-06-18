@@ -1,25 +1,55 @@
 # Session State: Development Engineer (dev)
+_Last updated: 2026-06-06 — Branch: `architectural-cleanup-1`_
 
 ## Current Goal
-Enable L1 Beings (e.g. Rob) to possess an **Inner Voice**, implement dynamic **Morphic Seed** compaction and reconstruction during sleep/awakening transitions, and implement proprioceptive translation of raw exteroceptive sensory envelope lines.
+All planned tickets closed. Branch `architectural-cleanup-1` is clean and stable.
+No active objective. Ready for next directive.
 
-## Completed Items
-- **Gemma LLM Service Bind in Habitat**:
-  - Registered `./bundles/org.neverplayed.llm.gemma-provider/manifest.json` in [habitat.json](file:///Users/ddoegl/speckit/neverplayed/public/realms/habitat.json) to ensure the `LLMService` is active and available in the Habitat realm, allowing the `inner-voice` bundle to successfully bind and generate thought monologues.
-- **Proprioceptive Self-Awareness (`SelfAwareness`) Sense**:
-  - Added `SelfAwareness` and `Primordial` senses to the `person` surrogate in [surrogates.yaml](file:///Users/ddoegl/speckit/neverplayed/public/realms/data/habitat/surrogates.yaml).
-  - Decoupled `[Proprioception]` compilation in [compiler.js](file:///Users/ddoegl/speckit/neverplayed/public/bundles/org.neverplayed.llm.inner-voice/compiler.js) from the generic `Primordial` sense, enabling any self-aware occupant to sense their own presence proprioceptively regardless of other occupant visibility.
-- **Compaction & Reconstruction Refinements**:
-  - Implemented `_cleanBeingId` in the `inner-voice` activator to strip `being:` and `realm:` prefixes before processing morphic seeds.
-  - Enhanced `compact(beingId)` to automatically save a baseline seed (`"Initial state of [beingId]."`) on immediate logout if thought history is empty and no seed exists, while preserving existing seeds when no new thoughts are generated.
-  - Fixed session-service fallback memory leak where `_pendingLobbyFallback` was not properly cleared during new logins.
-- **Automated Verification**:
-  - Updated [inner-voice.test.ts](file:///Users/ddoegl/speckit/neverplayed/tests/inner-voice.test.ts) to verify Rob's thought generation, compaction, reconstruction, and empty history baseline seed creation.
-  - Verified 100% test completion using the Deno test runner (19/19 tests passing, all systems nominal).
+## Completed Items (this session)
+
+### TICKET-20260606-1425: Architectural Alignment
+- Resolved all layer-based linter and magic string violations across Core, Foundation, and Domain layers.
+- All ADR references corrected; 0 violations in `lint:arch` for all three layers.
+- Committed and ticket closed.
+
+### TICKET-20260606-1445: Ontological Error Toast Notifications
+- `stratum-core-dom/activator.js`: `login()` / `logout()` now return Promises.
+- `stratographer/activator.js`: `setShunt()` is async; errors redirect to `interactor.notify(..., 'error')`.
+- `shell-header/activator.js`: `login()` / `identityLogin()` wrapped in try/catch, errors to toast.
+- Committed with prior ticket.
+
+### TICKET-20260606-1525: Extract Toast Bundle
+- **Created** `org.neverplayed.toast` bundle:
+  - `activator.js` — extends `AlpineActivator`; registers `notifications` Alpine store (push/dismiss/auto-timeout); renders glassmorphic HUD; registers `INTERACTOR_SERVICE` (confirm/prompt/alert/notify).
+  - `templates/toast.html` — 4-variant (info/success/warning/error) glassmorphic overlay with Alpine transitions.
+  - `manifest.json` — advertises `org.neverplayed.ui.Interactor`.
+  - `README.md`, `tests/.gitkeep`.
+- **Cleaned** `shared-ui`:
+  - Removed `registerService(INTERACTOR_SERVICE)` — ownership transferred to toast.
+  - Removed `Provide-Capability: Interactor` from `manifest.json`.
+  - **Kept** `trackService(INTERACTOR_SERVICE)` — shared-ui is still a *consumer* (powers `ui:alert` / `ui:confirm` action handlers).
+- **Wired** `realms-secure.html`: importmap entry + coreBundles entry for toast (before shared-ui).
+- Verified 19/19 tests passing, 0 lint violations.
+- Committed (`9049153`, `17d9d63`). Ticket closed.
 
 ## Pending Items
-- None. The feature is complete, verified, and stable. All regression tests are green.
+- None. All tickets closed, branch stable.
 
 ## Key Decisions & Context
-- **Sense Independence**: Separating proprioception from `Primordial` ensures that any future surrogate added with `SelfAwareness` gains internal self-presence awareness without requiring the exteroceptive sight needed to perceive other occupants.
-- **Unified Persistence Keys**: Stripping shunting prefixes in the inner-voice activator guarantees that morphic seeds are written to and read from consistent paths, avoiding fragmented state records.
+
+### INTERACTOR_SERVICE Ownership Split
+- `org.neverplayed.toast` is the **sole provider** of `INTERACTOR_SERVICE`.
+- `shared-ui`, `shell-header`, `stratographer`, `do-registry`, `atomic-orchestrator` are all **consumers** (tracker pattern).
+- `toast` provides: `confirm()`, `prompt()`, `alert()` (native browser fallback) + `notify(msg, type, duration)` (glassmorphic HUD).
+- The native `confirm`/`alert`/`prompt` are preserved as pass-through — no regression for `do-registry` and `atomic-orchestrator` which use `interactor.confirm()` for destructive action dialogs.
+
+### Boot Order & Realm Dependency
+- `toast` boots in `realms-secure.html` coreBundles (section 7, before `shared-ui`).
+- `foundation.json` does **not** list `toast` — but Pandino deduplicates by `getState() < 32`, so toast is already ACTIVE when foundation realm loads.
+- **Future risk**: if `foundation.json` is ever booted standalone without `realms-secure.html`, `toast` must be added to its `bundles` list before `do-registry`.
+
+### Architecture Reference
+- `AlpineActivator` (from `alpine-base.js`) — provides `initStore`, `render`, `track`, lifecycle cleanup.
+- Toast mount point: `#toast-mount-point` (injected into `document.body` if absent).
+- Toast notifications Alpine store name: `"notifications"` (global, visible to all Alpine components).
+- Test suite: `deno task test` → 19 integration tests across all subsystems.
