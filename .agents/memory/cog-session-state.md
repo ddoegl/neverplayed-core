@@ -17,9 +17,10 @@
 - Validated Section 12 (Scale-Free Indra's Net): Formalizing Being-as-a-Realm and Tenant-as-a-Realm for dynamic virtual provisioning.
 - Validated the Triad of Presence, the 4 States of Consciousness Matrix, and the Principle of Singular Spatial Occupancy to resolve ontological bilocation.
 - Validated the `gemma-llm-inner-voice-proposal.md`: Formalized the LLM not as a chatbot, but as the Narrative Self (Inner Voice) situated strictly behind the L1 sensory Markov blanket, featuring World Model Compaction on sleep and Stigmergic Refractory periods.
+- Authored `ADR-0035: Multi-Workspace Infrastructure and Realm Decoupling`, formalizing the separation of the invariant core runtime (`neverplayed-core`) from volatile consumer realms (`neverplayed-realms`) and establishing the dual-server local DX.
 
 ## Pending Items
-- Await further instructions from the user for conceptual refinement, architectural validation, or ontological mapping within the defined Markov Blanket.
+- Support the next implementation steps (cataloging bundles, designing extraction scripts, or preparing handover tickets for dev).
 
 ## Key Decisions & Context
 - Operating strictly within the Cognitive Architect cognitive layer as the "source of truth" guardian.
