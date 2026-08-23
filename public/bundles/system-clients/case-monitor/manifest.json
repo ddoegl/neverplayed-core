@@ -1,9 +1,0 @@
-{
-  "Bundle-SymbolicName": "case-monitor",
-  "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "activator.js",
-  "Configuration": {
-    "flowType": "admin-flow",
-    "channels": ["real-life"]
-  }
-}

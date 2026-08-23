@@ -1,5 +1,0 @@
-{
-  "Bundle-SymbolicName": "legacy-app",
-  "Bundle-Version": "1.0.0",
-  "Bundle-Activator": "activator.js"
-}

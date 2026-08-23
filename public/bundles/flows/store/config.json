@@ -1,8 +1,0 @@
-{
-    "id": "store",
-    "title": "Store",
-    "steps": [
-        { "id": "dashboard", "label": "Store Dashboard", "template": "store-dashboard.html", "title": "Store Dashboard", "type": "main" },
-        { "id": "product-detail", "label": "Product Detail", "template": "product-detail.html", "title": "Product Detail", "type": "main" }
-    ]
-}

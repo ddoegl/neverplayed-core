@@ -1,9 +1,0 @@
-{
-    "Bundle-SymbolicName": "flows.reactive-order-demo",
-    "Bundle-Version": "1.0.0",
-    "Bundle-Activator": "activator.js",
-    "X-Atomic-Bundle": "true",
-    "Configuration": {
-        "channels": ["business-channel-web"]
-    }
-}

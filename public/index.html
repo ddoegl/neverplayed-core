@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Never Played</title>
+    <title>Never Played - Secure Bridge</title>
     <link rel="icon" type="image/png" href="favicon.png">
-
     <script type="importmap">
       {
         "imports": {
@@ -13,11 +12,12 @@
           "@pandino/event-api": "https://esm.sh/@pandino/event-api@0.8.33",
           "@pandino/log-api": "https://esm.sh/@pandino/log-api@0.8.33",
           "alpinejs": "https://esm.sh/alpinejs@3.13.5",
-          "shared-types": "./shared-types.js",
           "core-types": "./core-types.js",
           "osgi-base": "./osgi-base.js",
           "alpine-base": "./alpine-base.js",
+          "@shoelace-style/shoelace/": "https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/",
           "org.neverplayed.shared-ui/": "./bundles/org.neverplayed.shared-ui/",
+          "org.neverplayed.toast/": "./bundles/org.neverplayed.toast/",
           "org.neverplayed.selection-service/": "./bundles/org.neverplayed.selection-service/",
           "org.neverplayed.do-registry/": "./bundles/org.neverplayed.do-registry/",
           "org.neverplayed.realm.real-life/": "./bundles/org.neverplayed.realm.real-life/",
@@ -28,1274 +28,244 @@
         }
       }
     </script>
-
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/themes/light.css"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/shoelace-autoloader.js"
+    ></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-    >
-    <link rel="stylesheet" href="styles.css">
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/themes/light.css"
     />
-    <script
-      type="module"
-      src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace-autoloader.js"
-    ></script>
-
-    <script
-      src="bundles/system-services/backoffice-licenses/lib/license-3d.js"
-    ></script>
     <style>
       [x-cloak] {
         display: none !important;
       }
-      .phone-frame {
-        width: 375px;
-        height: 812px;
-        background: #111;
-        border-radius: 50px;
-        border: 12px solid #222;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.5);
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
       }
-      .phone-content {
-        width: 100%;
-        height: 100%;
-        background: #fff;
-        overflow-y: auto;
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
       }
-      .phone-notch {
-        width: 160px;
-        height: 30px;
-        background: #222;
-        position: absolute;
-        top: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        border-bottom-left-radius: 20px;
-        border-bottom-right-radius: 20px;
-        z-index: 10;
-      }
-      sl-button.pulse::part(base) {
-        animation: sl-pulse 2s infinite;
-      }
-      @keyframes sl-pulse {
-        0% {
-          box-shadow: 0 0 0 0 rgba(var(--sl-color-primary-600), 0.4);
-        }
-        70% {
-          box-shadow: 0 0 0 10px rgba(var(--sl-color-primary-600), 0);
-        }
-        100% {
-          box-shadow: 0 0 0 0 rgba(var(--sl-color-primary-600), 0);
-        }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 10px;
       }
     </style>
   </head>
 
   <body
-    x-data="navigationMenu"
-    @shell-header:sidebar-toggle.window="Alpine.store('shell_context').sidebarOpen = !Alpine.store('shell_context').sidebarOpen"
-    @shell:flows-updated.window="flows = [...flows]"
-    class="h-screen flex flex-col bg-gray-100 text-gray-900 overflow-hidden sl-theme-light"
+    class="h-screen w-screen bg-slate-950 flex flex-col overflow-hidden"
+    x-data="shellLoader"
   >
-    <!-- Cinematic Splash Screen -->
-    <div
-      id="splash-screen"
-      class="fixed inset-0 z-[1000] bg-slate-950 flex flex-col items-center justify-center transition-all duration-1000 ease-in-out"
-    >
-      <div class="relative mb-8">
-        <div
-          class="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full scale-150 animate-pulse"
-        >
-        </div>
-        <img
-          src="branding.svg"
-          class="w-32 h-32 relative z-10 animate-spin-slow"
-        />
-      </div>
-      <h1
-        class="text-white text-2xl font-bold tracking-widest uppercase mb-2 animate-bounce"
-      >
-        Spinning up the universe...
-      </h1>
-      <div
-        id="splash-status"
-        class="text-blue-400 font-mono text-xs tracking-tighter opacity-70 mb-8 max-w-md text-center"
-      >
-        Initializing kernel...
-      </div>
+    <!-- Global Header (Managed by org.neverplayed.shell-header) -->
+    <header id="shell-header" x-show="kernelReady"></header>
 
-      <!-- Retro loading bar -->
-      <div class="w-64 h-1 bg-slate-800 rounded-full overflow-hidden">
-        <div
-          id="splash-progress"
-          class="h-full bg-blue-500 transition-all duration-300 w-0 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-        >
-        </div>
-      </div>
-    </div>
-
-    <style>
-      .animate-spin-slow {
-        animation: spin 8s linear infinite;
-      }
-      @keyframes spin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
-      }
-    </style>
-    <!-- Managed Header Bundle Slot -->
-    <header id="shell-header" x-show="!activeFlow?.hideNavigation"></header>
-
-    <div class="flex flex-1 overflow-hidden">
-      <!-- Primary Sidebar (Flows) -->
+    <!-- App Container -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Sidebar managed by org.neverplayed.shell-sidebar -->
       <aside
-        x-show="envType === 'desktop' && Alpine.store('shell').sidebarOpen && !activeFlow?.hideNavigation"
-        x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="-translate-x-full"
-        x-transition:enter-end="translate-x-0"
-        x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-start="translate-x-0"
-        x-transition:leave-end="-translate-x-full"
-        class="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 z-10 shadow-xl"
+        id="shell-sidebar-root"
+        class="w-auto bg-white z-20 overflow-hidden flex flex-col"
       >
-        <div class="p-4 flex-1 overflow-y-auto space-y-2">
-          <div
-            class="text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-4 px-2 hidden lg:block"
-          >
-            Available Flows
-          </div>
+      </aside>
 
-          <template x-for="flow in flows" :key="flow.id">
-            <button
-              x-show="isFlowEnabled(flow.id)"
-              @click="launchFlow(flow.id)"
-              class="w-full flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 group"
-              :class="activeFlowId === flow.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-600 hover:bg-gray-100'"
-            >
-              <div
-                class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-                :class="activeFlowId === flow.id ? 'bg-white/20' : 'bg-gray-100 text-gray-500'"
-              >
-                <i :class="getFlowIcon(flow.id) + ' text-lg'"></i>
-              </div>
-              <span
-                class="font-bold text-sm truncate hidden lg:block"
-                x-text="flow.title"
-              ></span>
-            </button>
+      <!-- Main Content -->
+      <main class="flex-1 overflow-y-auto relative bg-slate-50">
+        <div id="shell-host-root" x-show="kernelReady" class="h-full w-full">
+        </div>
+
+        <!-- Kernel Boot Progress -->
+        <div
+          x-show="!kernelReady"
+          class="h-full flex flex-col items-center justify-center space-y-4"
+        >
+          <i class="fas fa-shield-alt fa-spin text-blue-400 text-2xl"></i>
+          <span
+            class="text-slate-400 text-[10px] font-mono uppercase tracking-widest text-center"
+            x-text="bootStatus"
+          ></span>
+          <template x-if="error">
+            <div class="text-red-500 text-xs font-mono mt-4 text-center px-10">
+              <p class="font-bold uppercase tracking-wider">Kernel Panic</p>
+              <p x-text="error"></p>
+            </div>
           </template>
         </div>
-
-        <!-- Infrastructure Status Area -->
-        <div
-          class="p-4 border-t border-gray-100 bg-gray-50/50 hidden lg:block text-[10px] text-gray-400 font-mono"
-        >
-          Pandino Kernel: 0.8.33
-        </div>
-      </aside>
-
-      <!-- Secondary Sidebar (Sub-Navigation Slot) -->
-      <aside
-        class="w-56 bg-gray-50 border-r border-gray-200 overflow-y-auto flex-shrink-0 transition-all transform"
-        x-show="showSecondarySidebar && !activeFlow?.hideNavigation"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="-translate-x-full opacity-0"
-        x-transition:enter-end="translate-x-0 opacity-100"
-      >
-        <div class="p-4 space-y-4">
-          <div
-            class="text-[10px] uppercase text-gray-500 font-bold tracking-widest"
-          >
-            Navigation
-          </div>
-          <div
-            id="secondary-nav-container"
-            :key="activeFlowId"
-            class="space-y-1"
-          >
-            <template x-if="activeNav?.steps?.length > 0">
-              <template x-for="step in (activeNav?.steps || [])" :key="step.id">
-                <button
-                  @click="activeNav?.loadStep?.(step.id)"
-                  class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors"
-                  :class="(activeNav?.currentStep?.() === step.id) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100'"
-                >
-                  <span x-text="step.name"></span>
-                </button>
-              </template>
-            </template>
-            <template x-if="!activeNav?.steps || activeNav.steps.length === 0">
-              <div class="text-xs text-gray-400 italic">
-                No sub-navigation available
-              </div>
-            </template>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Main Content Container -->
-      <main
-        class="flex-1 overflow-y-auto relative bg-slate-50 flex items-center justify-center p-4"
-      >
-        <template x-if="envType === 'mobile'">
-          <div class="phone-frame" @click.self="logout()">
-            <div class="phone-notch"></div>
-            <div
-              class="phone-content"
-              id="flow-viewport-mobile"
-              x-show="activeFlowId"
-            >
-              <!-- Mobile target -->
-              <div
-                id="flow-container-mobile"
-                x-ignore
-                class="h-full w-full relative"
-              >
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <template x-if="envType === 'desktop'">
-          <div id="flow-viewport" class="h-full w-full relative">
-            <!-- Landing page if no flow launched -->
-            <div
-              x-show="!activeFlowId"
-              class="h-full flex flex-col items-center justify-center text-gray-400 space-y-4"
-            >
-              <i class="fas fa-layer-group text-6xl opacity-20"></i>
-              <div class="text-xl font-medium">
-                Select a flow to get started
-              </div>
-            </div>
-            <!-- Target for OSGi flows -->
-            <div x-show="activeFlowId" class="h-full w-full">
-              <div id="flow-container" x-ignore class="h-full w-full relative">
-              </div>
-            </div>
-          </div>
-        </template>
       </main>
     </div>
 
-    <!-- Bootstrap Code Modal -->
-    <div
-      x-show="session.bootstrapCodeModal?.show"
-      x-cloak
-      class="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
-      x-transition:enter="transition ease-out duration-300"
-      x-transition:enter-start="opacity-0"
-      x-transition:enter-end="opacity-100"
-    >
-      <div
-        class="max-w-md w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
-        x-transition:enter="transition ease-out duration-300 transform"
-        x-transition:enter-start="scale-95 translate-y-4"
-        x-transition:enter-end="scale-100 translate-y-0"
-      >
-        <div class="p-8 text-center">
-          <div
-            class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl"
-          >
-            <i class="fas fa-shield-alt"></i>
-          </div>
-          <h2 class="text-2xl font-bold text-gray-900 mb-2">
-            Secure Your Account
-          </h2>
-          <p class="text-sm text-gray-500 mb-8">
-            Your account is now protected by <strong>SCA Bootstrap</strong>. You
-            will need the following code and your phone number for your next
-            login.
-          </p>
-
-          <div class="space-y-4 mb-8">
-            <div>
-              <label
-                class="block text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-1"
-              >Registered Phone</label>
-              <div
-                class="text-lg font-semibold text-gray-800"
-                x-text="session.bootstrapCodeModal?.phone"
-              >
-              </div>
-            </div>
-            <div>
-              <label
-                class="block text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-1"
-              >Re-entry Security Code</label>
-              <div
-                class="bg-gray-50 border-2 border-dashed border-blue-200 rounded-xl p-4"
-              >
-                <div
-                  class="text-2xl font-mono font-bold text-blue-700 tracking-tighter"
-                  x-text="session.bootstrapCodeModal?.code"
-                >
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 flex gap-3 text-left"
-          >
-            <i class="fas fa-exclamation-triangle text-amber-500 mt-1"></i>
-            <p class="text-xs text-amber-800">
-              <strong>Important:</strong> Copy this code now. It will not be
-              shown again. The system will ask for it next time you try to login
-              with this ID.
-            </p>
-          </div>
-
-          <button
-            @click="closeBootstrapModal()"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all"
-          >
-            Continue to Logout
-          </button>
-        </div>
-      </div>
-    </div>
-
     <script type="module">
-      // --- NPRF Cache Buster (One-time Persistence Purge) ---
-      (function () {
-        const legacyPath = "system-services/";
-        const legacyRealm = "real-life/dashboard";
-        let shouldClear = false;
-        try {
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            const val = localStorage.getItem(key);
-            if (
-              val &&
-              (val.includes(legacyPath) || val.includes(legacyRealm))
-            ) {
-              shouldClear = true;
-              break;
-            }
-          }
-        } catch (_e) { /* Storage access denied */ }
-
-        if (shouldClear) {
-          console.warn(
-            "NPRF: Legacy paths detected in LocalStorage. Performance-preserving purge initiated...",
-          );
-          localStorage.clear();
-          console.log(
-            "NPRF: LocalStorage cleared. Cold-boot sequence starting.",
-          );
-        }
-      })();
-      import { checkAccess } from "./auth-shield.js";
-
       import loaderConfiguration from "https://esm.sh/@pandino/loader-configuration-dom@0.8.33";
       import Pandino from "https://esm.sh/@pandino/pandino@0.8.33";
       import Alpine from "https://esm.sh/alpinejs@3.13.5";
-      import {
-        CONFIG_ADMIN_SERVICE,
-        CONFIG_ADMIN_UI_FLOW,
-        ENV_SERVICE,
-        FLOW_SERVICE,
-        LICENSE_DATA_SERVICE,
-        LOG_SERVICE,
-        MOBILE_LAUNCHER_FLOW,
-        NAV_SERVICE,
-        REALLIFE_FLOW,
-        SELECTION_SERVICE,
-        SESSION_SERVICE,
-        SHELL_CLI_SERVICE,
-        SHELL_CONFIG_PID,
-        SYSTEM_READY_SERVICE,
-        SYSTEM_RESET_SERVICE,
-      } from "shared-types";
-      import { INTERFACE_KEY as PM_INTERFACE_KEY } from "https://esm.sh/@pandino/persistence-manager-api@0.8.33";
+      import { REALM_MANAGER_SERVICE } from "core-types";
 
-      const initUniverse = async (authenticatedUser) => {
-        const pandino = new Pandino({ ...loaderConfiguration });
+      // Initialize Central State
+      Alpine.store("platform", { kernelReady: false });
 
-        await pandino.init();
-        await pandino.start();
+      Alpine.data("shellLoader", () => ({
+        kernelReady: false,
+        bootStatus: "Shielding Phase: Core Initialization...",
+        error: null,
 
-        const context = pandino.getBundleContext();
-        globalThis.Alpine = Alpine;
-
-        // Infrastructure: Dynamic Persistence Engine
-        const response = await globalThis.fetch("./env.json");
-        const envConfig = response.ok
-          ? await response.json()
-          : {};
-        const persistenceTier = envConfig.persistencePolicy?.tier || envConfig.persistence_mode || "local";
-        const isFirebase = persistenceTier === "cloud";
-
-        const pmProviderUrl = isFirebase
-          ? "./bundles/org.neverplayed.persistence-firebase/manifest.json"
-          : "./bundles/org.neverplayed.persistence-localstorage/manifest.json";
-
-        const providerBundle = await context.installBundle(
-          pmProviderUrl,
-        );
-        if (providerBundle.state === 2 || providerBundle.state === 4) {
-          await providerBundle.start();
-        }
-
-        // Install and Start the Persistence Selector (Data Guardian)
-        const selectorBundle = await context.installBundle(
-          "./bundles/org.neverplayed.persistence-selector/manifest.json",
-        );
-        if (selectorBundle.state === 2 || selectorBundle.state === 4) {
-          await selectorBundle.start();
-        }
-
-        // Install fs-sync conditionally if local
-        if (!isFirebase) {
-          const fsSyncBundle = await context.installBundle(
-            "./bundles/org.neverplayed.persistence-fs-sync/manifest.json",
-          );
-          if (fsSyncBundle.state === 2 || fsSyncBundle.state === 4) {
-            await fsSyncBundle.start();
-          }
-        }
-
-        // --- Core UI Extensions ---
-        const headerBundle = await context.installBundle(
-          "./bundles/org.neverplayed.shell-header/manifest.json",
-        );
-        if (headerBundle.state === 2 || headerBundle.state === 4) {
-          await headerBundle.start();
-        }
-
-        const inspectorBundle = await context.installBundle(
-          "./bundles/org.neverplayed.alpine-inspector/manifest.json",
-        );
-        if (
-          inspectorBundle.state === 2 || inspectorBundle.state === 4
-        ) {
-          await inspectorBundle.start();
-        }
-
-        // Infrastructure: Event Admin
-        const eaBundle = await context.installBundle(
-          "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
-        );
-        if (eaBundle.state === 2 || eaBundle.state === 4) {
-          await eaBundle.start();
-        }
-
-        // Fetch the Persistence Manager
-        const pmRef = context.getServiceReference(PM_INTERFACE_KEY);
-        console.log(
-          "Shell Boot: Persistence Manager Reference:",
-          pmRef,
-        );
-
-        const pm = context.getService(pmRef);
-        console.log("Shell Boot: Persistence Manager Instance:", pm);
-
-        // Wait for persistence to hydrate (SDK or Shunt)
-        if (pm.waitReady) {
-          console.log(
-            "Shell Boot: Waiting for Persistence Manager hydration...",
-          );
-          await pm.waitReady();
-        }
-
-        Alpine.data("navigationMenu", () => ({
-          flows: [],
-          navServices: [],
-          envServices: [],
-          get session() { return this.$session; },
-          activeFlowId: null,
-          CONFIG_ADMIN_UI_FLOW,
-          REALLIFE_FLOW,
-          MOBILE_LAUNCHER_FLOW,
-          configAdmin: null,
-          _tracker: null,
-          _navTracker: null,
-          _envTracker: null,
-          logger: null,
-
-          getManifestChannels(bundle) {
-            if (!bundle) return undefined;
-            let headers;
-            try {
-              headers = bundle.getHeaders();
-            } catch (_e) {
-              return undefined;
-            }
-            if (!headers) return undefined;
-
-            const configKey = Object.keys(headers || {}).find((k) =>
-              k.toLowerCase() === "configuration"
-            );
-            const configPriming = headers[configKey];
-            if (!configPriming) return undefined;
-
-            try {
-              const primingData = typeof configPriming === "string"
-                ? JSON.parse(configPriming)
-                : configPriming;
-              return primingData.channels;
-            } catch (_e) {
-              return undefined;
-            }
-          },
-
-          isFlowEnabled(id) {
-            const flow = this.flows.find((f) => f.id === id);
-            if (!flow) return false;
-
-            const bsn = flow.bsn;
-            if (!bsn) return true;
-
-            const props = this.configAdmin?.getConfiguration(bsn)
-              ?.getProperties();
-            const manifestChannels = this.getManifestChannels(
-              flow.bundle,
-            );
-            const storedChannels = props?.channels;
-
-            // CRITICAL FIX: Empty array means "turned off", so we MUST check for undefined
-            const channels = (storedChannels !== undefined)
-              ? storedChannels
-              : (manifestChannels !== undefined
-                ? manifestChannels
-                : []);
-            const envId = this.session.environment ||
-              "business-channel-web";
-            const env = this.envServices.find((e) => e.id === envId);
-            const envType = env?.type || "desktop";
-            const channelId = envType === "mobile"
-              ? "business-channel-app"
-              : "business-channel-web";
-
-            return channels.includes(channelId) ||
-              channels.includes(envId);
-          },
-
-          goHome() {
-            if (this.logger) {
-              this.logger.info("Shell: Navigating home...");
-            } else console.log("Shell: Navigating home...");
-            if (this.session && this.session.scopedUsers) {
-              this.session.scopedUsers["global"] = {
-                id: "guest",
-                attributes: {},
-              };
-            }
-
-            if (this.envType === "mobile") {
-              this.launchFlow(MOBILE_LAUNCHER_FLOW);
-            } else {
-              const spaceTimeEnv = this.envServices.find(
-                (
-                  e,
-                ) => (e.id === "space-time" ||
-                  e["env.id"] === "space-time"),
-              );
-              if (spaceTimeEnv) {
-                spaceTimeEnv.onActivate(this.session);
-              }
-              this.launchFlow(REALLIFE_FLOW);
-            }
-            this.sidebarOpen = false;
-          },
-
-          get envType() {
-            const env = this.envServices.find((e) =>
-              e.id === this.session.environment
-            );
-            if (env?.type === "space-time") return "desktop";
-            return env ? env.type : "desktop";
-          },
-
-          get activeFlow() {
-            return this.flows.find((f) => f.id === this.activeFlowId);
-          },
-
-          get activeNav() {
-            return this.navServices.find((s) =>
-              s.flowId === this.activeFlowId
-            );
-          },
-
-          get showSecondarySidebar() {
-            return this.activeNav && this.activeNav.steps &&
-              this.activeNav.steps.length > 0;
-          },
-
-          getFlowIcon(id) {
-            const icons = {
-              "real-life": "fas fa-globe",
-              "login": "fas fa-sign-in-alt",
-              "user-home-business": "fas fa-briefcase",
-              "user-home-retail": "fas fa-home",
-              "login-flow": "fas fa-sign-in-alt",
-              "dashboard": "fas fa-chart-line",
-              "do-dashboard": "fas fa-cubes",
-              "org.neverplayed.person-registry": "fas fa-users",
-              "company-registry": "fas fa-building",
-              "backoffice": "fas fa-cogs",
-              "backoffice-web": "fas fa-cogs",
-              "shell-cli": "fas fa-terminal",
-            };
-            return icons[id] || "fas fa-cube";
-          },
-
-          init() {
-            const filter = `(objectClass=${FLOW_SERVICE})`;
-            this._tracker = context.trackService(filter, {
-              addingService: (ref) => {
-                const service = context.getService(ref);
-                if (service) {
-                  const id = service.id || ref.getProperty("flow.id");
-                  if (this.logger) {
-                    this.logger.info(
-                      `Shell: Flow registered: ${id} (actual ID: ${service.id})`,
-                    );
-                  } else {
-                    console.log(
-                      "Shell: Flow registered:",
-                      id,
-                      " (actual ID:",
-                      service.id,
-                      ")",
-                    );
-                  }
-
-                  // Add to flows array with consistent ID
-                  const flowEntry = {
-                    ...service,
-                    id: id,
-                    bsn: ref.bundle.getSymbolicName(),
-                    bundle: ref.bundle,
-                  };
-                  const idx = this.flows.findIndex((f) => f.id === id);
-                  if (idx !== -1) {
-                    const newFlows = [...this.flows];
-                    newFlows[idx] = flowEntry;
-                    this.flows = newFlows;
-                  } else {
-                    this.flows = [...this.flows, flowEntry];
-                  }
-
-                  // CRITICAL: Check if we are waiting for this flow
-                  if (
-                    this.activeFlowId === id ||
-                    (!this.activeFlowId && id === REALLIFE_FLOW)
-                  ) {
-                    if (this.logger) {
-                      this.logger.info(
-                        "Shell: Auto-launching flow arrival: " + id,
-                      );
-                    } else {
-                      console.log(
-                        "Shell: Auto-launching flow arrival:",
-                        id,
-                      );
-                    }
-                    this.launchFlow(id, flowEntry);
-                  }
-                }
-                return service;
-              },
-              modifiedService: (_ref, service) => {
-                const id = service.id || _ref.getProperty("flow.id");
-                const flowEntry = {
-                  ...service,
-                  id: id,
-                  bsn: _ref.bundle.getSymbolicName(),
-                  bundle: _ref.bundle,
-                };
-                this.flows = this.flows.map((
-                  f,
-                ) => (f.id === id ? flowEntry : f));
-              },
-              removedService: (ref, service) => {
-                const id = service.id || ref.getProperty("flow.id");
-                this.flows = this.flows.filter((f) => f.id !== id);
-                context.ungetService(ref);
-              },
-            });
-            this._tracker.open();
-
-            const navFilter = `(objectClass=${NAV_SERVICE})`;
-            this._navTracker = context.trackService(navFilter, {
-              addingService: (ref) => {
-                const service = context.getService(ref);
-                if (service) {
-                  this.navServices = [...this.navServices, service];
-                }
-                return service;
-              },
-              modifiedService: (_ref, service) => {
-                this.navServices = this.navServices.map((
-                  s,
-                ) => (s.flowId === service.flowId ? service : s));
-              },
-              removedService: (ref, service) => {
-                this.navServices = this.navServices.filter((s) =>
-                  s.flowId !== service.flowId
-                );
-                context.ungetService(ref);
-              },
-            });
-            this._navTracker.open();
-
-            const envFilter = `(objectClass=${ENV_SERVICE})`;
-            this._envTracker = context.trackService(envFilter, {
-              addingService: (ref) => {
-                const service = context.getService(ref);
-                if (service) {
-                  this.envServices = [...this.envServices, service];
-                }
-                return service;
-              },
-              modifiedService: (_ref, service) => {
-                this.envServices = this.envServices.map((e) =>
-                  e.id === service.id ? service : e
-                );
-              },
-              removedService: (ref, service) => {
-                this.envServices = this.envServices.filter((e) =>
-                  e.id !== service.id
-                );
-                context.ungetService(ref);
-              },
-            });
-            this._envTracker.open();
-
-            const caFilter = `(objectClass=${CONFIG_ADMIN_SERVICE})`;
-            context.trackService(caFilter, {
-              addingService: (ref) => {
-                this.configAdmin = context.getService(ref);
-
-                // Initial Sidebar State
-                const props = this.configAdmin.getConfiguration(
-                  SHELL_CONFIG_PID,
-                ).getProperties();
-                if (props.showSidebar !== undefined) {
-                  this.sidebarOpen = props.showSidebar;
-                }
-
-                globalThis.addEventListener("config-updated", (ev) => {
-                  if (ev.detail.pid === SHELL_CONFIG_PID) {
-                    if (
-                      ev.detail.properties.showSidebar !== undefined
-                    ) {
-                      this.sidebarOpen =
-                        ev.detail.properties.showSidebar;
-                    }
-                  }
-                  this.flows = [...this.flows];
-                });
-              },
-            }).open();
-
-            const logFilter = `(objectClass=${LOG_SERVICE})`;
-            this._logTracker = context.trackService(logFilter, {
-              nameMap: "shellScope",
-              addingService: (ref) => {
-                const logAdmin = context.getService(ref);
-                this.logger = logAdmin.getLogger("shell");
-                if (this.logger) {
-                  this.logger.info("Shell: Logger service available.");
-                }
-                return logAdmin;
-              },
-              removedService: (ref) => {
-                if (this.logger) {
-                  this.logger.warn("Shell: Logger service removed.");
-                }
-                this.logger = null;
-                context.ungetService(ref);
-              },
-            });
-            this._logTracker.open();
-
-            const cliFilter = `(objectClass=${SHELL_CLI_SERVICE})`;
-            this._cliTracker = context.trackService(cliFilter, {
-              addingService: (ref) => {
-                this.shellCliService = context.getService(ref);
-                if (this.logger) {
-                  this.logger.info("Shell: CLI service available.");
-                }
-                return this.shellCliService;
-              },
-              removedService: (ref) => {
-                if (this.logger) {
-                  this.logger.warn("Shell: CLI service removed.");
-                }
-                this.shellCliService = null;
-                context.ungetService(ref);
-              },
-            });
-            this._cliTracker.open();
-
-            window.addEventListener("shell-launch-flow", (e) => {
-              this.launchFlow(
-                e.detail.id,
-                null,
-                e.detail.step,
-                e.detail.params,
-              );
-            });
-
-            // DEBUGGER: Identify what is triggering reloads
-            window.addEventListener("beforeunload", (e) => {
-              if (this.logger) {
-                this.logger.info(
-                  "Shell: Page UNLOAD triggered. Check stack trace if possible or recent logs.",
-                );
-              } else {
-                console.log(
-                  "Shell: Page UNLOAD triggered. Check stack trace if possible or recent logs.",
-                );
-              }
-              // Non-standard way to peek at who called it, but useful for manual devtools inspection
-              // debugger;
-            });
-          },
-
-          async processCliCommand(command) {
-            if (!this.shellCliService) {
-              return "CLI service not available.";
-            }
-            try {
-              const result = await this.shellCliService.processCommand(
-                command,
-              );
-              return result;
-            } catch (error) {
-              if (this.logger) {
-                this.logger.error(
-                  `Shell: CLI command error: ${error.message}`,
-                );
-              } else {
-                console.error(
-                  `Shell: CLI command error: ${error.message}`,
-                );
-              }
-              return `Error: ${error.message}`;
-            }
-          },
-
-          getCliHelp() {
-            if (!this.shellCliService) {
-              return "CLI service not available.";
-            }
-            return `Available commands: ${
-              this.shellCliService.getCommands().join(", ")
-            }\nType 'help <command>' for more info.\nAdmit input: <command> [args...]`;
-          },
-
-          triggerSystemReset() {
-            const resetRefs = context.getServiceReferences(
-              SYSTEM_RESET_SERVICE,
-            );
-            if (resetRefs.length > 0) {
-              const resetSvc = context.getService(resetRefs[0]);
-              resetSvc.factoryReset();
-            } else {
-              // Fallback if bundle not started yet
-              if (
-                confirm(
-                  "Reset ALL stored OSGi states across all tenants and backoffices? This CANNOT be undone.",
-                )
-              ) {
-                localStorage.clear();
-                location.reload();
-              }
-            }
-          },
-
-          async launchFlow(id, flow = null, step = null, params = {}) {
-            const msg = `Shell: [Mission] Launch flow: ${id} Step: ${
-              step || params?.step || "null"
-            }`;
-            if (this.logger) this.logger.info(msg);
-            else console.log(msg);
-
-            this.activeFlowId = id;
-            if (this.session) this.session.activeFlowId = id;
-
-            // Transition tick
-            this.flowTransitionReady = false;
-            setTimeout(() => (this.flowTransitionReady = true), 50);
-
-            let targetFlow = flow ||
-              this.flows.find((f) => f.id === id);
-            if (!targetFlow) {
-              const msg = `Shell: Flow ${id} not found yet, waiting...`;
-              if (this.logger) this.logger.warn(msg);
-              else console.warn(msg);
-              return;
-            }
-
-            // Wait for Alpine to render containers (if environment changed)
-            await Alpine.nextTick();
-
-            const containerId = this.envType === "mobile"
-              ? "flow-container-mobile"
-              : "flow-container";
-
-            let el = document.getElementById(containerId);
-
-            // Retry once with a small delay for deep template nesting
-            if (!el) {
-              await new Promise((r) => setTimeout(r, 50));
-              el = document.getElementById(containerId);
-            }
-
-            if (!el) {
-              const msg =
-                `Shell: Target container ${containerId} not found!`;
-              if (this.logger) this.logger.error(msg);
-              else console.error(msg);
-              return;
-            }
-
-            if (targetFlow.launch) {
-              const msg =
-                `Shell: Calling flow.launch() on [${containerId}] for: ${id}`;
-              if (this.logger) this.logger.info(msg);
-              else console.log(msg);
-              el.innerHTML = ""; // Clear previous flow content
-              this.activeFlowId = id; // Set active ID AFTER clearing the previous content to avoid teardown crashes
-
-              // Merge step into params if provided separately
-              const effectiveParams = { ...params };
-              if (step) effectiveParams.step = step;
-
-              await targetFlow.launch(el, effectiveParams);
-            } else {
-              console.warn(`Shell: Flow ${id} has no launch method!`);
-            }
-          },
-
-          logout() {
-            this.sidebarOpen = false;
-
-            if (this.session && this.session.logout) {
-              this.session.logout(this.activeFlowId || "global");
-            }
-
-            if (this.envType === "mobile") {
-              this.launchFlow(MOBILE_LAUNCHER_FLOW);
-            } else {
-              this.launchFlow(REALLIFE_FLOW); // Redirect to home on logout
-            }
-          },
-
-          closeBootstrapModal() {
-            if (this.session && this.session.closeBootstrapModal) {
-              this.session.closeBootstrapModal();
-              this.logout();
-            }
-          },
-        }));
-
-        Alpine.start();
-
-        // Hardcoded flow manifests (as per user modification)
-        const manifests = [
-          "./bundles/org.neverplayed.system-logger/manifest.json",
-          "./bundles/org.neverplayed.realm-manager/manifest.json",
-          "./bundles/org.neverplayed.auth-shield/manifest.json",
-          "./bundles/org.neverplayed.shared-ui/manifest.json",
-          "./bundles/org.neverplayed.global-state/manifest.json",
-          "./bundles/org.neverplayed.selection-service/manifest.json",
-          "./bundles/org.neverplayed.config-admin/manifest.json",
-          "./bundles/org.neverplayed.yaml-service/manifest.json",
-          "./bundles/org.neverplayed.shared-domain-strategies/manifest.json",
-          "./bundles/org.neverplayed.do-registry/manifest.json",
-          "./bundles/org.neverplayed.person-registry/manifest.json",
-          "./bundles/system-clients/company-registry/manifest.json",
-          "./bundles/flows/sca-migration/manifest.json",
-          "./bundles/flows/promo-flow/manifest.json",
-          "./bundles/flows/cases/manifest.json",
-          "./bundles/flows/store/manifest.json",
-          "./bundles/flows/card-order/manifest.json",
-          "./bundles/flows/virtual-card-order/manifest.json",
-          "./bundles/flows/business-account-order/manifest.json",
-          "./bundles/flows/business-credit-card-order/manifest.json",
-          "./bundles/flows/redeem-invite/manifest.json",
-          "./bundles/flows/do-dashboard/manifest.json",
-          "./bundles/flows/bootstrap-license/manifest.json",
-          "./bundles/user-clients/legacy-app/manifest.json",
-          "./bundles/user-clients/modern-desktop-app/manifest.json",
-          "./bundles/flows/company-authorizations/manifest.json",
-          "./bundles/flows/signing/manifest.json",
-          "./bundles/system-services/backoffice-fellows/manifest.json",
-          "./bundles/user-services/invitation-admin/manifest.json",
-          "./bundles/user-services/user-management/manifest.json",
-          "./bundles/system-services/backoffice-tenants/manifest.json",
-          "./bundles/org.neverplayed.event-monitor/manifest.json",
-          "./bundles/org.neverplayed.realm.real-life/manifest.json",
-          "./bundles/flows/login/manifest.json",
-          "./bundles/flows/dashboard/manifest.json",
-          "./bundles/system-clients/backoffice-web/manifest.json",
-          "./bundles/org.neverplayed.yaml-editor/manifest.json",
-          "./bundles/system-services/backoffice-capabilities/manifest.json",
-          "./bundles/system-services/backoffice-business-functions/manifest.json",
-          "./bundles/system-services/backoffice-rules/manifest.json",
-          "./bundles/system-services/backoffice-campaigns/manifest.json",
-          "./bundles/system-services/backoffice-topics/manifest.json",
-          "./bundles/system-services/backoffice-sca-methods/manifest.json",
-          "./bundles/system-services/backoffice-sca/manifest.json",
-          "./bundles/system-services/backoffice-licenses/manifest.json",
-          "./bundles/org.neverplayed.plexus/manifest.json",
-          "./bundles/org.neverplayed.plexus-sensor/manifest.json",
-          "./bundles/org.neverplayed.plexus-tracing/manifest.json",
-          "./bundles/org.neverplayed.plexus-test/manifest.json",
-          "./bundles/system-services/backoffice-evaluation/manifest.json",
-          "./bundles/system-services/backoffice-signing/manifest.json",
-          "./bundles/org.neverplayed.action-registry/manifest.json",
-          "./bundles/system-services/backoffice-cases/manifest.json",
-          "./bundles/environments/web-browser/manifest.json",
-          "./bundles/org.neverplayed.limes/manifest.json",
-          "./bundles/user-clients/business-channel-web/manifest.json",
-          "./bundles/user-clients/retail-channel-app/manifest.json",
-          "./bundles/environments/space-time/manifest.json",
-          "./bundles/environments/mobile-device/manifest.json",
-          "./bundles/flows/user-home-business/manifest.json",
-          "./bundles/flows/user-home-retail/manifest.json",
-          "./bundles/flows/reactive-order-demo/manifest.json",
-          "./bundles/org.neverplayed.showcase/manifest.json",
-          "./bundles/system-services/email-data/manifest.json",
-          "./bundles/user-services/email-provider/manifest.json",
-          "./bundles/user-clients/email-client/manifest.json",
-          "./bundles/system-clients/case-monitor/manifest.json",
-          "./bundles/system-clients/email-monitor/manifest.json",
-          "./bundles/system-services/bpmn-engine/manifest.json",
-          "./bundles/org.neverplayed.auth-shield/manifest.json",
-
-          "./bundles/org.neverplayed.limes/manifest.json",
-          "./bundles/org.neverplayed.system-ready/manifest.json",
-          "./bundles/org.neverplayed.system-reset/manifest.json",
-          "./bundles/flows/hello-bpmn/manifest.json",
-          "./bundles/org.neverplayed.outreach/manifest.json",
-          "./bundles/org.neverplayed.atomic-orchestrator/manifest.json",
-          "./bundles/flows/hello-world-do/manifest.json",
-          "./bundles/org.neverplayed.visual-editor/manifest.json",
-          "./bundles/org.neverplayed.shell-cli/manifest.json",
-          "./bundles/org.neverplayed.shell-cli-dom/manifest.json",
-          "./bundles/org.neverplayed.shell-cli-ext/manifest.json",
-          "./bundles/org.neverplayed.stratum-explorer/manifest.json",
-          "./bundles/org.neverplayed.stratographer/manifest.json",
-          "./bundles/org.neverplayed.limes-ui/manifest.json",
-          "./bundles/org.neverplayed.limes-ext/manifest.json",
-        ];
-
-        const splashScreen = document.getElementById("splash-screen");
-        const splashStatus = document.getElementById("splash-status");
-        const splashProgress = document.getElementById(
-          "splash-progress",
-        );
-
-        let loadedCount = 0;
-        let bootErrors = [];
-
-        for (const manifestPath of manifests) {
-          let bsn = "unknown";
+        async init() {
           try {
-            loadedCount++;
-            const progress = (loadedCount / manifests.length) * 100;
-            if (splashProgress) {
-              splashProgress.style.width = `${progress}%`;
-            }
+            const pandino = new Pandino({ ...loaderConfiguration });
+            await pandino.init();
+            await pandino.start();
 
-            const bundle = await context.installBundle(manifestPath);
-            bsn = bundle.symbolicName ||
-              (bundle.getHeaders
-                ? bundle.getHeaders()["Bundle-SymbolicName"]
-                : "unknown");
+            const context = pandino.getBundleContext();
+            globalThis.Alpine = Alpine;
+            globalThis.pandinoContext = context;
 
-            if (splashStatus) {
-              splashStatus.innerText = `Loading bundle: ${bsn}...`;
-            }
+            const coreBundles = [
+              // 1. Core Platform
+              "https://unpkg.com/@pandino/event-admin@0.8.33/dist/@pandino/event-admin-manifest.json",
+              "./bundles/org.neverplayed.system-logger/manifest.json",
+              "./bundles/org.neverplayed.yaml-service/manifest.json",
+              "./bundles/org.neverplayed.alpine-bridge/manifest.json",
 
-            console.log(
-              `[Shell] Proc: ${manifestPath} (BSN: ${bsn}, State: ${bundle.state})`,
-            );
+              // 2. Strategic Persistence Stratum
+              "./bundles/org.neverplayed.persistence-localstorage/manifest.json",
+              "./bundles/org.neverplayed.persistence-resolver/manifest.json",
+              "./bundles/org.neverplayed.persistence-selector/manifest.json",
 
-            // Only start if INSTALLED (2) or RESOLVED (4)
-            if (bundle.state === 2 || bundle.state === 4) {
-              await bundle.start();
-              if (bundle.state !== 32) {
-                const msg =
-                  `Bundle ${bsn} failed to start (State: ${bundle.state}).`;
-                console.warn(
-                  `[Shell] ${msg} This usually indicates missing or unresolved Require-Capability entries.`,
-                );
-                bootErrors.push(msg);
-              } else {
-                console.log(
-                  `[Shell] Bundle ${bsn} started successfully.`,
-                );
+              // 3. Session & Security
+              "./bundles/org.neverplayed.session-service/manifest.json",
+              "./bundles/org.neverplayed.session-service-dom/manifest.json",
+              "./bundles/org.neverplayed.auth-shield/manifest.json",
+              "./bundles/org.neverplayed.limes/manifest.json",
+              "./bundles/org.neverplayed.plexus-core/manifest.json",
+
+              "./bundles/org.neverplayed.persistence-firebase/manifest.json",
+
+              // 4. Universe Managers
+              "./bundles/org.neverplayed.realm-manager/manifest.json",
+              "./bundles/org.neverplayed.realm-manager-dom/manifest.json",
+              "./bundles/org.neverplayed.perceiver-service/manifest.json",
+              "./bundles/org.neverplayed.being-service/manifest.json",
+
+              // 5. Strata & Senses
+              "./bundles/org.neverplayed.stratum-core/manifest.json",
+              "./bundles/org.neverplayed.stratum-core-dom/manifest.json",
+              "./bundles/org.neverplayed.stratum-cli/manifest.json",
+              "./bundles/org.neverplayed.stratum-hud/manifest.json",
+
+              // 6. Diagnostic Lobby Utilities
+              "./bundles/org.neverplayed.stratographer/manifest.json",
+
+              // 7. Core Shell & Layout
+              "./bundles/org.neverplayed.toast/manifest.json",
+              "./bundles/org.neverplayed.shared-ui/manifest.json",
+              "./bundles/org.neverplayed.shell-host/manifest.json",
+              "./bundles/org.neverplayed.shell-header/manifest.json",
+              "./bundles/org.neverplayed.shell-sidebar/manifest.json",
+
+              // 8. Shell CLI & Tools
+              "./bundles/org.neverplayed.shell-cli/manifest.json",
+              "./bundles/org.neverplayed.shell-cli-ext/manifest.json",
+              "./bundles/org.neverplayed.shell-cli-dom/manifest.json",
+              "./bundles/org.neverplayed.system-reset/manifest.json",
+              "./bundles/org.neverplayed.config-admin/manifest.json",
+              "./bundles/org.neverplayed.event-monitor/manifest.json",
+              "./bundles/org.neverplayed.alpine-inspector/manifest.json",
+
+              // 9. Plexus Sensation Engine
+              "./bundles/org.neverplayed.plexus-enricher/manifest.json",
+              "./bundles/org.neverplayed.plexus/manifest.json",
+              "./bundles/org.neverplayed.plexus-sensor/manifest.json",
+              "./bundles/org.neverplayed.plexus-tracing/manifest.json",
+              "./bundles/org.neverplayed.plexus-test/manifest.json",
+            ];
+
+            for (const url of coreBundles) {
+              this.bootStatus = `Loading: ${url.split("/").pop()}...`;
+              try {
+                const b = await context.installBundle(url);
+                if (
+                  b.state === 2 || b.state === 4 ||
+                  (b.getState && b.getState() < 32)
+                ) {
+                  await b.start();
+                }
+              } catch (err) {
+                console.error(`Boot failed for bundle ${url}:`, err);
+                this.error = `Boot failure for ${url}: ${err.message}`;
+                throw err;
               }
             }
-          } catch (e) {
-            console.error(`[Shell] Failed bundle ${manifestPath}:`, e);
-            bootErrors.push(
-              `Activator start error in ${bsn}: ${e.message}`,
+
+            // 3. Handshake
+            const rmRef = context.getServiceReference(
+              REALM_MANAGER_SERVICE,
             );
-          }
-        }
-
-        const readyFilter = `(objectClass=${SYSTEM_READY_SERVICE})`;
-
-        const showRedScreen = (errors) => {
-          if (
-            splashScreen &&
-            !splashScreen.classList.contains("opacity-0")
-          ) {
-            splashScreen.className =
-              "fixed inset-0 z-[1000] bg-red-950 flex flex-col items-center justify-center p-8 transition-all duration-500 overflow-hidden";
-            splashScreen.innerHTML = `
-                  <!-- Blood red cinematic background pulse -->
-                  <div class="absolute inset-0 bg-red-600/10 blur-[100px] scale-150 animate-pulse"></div>
-                  
-                  <div class="relative z-10 flex flex-col items-center w-full max-w-3xl">
-                      <div class="mb-6 w-24 h-24 flex items-center justify-center bg-red-900/50 rounded-full border-4 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.8)] relative">
-                        <div class="absolute inset-0 rounded-full bg-red-500/30 animate-ping"></div>
-                        <i class="fas fa-radiation-alt text-red-500 text-5xl"></i>
-                      </div>
-                      
-                      <h1 class="text-red-400 text-4xl font-black uppercase tracking-[0.3em] mb-2 text-center drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]">Catastrophic Kernel Failure</h1>
-                      <p class="text-red-300/70 mb-8 font-mono tracking-widest text-sm uppercase">Multiple OSGi bundles failed initialization</p>
-                      
-                      <div class="bg-black/60 border border-red-900 p-6 rounded-xl w-full overflow-y-auto max-h-64 shadow-inner mb-10 relative">
-                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-900 via-red-500 to-red-900 opacity-50"></div>
-                        <ul class="text-red-400 font-mono text-xs space-y-3">
-                            ${
-              errors.map((err) => `
-                              <li class="flex items-start">
-                                <span class="text-red-600 mr-2">>></span>
-                                <span class="break-all">${err}</span>
-                              </li>
-                            `).join("")
+            if (rmRef) {
+              await context.getService(rmRef).waitReady();
             }
-                        </ul>
-                      </div>
-                      
-                      <button onclick="document.getElementById('splash-screen').classList.add('opacity-0', 'scale-150', 'pointer-events-none'); setTimeout(() => document.getElementById('splash-screen').remove(), 1000)" class="relative group overflow-hidden px-10 py-4 bg-red-700 hover:bg-red-600 text-white font-black rounded-lg shadow-[0_0_20px_rgba(239,68,68,0.5)] transition-all uppercase tracking-[0.2em] text-sm hover:scale-105 active:scale-95 border border-red-400">
-                        <span class="relative z-10">Acknowledge & Force Boot</span>
-                        <div class="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:transition-transform group-hover:duration-500 group-hover:translate-x-full"></div>
-                      </button>
-                  </div>
-              `;
-          }
-        };
 
-        // Global watcher for async bundle start failures (e.g. from deferred OSGi resolution)
-        window.addEventListener("unhandledrejection", function (event) {
-          const errStr = event.reason
-            ? (event.reason.message || String(event.reason))
-            : "Unknown Error";
-          if (
-            errStr.includes("test") ||
-            errStr.toLowerCase().includes("error")
-          ) {
-            bootErrors.push(`[Async Fallback] ${errStr}`);
-            showRedScreen(bootErrors);
-          }
-        });
+            // 4. Dynamic External Realm Injection (ADR-0035)
+            const queryParams = new URLSearchParams(window.location.search);
+            const dynamicRealms = [];
 
-        let bootTimeout;
-        const checkTimeout = () => {
-          const notActive = context.getBundles().filter((b) =>
-            b.state !== 32 && b.state !== 1 && b.state !== "ACTIVE" &&
-            b.state !== "UNINSTALLED"
-          );
-          if (notActive.length > 0) {
-            bootErrors.push(
-              `[Boot Timeout] The following bundles failed to reach ACTIVE state: ${
-                notActive.map((b) => (b.getSymbolicName
-                  ? b.getSymbolicName()
-                  : (b.symbolicName || (b.getHeaders
-                    ? b.getHeaders()["Bundle-SymbolicName"]
-                    : b.id)))
-                ).join(", ")
-              }`,
-            );
-          } else {
-            bootErrors.push(
-              "[Boot Timeout] System Ready service was never registered.",
-            );
-          }
-          showRedScreen(bootErrors);
-        };
-
-        if (bootErrors.length > 0) {
-          showRedScreen(bootErrors);
-
-          // Still track READY in background, but the user must click the button to dismiss the splash
-          context.trackService(readyFilter, {
-            addingService: () =>
-              console.log(
-                "Shell: [SYSTEM READY] Service arrived! (Hidden behind error screen)",
-              ),
-          }).open();
-        } else {
-          // Wait for Universe to be "Ready" (OSGi Style)
-          if (splashStatus) {
-            splashStatus.innerText =
-              "Aligning the stars (Waiting for data)...";
-          }
-
-          bootTimeout = setTimeout(checkTimeout, 8000); // 8 seconds absolute maximum timeout
-
-          context.trackService(readyFilter, {
-            addingService: (ref) => {
-              clearTimeout(bootTimeout);
-              console.log("Shell: [SYSTEM READY] Service arrived!");
-              if (splashStatus) {
-                splashStatus.innerText = "Universe Ready!";
+            // Support repeated ?realm= or comma-separated ?realm=url1,url2
+            const realmParams = queryParams.getAll("realm");
+            for (const p of realmParams) {
+              for (const r of p.split(",")) {
+                const trimmed = r.trim();
+                if (trimmed) dynamicRealms.push(trimmed);
               }
-              if (splashScreen) {
-                splashScreen.classList.add("opacity-0");
-                splashScreen.classList.add("scale-150");
-                setTimeout(() => splashScreen.remove(), 1000);
+            }
+
+            // Support ?manifests=http://.../manifests.json
+            const manifestsUrl = queryParams.get("manifests");
+            if (manifestsUrl) {
+              try {
+                this.bootStatus = `Fetching remote realm manifests: ${manifestsUrl}...`;
+                const resp = await fetch(manifestsUrl);
+                if (resp.ok) {
+                  const urls = await resp.json();
+                  if (Array.isArray(urls)) {
+                    dynamicRealms.push(...urls);
+                  }
+                }
+              } catch (err) {
+                console.warn(`[Core Harness] Failed to load remote manifests from ${manifestsUrl}:`, err);
               }
-            },
-          }).open();
-        }
+            }
 
-        // Final Diagnostic
-        setTimeout(() => {
-          console.log("--- FINAL BUNDLE DIAGNOSTICS ---");
-          const bundles = context.getBundles();
-          bundles.forEach((b) => {
-            const bsn = b.symbolicName ||
-              (b.getHeaders
-                ? b.getHeaders()["Bundle-SymbolicName"]
-                : "unknown");
-            console.log(
-              `Bundle: ${bsn}, State: ${b.state} (Active=32, Resolved=4, Installed=2)`,
-            );
-          });
-        }, 1000);
-      };
+            // Install and start dynamically discovered realms
+            for (const realmUrl of dynamicRealms) {
+              try {
+                this.bootStatus = `Admitting external realm: ${realmUrl.split("/").pop()}...`;
+                console.log(`[Core Harness] Admitting external realm from ${realmUrl}`);
+                const b = await context.installBundle(realmUrl);
+                if (
+                  b.state === 2 || b.state === 4 ||
+                  (b.getState && b.getState() < 32)
+                ) {
+                  await b.start();
+                  console.log(`[Core Harness] External realm started successfully: ${b.symbolicName || realmUrl}`);
+                }
+              } catch (err) {
+                console.warn(`[Core Harness] Non-fatal error loading external realm ${realmUrl}:`, err);
+              }
+            }
 
-      // AUTH GATEKEEPER - Only start the universe if authenticated and on allowlist
-      checkAccess()
-        .then((user) => {
-          console.log("Shell: [AUTH ACCESS GRANTED]", user.email);
-          initUniverse(user);
-        })
-        .catch((err) => {
-          console.error("Shell: [AUTH ACCESS DENIED]", err);
-          // Redirect or show a more permanent error screen if needed
-        });
+            this.kernelReady = true;
+            Alpine.store("platform").kernelReady = true;
+          } catch (err) {
+            this.error = err.message;
+          }
+        },
+      }));
+
+      Alpine.start();
     </script>
   </body>
 </html>

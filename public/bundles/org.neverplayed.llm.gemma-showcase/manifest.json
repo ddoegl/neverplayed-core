@@ -1,8 +1,0 @@
-{
-    "Bundle-SymbolicName": "org.neverplayed.llm.gemma-showcase",
-    "Bundle-Version": "1.0.0",
-    "Bundle-Name": "Gemma LLM Showcase",
-    "Bundle-Description": "Demonstrates synchronous service consumption and asynchronous event-driven whiteboard patterns with local Gemma 4 model.",
-    "Bundle-Activator": "./activator.js",
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.shell.Command\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\""
-}
