@@ -209,6 +209,54 @@
               await context.getService(rmRef).waitReady();
             }
 
+            // 4. Dynamic External Realm Injection (ADR-0035)
+            const queryParams = new URLSearchParams(window.location.search);
+            const dynamicRealms = [];
+
+            // Support repeated ?realm= or comma-separated ?realm=url1,url2
+            const realmParams = queryParams.getAll("realm");
+            for (const p of realmParams) {
+              for (const r of p.split(",")) {
+                const trimmed = r.trim();
+                if (trimmed) dynamicRealms.push(trimmed);
+              }
+            }
+
+            // Support ?manifests=http://.../manifests.json
+            const manifestsUrl = queryParams.get("manifests");
+            if (manifestsUrl) {
+              try {
+                this.bootStatus = `Fetching remote realm manifests: ${manifestsUrl}...`;
+                const resp = await fetch(manifestsUrl);
+                if (resp.ok) {
+                  const urls = await resp.json();
+                  if (Array.isArray(urls)) {
+                    dynamicRealms.push(...urls);
+                  }
+                }
+              } catch (err) {
+                console.warn(`[Core Harness] Failed to load remote manifests from ${manifestsUrl}:`, err);
+              }
+            }
+
+            // Install and start dynamically discovered realms
+            for (const realmUrl of dynamicRealms) {
+              try {
+                this.bootStatus = `Admitting external realm: ${realmUrl.split("/").pop()}...`;
+                console.log(`[Core Harness] Admitting external realm from ${realmUrl}`);
+                const b = await context.installBundle(realmUrl);
+                if (
+                  b.state === 2 || b.state === 4 ||
+                  (b.getState && b.getState() < 32)
+                ) {
+                  await b.start();
+                  console.log(`[Core Harness] External realm started successfully: ${b.symbolicName || realmUrl}`);
+                }
+              } catch (err) {
+                console.warn(`[Core Harness] Non-fatal error loading external realm ${realmUrl}:`, err);
+              }
+            }
+
             this.kernelReady = true;
             Alpine.store("platform").kernelReady = true;
           } catch (err) {

@@ -1,8 +1,25 @@
-//import { serveDir } from "jsr:@std/http/file-server";
 import { serveDir } from "https://deno.land/std@0.207.0/http/file_server.ts";
-const port = 8008;  // Port number
+
+// Configurable port: CLI argument or PORT env var, defaults to 8008
+const portArg = Deno.args.find(a => a.startsWith("--port="))?.split("=")[1] || Deno.args[0];
+const port = parseInt(portArg || Deno.env.get("PORT") || "8008", 10);
+
+console.log(`\n🚀 [Never Played Server] Booting static/bundle server on http://localhost:${port}\n`);
+
 Deno.serve({ port }, async (req) => {
   const url = new URL(req.url);
+
+  // Global preflight OPTIONS for CORS
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD",
+        "Access-Control-Allow-Headers": "*",
+      },
+    });
+  }
 
   // Handle POST for Digital Twin two-way sync
   if (req.method === "POST" && url.pathname === "/.neverplayed/state.json") {
@@ -23,18 +40,6 @@ Deno.serve({ port }, async (req) => {
     }
   }
 
-  // Preflight OPTIONS for CORS (necessary since POST from a browser triggers preflight)
-  if (req.method === "OPTIONS" && url.pathname === "/.neverplayed/state.json") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
-  }
-
   const res = await serveDir(req, {
     fsRoot: "public",
   });
@@ -44,9 +49,9 @@ Deno.serve({ port }, async (req) => {
     res.headers.set("Pragma", "no-cache");
     res.headers.set("Expires", "0");
   }
-  // Relaxing these headers fixes CORS/COEP blocks for external scripts from unpkg.
-  // res.headers.set("Cross-Origin-Opener-Policy", "same-origin");
-  // res.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
   res.headers.set("Access-Control-Allow-Origin", "*");
+  res.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD");
+  res.headers.set("Access-Control-Allow-Headers", "*");
   return res;
 });
+
