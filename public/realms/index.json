@@ -1,9 +1,3 @@
 [
-    "empty.json",
-    "foundation.json",
-    "habitat.json",
-    "governance.json",
-    "somatic-body.json",
-    "gym.json",
-    "gemma.json"
+    "empty.json"
 ]

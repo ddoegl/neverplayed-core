@@ -1,7 +1,0 @@
-{
-    "Bundle-SymbolicName": "org.neverplayed.llm.inner-voice",
-    "Bundle-Version": "1.0.0",
-    "Bundle-Activator": "activator.js",
-    "Require-Capability": "osgi.service; objectClass=\"com.roleplay.service.LLMService\", osgi.service; objectClass=\"org.neverplayed.perceiver.PerceiverService\", osgi.service; objectClass=\"org.neverplayed.auth.Session\", osgi.service; objectClass=\"org.neverplayed.stratum.StratumService\"",
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.llm.InnerVoiceService\", osgi.service; objectClass=\"org.neverplayed.TransitionParticipant\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\""
-}

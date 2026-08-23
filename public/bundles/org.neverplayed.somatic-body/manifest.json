@@ -1,8 +1,0 @@
-{
-    "Bundle-SymbolicName": "org.neverplayed.somatic-body",
-    "Bundle-Version": "1.0.0",
-    "Bundle-Name": "Somatic Body Service",
-    "Bundle-Description": "Manages somatic muscle systems, tension, fatigue, and EventAdmin biomechanical integration (Layer 4.1).",
-    "Bundle-Activator": "activator.js",
-    "Provide-Capability": "osgi.service; objectClass=\"org.neverplayed.somatic.MuscleRegistry\", osgi.service; objectClass=\"@pandino/event-admin/EventHandler\""
-}

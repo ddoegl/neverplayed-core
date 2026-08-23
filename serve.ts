@@ -1,8 +1,18 @@
 import { serveDir } from "https://deno.land/std@0.207.0/http/file_server.ts";
 
-// Configurable port: CLI argument or PORT env var, defaults to 8008
-const portArg = Deno.args.find(a => a.startsWith("--port="))?.split("=")[1] || Deno.args[0];
-const port = parseInt(portArg || Deno.env.get("PORT") || "8008", 10);
+// Configurable port: --port 8008, --port=8008, bare 8008, or PORT env var (defaults to 8008)
+let port = 8008;
+const portEquals = Deno.args.find(a => a.startsWith("--port="))?.split("=")[1];
+const portIndex = Deno.args.indexOf("--port");
+if (portEquals) {
+  port = parseInt(portEquals, 10);
+} else if (portIndex !== -1 && Deno.args[portIndex + 1]) {
+  port = parseInt(Deno.args[portIndex + 1], 10);
+} else if (Deno.args[0] && !isNaN(parseInt(Deno.args[0], 10))) {
+  port = parseInt(Deno.args[0], 10);
+} else if (Deno.env.get("PORT")) {
+  port = parseInt(Deno.env.get("PORT")!, 10);
+}
 
 console.log(`\n🚀 [Never Played Server] Booting static/bundle server on http://localhost:${port}\n`);
 

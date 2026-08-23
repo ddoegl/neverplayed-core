@@ -1,7 +1,0 @@
-- id: gov-gov
-  label: Gov Mascot
-  email: mascot@gov.local
-  originRealmId: org.neverplayed.realm.governance
-  initial:
-    realm: org.neverplayed.realm.governance
-    surrogate: maskot
