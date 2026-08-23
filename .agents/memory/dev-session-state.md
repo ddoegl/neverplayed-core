@@ -1,55 +1,52 @@
 # Session State: Development Engineer (dev)
-_Last updated: 2026-06-06 — Branch: `architectural-cleanup-1`_
+_Last updated: 2026-08-23 — Workspace: `neverplayed-core` / `neverplayed`_
 
 ## Current Goal
-All planned tickets closed. Branch `architectural-cleanup-1` is clean and stable.
-No active objective. Ready for next directive.
+- Core infrastructure extraction completed under ADR-0035.
+- `neverplayed-core` operates as a standalone OSGi platform container on `http://localhost:8008`.
+- Consumer realms in `neverplayed` operate on `http://localhost:8009` and dynamically inject into core via `?realm=...` query parameters.
+- Ready for next development directives in either repository.
+
+---
 
 ## Completed Items (this session)
 
-### TICKET-20260606-1425: Architectural Alignment
-- Resolved all layer-based linter and magic string violations across Core, Foundation, and Domain layers.
-- All ADR references corrected; 0 violations in `lint:arch` for all three layers.
-- Committed and ticket closed.
+### 1. ADR-0035 Multi-Workspace Decoupling
+- Formulated, accepted, and encoded `ADR-0035: Multi-Workspace Infrastructure and Realm Decoupling`.
+- Established the boundary between Invariant Priors (`neverplayed-core`) and Volatile Generative Models (`neverplayed-realms`).
+- Established the Dual-Server local DX architecture (Core on :8008, Realms on :8009).
 
-### TICKET-20260606-1445: Ontological Error Toast Notifications
-- `stratum-core-dom/activator.js`: `login()` / `logout()` now return Promises.
-- `stratographer/activator.js`: `setShunt()` is async; errors redirect to `interactor.notify(..., 'error')`.
-- `shell-header/activator.js`: `login()` / `identityLogin()` wrapped in try/catch, errors to toast.
-- Committed with prior ticket.
+### 2. Static Server & Universal Host Harness
+- **`serve.ts`**: Enhanced with robust port argument parsing (`--port=8008`, `--port 8008`, or `PORT` env var), permissive CORS headers (`Access-Control-Allow-Origin: *`), and global `OPTIONS` preflight handling.
+- **Universal Container (`public/index.html`)**: Promoted `realms-secure.html` to root `index.html`. Implemented dynamic URL parameter parsing (`?realm=<url>` and `?manifests=<url>`) to install and start external realm bundles dynamically at boot via `context.installBundle()`.
 
-### TICKET-20260606-1525: Extract Toast Bundle
-- **Created** `org.neverplayed.toast` bundle:
-  - `activator.js` — extends `AlpineActivator`; registers `notifications` Alpine store (push/dismiss/auto-timeout); renders glassmorphic HUD; registers `INTERACTOR_SERVICE` (confirm/prompt/alert/notify).
-  - `templates/toast.html` — 4-variant (info/success/warning/error) glassmorphic overlay with Alpine transitions.
-  - `manifest.json` — advertises `org.neverplayed.ui.Interactor`.
-  - `README.md`, `tests/.gitkeep`.
-- **Cleaned** `shared-ui`:
-  - Removed `registerService(INTERACTOR_SERVICE)` — ownership transferred to toast.
-  - Removed `Provide-Capability: Interactor` from `manifest.json`.
-  - **Kept** `trackService(INTERACTOR_SERVICE)` — shared-ui is still a *consumer* (powers `ui:alert` / `ui:confirm` action handlers).
-- **Wired** `realms-secure.html`: importmap entry + coreBundles entry for toast (before shared-ui).
-- Verified 19/19 tests passing, 0 lint violations.
-- Committed (`9049153`, `17d9d63`). Ticket closed.
+### 3. Clone-and-Prune Core Extraction (`/Users/ddoegl/speckit/neverplayed-core`)
+- Cloned the repository to `../neverplayed-core` preserving 100% of commit history and git blame.
+- Promoted `public/realms-secure.html` -> `public/index.html`.
+- Pruned legacy entry points (`barebones.html`, `mini.html`, etc.).
+- Deep-pruned domain realm descriptors (`habitat.json`, `gym.json`, `governance.json`, `somatic-body.json`, `gemma.json`, `real-life.json`, `work.json`, etc.) and data directories from `public/realms/`.
+- Configured `public/realms/index.json` to only load `["empty.json"]` (Platonic Staging Lobby baseline).
+- Pruned domain and cognitive bundles (`org.neverplayed.gym`, `somatic-body`, `llm.inner-voice`, `llm.gemma-provider`, `outreach`, `action-registry`, `do-registry`, `atomic-orchestrator`, `person-registry`, `governance.registry`, `yaml-editor`, `agent.antigravity`, `environments/`).
 
-## Pending Items
-- None. All tickets closed, branch stable.
+### 4. Test Suite & Linters Validation in `neverplayed-core`
+- Updated `tests/run-all.ts` to isolate core platform tests: **16/16 tests PASSED 100% green**.
+- Layered architectural linters (`lint:arch:core`, `lint:arch:foundation`): **0 violations**.
+- Closed handover ticket `TICKET-20260823-1545-CORE-INFRASTRUCTURE-EXTRACTION` and archived to `closed/`.
 
-## Key Decisions & Context
+---
 
-### INTERACTOR_SERVICE Ownership Split
-- `org.neverplayed.toast` is the **sole provider** of `INTERACTOR_SERVICE`.
-- `shared-ui`, `shell-header`, `stratographer`, `do-registry`, `atomic-orchestrator` are all **consumers** (tracker pattern).
-- `toast` provides: `confirm()`, `prompt()`, `alert()` (native browser fallback) + `notify(msg, type, duration)` (glassmorphic HUD).
-- The native `confirm`/`alert`/`prompt` are preserved as pass-through — no regression for `do-registry` and `atomic-orchestrator` which use `interactor.confirm()` for destructive action dialogs.
+## Key Decisions & Architecture Reference
 
-### Boot Order & Realm Dependency
-- `toast` boots in `realms-secure.html` coreBundles (section 7, before `shared-ui`).
-- `foundation.json` does **not** list `toast` — but Pandino deduplicates by `getState() < 32`, so toast is already ACTIVE when foundation realm loads.
-- **Future risk**: if `foundation.json` is ever booted standalone without `realms-secure.html`, `toast` must be added to its `bundles` list before `do-registry`.
+### Universal Injection Protocol
+- To boot the core and inject a realm:
+  `http://localhost:8008/?realm=http://localhost:8009/bundles/org.neverplayed.realm.real-life/manifest.json`
+- Multiple realms can be injected via comma separation or multiple `?realm=` parameters.
 
-### Architecture Reference
-- `AlpineActivator` (from `alpine-base.js`) — provides `initStore`, `render`, `track`, lifecycle cleanup.
-- Toast mount point: `#toast-mount-point` (injected into `document.body` if absent).
-- Toast notifications Alpine store name: `"notifications"` (global, visible to all Alpine components).
-- Test suite: `deno task test` → 19 integration tests across all subsystems.
+### Port Allocation
+- `neverplayed-core`: Port `8008` (starts via `deno task start` or `deno run -A ./serve.ts --port 8008`).
+- `neverplayed` (Realms): Port `8009` (starts via `deno run -A ./serve.ts --port 8009`).
+
+### Repository Split & Remote Links
+- Core Repo: `https://github.com/ddoegl/neverplayed-core.git` (branch `main`).
+- Realms Repo: `https://github.com/ddoegl/neverplayed.git` (branch `architectural-cleanup-1`).
+- Historical Session Deep Link: `[Previous Migration Session](conversation://39904400-ee76-4131-9a14-93d9200ee149)`.
