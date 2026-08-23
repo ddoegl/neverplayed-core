@@ -21,7 +21,9 @@ const tests = [
   "primordial-bootstrapping.test.ts",
   "platonic-lobby.test.ts",
   "grounding-soul.test.ts",
-  "singular-occupancy.test.ts"
+  "singular-occupancy.test.ts",
+  "realm-management.test.ts",
+  "remote-realm-ingestion.test.ts"
 ];
 
 console.log("🏛️  Never Played: Strategic Regression Suite Starting...");

@@ -29,18 +29,33 @@ _Last updated: 2026-08-23 — Workspace: `neverplayed-core` / `neverplayed`_
 - Pruned domain and cognitive bundles (`org.neverplayed.gym`, `somatic-body`, `llm.inner-voice`, `llm.gemma-provider`, `outreach`, `action-registry`, `do-registry`, `atomic-orchestrator`, `person-registry`, `governance.registry`, `yaml-editor`, `agent.antigravity`, `environments/`).
 
 ### 4. Test Suite & Linters Validation in `neverplayed-core`
-- Updated `tests/run-all.ts` to isolate core platform tests: **16/16 tests PASSED 100% green**.
+- Updated `tests/run-all.ts` to isolate core platform tests: **18/18 tests PASSED 100% green**.
 - Layered architectural linters (`lint:arch:core`, `lint:arch:foundation`): **0 violations**.
 - Closed handover ticket `TICKET-20260823-1545-CORE-INFRASTRUCTURE-EXTRACTION` and archived to `closed/`.
+
+### 5. Composite Realm Descriptor Ingestion & Dynamic Seed Data Resolution
+- **Polymorphic Ingestion Protocol**: `index.html` dynamically distinguishes between composite Realm Descriptors (`habitat.json`), index catalog arrays (`index.json`), and standalone Pandino bundle manifests (`manifest.json`), supporting `?realms=`, `?realm=`, `?bundle=`, and `?switch=`.
+- **Multi-Origin Base URL Normalization**: `realm-manager` normalizes relative bundle paths and seed data YAML fragments (`beings.yaml`, `surrogates.yaml`) against remote origin (`http://localhost:8009/`), resolving cross-origin assets during transition.
+- **Documentation & ADRs**: Updated `ADR-0035` (Decoupling Protocol) and `ADR-0007` (Dynamic Fragment Seeding).
+- **Automated Regression**: Added `tests/remote-realm-ingestion.test.ts` and verified in `tests/run-all.ts` (18/18 green).
+
+### 6. Realm Catalog & Sovereignty Cleanup
+- **`neverplayed-core`**: Removed obsolete `core.json` and `foundation.json`. `public/realms/index.json` strictly serves `["empty.json"]`.
+- **`neverplayed`**: Removed obsolete `core.json` and removed `empty.json` from `neverplayed/public/realms/index.json` to prevent overwriting host Platonic baseline during remote discovery.
 
 ---
 
 ## Key Decisions & Architecture Reference
 
 ### Universal Injection Protocol
-- To boot the core and inject a realm:
-  `http://localhost:8008/?realm=http://localhost:8009/bundles/org.neverplayed.realm.real-life/manifest.json`
-- Multiple realms can be injected via comma separation or multiple `?realm=` parameters.
+- To discover and load the entire actionable catalog in one go:
+  `http://localhost:8008/?realms=http://localhost:8009/realms/index.json`
+- To discover all realms and auto-land on Habitat:
+  `http://localhost:8008/?realms=http://localhost:8009/realms/index.json&switch=org.neverplayed.realm.habitat`
+- To boot the core and load a single composite realm with its seed data:
+  `http://localhost:8008/?realm=http://localhost:8009/realms/habitat.json&switch=true`
+- To inject an individual standalone bundle:
+  `http://localhost:8008/?bundle=http://localhost:8009/bundles/org.neverplayed.realm.habitat/manifest.json`
 
 ### Port Allocation
 - `neverplayed-core`: Port `8008` (starts via `deno task start` or `deno run -A ./serve.ts --port 8008`).

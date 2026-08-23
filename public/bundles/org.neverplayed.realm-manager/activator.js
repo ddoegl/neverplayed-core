@@ -458,7 +458,8 @@ export default class Activator extends BaseActivator {
 
         // 1.8 Register Service
         context.registerService(REALM_MANAGER_SERVICE, {
-            registerRealm: (manifest) => this._registerRealm(manifest),
+            registerRealm: (manifest, options) => this._registerRealm(manifest, options),
+            discoverFromIndex: (indexUrl) => this._discoverFromIndex(indexUrl),
             switchRealm: (id, interactive = false) => {
                 const targetId = isNaN(id) ? id : this._orderedRealmIds[parseInt(id) - 1];
                 return this._switchRealm(this.context, targetId, interactive);
@@ -520,7 +521,10 @@ export default class Activator extends BaseActivator {
         this.logger.info(`[RealmManager] Boot promises initialized & Ready Signal emitted.`);
     }
 
-    onStop(_context) {
+    async onStop(_context) {
+        if (this._discoveryPromise) {
+            try { await this._discoveryPromise; } catch (_e) {}
+        }
         if (this._logTracker) this._logTracker.close();
         if (this._sessionTracker) this._sessionTracker.close();
         if (this._persistenceTracker) this._persistenceTracker.close();
@@ -546,6 +550,36 @@ export default class Activator extends BaseActivator {
         if (this.logger) this.logger.info("Realm Manager: Stopped.");
     }
 
+    async _discoverFromIndex(indexUrl) {
+        try {
+            const resp = await fetch(indexUrl);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const files = await resp.json();
+            if (!Array.isArray(files)) return [];
+
+            const registered = [];
+            for (const file of files) {
+                try {
+                    const realmUrl = new URL(file, indexUrl).href;
+                    this.logger?.debug(`Realm Manager: Fetching remote realm from ${realmUrl}...`);
+                    const r = await fetch(realmUrl);
+                    if (r.ok) {
+                        const manifest = await r.json();
+                        await this._registerRealm(manifest, { baseUrl: realmUrl });
+                        registered.push(manifest.id);
+                    }
+                } catch (err) {
+                    this.logger?.error(`Realm Manager: Failed to load realm from '${file}':`, err.message);
+                }
+            }
+            this.logger?.info(`Realm Manager: Discovered ${registered.length} realms from ${indexUrl}`);
+            return registered;
+        } catch (err) {
+            this.logger?.error(`Realm Manager: Failed discovery from ${indexUrl}:`, err.message);
+            return [];
+        }
+    }
+
     async _discoverRealms() {
         try {
             // 1. Fetch Environment (for Provider Injection)
@@ -556,27 +590,15 @@ export default class Activator extends BaseActivator {
 
             // Store env config for later use (e.g. landingRealmId shortcut)
             this._envConfig = envConfig;
-            // 2. Fetch Discovery Index
-            const resp = await fetch(new URL("./realms/index.json", root).href);
-            if (!resp.ok) return;
-            const files = await resp.json();
-            
-            for (const file of files) {
-                try {
-                    const realmUrl = new URL(`./realms/${file}`, root).href;
-                    this.logger?.debug(`Realm Manager: Fetching ${realmUrl}...`);
-                    const r = await fetch(realmUrl);
-                    if (r.ok) {
-                        const manifest = await r.json();
-                        
-                        
-                        await this._registerRealm(manifest);
-                    }
-                } catch (err) {
-                    this.logger?.error(`Realm Manager: Failed to load context from './realms/${file}':`, err.message);
-                }
+
+            // 2. Fetch Local Discovery Index
+            await this._discoverFromIndex(new URL("./realms/index.json", root).href);
+
+            // 3. Optional Remote Discovery from Environment Configuration
+            const remoteDiscoveryUrl = envConfig.realmsDiscovery || envConfig.realmsIndex;
+            if (remoteDiscoveryUrl) {
+                await this._discoverFromIndex(remoteDiscoveryUrl);
             }
-            this.logger?.info(`Realm Manager: Discovered ${this._orderedRealmIds.length} worlds via dynamic manifest.`);
         } catch (err) {
             this.logger?.error("Failed to discover realms:", err.message);
         }
@@ -922,9 +944,46 @@ export default class Activator extends BaseActivator {
         }
     }
 
-    _registerRealm(manifest) {
+    _resolveRealmPath(path, baseUrl) {
+        if (!path || typeof path !== "string") return path;
+        if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("file://")) {
+            return path;
+        }
+        try {
+            const urlObj = new URL(baseUrl);
+            const realmsIndex = urlObj.pathname.lastIndexOf("/realms/");
+            const rootBasePath = realmsIndex !== -1 ? urlObj.pathname.substring(0, realmsIndex) + "/" : "/";
+            const rootBaseUrl = new URL(rootBasePath, urlObj.origin).href;
+
+            if (path.startsWith("./bundles/") || path.startsWith("./realms/") || path.startsWith("/bundles/") || path.startsWith("/realms/")) {
+                const cleaned = path.replace(/^\.?\//, "");
+                return new URL(cleaned, rootBaseUrl).href;
+            }
+            return new URL(path, baseUrl).href;
+        } catch (_e) {
+            return path;
+        }
+    }
+
+    _registerRealm(manifest, options = {}) {
         return this._lock = this._lock.then(() => {
-            if (!manifest.id) throw new Error("Realm manifest must have a unique ID.");
+            if (!manifest || !manifest.id) throw new Error("Realm manifest must have a unique ID.");
+
+            const baseUrl = options.baseUrl || manifest._baseUrl;
+            if (baseUrl) {
+                manifest._baseUrl = baseUrl;
+                if (Array.isArray(manifest.bundles)) {
+                    manifest.bundles = manifest.bundles.map(b => this._resolveRealmPath(b, baseUrl));
+                }
+                if (manifest.seedData && typeof manifest.seedData === "object") {
+                    for (const [k, v] of Object.entries(manifest.seedData)) {
+                        if (typeof v === "string") {
+                            manifest.seedData[k] = this._resolveRealmPath(v, baseUrl);
+                        }
+                    }
+                }
+            }
+
             this._realms.set(manifest.id, manifest);
             if (!this._orderedRealmIds.includes(manifest.id)) {
                 this._orderedRealmIds.push(manifest.id);
@@ -1773,7 +1832,7 @@ export default class Activator extends BaseActivator {
                     const yamlSvc = this._yamlService;
                     if (yamlSvc) {
                         try {
-                            const base = globalThis.location.origin + '/';
+                            const base = pt.manifest._baseUrl || (globalThis.location ? globalThis.location.origin + "/" : "/");
                             
                             if (pt.manifest.seedData.surrogates) {
                                 const surrogatesUrl = new URL(pt.manifest.seedData.surrogates, base).href;

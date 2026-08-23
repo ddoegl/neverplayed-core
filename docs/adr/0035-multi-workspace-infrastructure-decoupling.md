@@ -19,7 +19,11 @@ We will decouple the Never Played ecosystem into a dual-workspace architecture u
 
 1. **Dedicated Core Infrastructure Repository (`neverplayed-core`)**:
    - **Universal Host Harness (`index.html`)**: The mature `realms-secure.html` becomes the root `index.html` of `neverplayed-core`.
-   - **Dynamic Realm Injection**: The `index.html` harness parses URL query parameters (e.g. `?realm=http://localhost:8009/bundles/.../manifest.json` or `?manifests=http://localhost:8009/manifests.json`) and declarative `env.json` endpoints to dynamically install external realm bundles via Pandino's `context.installBundle()`.
+   - **Dynamic Realm & Bundle Ingestion**: The `index.html` harness supports a polymorphic injection protocol via URL query parameters:
+     - **Composite Realm Descriptors (`?realm=http://.../realm.json`)**: Fetches full semantic universe descriptors (e.g. `habitat.json`), normalizes all relative bundle paths (`bundles: []`) and seed data URIs (`seedData: { beings, surrogates }`) against the descriptor's base URI, registers the universe in `REALM_MANAGER_SERVICE`, and auto-switches to it (`?switch=true` or default landing).
+     - **Whole Realm Discovery Indexes (`?realms=http://.../realms/index.json` or `?realms=http://...:8009`)**: Discovers and admits the entire actionable catalog of realms from a remote index array in one go.
+     - **Ad-hoc Physical Bundles (`?bundle=http://.../manifest.json`)**: Dynamically installs and starts isolated external bundles directly via Pandino's `context.installBundle()`.
+     - **Manifest Aggregators (`?manifests=http://.../manifests.json`)**: Ingests arrays of bundle or realm URLs.
    - **Bedrock & Shared Contracts**: `osgi-base.js`, `alpine-base.js`, `core-types.js`.
    - **Persistence Stratum**: `persistence-localstorage`, `persistence-firebase`, `persistence-selector`, `persistence-resolver`, `persistence-fs-sync`.
    - **Identity & Sovereignty**: `session-service`, `session-service-dom`, `auth-shield`, `limes`.
@@ -38,8 +42,12 @@ We will decouple the Never Played ecosystem into a dual-workspace architecture u
 3. **Dual-Server Local Development Experience (DX)**:
    - The Core workspace executes a local Deno server on port `8008` (`http://localhost:8008`) serving static bundles and ESM modules with permissive CORS headers (`Access-Control-Allow-Origin: *`).
    - The Realms workspace executes a local static server on port `8009` (`http://localhost:8009`).
-   - Developers test realms simply by visiting:
-     `http://localhost:8008/?realm=http://localhost:8009/bundles/org.neverplayed.realm.habitat/manifest.json`
+   - Developers discover all realms from the consumer workspace in one go simply by visiting:
+     `http://localhost:8008/?realms=http://localhost:8009/realms/index.json`
+   - Or test a specific realm:
+     `http://localhost:8008/?realm=http://localhost:8009/realms/habitat.json&switch=true`
+   - Or test an individual bundle:
+     `http://localhost:8008/?bundle=http://localhost:8009/bundles/org.neverplayed.realm.habitat/manifest.json`
 
 4. **Documentation & Agent Workflow Federation**:
    - Platform ADRs and basal ontology remain canonical in `neverplayed-core/docs/`.

@@ -201,24 +201,46 @@
               }
             }
 
-            // 3. Handshake
+            // 3. Handshake with Realm Manager
             const rmRef = context.getServiceReference(
               REALM_MANAGER_SERVICE,
             );
+            let realmManager = null;
             if (rmRef) {
-              await context.getService(rmRef).waitReady();
+              realmManager = context.getService(rmRef);
+              await realmManager.waitReady();
             }
 
-            // 4. Dynamic External Realm Injection (ADR-0035)
+            // 4. Dynamic External Realm & Bundle Injection (ADR-0035)
             const queryParams = new URLSearchParams(window.location.search);
-            const dynamicRealms = [];
+            const dynamicTargets = [];
+            const directBundles = [];
+            const realmIndexUrls = [];
 
-            // Support repeated ?realm= or comma-separated ?realm=url1,url2
+            // Parse ?realms= parameters (discovery indexes e.g. http://localhost:8009/realms/index.json)
+            const realmsParams = queryParams.getAll("realms");
+            for (const p of realmsParams) {
+              for (const r of p.split(",")) {
+                const trimmed = r.trim();
+                if (trimmed) realmIndexUrls.push(trimmed);
+              }
+            }
+
+            // Parse ?realm= parameters (can be composite realm JSONs or bundles)
             const realmParams = queryParams.getAll("realm");
             for (const p of realmParams) {
               for (const r of p.split(",")) {
                 const trimmed = r.trim();
-                if (trimmed) dynamicRealms.push(trimmed);
+                if (trimmed) dynamicTargets.push(trimmed);
+              }
+            }
+
+            // Parse ?bundle= parameters (explicit standalone bundles)
+            const bundleParams = queryParams.getAll("bundle");
+            for (const p of bundleParams) {
+              for (const b of p.split(",")) {
+                const trimmed = b.trim();
+                if (trimmed) directBundles.push(trimmed);
               }
             }
 
@@ -226,12 +248,12 @@
             const manifestsUrl = queryParams.get("manifests");
             if (manifestsUrl) {
               try {
-                this.bootStatus = `Fetching remote realm manifests: ${manifestsUrl}...`;
+                this.bootStatus = `Fetching remote manifests: ${manifestsUrl}...`;
                 const resp = await fetch(manifestsUrl);
                 if (resp.ok) {
                   const urls = await resp.json();
                   if (Array.isArray(urls)) {
-                    dynamicRealms.push(...urls);
+                    dynamicTargets.push(...urls);
                   }
                 }
               } catch (err) {
@@ -239,21 +261,108 @@
               }
             }
 
-            // Install and start dynamically discovered realms
-            for (const realmUrl of dynamicRealms) {
+            // 4a. Install explicit standalone bundles
+            for (const bundleUrl of directBundles) {
               try {
-                this.bootStatus = `Admitting external realm: ${realmUrl.split("/").pop()}...`;
-                console.log(`[Core Harness] Admitting external realm from ${realmUrl}`);
-                const b = await context.installBundle(realmUrl);
+                this.bootStatus = `Installing bundle: ${bundleUrl.split("/").pop()}...`;
+                console.log(`[Core Harness] Installing external bundle from ${bundleUrl}`);
+                const b = await context.installBundle(bundleUrl);
                 if (
                   b.state === 2 || b.state === 4 ||
                   (b.getState && b.getState() < 32)
                 ) {
                   await b.start();
-                  console.log(`[Core Harness] External realm started successfully: ${b.symbolicName || realmUrl}`);
+                  console.log(`[Core Harness] Bundle started: ${b.symbolicName || bundleUrl}`);
                 }
               } catch (err) {
-                console.warn(`[Core Harness] Non-fatal error loading external realm ${realmUrl}:`, err);
+                console.warn(`[Core Harness] Failed to install bundle ${bundleUrl}:`, err);
+              }
+            }
+
+            // 4b. Ingest Remote Realm Discovery Indexes (?realms=...)
+            const registeredRealmIds = [];
+            for (const idxTarget of realmIndexUrls) {
+              try {
+                let idxUrl = new URL(idxTarget, window.location.href).href;
+                if (!idxUrl.endsWith(".json")) {
+                  idxUrl = new URL(idxUrl.endsWith("/") ? "realms/index.json" : "/realms/index.json", idxUrl).href;
+                }
+                this.bootStatus = `Discovering universes from: ${idxUrl.split("/").slice(-2).join("/")}...`;
+                console.log(`[Core Harness] Discovering remote realms from index: ${idxUrl}`);
+                if (realmManager) {
+                  const discovered = await realmManager.discoverFromIndex(idxUrl);
+                  registeredRealmIds.push(...discovered);
+                }
+              } catch (err) {
+                console.warn(`[Core Harness] Failed discovery from index ${idxTarget}:`, err);
+              }
+            }
+
+            // 4c. Polymorphic Ingestion for ?realm= targets
+            for (const target of dynamicTargets) {
+              try {
+                const targetUrl = new URL(target, window.location.href).href;
+                this.bootStatus = `Inspecting payload: ${targetUrl.split("/").pop()}...`;
+                console.log(`[Core Harness] Inspecting dynamic target from ${targetUrl}`);
+
+                const resp = await fetch(targetUrl);
+                if (!resp.ok) {
+                  throw new Error(`HTTP ${resp.status} fetching ${targetUrl}`);
+                }
+                const payload = await resp.json();
+
+                if (Array.isArray(payload) && realmManager) {
+                  // Payload is an index list (e.g. index.json passed to ?realm=)
+                  this.bootStatus = `Discovering universes from list: ${targetUrl}...`;
+                  const discovered = await realmManager.discoverFromIndex(targetUrl);
+                  registeredRealmIds.push(...discovered);
+                } else {
+                  // Check if payload is a Realm Descriptor
+                  const isRealmDescriptor = payload && payload.id && (
+                    Array.isArray(payload.bundles) ||
+                    Array.isArray(payload.extends) ||
+                    payload.seedData ||
+                    payload.domainObjects ||
+                    payload.startupFlow ||
+                    payload.recognizedSurrogates
+                  );
+
+                  if (isRealmDescriptor && realmManager) {
+                    this.bootStatus = `Registering realm: ${payload.title || payload.id}...`;
+                    console.log(`[Core Harness] Admitting composite realm '${payload.id}' from ${targetUrl}`);
+                    await realmManager.registerRealm(payload, { baseUrl: targetUrl });
+                    registeredRealmIds.push(payload.id);
+                  } else {
+                    // Standard Pandino bundle manifest
+                    this.bootStatus = `Admitting external bundle: ${targetUrl.split("/").pop()}...`;
+                    console.log(`[Core Harness] Admitting external bundle manifest from ${targetUrl}`);
+                    const b = await context.installBundle(targetUrl);
+                    if (
+                      b.state === 2 || b.state === 4 ||
+                      (b.getState && b.getState() < 32)
+                    ) {
+                      await b.start();
+                      console.log(`[Core Harness] Bundle started: ${b.symbolicName || targetUrl}`);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.warn(`[Core Harness] Non-fatal error loading dynamic target ${target}:`, err);
+              }
+            }
+
+            // 4c. Auto-switch to newly registered realm if requested
+            const switchParam = queryParams.get("switch");
+            if (realmManager && (switchParam === "true" || switchParam === "" || (switchParam && registeredRealmIds.includes(switchParam)))) {
+              const targetRealmId = (switchParam && switchParam !== "true") ? switchParam : registeredRealmIds[0];
+              if (targetRealmId) {
+                try {
+                  this.bootStatus = `Transitioning into universe '${targetRealmId}'...`;
+                  console.log(`[Core Harness] Auto-switching to realm '${targetRealmId}'`);
+                  await realmManager.switchRealm(targetRealmId);
+                } catch (err) {
+                  console.warn(`[Core Harness] Failed to auto-switch to realm '${targetRealmId}':`, err);
+                }
               }
             }
 
