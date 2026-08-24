@@ -43,6 +43,10 @@ _Last updated: 2026-08-23 — Workspace: `neverplayed-core` / `neverplayed`_
 - **`neverplayed-core`**: Removed obsolete `core.json` and `foundation.json`. `public/realms/index.json` strictly serves `["empty.json"]`.
 - **`neverplayed`**: Removed obsolete `core.json` and removed `empty.json` from `neverplayed/public/realms/index.json` to prevent overwriting host Platonic baseline during remote discovery.
 
+### 7. Documentation & Stratographer User Manual
+- Authored and committed [docs/stratographer-user-manual.md](file:///Users/ddoegl/speckit/neverplayed-core/docs/stratographer-user-manual.md).
+- Detailed TAME / Active Inference theory, Stratum URI coordinates, Cockpit zones, Concrete vs Virtual Realms, Surrogates & Light Cones reference, and operational scenarios.
+
 ---
 
 ## Key Decisions & Architecture Reference
