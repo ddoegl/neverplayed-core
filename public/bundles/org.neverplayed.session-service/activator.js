@@ -182,6 +182,21 @@ export default class Activator {
                                 if (this.activeRealmId === scope) {
                                     this.activeRealmId = 'platonic';
                                     logger?.info(`Session: Reverted active realm to 'platonic' for evicted user '${userId}'.`);
+                                    
+                                    // Visual Toast Notification
+                                    try {
+                                        globalThis.Alpine?.store('notifications')?.push({
+                                            message: `Attention span exhausted. Session reset to Platonic Staging Lobby.`,
+                                            type: 'warning',
+                                            duration: 6000
+                                        });
+                                    } catch (_e) {}
+
+                                    // Dispatch custom event for shell host synchronization
+                                    globalThis.dispatchEvent(new CustomEvent('realm-changed', {
+                                        detail: { realmId: 'platonic', reason: 'attention_exhausted' }
+                                    }));
+
                                     if (self._realm && typeof self._realm.switchRealm === 'function') {
                                         self._realm.switchRealm('platonic').catch(err => {
                                             logger?.error(`Session: Failed transitioning RealmManager back to platonic:`, err);

@@ -5,7 +5,10 @@
 
 import { 
     FLOW_SERVICE, 
-    SHELL_HOST_SERVICE 
+    SHELL_HOST_SERVICE,
+    EVENT_HANDLER_INTERFACE,
+    EVENT_TOPIC,
+    REALM_CHANGED_TOPIC
 } from "core-types";
 import { CoreAlpineActivator } from "alpine-base";
 
@@ -39,6 +42,41 @@ export default class Activator extends CoreAlpineActivator {
             init() {
                 this.logger.info(`Shell Host: Initializing Realm for capability: ${this.state.bootCapability}`);
                 
+                const launchPlatonicLobby = () => {
+                    this.logger.info("Shell Host: Transitioning stage to Platonic Staging Lobby...");
+                    const stratographerRefs = context.getServiceReferences(FLOW_SERVICE, "(flow.id=org.neverplayed.stratographer)");
+                    if (stratographerRefs && stratographerRefs.length > 0) {
+                        const stratSvc = context.getService(stratographerRefs[0]);
+                        this.launch("org.neverplayed.stratographer", stratSvc);
+                        return;
+                    }
+
+                    const cliRefs = context.getServiceReferences(FLOW_SERVICE, "(capability=sys:cli)");
+                    if (cliRefs && cliRefs.length > 0) {
+                        const cliSvc = context.getService(cliRefs[0]);
+                        const cliId = cliRefs[0].getProperty("flow.id") || cliSvc.id;
+                        this.launch(cliId, cliSvc);
+                        return;
+                    }
+
+                    const hostStage = this.$refs.flowContent || document.querySelector("#flow-mount-point");
+                    if (hostStage) {
+                        hostStage.innerHTML = `
+                          <div class="h-full w-full flex flex-col items-center justify-center p-8 bg-slate-950 text-slate-100 font-sans space-y-4">
+                            <div class="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-2xl shadow-xl">
+                              <i class="fas fa-cubes"></i>
+                            </div>
+                            <div class="text-center space-y-1 max-w-md">
+                              <h2 class="text-xl font-bold text-white">Platonic Staging Lobby</h2>
+                              <p class="text-xs text-slate-400 leading-relaxed">
+                                Session attention span exhausted or reset to operator baseline. Select a realm in the header or universe menu to resume.
+                              </p>
+                            </div>
+                          </div>
+                        `;
+                    }
+                };
+
                 // Track Flow Discovery
                 this.track(`(objectClass=${FLOW_SERVICE})`, {
                     addingService: (ref) => {
@@ -57,31 +95,16 @@ export default class Activator extends CoreAlpineActivator {
                         const id = ref.getProperty("flow.id");
                         this.logger.debug(`Shell Host: Flow removed: ${id}`);
                         
-                        // Rule 9: Hot-Reload Resilience - 200ms grace period to allow replacement services to arrive
                         if (this.state.activeFlowId === id) {
                             setTimeout(() => {
-                                // Check if a replacement for the same flow id exists now
                                 const refs = context.getServiceReferences(FLOW_SERVICE, `(flow.id=${id})`);
                                 if (refs && refs.length > 0) {
-                                    this.logger.info(`Shell Host: Replacement flow found for '${id}'. Aborting CLI fallback.`);
+                                    this.logger.info(`Shell Host: Replacement flow found for '${id}'.`);
                                     return;
                                 }
 
-                                this.logger.warn(`Shell Host: Active flow '${id}' uninstalled. Falling back to Core Shell.`);
-                                
-                                // Find the fallback flow (discovery by capability: sys:cli)
-                                const fallbackCapability = "sys:cli";
-                                const fallbackRefs = context.getServiceReferences(FLOW_SERVICE, `(capability=${fallbackCapability})`);
-                                
-                                if (fallbackRefs && fallbackRefs.length > 0) {
-                                    const fallbackSvc = context.getService(fallbackRefs[0]);
-                                    const fallbackId = fallbackRefs[0].getProperty("flow.id") || fallbackSvc.id;
-                                    this.launch(fallbackId, fallbackSvc);
-                                } else {
-                                    // Last resort: Wipe stage to avoid zombie state
-                                    const hostStage = this.$refs.flowContent || document.querySelector("#flow-mount-point");
-                                    if (hostStage) hostStage.innerHTML = `<div class="p-10 text-slate-400 italic">No active flow available for this realm.</div>`;
-                                }
+                                this.logger.warn(`Shell Host: Active flow '${id}' uninstalled. Falling back to Platonic Lobby.`);
+                                launchPlatonicLobby();
                             }, 200);
                         }
                     }
@@ -105,6 +128,27 @@ export default class Activator extends CoreAlpineActivator {
                         this.launch(reqId, reqFlowSvc, reqParams);
                     }
                 });
+
+                // Listen for realm changes to update host stage immediately
+                globalThis.addEventListener("realm-changed", (e) => {
+                    const realmId = e.detail?.realmId || e.detail?.id;
+                    if (realmId === "platonic" || realmId === "org.neverplayed.realm.empty") {
+                        launchPlatonicLobby();
+                    }
+                });
+
+                // Register EventAdmin Handler for REALM_CHANGED_TOPIC
+                context.registerService(EVENT_HANDLER_INTERFACE, {
+                    handleEvent: (event) => {
+                        const topic = event.getTopic();
+                        if (topic === REALM_CHANGED_TOPIC) {
+                            const realmId = event.getProperty("realm.id");
+                            if (realmId === "platonic" || realmId === "org.neverplayed.realm.empty") {
+                                launchPlatonicLobby();
+                            }
+                        }
+                    }
+                }, { [EVENT_TOPIC]: [REALM_CHANGED_TOPIC] });
             },
 
             async launch(id, flow, params = {}) {
@@ -118,8 +162,6 @@ export default class Activator extends CoreAlpineActivator {
                     return;
                 }
                 
-                // CRITICAL: We completely re-create the child element to purge the Alpine _x_dataStack
-                // that might linger from the previous flow on the same DOM node.
                 hostStage.innerHTML = "";
                 const target = document.createElement('div');
                 target.id = "flow-active-stage";
